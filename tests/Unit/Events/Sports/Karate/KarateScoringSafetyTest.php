@@ -56,6 +56,10 @@ class KarateScoringSafetyTest extends TestCase
             // one that requires the organiser's screen, which is what stopped a
             // championship on 2026-09-18.
             'start_day',
+            // 'exhibition' loads two entrants OUTSIDE the draw (a side bout,
+            // EventExhibitionBout, behind events.exhibitions) and files nothing
+            // into the competition.
+            'exhibition',
         ], Scoring::COMMANDS);
     }
 

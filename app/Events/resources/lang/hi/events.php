@@ -1244,4 +1244,12 @@ return [
     'withdraw_title' => 'इस प्रतियोगिता से वापस आएं',
     'times_in_zone' => 'सभी समय :zone के अनुसार',
 
+    'stats_female' => 'महिला',
+    'stats_male' => 'पुरुष',
+    'stats_divisions' => 'विभाजन',
+    'stats_bouts' => 'मुकाबले',
+    'stats_bouts_hint' => 'बाई नहीं गिने गए',
+    'club_entry_cta' => 'अपना क्लब पंजीकृत करें',
+    'club_entry_cta_hint' => 'अपना क्लब खोजें या पंजीकृत करें, फिर अपने खिलाड़ी जोड़ें',
+
 ];

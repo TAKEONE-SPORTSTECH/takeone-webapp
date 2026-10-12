@@ -1243,4 +1243,12 @@ return [
     'withdraw_title' => 'この大会から退出する',
     'times_in_zone' => '時刻はすべて :zone',
 
+    'stats_female' => '女性',
+    'stats_male' => '男性',
+    'stats_divisions' => '部門',
+    'stats_bouts' => '試合',
+    'stats_bouts_hint' => '不戦勝は含みません',
+    'club_entry_cta' => 'クラブを登録する',
+    'club_entry_cta_hint' => 'クラブを検索または登録し、次に選手を追加してください',
+
 ];

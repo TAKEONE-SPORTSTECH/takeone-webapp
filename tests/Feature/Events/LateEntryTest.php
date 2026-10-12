@@ -32,6 +32,9 @@ class LateEntryTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // Midday in Bahrain, so "today's" event is under way whatever time the
+        // suite runs — late in the UTC evening it had already ended there.
+        $this->travelTo(\Carbon\Carbon::parse('2026-06-15 09:00:00', 'UTC'));
         $this->organiser = $this->createUser(['full_name' => 'Master Kim']);
         $this->club = $this->createClub($this->organiser, ['country' => 'BH', 'currency' => 'BHD']);
         $this->organiser->memberClubs()->syncWithoutDetaching([$this->club->id => ['status' => 'active']]);

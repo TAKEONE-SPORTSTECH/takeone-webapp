@@ -1244,4 +1244,12 @@ return [
     'withdraw_title' => '退出此比赛',
     'times_in_zone' => '所有时间均为 :zone',
 
+    'stats_female' => '女',
+    'stats_male' => '男',
+    'stats_divisions' => '组别',
+    'stats_bouts' => '场次',
+    'stats_bouts_hint' => '不计轮空',
+    'club_entry_cta' => '注册您的俱乐部',
+    'club_entry_cta_hint' => '查找或注册您的俱乐部，然后添加运动员',
+
 ];

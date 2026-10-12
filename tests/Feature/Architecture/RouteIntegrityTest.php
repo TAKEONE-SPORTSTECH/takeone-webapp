@@ -271,8 +271,10 @@ class RouteIntegrityTest extends TestCase
      * (admin.platform.clubs.removal + .removal.store, ClubRemovalController).
      * 1005 on 2026-10-08: +3 — the tablet draw's bout numbers
      * (tablet.draw.number, .renumber, .number.release, TabletDrawController).
+     * 1030 on 2026-10-12: +25 — the event gallery photos, officials' badges,
+     * theme colour, corners and exhibition bouts (49327f77).
      */
-    private const EXPECTED_ROUTE_COUNT = 1005;
+    private const EXPECTED_ROUTE_COUNT = 1030;
 
     /** Routes handled by a Closure rather than a controller action. */
     private const EXPECTED_CLOSURE_COUNT = 22;
@@ -523,6 +525,7 @@ class RouteIntegrityTest extends TestCase
         // 987 on 2026-10-08: +14, the scoring consoles' Corners tab (corners + corner-look × 3 sports × 2 doors) and Karate's console-state doors.
         // 989 the same day: +2, admin.platform.clubs.removal + .removal.store.
         // 992 on 2026-10-08: +3, tablet.draw.number / .renumber / .number.release.
-        $this->assertCount(992, $named, 'Named-route count changed — tripwire, see class docblock.');
+        // 1017 on 2026-10-12: +25, the routes of 49327f77 (see EXPECTED_ROUTE_COUNT).
+        $this->assertCount(1017, $named, 'Named-route count changed — tripwire, see class docblock.');
     }
 }

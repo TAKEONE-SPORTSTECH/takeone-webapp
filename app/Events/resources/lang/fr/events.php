@@ -1244,4 +1244,12 @@ return [
     'withdraw_title' => 'Se retirer de cette compétition',
     'times_in_zone' => 'Toutes les heures en :zone',
 
+    'stats_female' => 'Femmes',
+    'stats_male' => 'Hommes',
+    'stats_divisions' => 'Catégories',
+    'stats_bouts' => 'Combats',
+    'stats_bouts_hint' => 'Exemptions non comptées',
+    'club_entry_cta' => 'Inscrire votre club',
+    'club_entry_cta_hint' => 'Trouvez ou inscrivez votre club, puis ajoutez vos sportifs',
+
 ];

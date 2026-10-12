@@ -324,7 +324,9 @@ class ExploreEventsTest extends TestCase
 
         $res = $this->actingAs($user)->getJson('/explore/events?scope=public')->assertOk();
         $this->assertSame(['Open to all'], collect($res->json('events'))->pluck('title')->all());
-        $this->assertSame([], $res->json('finished'));
+        // An ended public event is not in the open list, but it IS in the
+        // "Finished" section the new Explore gained on 2026-10-10.
+        $this->assertSame(['Public but over'], collect($res->json('finished'))->pluck('title')->all());
 
         // The classic page still gets everything it always did.
         $classic = $this->actingAs($user)->getJson('/explore/events')->assertOk();
