@@ -425,6 +425,15 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(20)->by($request->user()?->id ?: $request->ip());
         });
 
+        // The draw as a PDF. Expensive to build, so it stays capped — but in its
+        // OWN bucket. It was `throttle:6,1`, and an un-named throttle keys by
+        // user alone, so every other `throttle:N,1` request the draw page had
+        // just made counted against these six and the button answered "Too
+        // many requests" on the first click.
+        RateLimiter::for('bracket-pdf', function (Request $request) {
+            return Limit::perMinute(12)->by('bracket-pdf|'.($request->user()?->id ?: $request->ip()));
+        });
+
         // An organiser adding an event's photographs: one picture per request,
         // so a hundred from the day go up in about a minute — its own bucket so
         // it never eats the 20/min every other upload shares.

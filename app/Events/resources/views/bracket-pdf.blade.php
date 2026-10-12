@@ -257,11 +257,17 @@
                            text-transform: uppercase; letter-spacing: .14em; font-size: 10.5pt; color: {{ $navy }}; margin-bottom: 2mm; }
         .pdf-podium .ph2::before { content: ''; width: 7mm; height: 1.4mm; background: {{ $c }}; transform: skewX(-20deg); }
         .pdf-podium .ph2::after { content: ''; flex: 1; height: .35mm; background: #cfd5e0; }
-        .pod { display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: 3.5mm; }
+        /* Always four columns (owner, 2026-10-12): a division with two
+           fighters prints its two cards at the size a full podium would, in
+           the first two columns, never stretched to half the page each. */
+        .pod { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3.5mm; }
         .pod-c { display: flex; border: .35mm solid #cfd5e0; border-radius: 1.5mm; overflow: hidden; background: #fff; min-width: 0; }
         .pod-c.p1 { border: .6mm solid {{ $c }}; }
-        .pod-c .ph { width: 15mm; height: 20mm; flex: 0 0 auto; background: #eef1f6; border-inline-end: .35mm solid #cfd5e0; }
-        .pod-c .ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        /* The photo is always the card's full height: when a card grows (a
+           name set on two lines, a taller line box) the picture grows with it
+           instead of leaving a strip of grey underneath. 20mm is the floor. */
+        .pod-c .ph { position: relative; width: 15mm; min-height: 20mm; align-self: stretch; flex: 0 0 auto; background: #eef1f6; border-inline-end: .35mm solid #cfd5e0; }
+        .pod-c .ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center top; display: block; }
         .pod-c .ph img.ph-none { opacity: .55; }
         .pod-c .tx { flex: 1; min-width: 0; padding: 1.6mm 2.4mm; display: flex; flex-direction: column; gap: .6mm; }
         .pod-c .pl { display: flex; align-items: center; gap: 1.4mm; font-size: 6.8pt; font-weight: 800; letter-spacing: .12em;
@@ -269,9 +275,17 @@
         .pod-c .pl svg { flex: 0 0 auto; }
         /* One line each, every card the same height: a long name or club is
            set smaller until it fits (.pfit, below), never wrapped or cut. */
-        .pod-c .nm { font-size: 9.5pt; font-weight: 800; color: {{ $navy }}; line-height: 1.2; white-space: nowrap; overflow: hidden; }
+        /* The flag, then the name, both against the photo whatever script
+           the name is written in: the name is isolated in a <bdi>, so an
+           Arabic name keeps its own direction but the LINE stays aligned to
+           the card. Line-height leaves room under the baseline — Arabic dots
+           and descenders were being cut off by the old 1.2 and overflow. */
+        .pod-c .nm { display: flex; align-items: center; gap: 1.4mm; font-size: 9.5pt; font-weight: 800; color: {{ $navy }};
+                     line-height: 1.6; padding-block: .3mm; white-space: nowrap; overflow: hidden; text-align: start; }
+        .pod-c .nm .fi { width: 4.4mm; height: 3.3mm; flex: 0 0 auto; border-radius: .4mm; box-shadow: 0 0 0 .2mm rgba(11,19,43,.12); }
+        .pod-c .nm bdi { flex: 0 0 auto; }
         .pod-c.p1 .nm { font-size: 10.5pt; }
-        .pod-c .cl { display: flex; align-items: center; gap: 1.4mm; font-size: 7pt; white-space: nowrap; overflow: hidden; font-weight: 700; color: #5d6880; text-transform: uppercase; letter-spacing: .04em; }
+        .pod-c .cl { display: flex; align-items: center; gap: 1.4mm; font-size: 7pt; line-height: 1.6; white-space: nowrap; overflow: hidden; font-weight: 700; color: #5d6880; text-transform: uppercase; letter-spacing: .04em; }
         .pod-c .cl .cl-logo { width: 5mm; height: 5mm; object-fit: contain; flex: 0 0 auto; }
         .pod-c .cl .fi { width: 4mm; height: 3mm; flex: 0 0 auto; }
 
@@ -565,12 +579,12 @@
                                 </div>
                                 <div class="tx">
                                     <div class="pl"><x-medal-icon :place="$w['place']" :size="13" />{{ __('events::events.draw_print_place_'.$w['place']) }}</div>
-                                    <div class="nm pfit" dir="auto">{{ $w['name'] }}</div>
-                                    @if($w['club'] || $w['country'])
+                                    @php $iso = $w['country'] ? \App\Support\Flag::iso2($w['country']) : null; @endphp
+                                    <div class="nm pfit">@if($iso)<span class="fi fi-{{ strtolower($iso) }}"></span>@endif<bdi>{{ $w['name'] }}</bdi></div>
+                                    @if($w['club'])
                                         <div class="cl">
-                                            @if($w['country'] && \App\Support\Flag::iso2($w['country']))<span class="fi fi-{{ strtolower(\App\Support\Flag::iso2($w['country'])) }}"></span>@endif
                                             @if(! empty($w['club_logo']))<img class="cl-logo" src="{{ $w['club_logo'] }}" alt="">@endif
-                                            <span class="pfit" style="min-width:0; overflow:hidden">{{ $w['club'] }}</span>
+                                            <span class="pfit" style="min-width:0; overflow:hidden"><bdi>{{ $w['club'] }}</bdi></span>
                                         </div>
                                     @endif
                                 </div>

@@ -86,6 +86,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'camera/*/clip/*/upload',
         ]);
         $middleware->alias([
+            // Inline `throttle:N,M` counts PER ROUTE (Laravel's counts every
+            // inline-throttled route in one bucket per user). Named limiters
+            // are unchanged. See App\Http\Middleware\ThrottleRequestsPerRoute.
+            'throttle'   => \App\Http\Middleware\ThrottleRequestsPerRoute::class,
             'no-store'   => \App\Http\Middleware\NoStoreCache::class,
             'role'       => \App\Members\Middleware\CheckRole::class,
             'permission' => \App\Members\Middleware\CheckPermission::class,

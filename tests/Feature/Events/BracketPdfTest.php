@@ -48,6 +48,28 @@ class BracketPdfTest extends ContractTestCase
         $this->assertStringContainsString('attachment;', (string) $res->headers->get('Content-Disposition'));
     }
 
+    public function test_the_rest_of_the_draw_page_does_not_use_up_the_pdf_allowance(): void
+    {
+        $this->enable();
+        $this->fakeBrowser();
+
+        $organiser = $this->createUser(['full_name' => 'Master Kim']);
+        $club = $this->clubFor($organiser);
+        $event = $this->championship($club, $organiser);
+        $this->drawnDivision($event, $club);
+
+        // The draw page's other requests: un-named `throttle:60,1` doors. With
+        // the PDF on `throttle:6,1` they shared one per-user counter and the
+        // first click on the PDF answered 429.
+        for ($i = 0; $i < 10; $i++) {
+            $this->actingAs($organiser->fresh())->getJson("/me/events/{$event->uuid}/draw-pin");
+        }
+
+        $this->actingAs($organiser->fresh())
+            ->getJson("/me/events/{$event->uuid}/brackets/pdf")
+            ->assertOk();
+    }
+
     public function test_somebody_who_does_not_run_the_draw_gets_a_404(): void
     {
         $this->enable();

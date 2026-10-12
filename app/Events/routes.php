@@ -724,7 +724,7 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
     /* The draw as an A4 PDF — the real board printed by headless Chromium
        (App\Events\Support\BracketPdf). The most expensive read there is, so
        organiser/jury only and throttled hard; 404 while the flag is off. */
-    Route::get('/events/{event:uuid}/brackets/pdf', [App\Events\Controllers\BracketPdfController::class, 'show'])->name('events.bracket.pdf')->middleware('throttle:6,1');
+    Route::get('/events/{event:uuid}/brackets/pdf', [App\Events\Controllers\BracketPdfController::class, 'show'])->name('events.bracket.pdf')->middleware('throttle:bracket-pdf');
     /* The tablet PIN — lends a scoring tablet the organiser's authority to edit
        the draw in an emergency (App\Events\Support\TabletDraw). Organiser only. */
     Route::get('/events/{event:uuid}/draw-pin', [App\Events\Controllers\DrawPinController::class, 'show'])->name('events.draw-pin')->middleware('throttle:60,1');
