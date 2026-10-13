@@ -216,6 +216,18 @@ return [
      */
     'tablet_draw_pin' => (bool) env('EVENT_TABLET_DRAW_PIN', false),
 
+    /*
+     | The entry list as an A4 PDF — the participants page's organiser download,
+     | in two editions: the entry list and the desk check-in sheet
+     | (App\Events\Support\ParticipantsPdf). Printed by the same Chromium as
+     | the bracket PDF, so it also needs that one's binary.
+     |
+     | OFF by default (RULE #1). EVENT_PARTICIPANTS_PDF=true, then config:cache.
+     */
+    'participants_pdf' => [
+        'enabled' => (bool) env('EVENT_PARTICIPANTS_PDF', false),
+    ],
+
     'bracket_pdf' => [
         'enabled' => (bool) env('EVENT_BRACKET_PDF', false),
         'binary' => env('CHROMIUM_BINARY', '/usr/bin/chromium'),

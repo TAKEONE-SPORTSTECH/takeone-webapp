@@ -976,6 +976,8 @@ return [
     'personal_event_create_fixtures' => 'Matchs',
     'personal_event_create_free_join' => 'Gratuit à rejoindre',
     'personal_event_create_free_join_desc' => 'Désactivez pour facturer une participation',
+    'personal_event_create_paid_join' => 'Inscription payante',
+    'personal_event_create_paid_join_desc' => 'Désactivez pour rendre l\'inscription gratuite',
     'personal_event_create_from' => 'De',
     'personal_event_create_from_belt' => 'De la ceinture…',
     'personal_event_create_generic_event' => 'Événement générique',

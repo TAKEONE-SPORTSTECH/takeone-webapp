@@ -958,6 +958,8 @@ return [
     'personal_event_create_fixtures' => 'Jogos',
     'personal_event_create_free_join' => 'Participação gratuita',
     'personal_event_create_free_join_desc' => 'Desative para cobrar taxa de inscrição',
+    'personal_event_create_paid_join' => 'Inscrição paga',
+    'personal_event_create_paid_join_desc' => 'Desligue para tornar a inscrição gratuita',
     'personal_event_create_from' => 'De',
     'personal_event_create_from_belt' => 'Do cinto…',
     'personal_event_create_generic_event' => 'Evento genérico',

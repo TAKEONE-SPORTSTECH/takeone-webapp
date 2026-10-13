@@ -242,6 +242,23 @@
                     </span>
                 </button>
 
+                {{-- Extra rows a page hands in (`menuRows`: icon · label · sub ·
+                     click, an Alpine expression). Opt-in: a host that passes
+                     none gets the menu exactly as it was. The participants page
+                     puts its PDF downloads here for whoever runs the event. --}}
+                @foreach(($menuRows ?? []) as $row)
+                    <button type="button" role="menuitem" class="ev-menu-row"
+                            @click="menu = false; {{ $row['click'] }}">
+                        <span class="ev-menu-ico" style="background: hsl(38 92% 92%); color: hsl(28 80% 38%);">
+                            <i class="bi {{ preg_match('/^bi-[a-z0-9-]+$/', (string) ($row['icon'] ?? '')) ? $row['icon'] : 'bi-file-earmark' }}"></i>
+                        </span>
+                        <span class="min-w-0 flex-1">
+                            <span class="ev-menu-label">{{ $row['label'] }}</span>
+                            @if(! empty($row['sub']))<span class="ev-menu-sub">{{ $row['sub'] }}</span>@endif
+                        </span>
+                    </button>
+                @endforeach
+
                 @if($hasPublic)
                     <a href="{{ $publicUrl }}" target="_blank" rel="noopener" role="menuitem" class="ev-menu-row">
                         <span class="ev-menu-ico" style="background: hsl(210 100% 94%); color: hsl(211 100% 43%);">

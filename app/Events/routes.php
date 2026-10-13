@@ -725,6 +725,10 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
        (App\Events\Support\BracketPdf). The most expensive read there is, so
        organiser/jury only and throttled hard; 404 while the flag is off. */
     Route::get('/events/{event:uuid}/brackets/pdf', [App\Events\Controllers\BracketPdfController::class, 'show'])->name('events.bracket.pdf')->middleware('throttle:bracket-pdf');
+    /* The entry list as an A4 PDF — entry list or desk check-in sheet
+       (App\Events\Support\ParticipantsPdf). Organiser and officials only, on
+       the draw PDF's limiter: it is the same browser. 404 while the flag is off. */
+    Route::get('/events/{event:uuid}/participants/pdf', [App\Events\Controllers\ParticipantsPdfController::class, 'show'])->name('events.participants.pdf')->middleware('throttle:bracket-pdf');
     /* The tablet PIN — lends a scoring tablet the organiser's authority to edit
        the draw in an emergency (App\Events\Support\TabletDraw). Organiser only. */
     Route::get('/events/{event:uuid}/draw-pin', [App\Events\Controllers\DrawPinController::class, 'show'])->name('events.draw-pin')->middleware('throttle:60,1');

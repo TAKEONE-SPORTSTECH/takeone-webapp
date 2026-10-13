@@ -10,7 +10,7 @@
     <div class="md:text-end">
         <h5>{{ __('shared.invoices_show_modal_invoice_details') }}</h5>
         <p class="mb-1">{{ __('shared.invoices_show_modal_invoice_number') }} {{ $invoice->id }}</p>
-        <p class="mb-1">{{ __('shared.invoices_show_modal_due_date') }} {{ $invoice->due_date->format('F j, Y') }}</p>
+        <p class="mb-1">{{ __('shared.invoices_show_modal_due_date') }} {{ $invoice->due_date->format('j F Y') }}</p>
         <p class="mb-0">
             {{ __('shared.invoices_show_modal_status') }}
             @if($invoice->status === 'paid')

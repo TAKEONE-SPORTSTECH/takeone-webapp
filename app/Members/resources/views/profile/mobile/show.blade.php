@@ -1243,10 +1243,10 @@
                 'target_value' => (float) $g->target_value,
                 'current_progress_value' => (float) $g->current_progress_value,
                 'status' => $g->status,
-                'target_date' => optional($g->target_date)->format('M j, Y'),
+                'target_date' => optional($g->target_date)->format('j M Y'),
                 'before_proof' => $g->before_proof ? file_url($g->before_proof) : null,
                 'after_proof' => $g->after_proof ? file_url($g->after_proof) : null,
-                'completed_at' => optional($g->completed_at)->format('M j, Y'),
+                'completed_at' => optional($g->completed_at)->format('j M Y'),
                 'days_taken' => $g->days_taken,
             ])->values();
         @endphp
@@ -3831,7 +3831,7 @@ function goalIsPast(view, d) {
 function fmtDate(val) {
     if (!val) return '';
     var d = new Date(val + 'T00:00:00');
-    return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    return d.toLocaleDateString(((document.documentElement.lang || 'en').toLowerCase().startsWith('en') ? 'en-GB' : document.documentElement.lang), { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 // A phone camera photo can be several MB — base64-encoded raw, that easily blows

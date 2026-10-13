@@ -324,7 +324,7 @@ window.membersMobileData = function (cfg) {
         bulkIsToday(d) { const t = new Date(); return d && this.bulkView.y===t.getFullYear() && this.bulkView.m===t.getMonth() && d===t.getDate(); },
         bulkPrev() { this.bulkView = this.bulkView.m === 0 ? { y: this.bulkView.y - 1, m: 11 } : { y: this.bulkView.y, m: this.bulkView.m - 1 }; },
         bulkNext() { this.bulkView = this.bulkView.m === 11 ? { y: this.bulkView.y + 1, m: 0 } : { y: this.bulkView.y, m: this.bulkView.m + 1 }; },
-        bulkFmt(val) { if (!val) return ''; const d = new Date(val + 'T00:00:00'); return d.toLocaleDateString(undefined, { weekday:'short', day:'numeric', month:'short', year:'numeric' }); },
+        bulkFmt(val) { if (!val) return ''; const d = new Date(val + 'T00:00:00'); return d.toLocaleDateString(((document.documentElement.lang || 'en').toLowerCase().startsWith('en') ? 'en-GB' : document.documentElement.lang), { weekday:'short', day:'numeric', month:'short', year:'numeric' }); },
         openBulkEnroll() {
             if (!this.selected.length) return;
             this.bulkPackageId = '';

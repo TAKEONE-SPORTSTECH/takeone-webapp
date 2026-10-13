@@ -1007,7 +1007,7 @@ class PersonalMobileController extends Controller
         );
 
         $name = $sub->full_name ?: $sub->name;
-        $whenLabel = \Carbon\Carbon::parse($data['date'])->format('D, M j');
+        $whenLabel = \Carbon\Carbon::parse($data['date'])->format('D j M');
         $className = ($pa->activity->name ?? 'your class');
 
         // Notify enrolled members, the regular coach, and the substitute.
@@ -1054,7 +1054,7 @@ class PersonalMobileController extends Controller
             ->whereDate('date', $data['date'])
             ->delete();
 
-        $whenLabel = \Carbon\Carbon::parse($data['date'])->format('D, M j');
+        $whenLabel = \Carbon\Carbon::parse($data['date'])->format('D j M');
         $className = ($pa->activity->name ?? 'your class');
 
         // Tell enrolled members + the regular coach it reverts (NOT the dropped sub).
@@ -1271,7 +1271,7 @@ class PersonalMobileController extends Controller
             // Trainer slot: when a substitute covers the shown occurrence, THEY are
             // the trainer for it; otherwise the regular instructor.
             if ($subRow && $subRow->substitute) {
-                $rows->push($entry($subRow->substitute, 'trainer', 'Substitute · '.$occurrence->format('D, M j')));
+                $rows->push($entry($subRow->substitute, 'trainer', 'Substitute · '.$occurrence->format('D j M')));
             } elseif ($pa->instructor?->user) {
                 $rows->push($entry($pa->instructor->user, 'trainer'));
             }
@@ -1384,7 +1384,7 @@ class PersonalMobileController extends Controller
                 $e['breakdown'] = array_map(fn ($o) => [
                     'date' => $o['date'],
                     'key' => $o['key'],
-                    'label' => \Carbon\Carbon::parse($o['date'])->format('D, M j'),
+                    'label' => \Carbon\Carbon::parse($o['date'])->format('D j M'),
                     'attended' => isset($att[$o['key']]),
                 ], array_reverse($occ));      // recent-first for display
                 $rows->push($e);
@@ -1486,7 +1486,7 @@ class PersonalMobileController extends Controller
         return view($isMobile ? 'members::personal.mobile.schedule-show' : 'members::personal.desktop.schedule-show', [
             's' => $s, 'member' => $member, 'isOwner' => false, 'synced' => true,
             'canEditClub' => $canEditClub, 'editSlot' => $editSlot, 'updateUrl' => $updateUrl,
-            'occurrenceDate' => $occDate, 'occurrenceLabel' => $occurrence->format('D, M j'),
+            'occurrenceDate' => $occDate, 'occurrenceLabel' => $occurrence->format('D j M'),
             'substitute' => $substitute,
             'substituteSearchUrl' => $substitute_search_url,
             'substituteAssignUrl' => $substitute_assign_url,
@@ -1958,7 +1958,7 @@ class PersonalMobileController extends Controller
         $className = $pa->activity->name ?? 'your class';
         $label = count($dates) > 1
             ? (count($dates).' sessions')
-            : \Carbon\Carbon::parse($dates[0])->format('D, M j');
+            : \Carbon\Carbon::parse($dates[0])->format('D j M');
         $this->notifyClassRecipients(
             $pa,
             $className.' cancelled',
@@ -2018,7 +2018,7 @@ class PersonalMobileController extends Controller
         $this->notifyClassRecipients(
             $pa,
             $className.' is back on',
-            'The '.\Carbon\Carbon::parse($data['date'])->format('D, M j').' class is no longer cancelled.',
+            'The '.\Carbon\Carbon::parse($data['date'])->format('D j M').' class is no longer cancelled.',
             $token,
             $affected,
         );
@@ -2049,7 +2049,7 @@ class PersonalMobileController extends Controller
         $this->notifyClassRecipients(
             $pa,
             $className.' program reset',
-            'The '.\Carbon\Carbon::parse($data['date'])->format('D, M j').' class now follows the recurring plan again.',
+            'The '.\Carbon\Carbon::parse($data['date'])->format('D j M').' class now follows the recurring plan again.',
             $token,
         );
         $this->pushScheduleRefresh($this->classAudience($pa, [Auth::id()]));
@@ -2284,7 +2284,7 @@ class PersonalMobileController extends Controller
             $pa,
             $scope === 'once' ? $className.' program updated' : $className.' was updated',
             $scope === 'once'
-                ? 'The '.\Carbon\Carbon::parse($data['date'])->format('D, M j').' class has a one-time program change. Tap to see what’s new.'
+                ? 'The '.\Carbon\Carbon::parse($data['date'])->format('D j M').' class has a one-time program change. Tap to see what’s new.'
                 : 'The class schedule or details changed. Tap to see what’s new.',
             $newToken,
             $subIds,

@@ -1060,7 +1060,7 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
         $courtNo = ($m->court && preg_match('/(\d+)/', $m->court, $cm)) ? (int) $cm[1] : null;
 
         return array_replace(parent::matchView($event, $c, $m), [
-            'date' => $event->date ? $event->date->copy()->addDays(max(0, $day - 1))->format('D, M j') : '',
+            'date' => $event->date ? $event->date->copy()->addDays(max(0, $day - 1))->format('D j M') : '',
             'code' => ($courtNo && $m->match_no)
                 ? $courtNo.'-'.str_pad((string) $m->match_no, 2, '0', STR_PAD_LEFT)
                 : null,

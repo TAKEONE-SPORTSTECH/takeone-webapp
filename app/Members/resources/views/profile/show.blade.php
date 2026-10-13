@@ -571,7 +571,7 @@
                                         <div class="font-semibold text-sm text-gray-800">{{ $doc['type'] ?? '—' }}</div>
                                         <div class="text-xs text-gray-500 font-mono">{{ $doc['number'] ?? '' }}</div>
                                         @if(!empty($doc['uploaded_at']))
-                                        <div class="text-xs text-gray-400">{{ __('members::member.templates_member_show_uploaded') }} {{ \Carbon\Carbon::parse($doc['uploaded_at'])->format('M j, Y') }}</div>
+                                        <div class="text-xs text-gray-400">{{ __('members::member.templates_member_show_uploaded') }} {{ \Carbon\Carbon::parse($doc['uploaded_at'])->format('j M Y') }}</div>
                                         @endif
                                     </div>
                                     @if(!empty($doc['file_path']))
@@ -666,7 +666,7 @@
                                         @forelse($attendanceRecords as $record)
                                         <tr>
                                             <td class="align-middle">
-                                                <div class="font-semibold">{{ $record->session_datetime->format('M j, Y') }}</div>
+                                                <div class="font-semibold">{{ $record->session_datetime->format('j M Y') }}</div>
                                                 <small class="text-gray-500">{{ $record->session_datetime->format('g:i A') }}</small>
                                             </td>
                                             <td class="align-middle">{{ $record->session_type }}</td>
@@ -811,7 +811,7 @@
                             <div class="flex-1 min-w-0">
                                 <div class="font-semibold text-sm text-gray-800">{{ $condition['condition'] ?? '—' }}</div>
                                 @if(!empty($condition['noted_at']))
-                                <div class="text-xs text-gray-400 mt-0.5">{{ __('members::member.templates_member_show_noted') }} {{ \Carbon\Carbon::parse($condition['noted_at'])->format('M j, Y') }}</div>
+                                <div class="text-xs text-gray-400 mt-0.5">{{ __('members::member.templates_member_show_noted') }} {{ \Carbon\Carbon::parse($condition['noted_at'])->format('j M Y') }}</div>
                                 @endif
                                 @if(!empty($condition['notes']))
                                 <div class="text-xs text-gray-500 mt-1">{{ $condition['notes'] }}</div>
@@ -845,7 +845,7 @@
                                 <div class="flex items-center gap-2">
                                     <i class="bi bi-calendar-event text-primary"></i>
                                     <span class="font-semibold">{{ __('members::member.templates_member_show_snapshot_date') }}</span>
-                                    <span class="text-gray-500">{{ $latestDate->format('F j, Y') }}</span>
+                                    <span class="text-gray-500">{{ $latestDate->format('j F Y') }}</span>
                                 </div>
                                 <div class="w-px h-6 bg-gray-300"></div>
                                 <div class="flex items-center gap-2">
@@ -972,7 +972,7 @@
                                             <select class="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="currentDate">
                                                 @foreach($healthRecords as $record)
                                                     <option value="{{ $record->id }}" {{ $record->id == $current->id ? 'selected' : '' }}>
-                                                        {{ $record->recorded_at->format('M j, Y') }}
+                                                        {{ $record->recorded_at->format('j M Y') }}
                                                     </option>
                                                 @endforeach
                                             </select>
@@ -982,7 +982,7 @@
                                             <select class="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="previousDate">
                                                 @foreach($healthRecords as $record)
                                                     <option value="{{ $record->id }}" {{ $record->id == $previous->id ? 'selected' : '' }}>
-                                                        {{ $record->recorded_at->format('M j, Y') }}
+                                                        {{ $record->recorded_at->format('j M Y') }}
                                                     </option>
                                                 @endforeach
                                             </select>
@@ -1126,7 +1126,7 @@
                                 <tbody>
                                     @foreach($healthRecords as $record)
                                         <tr data-record-id="{{ $record->id }}" class="relative history-row">
-                                            <td class="small font-semibold">{{ $record->recorded_at->format('M j, Y') }}</td>
+                                            <td class="small font-semibold">{{ $record->recorded_at->format('j M Y') }}</td>
                                             <td class="small text-center">{{ $record->height ?? '-' }}</td>
                                             <td class="small text-center">{{ $record->weight ?? '-' }}</td>
                                             <td class="small text-center">{{ $record->body_fat_percentage ?? '-' }}</td>
@@ -1260,11 +1260,11 @@
                                             <div class="grid grid-cols-2 gap-2 mb-3">
                                                 <div>
                                                     <small class="text-gray-500 block">{{ __('members::member.templates_member_show_started') }}</small>
-                                                    <small class="font-semibold">{{ $goal->start_date->format('M d, Y') }}</small>
+                                                    <small class="font-semibold">{{ $goal->start_date->format('d M Y') }}</small>
                                                 </div>
                                                 <div class="text-end">
                                                     <small class="text-gray-500 block">{{ __('members::member.templates_member_show_target') }}</small>
-                                                    <small class="font-semibold">{{ $goal->target_date->format('M d, Y') }}</small>
+                                                    <small class="font-semibold">{{ $goal->target_date->format('d M Y') }}</small>
                                                 </div>
                                             </div>
 
@@ -1558,7 +1558,7 @@
                                                 </div>
 
                                                 <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
-                                                    <span class="inline-flex items-center gap-1"><i class="bi bi-calendar-event text-primary/50"></i>{{ $event->date->format('M j, Y') }}</span>
+                                                    <span class="inline-flex items-center gap-1"><i class="bi bi-calendar-event text-primary/50"></i>{{ $event->date->format('j M Y') }}</span>
                                                     @if($event->time)
                                                         <span class="inline-flex items-center gap-1"><i class="bi bi-clock text-primary/50"></i>{{ $event->time->format('H:i') }}</span>
                                                     @endif
@@ -3469,7 +3469,7 @@
 
             function renderGoalCard(goal) {
                 const pct = Math.max(0, Math.min(100, goal.progress_percentage || 0));
-                const today = new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+                const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
                 const priorityClass = goal.priority_level === 'high'
                     ? 'bg-red-100 text-red-800'
                     : (goal.priority_level === 'medium' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800');

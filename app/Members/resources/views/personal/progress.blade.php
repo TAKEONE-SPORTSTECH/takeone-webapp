@@ -95,7 +95,7 @@
             @endif
             @if($g->target_date)
                 <span class="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                    <i class="bi bi-calendar-event"></i>{{ $g->target_date->format('M d, Y') }}
+                    <i class="bi bi-calendar-event"></i>{{ $g->target_date->format('d M Y') }}
                 </span>
             @endif
         </div>

@@ -20,8 +20,7 @@
         $tiles[] = ['n' => $st['divisions'], 'label' => __('events::events.stats_divisions'), 'icon' => \App\Support\Icon::bi('bi-diagram-3-fill'), 'ink' => $ev, 'tint' => \App\Support\Palette::alpha($ev, .09)];
 
         if ($st['bouts'] !== null) {
-            $tiles[] = ['n' => $st['bouts'], 'label' => __('events::events.stats_bouts'), 'icon' => 'bi bi-lightning-charge-fill', 'ink' => $ev, 'tint' => \App\Support\Palette::alpha($ev, .09),
-                'hint' => __('events::events.stats_bouts_hint')];
+            $tiles[] = ['n' => $st['bouts'], 'label' => __('events::events.stats_bouts'), 'icon' => 'bi bi-lightning-charge-fill', 'ink' => $ev, 'tint' => \App\Support\Palette::alpha($ev, .09)];
         }
     }
 @endphp

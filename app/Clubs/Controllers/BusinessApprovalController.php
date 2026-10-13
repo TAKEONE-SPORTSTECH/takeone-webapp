@@ -381,7 +381,7 @@ class BusinessApprovalController extends Controller
                 'clubs_reassigned' => $log->clubs_reassigned,
                 'clubs_count' => $log->clubs_reassigned_count,
                 'note' => $log->note,
-                'at' => $log->created_at?->format('M j, Y g:i A'),
+                'at' => $log->created_at?->format('j M Y g:i A'),
             ])
             ->all();
     }

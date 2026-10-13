@@ -189,11 +189,11 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-muted-foreground">
                 <div>
                     <i class="bi bi-calendar-plus me-2"></i>
-                    <strong>{{ __('shared.finance_settings_created') }}</strong> {{ $club->created_at->format('M d, Y') }}
+                    <strong>{{ __('shared.finance_settings_created') }}</strong> {{ $club->created_at->format('d M Y') }}
                 </div>
                 <div>
                     <i class="bi bi-calendar-check me-2"></i>
-                    <strong>{{ __('shared.finance_settings_last_updated') }}</strong> {{ $club->updated_at->format('M d, Y') }}
+                    <strong>{{ __('shared.finance_settings_last_updated') }}</strong> {{ $club->updated_at->format('d M Y') }}
                 </div>
                 @if($club->owner)
                     <div class="col-span-full">

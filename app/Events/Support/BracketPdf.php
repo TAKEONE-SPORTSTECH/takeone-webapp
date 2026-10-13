@@ -709,7 +709,7 @@ class BracketPdf
         return count($words) > 2 ? $words[0].' '.end($words) : trim($name);
     }
 
-    private function genderOf(string $name): ?string
+    public function genderOf(string $name): ?string
     {
         return match (true) {
             (bool) preg_match('/\bWomen\b/i', $name) => 'female',
@@ -775,7 +775,7 @@ class BracketPdf
      *                          thumbnails are JPEG, which has no alpha, so a
      *                          transparent PNG would print on a white square.
      */
-    private function dataUri(string $url, User $viewer, bool $original = false, int $maxPx = 0): ?string
+    public function dataUri(string $url, User $viewer, bool $original = false, int $maxPx = 0): ?string
     {
         $path = parse_url($url, PHP_URL_PATH) ?: '';
 

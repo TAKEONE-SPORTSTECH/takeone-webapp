@@ -507,7 +507,7 @@
                         x-show="ledgerRowVisible({{ $loop->index }})"
                         @click="openPendingDetail(@js([
                             'name'             => $p['name'],
-                            'date_label'       => $p['date']?->format('M d, Y') ?? '—',
+                            'date_label'       => $p['date']?->format('d M Y') ?? '—',
                             'amount'           => $p['amount'],
                             'status'           => $p['status'],
                             'description'      => $p['description'],
@@ -864,7 +864,7 @@ window.transactionData = {
         type: @json($t->type),
         description: @json($t->description ?? ''),
         amount: {{ $t->amount }},
-        transaction_date: @json($t->transaction_date?->format('M d, Y') ?? ''),
+        transaction_date: @json($t->transaction_date?->format('d M Y') ?? ''),
         category: @json($t->category ?? ''),
         payment_method: @json($t->payment_method ?? ''),
         subscription_id: {{ $t->subscription_id ?? 'null' }},

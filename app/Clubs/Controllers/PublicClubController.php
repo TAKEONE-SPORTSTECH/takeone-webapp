@@ -1245,7 +1245,7 @@ class PublicClubController extends Controller
                 'success' => false,
                 'already_collected' => true,
                 'message' => 'This perk has already been collected.',
-                'collected_at' => $existing->created_at->format('M d, Y'),
+                'collected_at' => $existing->created_at->format('d M Y'),
             ]);
         }
 

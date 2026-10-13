@@ -1195,7 +1195,7 @@ class FamilyController extends Controller
             'type' => $tournament->type,
             'type_label' => ucfirst($tournament->type),
             'sport' => $tournament->sport,
-            'date' => optional($tournament->date)->format('M j, Y'),
+            'date' => optional($tournament->date)->format('j M Y'),
             'time' => optional($tournament->time)->format('H:i'),
             'location' => $tournament->location,
             'participants_count' => $tournament->participants_count,

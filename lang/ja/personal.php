@@ -975,6 +975,8 @@ return [
     'personal_event_create_fixtures' => '試合日程',
     'personal_event_create_free_join' => '無料参加',
     'personal_event_create_free_join_desc' => 'エントリー料金を請求するにはオフに切り替えてください',
+    'personal_event_create_paid_join' => '参加費を徴収',
+    'personal_event_create_paid_join_desc' => 'オフにすると参加無料になります',
     'personal_event_create_from' => 'から',
     'personal_event_create_from_belt' => '帯から…',
     'personal_event_create_generic_event' => '一般的なイベント',

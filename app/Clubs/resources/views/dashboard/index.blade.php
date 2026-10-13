@@ -575,7 +575,7 @@
                 <tr>
                     <td style="font-weight:600;color:#374151">{{ $sub->user->full_name ?? __('admin.club_dashboard_index_na') }}</td>
                     <td style="color:#6b7280">{{ $sub->package->name ?? __('admin.club_dashboard_index_na') }}</td>
-                    <td style="font-size:11px;color:#d97706">{{ $sub->end_date?->format('M d, Y') ?? __('admin.club_dashboard_index_na') }}</td>
+                    <td style="font-size:11px;color:#d97706">{{ $sub->end_date?->format('d M Y') ?? __('admin.club_dashboard_index_na') }}</td>
                     {{-- There is no one-tap renewal; this opened nothing (2026-10-03). It now opens
                          the member — where the renewal is done — the same door mobile's financials use. --}}
                     <td><a href="{{ $sub->user?->uuid ? route('member.show', $sub->user->uuid) : route('admin.club.members', $club->slug) }}" title="{{ __('admin.fin_open_member') }}" style="display:inline-block;background:hsl(250 60% 93%);border:none;color:hsl(250 65% 60%);border-radius:6px;padding:4px 12px;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer;text-decoration:none">{{ __('admin.club_dashboard_index_renew') }}</a></td>

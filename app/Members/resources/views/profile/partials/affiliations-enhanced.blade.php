@@ -574,7 +574,7 @@
                                                             <label class="text-muted-foreground text-sm font-semibold">{{ __('members::member.partials_affiliations_enhanced_subscription_period') }}</label>
                                                             <div>
                                                                 <i class="bi bi-calendar-range me-2 text-primary"></i>
-                                                                {{ $subscription->start_date ? $subscription->start_date->format('M d, Y') : __('members::member.partials_affiliations_enhanced_na') }} - {{ $subscription->end_date ? $subscription->end_date->format('M d, Y') : __('members::member.partials_affiliations_enhanced_na') }}
+                                                                {{ $subscription->start_date ? $subscription->start_date->format('d M Y') : __('members::member.partials_affiliations_enhanced_na') }} - {{ $subscription->end_date ? $subscription->end_date->format('d M Y') : __('members::member.partials_affiliations_enhanced_na') }}
                                                             </div>
                                                             @php
                                                                 $durationText = __('members::member.partials_affiliations_enhanced_na');
@@ -675,11 +675,11 @@
                                                                     <div class="font-semibold mb-1">{{ __('members::member.partials_affiliations_enhanced_subscribed_times', ['count' => $samePackageSubscriptions->count() + 1]) }}</div>
                                                                     <ul class="mb-0 ps-3">
                                                                         <li class="text-primary font-semibold">
-                                                                            {{ $subscription->start_date ? $subscription->start_date->format('M d, Y') : __('members::member.partials_affiliations_enhanced_na') }} - {{ $subscription->end_date ? $subscription->end_date->format('M d, Y') : __('members::member.partials_affiliations_enhanced_na') }} {{ __('members::member.partials_affiliations_enhanced_current_paren') }}
+                                                                            {{ $subscription->start_date ? $subscription->start_date->format('d M Y') : __('members::member.partials_affiliations_enhanced_na') }} - {{ $subscription->end_date ? $subscription->end_date->format('d M Y') : __('members::member.partials_affiliations_enhanced_na') }} {{ __('members::member.partials_affiliations_enhanced_current_paren') }}
                                                                         </li>
                                                                         @foreach($samePackageSubscriptions as $otherSub)
                                                                             <li>
-                                                                                {{ $otherSub->start_date ? $otherSub->start_date->format('M d, Y') : __('members::member.partials_affiliations_enhanced_na') }} - {{ $otherSub->end_date ? $otherSub->end_date->format('M d, Y') : __('members::member.partials_affiliations_enhanced_na') }}
+                                                                                {{ $otherSub->start_date ? $otherSub->start_date->format('d M Y') : __('members::member.partials_affiliations_enhanced_na') }} - {{ $otherSub->end_date ? $otherSub->end_date->format('d M Y') : __('members::member.partials_affiliations_enhanced_na') }}
                                                                                 @php
                                                                                     $gap = 0;
                                                                                     if ($subscription->start_date && $otherSub->start_date) {
@@ -1348,7 +1348,7 @@ function addSkillModal() {
         fmtDate(iso) {
             if (!iso) return '';
             const d = new Date(iso + 'T00:00:00');
-            return isNaN(d) ? iso : d.toLocaleDateString(document.documentElement.lang || undefined,
+            return isNaN(d) ? iso : d.toLocaleDateString(((document.documentElement.lang || 'en').toLowerCase().startsWith('en') ? 'en-GB' : document.documentElement.lang),
                 { year: 'numeric', month: 'short', day: 'numeric' });
         },
 

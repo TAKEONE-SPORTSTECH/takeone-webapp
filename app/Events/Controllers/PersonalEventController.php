@@ -3443,7 +3443,7 @@ class PersonalEventController extends Controller
             'checked' => $item->isChecked(),
             // Who signed it off — the reason the list is worth keeping.
             'by' => $item->checked_by ? ($item->checker?->full_name ?? $item->checker?->name) : null,
-            'at' => $item->checked_at?->format('M j, g:i A'),
+            'at' => $item->checked_at?->format('j M, g:i A'),
         ];
     }
 
@@ -4249,6 +4249,7 @@ class PersonalEventController extends Controller
             'fee_options.*.label' => ['required_with:fee_options', 'string', 'max:80'],
             'fee_options.*.amount' => ['required_with:fee_options', 'numeric', 'min:0', 'max:1000000'],
             'late_fee_amount' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
+            'fee_selection' => ['nullable', Rule::in(['single', 'multiple'])],
             'late_fee_from' => ['nullable', 'date'],
             'max_capacity' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'prize' => ['nullable', 'string', 'max:120'],
@@ -4435,6 +4436,7 @@ class PersonalEventController extends Controller
             'fee_options.*.label' => ['required_with:fee_options', 'string', 'max:80'],
             'fee_options.*.amount' => ['required_with:fee_options', 'numeric', 'min:0', 'max:1000000'],
             'late_fee_amount' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
+            'fee_selection' => ['nullable', Rule::in(['single', 'multiple'])],
             'late_fee_from' => ['nullable', 'date'],
             'max_capacity' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'prize' => ['nullable', 'string', 'max:120'],
@@ -4667,6 +4669,11 @@ class PersonalEventController extends Controller
         $sAmount = isset($data['spectator_fee_amount']) ? (float) $data['spectator_fee_amount'] : null;
 
         $columns = ['fee_currency' => $currency, 'spectator_enabled' => $spectators];
+
+        // Radio or checkboxes on the entrant's side. Absent leaves it alone.
+        if (in_array($data['fee_selection'] ?? null, ['single', 'multiple'], true)) {
+            $columns['fee_selection'] = $data['fee_selection'];
+        }
 
         /*
          * The late-entry penalty. Both halves are required to mean anything —
@@ -5274,10 +5281,10 @@ class PersonalEventController extends Controller
         // service cannot disagree about whether a place can still be taken.
         // The named day runs to midnight where the COMPETITION is.
         if (\App\Events\Support\EntryWindow::hasNotOpened($event)) {
-            return response()->json(['success' => false, 'message' => 'Registration opens '.$event->enrollment_starts_at->format('M j').'.'], 422);
+            return response()->json(['success' => false, 'message' => 'Registration opens '.$event->enrollment_starts_at->format('j M').'.'], 422);
         }
         if (\App\Events\Support\EntryWindow::hasClosed($event)) {
-            return response()->json(['success' => false, 'message' => 'Registration closed on '.$event->enrollment_ends_at->format('M j').'.'], 422);
+            return response()->json(['success' => false, 'message' => 'Registration closed on '.$event->enrollment_ends_at->format('j M').'.'], 422);
         }
 
         // Capacity guard (participants only).

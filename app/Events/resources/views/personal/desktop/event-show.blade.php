@@ -240,7 +240,7 @@
                             </div>
                             <div class="pb-4 -mt-1">
                                 @php $at = !empty($a['t']) ? rescue(fn () => \Carbon\Carbon::parse($a['t']), null, false) : null; @endphp
-                                <p class="text-xs font-bold text-foreground">{{ $at ? $at->format('M j · g:i A') : $a['t'] }}</p>
+                                <p class="text-xs font-bold text-foreground">{{ $at ? $at->format('j M · g:i A') : $a['t'] }}</p>
                                 <p class="text-xs text-muted-foreground">{{ $a['d'] }}</p>
                             </div>
                         </div>
@@ -399,8 +399,9 @@
                 </div>
             </button>
 
-            {{-- Spectator ticket --}}
-            @if($hasTicket)
+            {{-- Spectator ticket — only when watching costs something; a free
+                 event needs no ticket, the hall is simply open. --}}
+            @if($hasTicket && $ticketPaid)
                 <button type="button" @click="startJoin('spectator')"
                         :disabled="(registered && !feeDue) || {{ $locked ? 'true' : 'false' }}"
                         class="w-full block rounded-2xl p-4 text-white text-start relative overflow-hidden

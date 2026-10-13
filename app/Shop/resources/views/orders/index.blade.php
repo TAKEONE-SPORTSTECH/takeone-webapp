@@ -5,7 +5,7 @@
     $ordersJs = $orders->map(fn ($o) => [
         'id' => $o->id, 'reference' => $o->reference, 'status' => $o->status,
         'total' => (float) $o->total, 'currency' => $o->currency,
-        'time' => $o->created_at->diffForHumans(), 'date' => $o->created_at->format('M j, Y · g:i A'),
+        'time' => $o->created_at->diffForHumans(), 'date' => $o->created_at->format('j M Y · g:i A'),
         'new' => ($lastSeen ?? null) ? $o->created_at->gt(\Illuminate\Support\Carbon::parse($lastSeen)) : true,
         'customer' => $o->user->full_name ?? __('admin.fin_member'),
         'month' => $o->created_at->format('Y-m'),

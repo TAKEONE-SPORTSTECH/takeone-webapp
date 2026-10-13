@@ -6,7 +6,7 @@
 @php
     $ordersJs = $orders->map(fn ($o) => [
         'id' => $o->id, 'reference' => $o->reference, 'status' => $o->status,
-        'total' => (float) $o->total, 'currency' => $o->currency, 'date' => $o->created_at->format('M j · g:i A'),
+        'total' => (float) $o->total, 'currency' => $o->currency, 'date' => $o->created_at->format('j M · g:i A'),
         'month' => $o->created_at->format('Y-m'),
         'new' => ($lastSeen ?? null) ? $o->created_at->gt(\Illuminate\Support\Carbon::parse($lastSeen)) : true,
         'customer' => $o->user->full_name ?? __('admin.fin_member'), 'hasDropship' => (bool) $o->has_dropship,

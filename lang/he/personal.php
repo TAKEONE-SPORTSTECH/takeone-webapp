@@ -959,6 +959,8 @@ return [
     'personal_event_create_fixtures' => '/fixtures',
     'personal_event_create_free_join' => 'חינם להצטרף',
     'personal_event_create_free_join_desc' => 'כבה כדי לחייב עמלת הצטרפות',
+    'personal_event_create_paid_join' => 'תשלום על השתתפות',
+    'personal_event_create_paid_join_desc' => 'כבו כדי שההשתתפות תהיה חינם',
     'personal_event_create_from' => 'מ',
     'personal_event_create_from_belt' => 'מ כובע…',
     'personal_event_create_generic_event' => 'אירוע כללי',

@@ -104,6 +104,19 @@
                 'signedInName' => auth()->user()?->full_name ?? auth()->user()?->name,
                 // Lands on /e/{uuid}, which 404s while the page is not public.
                 'signOutUrl' => ($posterPublic ?? true) ? route('events.public.sign-out', ['event' => $e['key']]) : null,
+                // The entry list on paper, tucked in the ⋯ menu for whoever runs
+                // the event (App\Events\Support\ParticipantsPdf; the route re-checks).
+                'menuRows' => ($section === 'participants' && ($printRoster ?? false)) ? [
+                    ['icon' => 'bi-file-earmark-pdf', 'label' => __('events::events.participants_pdf_list'),
+                     'sub' => __('events::events.participants_pdf_menu_sub'),
+                     'click' => 'window.participantsPdf('.json_encode(route('me.events.participants.pdf', ['event' => $e['key']]).'?kind=list').')'],
+                    ['icon' => 'bi-clipboard2-check', 'label' => __('events::events.participants_pdf_checkin'),
+                     'sub' => __('events::events.participants_pdf_menu_sub'),
+                     'click' => 'window.participantsPdf('.json_encode(route('me.events.participants.pdf', ['event' => $e['key']]).'?kind=checkin').')'],
+                    ['icon' => 'bi-sort-alpha-down', 'label' => __('events::events.participants_pdf_all'),
+                     'sub' => __('events::events.participants_pdf_menu_sub'),
+                     'click' => 'window.participantsPdf('.json_encode(route('me.events.participants.pdf', ['event' => $e['key']]).'?kind=all').')'],
+                ] : [],
             ])
 
             {{-- Appointing officials, for whoever runs the event — the same

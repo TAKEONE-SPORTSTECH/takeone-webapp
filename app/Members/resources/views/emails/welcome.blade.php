@@ -44,7 +44,7 @@
                                         <p style="margin:0 0 4px; font-size:14px; color:#374151;"><strong style="color:#1f2937;">Guardian:</strong> {{ $guardian->full_name }}</p>
                                         <p style="margin:0 0 4px; font-size:14px; color:#374151;"><strong style="color:#1f2937;">Relationship:</strong> {{ $relationship->relationship_type === 'spouse' ? 'Wife' : ucfirst($relationship->relationship_type) }}</p>
                                         @if($user->birthdate)
-                                        <p style="margin:0; font-size:14px; color:#374151;"><strong style="color:#1f2937;">Birthdate:</strong> {{ \Carbon\Carbon::parse($user->birthdate)->format('F j, Y') }}</p>
+                                        <p style="margin:0; font-size:14px; color:#374151;"><strong style="color:#1f2937;">Birthdate:</strong> {{ \Carbon\Carbon::parse($user->birthdate)->format('j F Y') }}</p>
                                         @endif
                                     </td>
                                 </tr>

@@ -594,7 +594,7 @@
                                 <h6 class="font-bold text-gray-900">{{ $request->user->full_name ?? __('admin.club_members_index_unknown') }}</h6>
                                 <p class="text-sm text-gray-500 flex items-center gap-1">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                    {{ __('admin.club_members_index_requested_on', ['date' => $request->created_at->format('M d, Y')]) }}
+                                    {{ __('admin.club_members_index_requested_on', ['date' => $request->created_at->format('d M Y')]) }}
                                 </p>
                             </div>
                         </div>
@@ -1022,7 +1022,7 @@ function bulkEnrollModalData() {
         isToday(d) { const t = new Date(); return d && this.view.y===t.getFullYear() && this.view.m===t.getMonth() && d===t.getDate(); },
         prev() { this.view = this.view.m === 0 ? { y: this.view.y - 1, m: 11 } : { y: this.view.y, m: this.view.m - 1 }; },
         next() { this.view = this.view.m === 11 ? { y: this.view.y + 1, m: 0 } : { y: this.view.y, m: this.view.m + 1 }; },
-        fmt(val) { if (!val) return ''; const d = new Date(val + 'T00:00:00'); return d.toLocaleDateString(undefined, { weekday:'short', day:'numeric', month:'short', year:'numeric' }); },
+        fmt(val) { if (!val) return ''; const d = new Date(val + 'T00:00:00'); return d.toLocaleDateString(((document.documentElement.lang || 'en').toLowerCase().startsWith('en') ? 'en-GB' : document.documentElement.lang), { weekday:'short', day:'numeric', month:'short', year:'numeric' }); },
         async submit() {
             if (!this.packageId || window.bulkEnrollSelected.size === 0 || this.submitting) return;
             this.submitting = true;

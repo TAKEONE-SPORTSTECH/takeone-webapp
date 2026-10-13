@@ -481,7 +481,7 @@
                         isToday(d) { const t = new Date(); return d && this.view.y===t.getFullYear() && this.view.m===t.getMonth() && d===t.getDate(); },
                         prev() { this.view = this.view.m === 0 ? { y: this.view.y - 1, m: 11 } : { y: this.view.y, m: this.view.m - 1 }; },
                         next() { this.view = this.view.m === 11 ? { y: this.view.y + 1, m: 0 } : { y: this.view.y, m: this.view.m + 1 }; },
-                        fmt(val) { if (!val) return ''; const d = new Date(val + 'T00:00:00'); return d.toLocaleDateString(undefined, { weekday:'short', day:'numeric', month:'short', year:'numeric' }); }
+                        fmt(val) { if (!val) return ''; const d = new Date(val + 'T00:00:00'); return d.toLocaleDateString(((document.documentElement.lang || 'en').toLowerCase().startsWith('en') ? 'en-GB' : document.documentElement.lang), { weekday:'short', day:'numeric', month:'short', year:'numeric' }); }
                      }"
                      x-init="if (deadline) { const d = new Date(deadline + 'T00:00:00'); view = { y: d.getFullYear(), m: d.getMonth() }; }"
                      @click.outside="open=false" @keydown.escape="open=false">

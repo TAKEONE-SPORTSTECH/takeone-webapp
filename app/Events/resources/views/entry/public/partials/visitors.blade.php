@@ -663,7 +663,7 @@ body:has(.vo-sheet:not([style*="display: none"])) iframe{visibility:hidden;}
             day(iso) {
                 if (! iso) return '—';
 
-                return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+                return new Date(iso).toLocaleDateString(((document.documentElement.lang || 'en').toLowerCase().startsWith('en') ? 'en-GB' : document.documentElement.lang), { day: 'numeric', month: 'short' });
             },
 
             when(iso) {

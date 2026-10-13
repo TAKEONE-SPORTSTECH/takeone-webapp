@@ -268,7 +268,8 @@
             const d = new Date({{ $expr }} + 'T00:00:00');
             return {{ $dayOnly ? 'true' : 'false' }}
                 ? String(d.getDate())
-                : d.toLocaleDateString(document.documentElement.lang || undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+                // Day before month, always (project rule): plain en prints the month first, so English reads as en-GB.
+                : d.toLocaleDateString((document.documentElement.lang || 'en').toLowerCase() === 'en' ? 'en-GB' : document.documentElement.lang, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
         },
      }"
      @keydown.escape="open = false">

@@ -25,7 +25,7 @@
                         <div class="md:text-end">
                             <h5>{{ __('shared.templates_invoices_show_invoice_details') }}</h5>
                             <p class="mb-1">{{ __('shared.templates_invoices_show_invoice_no_label') }} {{ $invoice->id }}</p>
-                            <p class="mb-1">{{ __('shared.templates_invoices_show_due_date_label') }} {{ $invoice->due_date->format('F j, Y') }}</p>
+                            <p class="mb-1">{{ __('shared.templates_invoices_show_due_date_label') }} {{ $invoice->due_date->format('j F Y') }}</p>
                             <p class="mb-0">
                                 {{ __('shared.templates_invoices_show_status_label') }}
                                 @if($invoice->status === 'paid')

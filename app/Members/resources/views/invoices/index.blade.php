@@ -45,7 +45,7 @@
                     @if($summary['next_due'])
                         <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-white/90 text-xs font-medium">
                             <i class="bi bi-calendar-event"></i>
-                            {{ __('shared.templates_invoices_index_next_due') }} {{ $summary['next_due']->due_date->format('M d') }}
+                            {{ __('shared.templates_invoices_index_next_due') }} {{ $summary['next_due']->due_date->format('d M') }}
                         </span>
                     @endif
                     @unless($hasOutstanding)

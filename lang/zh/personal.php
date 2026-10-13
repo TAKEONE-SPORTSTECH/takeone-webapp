@@ -976,6 +976,8 @@ return [
     'personal_event_create_fixtures' => '赛程',
     'personal_event_create_free_join' => '免费参加',
     'personal_event_create_free_join_desc' => '关闭以收取入场费',
+    'personal_event_create_paid_join' => '收取参赛费',
+    'personal_event_create_paid_join_desc' => '关闭后即可免费参加',
     'personal_event_create_from' => '从',
     'personal_event_create_from_belt' => '从段位…',
     'personal_event_create_generic_event' => '通用活动',

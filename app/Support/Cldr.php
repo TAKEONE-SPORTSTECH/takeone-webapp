@@ -80,9 +80,16 @@ class Cldr
         }
 
         $locale = self::locale();
-        $key = $locale.'|'.$skeleton;
 
-        $pattern = self::$patterns[$key] ??= (new IntlDatePatternGenerator($locale))->getBestPattern($skeleton);
+        // English DATES read day before month on this platform (Design Rule #9):
+        // plain `en` is the US order, so a date-only skeleton takes its ORDER
+        // from en_GB while the words stay `en` ("18 Sep", not en_GB's "18 Sept").
+        // Times keep `en` entirely, so the 12-hour clock stays as it was.
+        $orderFrom = ($locale === 'en' && ! preg_match('/[jhHkK]/', $skeleton)) ? 'en_GB' : $locale;
+
+        $key = $orderFrom.'|'.$skeleton;
+
+        $pattern = self::$patterns[$key] ??= (new IntlDatePatternGenerator($orderFrom))->getBestPattern($skeleton);
 
         return self::formatter($locale, IntlDateFormatter::NONE, IntlDateFormatter::NONE, $pattern)
             ->format($date) ?: self::carbon($date, $fallback);

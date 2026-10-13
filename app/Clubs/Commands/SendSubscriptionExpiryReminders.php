@@ -48,8 +48,8 @@ class SendSubscriptionExpiryReminders extends Command
                 : 'Your package expires in 3 days — Renew & complete payment';
 
             $message = $isPaid
-                ? "Your membership package \"{$subscription->package?->name}\" at {$tenant->club_name} will expire on {$subscription->end_date->format('F j, Y')}. Please renew to keep your access."
-                : "Your membership package \"{$subscription->package?->name}\" at {$tenant->club_name} will expire on {$subscription->end_date->format('F j, Y')}. You also have an outstanding balance of {$subscription->amount_due}. Please renew and complete your payment.";
+                ? "Your membership package \"{$subscription->package?->name}\" at {$tenant->club_name} will expire on {$subscription->end_date->format('j F Y')}. Please renew to keep your access."
+                : "Your membership package \"{$subscription->package?->name}\" at {$tenant->club_name} will expire on {$subscription->end_date->format('j F Y')}. You also have an outstanding balance of {$subscription->amount_due}. Please renew and complete your payment.";
 
             // Create bell notification
             $notification = ClubNotification::create([

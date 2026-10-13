@@ -433,7 +433,7 @@
                                         @forelse($attendanceRecords as $record)
                                         <tr>
                                             <td class="align-middle">
-                                                <div class="font-semibold">{{ $record->session_datetime->format('M j, Y') }}</div>
+                                                <div class="font-semibold">{{ $record->session_datetime->format('j M Y') }}</div>
                                                 <small class="text-muted">{{ $record->session_datetime->format('g:i A') }}</small>
                                             </td>
                                             <td class="align-middle">{{ $record->session_type }}</td>
@@ -490,7 +490,7 @@
                                 <div class="flex items-center gap-2">
                                     <i class="bi bi-calendar-event text-primary"></i>
                                     <span class="font-semibold">{{ __('members::member.family_show_snapshot_date') }}</span>
-                                    <span class="text-muted">{{ $latestDate->format('F j, Y') }}</span>
+                                    <span class="text-muted">{{ $latestDate->format('j F Y') }}</span>
                                 </div>
                                 <div class="w-px bg-gray-300 self-stretch"></div>
                                 <div class="flex items-center gap-2">
@@ -617,7 +617,7 @@
                                             <select class="form-select form-select-sm" id="currentDate">
                                                 @foreach($healthRecords as $record)
                                                     <option value="{{ $record->id }}" {{ $record->id == $current->id ? 'selected' : '' }}>
-                                                        {{ $record->recorded_at->format('M j, Y') }}
+                                                        {{ $record->recorded_at->format('j M Y') }}
                                                     </option>
                                                 @endforeach
                                             </select>
@@ -627,7 +627,7 @@
                                             <select class="form-select form-select-sm" id="previousDate">
                                                 @foreach($healthRecords as $record)
                                                     <option value="{{ $record->id }}" {{ $record->id == $previous->id ? 'selected' : '' }}>
-                                                        {{ $record->recorded_at->format('M j, Y') }}
+                                                        {{ $record->recorded_at->format('j M Y') }}
                                                     </option>
                                                 @endforeach
                                             </select>
@@ -771,7 +771,7 @@
                                 <tbody>
                                     @foreach($healthRecords as $record)
                                         <tr data-record-id="{{ $record->id }}" class="relative history-row">
-                                            <td class="small font-semibold">{{ $record->recorded_at->format('M j, Y') }}</td>
+                                            <td class="small font-semibold">{{ $record->recorded_at->format('j M Y') }}</td>
                                             <td class="small text-center">{{ $record->height ?? '-' }}</td>
                                             <td class="small text-center">{{ $record->weight ?? '-' }}</td>
                                             <td class="small text-center">{{ $record->body_fat_percentage ?? '-' }}</td>
@@ -900,11 +900,11 @@
                                             <div class="row g-2 mb-3">
                                                 <div class="col-6">
                                                     <small class="text-muted block">{{ __('members::member.family_show_started') }}</small>
-                                                    <small class="font-semibold">{{ $goal->start_date->format('M d, Y') }}</small>
+                                                    <small class="font-semibold">{{ $goal->start_date->format('d M Y') }}</small>
                                                 </div>
                                                 <div class="col-6 text-end">
                                                     <small class="text-muted block">{{ __('members::member.family_show_target') }}</small>
-                                                    <small class="font-semibold">{{ $goal->target_date->format('M d, Y') }}</small>
+                                                    <small class="font-semibold">{{ $goal->target_date->format('d M Y') }}</small>
                                                 </div>
                                             </div>
 
@@ -1060,7 +1060,7 @@
                                                     <span class="badge bg-info small">{{ $event->sport }}</span>
                                                 </div>
                                                 <div class="text-muted small mt-1">
-                                                    <i class="bi bi-calendar-event me-1"></i>{{ $event->date->format('M j, Y') }}
+                                                    <i class="bi bi-calendar-event me-1"></i>{{ $event->date->format('j M Y') }}
                                                     @if($event->time)
                                                         <i class="bi bi-clock me-1 ms-2"></i>{{ $event->time->format('H:i') }}
                                                     @endif
@@ -2484,7 +2484,7 @@
             function famGoalIcon(t) { return t === 'dumbbell' ? 'bi bi-dumbbell text-white' : (t === 'clock' ? 'bi bi-clock text-white' : 'bi bi-bullseye text-white'); }
             function famRenderGoal(goal) {
                 const pct = Math.max(0, Math.min(100, goal.progress_percentage || 0));
-                const today = new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+                const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
                 const prClass = goal.priority_level === 'high' ? 'bg-danger' : (goal.priority_level === 'medium' ? 'bg-warning text-dark' : 'bg-secondary');
                 const col = document.createElement('div');
                 col.className = 'col-lg-6';

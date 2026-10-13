@@ -150,7 +150,7 @@
                                         @if($re->last_run_at)
                                         <div class="text-xs text-muted-foreground flex items-center gap-1">
                                             <i class="bi bi-check-circle text-green-500"></i>
-                                            {{ __('admin.auto_expense_modal_last_run', ['date' => $re->last_run_at->format('M d, Y')]) }}
+                                            {{ __('admin.auto_expense_modal_last_run', ['date' => $re->last_run_at->format('d M Y')]) }}
                                         </div>
                                         @endif
                                     </div>

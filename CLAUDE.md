@@ -1045,6 +1045,26 @@ Reference implementation: `resources/views/components-templates/member/mobile/pa
 
 ---
 
+### 9. Dates read DAY → MONTH → YEAR — everywhere
+
+**Every date the platform shows or asks for is written day first, then month, then year**
+— `5 Nov 2026`, `Thu 5 Nov`, `05/11/2026`. Never `Nov 5, 2026`, never `11/05/2026`.
+Real pages, emails, PDFs, JSON a view prints, and design mockups alike (decided 2026-10-13).
+
+- **PHP:** `format('j M Y')`, `format('D j M')`, `format('d/m/Y')` — never `'M j, Y'`,
+  `'M d, Y'`, `'F j, Y'` or `'m/d/Y'`.
+- **JS:** never pass a bare `'en'` / `'en-US'` to `toLocaleDateString` /
+  `Intl.DateTimeFormat` — plain English puts the month first. Map English to `'en-GB'`
+  (other locales keep their own order). `<x-fields.date>` already does.
+- **Pickers:** `<x-fields.date>` (calendar) or `<x-fields.date-of-birth>` (Day / Month /
+  Year). Never a native `<input type="date">` — the BROWSER decides its order, and a US
+  browser shows `mm/dd/yyyy` (Design Rule #4 already bans it). Values are still stored and
+  posted as ISO `YYYY-MM-DD`; this rule is about what a person READS.
+- Arabic and other locales follow their own conventions through the locale; the rule is
+  that English never reads month-first.
+
+---
+
 ## Design System — follow these patterns exactly
 
 **Color palette (defined in `resources/css/app.css` `@theme`):**

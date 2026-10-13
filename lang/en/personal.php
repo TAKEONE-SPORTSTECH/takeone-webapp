@@ -680,6 +680,8 @@ return [
     'personal_event_create_entry_tickets' => 'Entry & tickets',
     'personal_event_create_free_join' => 'Free to join',
     'personal_event_create_free_join_desc' => 'Toggle off to charge an entry fee',
+    'personal_event_create_paid_join' => 'Charge to join',
+    'personal_event_create_paid_join_desc' => 'Turn off to make joining free',
     'personal_event_create_spectator_tickets' => 'Spectator tickets',
     'personal_event_create_spectator_desc' => 'Let people buy a ticket to watch',
     'personal_event_create_spectator_amount_ph' => '0.000 (or leave blank for free)',

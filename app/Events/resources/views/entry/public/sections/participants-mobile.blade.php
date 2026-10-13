@@ -49,6 +49,53 @@
              without signing out. --}}
      }">
 
+    {{-- ===== The entry list on paper — organiser and officials only =====
+         The two downloads are rows in the band's ⋯ menu (section-mobile hands
+         them to partials/event-band-controls); this is the function they call.
+         `printRoster` mirrors the route's own rule; the route re-checks. --}}
+    @if($printRoster ?? false)
+        {{-- Fetched, not navigated to: a browser prints it on the server for a
+             few seconds, and a failure must be a toast here, not a page away
+             (No-Reload rule). Inline and defined once — the shell re-runs
+             inline scripts on every swap. --}}
+        <script>
+        (function () {
+            if (window.participantsPdf) return;
+            let busy = false;
+            window.participantsPdf = async function (url) {
+                if (busy) return;
+                busy = true;
+                window.showToast && window.showToast('info', @js(__('events::events.bracket_pdf_working')));
+                try {
+                    const res = await fetch(url, {
+                        credentials: 'same-origin',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json, application/pdf' },
+                    });
+                    const type = res.headers.get('Content-Type') || '';
+                    if (! res.ok || type.indexOf('application/pdf') === -1) {
+                        let msg = @js(__('events::events.bracket_pdf_failed'));
+                        try { const j = await res.json(); if (j && j.message) msg = j.message; } catch (e) { /* not json */ }
+                        window.showToast && window.showToast('error', msg);
+                        return;
+                    }
+                    const name = ((res.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/) || [])[1] || 'participants.pdf';
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(await res.blob());
+                    link.download = name;
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+                } catch (e) {
+                    window.showToast && window.showToast('error', @js(__('events::events.bracket_pdf_failed')));
+                } finally {
+                    busy = false;
+                }
+            };
+        })();
+        </script>
+    @endif
+
     {{-- ===== Tabs ===== A segmented tray, not an underline: it reads as a
          switch between two views of one roster, which is what it is. --}}
     <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-1.5 flex gap-1.5" role="tablist">

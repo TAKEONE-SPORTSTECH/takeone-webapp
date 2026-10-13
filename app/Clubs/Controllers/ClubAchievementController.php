@@ -144,7 +144,7 @@ class ClubAchievementController extends Controller
             'work' => $r->organization,
         };
         $date = match ($type) {
-            'achievement' => optional($r->date)->format('M j, Y'),
+            'achievement' => optional($r->date)->format('j M Y'),
             'skill', 'affiliation', 'work' => optional($r->start_date)->format('M Y')
                 .($r->end_date ?? null ? ' – '.$r->end_date->format('M Y') : ''),
         };

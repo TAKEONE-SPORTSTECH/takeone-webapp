@@ -100,7 +100,7 @@
 
                                         @if($due)
                                             <span class="text-xs text-muted-foreground inline-flex items-center gap-1">
-                                                <i class="bi bi-calendar3"></i> {{ $due->format('M d, Y') }}
+                                                <i class="bi bi-calendar3"></i> {{ $due->format('d M Y') }}
                                             </span>
                                         @endif
                                     </div>

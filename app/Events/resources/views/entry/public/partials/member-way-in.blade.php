@@ -129,8 +129,9 @@
     </div>
 @endif
 
-{{-- Spectator ticket --}}
-@if($mHasTicket)
+{{-- Spectator ticket — only when watching costs something; a free
+     event needs no ticket, the hall is simply open. --}}
+@if($mHasTicket && $mTicketPaid)
     <div class="px-4">
         <button type="button" @click="startJoin('spectator')"
                 :disabled="(registered && !feeDue) || {{ $mLocked ? 'true' : 'false' }}"

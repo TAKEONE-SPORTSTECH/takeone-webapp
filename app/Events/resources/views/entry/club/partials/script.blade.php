@@ -613,7 +613,7 @@ function clubInvite(NAV) {
         mgActive() { const b = this.baseEntry(); return b ? b.athletes.filter(a => a.status !== 'Withdrawn') : []; },
         mgPhaseMsg() {
             const ph = this.phase(), ev = this.ev();
-            if (ph === 'open') { let dl = ''; try { dl = new Date(ev.deadline).toLocaleDateString(document.documentElement.lang || undefined, { day: 'numeric', month: 'short', year: 'numeric' }); } catch (e) {} return fill(T.phaseOpen, { d: dl }); }
+            if (ph === 'open') { let dl = ''; try { dl = new Date(ev.deadline).toLocaleDateString(((document.documentElement.lang || 'en').toLowerCase().startsWith('en') ? 'en-GB' : document.documentElement.lang), { day: 'numeric', month: 'short', year: 'numeric' }); } catch (e) {} return fill(T.phaseOpen, { d: dl }); }
             return ph === 'late' ? fill(T.phaseLate, { f: this.money(ev.lateFee) }) : T.phaseLocked;
         },
         mgStats() {
@@ -629,7 +629,7 @@ function clubInvite(NAV) {
         mgMeta(a) { const c = this.classify(a); return c ? a.weight + ' kg · ' + c : this.gender(a.gender) + ' · ' + a.weight + ' kg'; },
         mgLog() {
             const b = this.baseEntry(); if (! b) return [];
-            const lang = document.documentElement.lang || undefined;
+            const lang = ((document.documentElement.lang || 'en').toLowerCase().startsWith('en') ? 'en-GB' : document.documentElement.lang);
             return (b.log || []).slice().reverse().map(g => {
                 const key = g.key === 'logPaid' ? (g.m === 'Bank transfer' ? 'logDue' : 'logReceived') : g.key;
                 let when = ''; try { const d = new Date(g.ts); when = d.toLocaleDateString(lang, { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' }); } catch (e) {}

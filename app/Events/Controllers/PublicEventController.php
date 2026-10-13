@@ -318,6 +318,12 @@ class PublicEventController extends Controller
 
         return view('events::entry.public.section-mobile', [
             'canManage' => $me !== null && app(EventAccess::class)->canManage($event, $me),
+            /* The entry list as a PDF (App\Events\Support\ParticipantsPdf) —
+               offered to the people its route lets in: the organiser and the
+               event's officials. The route re-authorises; this only decides
+               what is drawn. */
+            'printRoster' => $me !== null && \App\Events\Support\ParticipantsPdf::available()
+                && (app(EventAccess::class)->canManage($event, $me) || app(EventAccess::class)->canOfficiate($event, $me)),
             /*
              * ===== Readiness, and who is allowed to read it =====
              *

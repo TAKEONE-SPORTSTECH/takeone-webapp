@@ -48,7 +48,7 @@ class SendSubscriptionExpiredNotices extends Command
 
             $subject = 'Your membership has expired — Renew now';
             $message = "Your \"{$packageName}\" subscription at {$tenant->club_name} expired on "
-                ."{$subscription->end_date->format('F j, Y')}. Renew now to keep your access.";
+                ."{$subscription->end_date->format('j F Y')}. Renew now to keep your access.";
 
             $notification = ClubNotification::create([
                 'tenant_id' => $tenant->id,

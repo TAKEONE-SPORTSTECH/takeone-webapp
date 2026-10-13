@@ -439,7 +439,7 @@
                                                             <label class="text-muted-foreground text-sm font-semibold">{{ __('members::member.partials_affiliations_enhanced_subscription_period') }}</label>
                                                             <div>
                                                                 <i class="bi bi-calendar-range me-2 text-primary"></i>
-                                                                {{ $subscription->start_date ? $subscription->start_date->format('M d, Y') : __('members::member.partials_affiliations_enhanced_na') }} - {{ $subscription->end_date ? $subscription->end_date->format('M d, Y') : __('members::member.partials_affiliations_enhanced_na') }}
+                                                                {{ $subscription->start_date ? $subscription->start_date->format('d M Y') : __('members::member.partials_affiliations_enhanced_na') }} - {{ $subscription->end_date ? $subscription->end_date->format('d M Y') : __('members::member.partials_affiliations_enhanced_na') }}
                                                             </div>
                                                             @php
                                                                 $durationText = 'N/A';
@@ -540,11 +540,11 @@
                                                                     <div class="font-semibold mb-1">{{ __('members::member.partials_affiliations_enhanced_subscribed_times', ['count' => $samePackageSubscriptions->count() + 1]) }}</div>
                                                                     <ul class="mb-0 ps-3">
                                                                         <li class="text-primary font-semibold">
-                                                                            {{ $subscription->start_date ? $subscription->start_date->format('M d, Y') : __('members::member.partials_affiliations_enhanced_na') }} - {{ $subscription->end_date ? $subscription->end_date->format('M d, Y') : __('members::member.partials_affiliations_enhanced_na') }} {{ __('members::member.partials_affiliations_enhanced_current_parenthetical') }}
+                                                                            {{ $subscription->start_date ? $subscription->start_date->format('d M Y') : __('members::member.partials_affiliations_enhanced_na') }} - {{ $subscription->end_date ? $subscription->end_date->format('d M Y') : __('members::member.partials_affiliations_enhanced_na') }} {{ __('members::member.partials_affiliations_enhanced_current_parenthetical') }}
                                                                         </li>
                                                                         @foreach($samePackageSubscriptions as $otherSub)
                                                                             <li>
-                                                                                {{ $otherSub->start_date ? $otherSub->start_date->format('M d, Y') : __('members::member.partials_affiliations_enhanced_na') }} - {{ $otherSub->end_date ? $otherSub->end_date->format('M d, Y') : __('members::member.partials_affiliations_enhanced_na') }}
+                                                                                {{ $otherSub->start_date ? $otherSub->start_date->format('d M Y') : __('members::member.partials_affiliations_enhanced_na') }} - {{ $otherSub->end_date ? $otherSub->end_date->format('d M Y') : __('members::member.partials_affiliations_enhanced_na') }}
                                                                                 @php
                                                                                     $gap = 0;
                                                                                     if ($subscription->start_date && $otherSub->start_date) {

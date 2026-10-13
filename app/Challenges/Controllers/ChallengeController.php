@@ -116,7 +116,7 @@ class ChallengeController extends Controller
                 'id' => $e->id,
                 'title' => $e->title,
                 'club' => $e->tenant?->club_name,
-                'date' => optional($e->date)->format('M j, Y'),
+                'date' => optional($e->date)->format('j M Y'),
                 'location' => $e->location,
                 'url' => $this->safeUrl($e->location_url)
                                 ?: (($e->gps_lat && $e->gps_long) ? "https://maps.google.com/?q={$e->gps_lat},{$e->gps_long}" : null),
@@ -917,8 +917,8 @@ class ChallengeController extends Controller
             'format_label' => Duel::formatLabel($d->format),
             'rounds' => $roundsView,
             'stake' => $d->stake_points.' pts',
-            'deadline' => $d->deadline ? $d->deadline->format('M j, g:i A') : 'Not set',
-            'challenge_time' => $d->deadline ? $d->deadline->format('D, M j · g:i A') : null,
+            'deadline' => $d->deadline ? $d->deadline->format('j M, g:i A') : 'Not set',
+            'challenge_time' => $d->deadline ? $d->deadline->format('D j M · g:i A') : null,
             'arrival_by' => $d->deadline ? $d->deadline->copy()->subMinutes(30)->format('g:i A') : null,
             'event' => $d->event_id ? ['title' => $d->event?->title, 'uuid' => $d->event?->uuid] : null,
             'location' => $d->location ?: '—',
@@ -958,7 +958,7 @@ class ChallengeController extends Controller
             $view['result'] = $won ? 'win' : 'loss';
             $view['final'] = trim(($myScore ?? '–').' — '.($oppScore ?? '–'));
             $view['points_earned'] = $won ? (int) $d->stake_points : 0;
-            $view['date'] = optional($d->completed_at)->format('M j') ?? '';
+            $view['date'] = optional($d->completed_at)->format('j M') ?? '';
         }
 
         if ($status === 'reported') {

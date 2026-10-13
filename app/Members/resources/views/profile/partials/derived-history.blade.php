@@ -50,7 +50,7 @@
                         <div class="min-w-0 flex-1">
                             <p class="text-sm font-semibold text-gray-900 mb-0 truncate">{{ $row->title }}</p>
                             <p class="text-xs text-muted-foreground mb-0 truncate">
-                                @if ($row->date){{ $row->date->format('M d, Y') }}@endif
+                                @if ($row->date){{ $row->date->format('d M Y') }}@endif
                                 @if ($row->club_name) · {{ $row->club_name }}@endif
                                 @if ($row->location) · {{ $row->location }}@endif
                             </p>

@@ -96,6 +96,13 @@
         $initFeeOptions = [['uuid' => null, 'label' => __('events::events.fee_line_entry'), 'amount' => $trim($legacy)]];
     }
 
+    /* A NEW event starts with its joining fee already in the list — an ordinary
+       row the organiser prices, renames or removes like any other. Paid is the
+       default (see $partFree), so the list should not open empty. */
+    if (! $ev) {
+        $initFeeOptions = [['uuid' => null, 'label' => __('events::events.fee_line_joining'), 'amount' => '']];
+    }
+
     if ($ev && ! $initSpectatorOptions && ($legacyS = \App\Events\Support\EventFee::amount($ev, 'spectator')) > 0) {
         $initSpectatorOptions = [['uuid' => null, 'label' => __('events::events.fee_line_ticket'), 'amount' => $trim($legacyS)]];
     }
@@ -178,6 +185,8 @@
         participant_free: {{ $partFree ? 'true' : 'false' }},
         participant_amount: @js($pAmt),
         fee_options: @js($initFeeOptions),
+        // How an entrant chooses from the list: 'single' (radio) or 'multiple' (checkboxes).
+        fee_selection: @js(($ev?->fee_selection === 'single') ? 'single' : 'multiple'),
         spectator_options: @js($initSpectatorOptions),
         late_amount: @js($lateAmt),
         late_from: @js($lateFrom),
@@ -494,6 +503,7 @@
                     // that does nothing. The server enforces the same pairing.
                     late_fee_amount: (!this.participant_free && this.late_amount !== '' && this.late_from) ? parseFloat(this.late_amount) : null,
                     late_fee_from: (!this.participant_free && this.late_amount !== '' && this.late_from) ? (this.late_from + ' ' + (this.late_time || '23:59') + ':00') : null,
+                    fee_selection: this.fee_selection,
                     max_capacity: (this.isCombat || !this.max_capacity) ? null : parseInt(this.max_capacity, 10),
                     prize: (this.has('prize') && !this.isCombat) ? (this.prize || null) : null,
                     agenda: (this.has('schedule') && !this.isCombat) ? this.agenda.filter(a => (a.t||'').trim() || (a.d||'').trim()) : [],
@@ -758,13 +768,11 @@
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('personal.personal_event_create_enrollment_opens') }}</label>
-                    <input x-model="enrollment_starts" type="date" @change="clampDates()"
-                           class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                    <x-fields.date model="enrollment_starts" change="clampDates()" />
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('personal.personal_event_create_last_day_join') }} <span class="text-muted-foreground font-normal">{{ __('personal.personal_event_create_opt') }}</span></label>
-                    <input x-model="enrollment_ends" type="date" :min="enrollment_starts || ''" @change="clampDates()"
-                           class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                    <x-fields.date model="enrollment_ends" min-expr="enrollment_starts || null" change="clampDates()" />
                 </div>
             </div>
 
@@ -817,11 +825,11 @@
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('personal.personal_event_create_start_date') }}</label>
-                    <input x-model="date" type="date" :min="weighInDate || enrollment_ends || enrollment_starts || ''" @change="clampDates()" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                    <x-fields.date model="date" min-expr="weighInDate || enrollment_ends || enrollment_starts || null" change="clampDates()" />
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('personal.personal_event_create_end_date') }} <span class="text-muted-foreground font-normal">{{ __('personal.personal_event_create_opt') }}</span></label>
-                    <input x-model="end_date" type="date" :min="date || weighInDate || enrollment_ends || enrollment_starts || ''" @change="clampDates()" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                    <x-fields.date model="end_date" min-expr="date || weighInDate || enrollment_ends || enrollment_starts || null" change="clampDates()" />
                 </div>
             </div>
 
@@ -1198,13 +1206,15 @@
             <p class="text-sm font-bold text-foreground">{{ __('personal.personal_event_create_entry_tickets') }}</p>
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-bold text-foreground">{{ __('personal.personal_event_create_free_join') }}</p>
-                    <p class="text-[11px] text-muted-foreground">{{ __('personal.personal_event_create_free_join_desc') }}</p>
+                    <p class="text-sm font-bold text-foreground">{{ __('personal.personal_event_create_paid_join') }}</p>
+                    <p class="text-[11px] text-muted-foreground">{{ __('personal.personal_event_create_paid_join_desc') }}</p>
                 </div>
+                {{-- ON = entrants pay (the default); OFF = joining is free. --}}
                 <button type="button" @click="participant_free = !participant_free"
+                        role="switch" :aria-checked="!participant_free" aria-label="{{ __('personal.personal_event_create_paid_join') }}"
                         class="m-press shrink-0 w-12 h-7 rounded-full transition-colors relative"
-                        :class="participant_free ? 'bg-green-500' : 'bg-gray-300'">
-                    <span class="absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform" :class="participant_free ? 'translate-x-5' : 'translate-x-0'"></span>
+                        :class="!participant_free ? 'bg-green-500' : 'bg-gray-300'">
+                    <span class="absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform" :class="!participant_free ? 'translate-x-5' : 'translate-x-0'"></span>
                 </button>
             </div>
             <div x-show="!participant_free" x-cloak>
@@ -1229,7 +1239,27 @@
                      total. --}}
                 <div>
                     <p class="text-sm font-bold text-foreground">{{ __('events::events.fee_options_title') }}</p>
-                    <p class="text-[11px] text-muted-foreground mt-0.5">{{ __('events::events.fee_options_hint') }}</p>
+                    <p class="text-[11px] text-muted-foreground mt-0.5"
+                       x-text="fee_selection === 'single' ? @js(__('events::events.fee_options_hint_single')) : @js(__('events::events.fee_options_hint'))">{{ __('events::events.fee_options_hint') }}</p>
+
+                    {{-- How an entrant chooses — the organiser's call. A radio
+                         set where the options are alternatives (Gi · No-Gi ·
+                         Gi + No-Gi), checkboxes where they add up. The entry
+                         doors draw it and EventFee::quote() enforces it. --}}
+                    <div class="grid grid-cols-2 gap-2 mt-2" role="radiogroup" aria-label="{{ __('events::events.fee_selection_title') }}">
+                        @foreach (['single' => ['bi-record-circle', 'fee_selection_single', 'fee_selection_single_desc'], 'multiple' => ['bi-check2-square', 'fee_selection_multiple', 'fee_selection_multiple_desc']] as $mode => [$icon, $lbl, $desc])
+                            <button type="button" role="radio" :aria-checked="fee_selection === '{{ $mode }}'"
+                                    @click="fee_selection = '{{ $mode }}'"
+                                    class="m-press text-start rounded-xl border p-3 transition-colors"
+                                    :class="fee_selection === '{{ $mode }}' ? 'border-primary bg-primary/5' : 'border-gray-200 bg-white'">
+                                <span class="flex items-center gap-2">
+                                    <i class="bi {{ $icon }} text-base" :class="fee_selection === '{{ $mode }}' ? 'text-primary' : 'text-muted-foreground'"></i>
+                                    <span class="text-sm font-bold text-foreground">{{ __('events::events.'.$lbl) }}</span>
+                                </span>
+                                <span class="block text-[11px] text-muted-foreground mt-1 leading-snug">{{ __('events::events.'.$desc) }}</span>
+                            </button>
+                        @endforeach
+                    </div>
 
                     <template x-for="(opt, i) in fee_options" :key="i">
                         <div class="flex items-center gap-2 mt-2">
@@ -1399,11 +1429,9 @@
                             <button type="button" @click="removePhase(i)" class="m-press w-8 h-8 rounded-lg bg-muted grid place-items-center text-red-500 flex-shrink-0"><i class="bi bi-x-lg text-xs"></i></button>
                         </div>
                         <div class="flex items-center gap-2">
-                            <input x-model="p.date" type="date"
-                                   :min="i > 0 ? (phases[i-1].date || date) : date"
-                                   :max="end_date || date"
-                                   @change="fixPhaseDates()"
-                                   class="flex-1 min-w-0 px-2.5 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                            <div class="flex-1 min-w-0">
+                                <x-fields.date model="p.date" min-expr="(i > 0 ? (phases[i-1].date || date) : date) || null" max-expr="(end_date || date) || null" change="fixPhaseDates()" />
+                            </div>
                             {{-- status is derived from the date, never entered --}}
                             <span class="px-2.5 py-1 rounded-full text-[10px] font-bold flex-shrink-0" :class="phaseStatusClass(p)" x-text="phaseStatusLabel(p)"></span>
                         </div>

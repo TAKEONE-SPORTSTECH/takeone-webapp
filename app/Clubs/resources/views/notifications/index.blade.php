@@ -39,7 +39,7 @@
                         @foreach($notifications as $notif)
                         <tr x-data="{ expanded: false }" class="hover:bg-muted/20 transition-colors">
                             <td class="px-5 py-4 text-gray-500 whitespace-nowrap">
-                                {{ $notif->sent_at->format('M d, Y') }}<br>
+                                {{ $notif->sent_at->format('d M Y') }}<br>
                                 <span class="text-xs text-gray-400">{{ $notif->sent_at->format('H:i') }}</span>
                             </td>
                             <td class="px-5 py-4 text-gray-800 font-medium max-w-xs">

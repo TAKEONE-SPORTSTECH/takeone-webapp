@@ -247,7 +247,7 @@ class LocaleParityTest extends TestCase
 
         $expected = [
             // locale => [short date, time]
-            'en' => ['Sep 18', '3:00 PM'],
+            'en' => ['18 Sep', '3:00 PM'],
             'zh' => ['9月18日', '15:00'],
             'ja' => ['9月18日', '15:00'],
             'fr' => ['18 sept.', '15:00'],

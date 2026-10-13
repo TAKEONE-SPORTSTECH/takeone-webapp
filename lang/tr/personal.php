@@ -958,6 +958,8 @@ return [
     'personal_event_create_fixtures' => 'Maçlar',
     'personal_event_create_free_join' => 'Katılım ücretsiz',
     'personal_event_create_free_join_desc' => 'Giriş ücreti tahsil etmek için kapat',
+    'personal_event_create_paid_join' => 'Katılım ücretli',
+    'personal_event_create_paid_join_desc' => 'Katılımı ücretsiz yapmak için kapatın',
     'personal_event_create_from' => 'Başlangıç',
     'personal_event_create_from_belt' => 'Kemerden…',
     'personal_event_create_generic_event' => 'Genel etkinlik',

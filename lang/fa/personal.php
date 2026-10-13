@@ -959,6 +959,8 @@ return [
     'personal_event_create_fixtures' => 'مسابقات',
     'personal_event_create_free_join' => 'ثبت‌نام رایگان',
     'personal_event_create_free_join_desc' => 'غیرفعال کردن برای دریافت هزینه ورود',
+    'personal_event_create_paid_join' => 'دریافت هزینه شرکت',
+    'personal_event_create_paid_join_desc' => 'برای رایگان شدن شرکت، خاموش کنید',
     'personal_event_create_from' => 'از',
     'personal_event_create_from_belt' => 'از نوار…',
     'personal_event_create_generic_event' => 'رویداد عمومی',

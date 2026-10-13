@@ -155,7 +155,7 @@
             <div class="info-box">
                 <p><strong>Package:</strong> {{ $subscription->package?->name ?? 'N/A' }}</p>
                 <p><strong>Club:</strong> {{ $subscription->tenant->club_name }}</p>
-                <p><strong>Expiry Date:</strong> {{ $subscription->end_date->format('F j, Y') }}</p>
+                <p><strong>Expiry Date:</strong> {{ $subscription->end_date->format('j F Y') }}</p>
             </div>
 
             <div class="balance-box">

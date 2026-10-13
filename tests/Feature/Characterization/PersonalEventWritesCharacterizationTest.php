@@ -235,6 +235,26 @@ class PersonalEventWritesCharacterizationTest extends ContractTestCase
         $this->assertSame('Renamed Open', $event->fresh()->title);
     }
 
+    public function test_the_organiser_sets_whether_entrants_pick_one_fee_option_or_several(): void
+    {
+        [$organiser, $club, $event] = $this->scenario();
+        $this->assertSame('multiple', $event->fresh()->fee_selection);
+
+        $payload = $this->newEventPayload($club, ['fee_selection' => 'single']);
+        unset($payload['tenant_id']);
+        $this->actingAs($organiser)->putJson(route('me.events.update', $event->uuid), $payload)->assertOk();
+        $this->assertSame('single', $event->fresh()->fee_selection);
+
+        // Absent leaves it alone; nonsense is refused.
+        unset($payload['fee_selection']);
+        $this->actingAs($organiser)->putJson(route('me.events.update', $event->uuid), $payload)->assertOk();
+        $this->assertSame('single', $event->fresh()->fee_selection);
+
+        $payload['fee_selection'] = 'all';
+        $this->actingAs($organiser)->putJson(route('me.events.update', $event->uuid), $payload)->assertStatus(422);
+        $this->assertSame('single', $event->fresh()->fee_selection);
+    }
+
     /* =====================================================================
      * Results — hand-entry is refused by a type with its own engine
      * ===================================================================== */

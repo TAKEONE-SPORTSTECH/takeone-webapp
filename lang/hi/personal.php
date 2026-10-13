@@ -974,6 +974,8 @@ return [
     'personal_event_create_fixtures' => 'फिक्स्चर',
     'personal_event_create_free_join' => 'निःशुल्क शामिल होने के लिए',
     'personal_event_create_free_join_desc' => 'प्रवेश शुल्क लेने के लिए बंद करें',
+    'personal_event_create_paid_join' => 'भाग लेने का शुल्क',
+    'personal_event_create_paid_join_desc' => 'बंद करें तो भाग लेना मुफ़्त होगा',
     'personal_event_create_from' => 'से',
     'personal_event_create_from_belt' => 'बेल्ट से...',
     'personal_event_create_generic_event' => 'सामान्य घटना',

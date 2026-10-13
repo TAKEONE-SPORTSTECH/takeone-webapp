@@ -32,7 +32,7 @@
     },
     when(iso) {
         if (! iso) return '';
-        try { return new Date(iso).toLocaleDateString(document.documentElement.lang || undefined, { day: 'numeric', month: 'short', year: 'numeric' }); } catch (e) { return ''; }
+        try { return new Date(iso).toLocaleDateString(((document.documentElement.lang || 'en').toLowerCase().startsWith('en') ? 'en-GB' : document.documentElement.lang), { day: 'numeric', month: 'short', year: 'numeric' }); } catch (e) { return ''; }
     },
     headers() {
         return {

@@ -996,6 +996,8 @@ return [
     'personal_event_create_fixtures' => 'المباريات',
     'personal_event_create_free_join' => 'الانضمام مجاني',
     'personal_event_create_free_join_desc' => 'أوقف التفعيل لفرض رسوم دخول',
+    'personal_event_create_paid_join' => 'رسوم المشاركة',
+    'personal_event_create_paid_join_desc' => 'أوقفه لتكون المشاركة مجانية',
     'personal_event_create_from' => 'من',
     'personal_event_create_from_belt' => 'من الحزام…',
     'personal_event_create_generic_event' => 'فعالية عامة',
