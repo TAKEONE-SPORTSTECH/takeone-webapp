@@ -32,13 +32,15 @@ use Illuminate\Support\Collection;
 class FederationStatistics
 {
     /**
-     * The age categories the dashboard's own ageCategoryOf() assigns (its
-     * draw divisions carry these names). Upper age inclusive.
+     * The age categories the dashboard's own ageCategoryOf() assigns, by their
+     * ENGLISH names (KarateShotukanWeightclasses::englishName — saved draws
+     * still carry the French key and are translated as they are read).
+     * Upper age inclusive.
      */
     private const AGE_BANDS = [
-        [5, 'Mini poussins'], [7, 'Poussins'], [9, 'Pupilles'], [11, 'Benjamins'], [13, 'Minimes'],
-        [15, 'Cadets'], [17, 'Juniors'], [34, 'Séniors'], [45, 'Vétérans 1'], [55, 'Vétérans 2'],
-        [65, 'Vétérans 3'], [74, 'Vétérans 4'], [PHP_INT_MAX, 'Vétérans 5'],
+        [5, 'Under 6 Years'], [7, 'Under 8 Years'], [9, 'Under 10 Years'], [11, 'Under 12 Years'], [13, 'Under 14 Years'],
+        [15, 'Cadets'], [17, 'Juniors'], [34, 'Seniors'], [45, 'Veterans 1'], [55, 'Veterans 2'],
+        [65, 'Veterans 3'], [74, 'Veterans 4'], [PHP_INT_MAX, 'Veterans 5'],
     ];
 
     private const ENTRY_CAP = 20000;
@@ -167,7 +169,7 @@ class FederationStatistics
             ->each(function (FederationDraw $d) use ($eventIndex, $byTakeone, $athleteIndex, &$bouts, &$divisions, &$medals) {
                 [$g, $age, $div] = array_pad(explode('|', (string) $d->division, 3), 3, null);
                 $idx = fn ($tk) => ($tk !== null && isset($byTakeone[$tk])) ? ($athleteIndex[$byTakeone[$tk]] ?? null) : null;
-                $meta = ['e' => $eventIndex[$d->federation_event_id], 'div' => $div, 'g' => $g, 'age' => $age];
+                $meta = ['e' => $eventIndex[$d->federation_event_id], 'div' => $div, 'g' => $g, 'age' => $age !== null ? \App\Support\KarateShotukanWeightclasses::englishName($age) : null];
                 $walk = $this->walk(array_values((array) $d->slots), (array) $d->results);
 
                 $divisions[] = $meta + ['bouts' => $walk['total'], 'done' => count($walk['bouts']),
@@ -361,7 +363,7 @@ class FederationStatistics
             }
         }
 
-        return 'Vétérans 5';
+        return 'Veterans 5';
     }
 
     private function date(mixed $v): ?string

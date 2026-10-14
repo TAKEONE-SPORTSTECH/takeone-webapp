@@ -366,8 +366,9 @@
         phaseStatusClass(p) { return { done: 'bg-green-50 text-green-600', active: 'bg-amber-50 text-amber-600', upcoming: 'bg-muted text-muted-foreground' }[this.phaseStatus(p)]; },
         newSchedule() { return { preliminary: 1, quarterfinals: 1, finals: 1 }; },
         // ----- Combat weight-class picker -----
-        genderWord(g) { return g === 'female' ? 'Women' : 'Men'; },
-        divName(age, gender, label) { return age + ' ' + this.genderWord(gender) + ' ' + label + ' kg'; },
+        genderWord(g) { return g === 'female' ? 'Female' : 'Male'; },
+        // Must match the sport's own divisionName() on the server — Karate reads "Cadet Kumite Male -52 kg".
+        divName(age, gender, label) { return age + (String(this.sport || '').toLowerCase() === 'karate' ? ' Kumite' : '') + ' ' + this.genderWord(gender) + ' ' + label + ' kg'; },
         /* The package whose table this event should use: the one whose key
            starts with the chosen sport. No match -- boxing, padel, chess --
            means no preset table, and the only way in is the manual sheet. */
@@ -1278,6 +1279,19 @@
                             </button>
                         </div>
                     </template>
+
+                    {{-- The budget's yardstick: what the cheapest fee means against the
+                         organiser's last planned costs. Only when they have planned one
+                         (App\Events\Support\Budget\BudgetPlan::yardstick). --}}
+                    @if (! empty($budgetYardstick))
+                        <div x-data="{ cost: {{ (float) $budgetYardstick['expenses'] }} }"
+                             x-show="fee_options.some(o => parseFloat(o.amount) > 0)" x-cloak
+                             class="mt-2.5 flex gap-2.5 items-start p-3 rounded-xl border" style="background:#fff7ed;border-color:#fed7aa;">
+                            <span class="w-8 h-8 rounded-lg grid place-items-center flex-shrink-0" style="background:#ffedd5;color:#c2410c"><i class="bi bi-graph-up-arrow"></i></span>
+                            <span class="min-w-0 text-[12px] leading-snug" style="color:#7c2d12"
+                                  x-text="(() => { const m = Math.min(...fee_options.map(o => parseFloat(o.amount)).filter(x => x > 0)); return @js(__('events::events.budget_create_hint', ['fee' => ':f', 'n' => ':n', 'title' => $budgetYardstick['title'], 'cost' => ':c'])).replace(':f', m + ' ' + currency).replace(':n', Math.ceil(cost / m)).replace(':c', cost.toLocaleString('en-GB') + ' ' + currency); })()"></span>
+                        </div>
+                    @endif
 
                     <button type="button" @click="fee_options.push({ uuid: null, label: '', amount: '' })"
                             class="m-press mt-2 inline-flex items-center gap-2 h-9 px-3.5 rounded-full border text-[12px] font-bold"

@@ -85,9 +85,8 @@ class Enrolment
             return null;
         }
 
-        $name = $this->sport->divisionName($class['age_group'], $user->gender, $class['category']);
-
-        return EventCategory::where('event_id', $event->id)->where('name', $name)->first();
+        return \App\Events\Support\DivisionNames::find($event->id,
+            \App\Events\Support\DivisionNames::candidates($this->sport, $class['age_group'], $user->gender, $class['category']));
     }
 
     /** Latest recorded weight for the member, or null when they have none. */

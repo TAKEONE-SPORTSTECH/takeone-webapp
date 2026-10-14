@@ -124,7 +124,7 @@ abstract class Roster
     }
 
     /**
-     * Split a canonical division name — "<Age group> <Men|Women> <label> kg" —
+     * Split a canonical division name — "<Age group> <Male|Female> <label> kg" (or the older Men|Women) —
      * back into its age group and weight label.
      *
      * @return array{0: ?string, 1: ?string}
@@ -135,7 +135,7 @@ abstract class Roster
             return [null, null];
         }
 
-        $parts = preg_split('/\s+(?:Men|Women)\s+/', $name, 2);
+        $parts = preg_split('/\s+(?:Male|Female|Men|Women)\s+/', $name, 2);
 
         return [$parts[0] ?? $name, $parts[1] ?? ($weightClass ?: null)];
     }

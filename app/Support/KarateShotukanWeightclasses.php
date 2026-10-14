@@ -50,7 +50,9 @@ final class KarateShotukanWeightclasses
         $groups = [];
         $min = (int) ($d['minAge'] ?? 0);
         foreach ($d['ageCategories'] as $c) {
-            $groups[] = ['key' => (string) $c['name'], 'min' => $min, 'max' => $c['maxAge'] === null ? null : (int) $c['maxAge']];
+            // The rule book's English name ("Under 12") is what an event's
+            // divisions are called; the French name stays the table's own key.
+            $groups[] = ['key' => (string) ($c['label'] ?? $c['name']), 'min' => $min, 'max' => $c['maxAge'] === null ? null : (int) $c['maxAge']];
             $min = $c['maxAge'] === null ? $min : (int) $c['maxAge'] + 1;
         }
 
@@ -60,7 +62,7 @@ final class KarateShotukanWeightclasses
                 $prev = 0.0;
                 foreach ((array) $list as $w) {
                     $kg = (float) substr((string) $w, 1);
-                    $classes[$group][$gender][] = $w[0] === '+'
+                    $classes[self::englishName((string) $group)][$gender][] = $w[0] === '+'
                         ? ['label' => (string) $w, 'min' => $kg, 'max' => 200]
                         : ['label' => (string) $w, 'min' => 0, 'max' => $kg];
                     $prev = $kg;
@@ -83,6 +85,18 @@ final class KarateShotukanWeightclasses
     }
 
     /** @return array<int, string> */
+    /** The English name of an age category ("Benjamins" → "Under 12"); unknown names come back as given. */
+    public static function englishName(string $category): string
+    {
+        foreach (self::data()['ageCategories'] as $c) {
+            if ($c['name'] === $category) {
+                return (string) ($c['label'] ?? $c['name']);
+            }
+        }
+
+        return $category;
+    }
+
     public static function ageCategories(): array
     {
         return array_column(self::data()['ageCategories'], 'name');

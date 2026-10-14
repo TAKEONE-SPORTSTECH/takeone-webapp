@@ -142,6 +142,8 @@ class FederationApp
             .'<script src="./takeone-test-mode.js?v='.$this->version('takeone-test-mode.js').'" defer></script>'."\n"
             .'<script src="./takeone-featuring.js?v='.$this->version('takeone-featuring.js').'" defer></script>'."\n"
             .'<script src="./takeone-rulebook.js?v='.$this->version('takeone-rulebook.js').'" defer></script>'."\n"
+            // The dashboard's own image cropper (TakeOneFed.cropImage) — faces 3:4, logos square.
+            .'<script src="./takeone-cropper.js?v='.$this->version('takeone-cropper.js').'" defer></script>'."\n"
             // The shared karate weight-class library, table embedded (public/libraries/karate-shotukan-weightclasses).
             .\App\Support\KarateShotukanWeightclasses::tags()."\n".$head;
 
@@ -388,6 +390,19 @@ class FederationApp
             'es-close-note' => ['Close = decided by 1 point or less, Senshu or Hantei. Click a category to see its matches.', '<sc-if value="{{ es.hasScores }}" hint-placeholder-val="{{ false }}">Close = decided by 1 point or less, Senshu or Hantei. </sc-if>Click a category to see its matches.', 1],
             // Male blue, Female pink — as on every other tab (esGender()).
             'es-cat-gender' => ['<div style="font-weight:600">{{ c.label }}</div>', '<div style="font-weight:600"><span style="{{ c.genderStyle }}">{{ c.gender }}</span> {{ c.rest }}</div>', 1],
+            // The categories table's numbers were fixed-width columns huddled
+            // together, with all the spare width going to the two text ends.
+            // They share it now, so the columns spread across the card.
+            'es-cat-cols' => ['grid-template-columns:minmax(210px,1.6fr) 70px 96px 72px 84px 76px 76px minmax(170px,1.2fr);gap:10px', 'grid-template-columns:minmax(220px,2.4fr) repeat(6,minmax(64px,1fr)) minmax(150px,1.3fr);gap:18px', 2],
+            // Leader sits flush with the card's right edge, so a "—" before any
+            // bout is fought does not leave a blank strip down that side.
+            'es-cat-leader-head' => ['<span>Leader</span>', '<span style="text-align:right">Leader</span>', 1],
+            'es-cat-leader-cell' => ['<span style="font-size:.76rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.leader }}</span>', '<span style="font-size:.76rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right">{{ c.leader }}</span>', 1],
+            // The athletes table, the same way: the numbers share the width,
+            // and Top technique sits flush right.
+            'es-ath-cols' => ['grid-template-columns:34px minmax(180px,1.4fr) minmax(150px,1fr) 64px 60px 60px 64px 64px minmax(140px,1fr);gap:10px', 'grid-template-columns:34px minmax(200px,2fr) minmax(150px,1.3fr) repeat(5,minmax(60px,1fr)) minmax(120px,1fr);gap:18px', 2],
+            'es-ath-tech-head' => ['<span>Top technique</span>', '<span style="text-align:right">Top technique</span>', 1],
+            'es-ath-tech-cell' => ['<span style="font-size:.74rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ a.tech }}</span>', '<span style="font-size:.74rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right">{{ a.tech }}</span>', 1],
             'es-ring-note' => ['Schedule assumes 4-minute slots from 09:00. Referee assignments are not tracked yet.', '{{ es.ringNote }}', 1],
             'es-targets' => ["<sc-if value=\"{{ es.m.isAth }}\" hint-placeholder-val=\"{{ false }}\">\n                <div", "<sc-if value=\"{{ es.m.hasTargets }}\" hint-placeholder-val=\"{{ false }}\">\n                <div", 1],
         ], $file);
@@ -596,7 +611,7 @@ class FederationApp
                 // athlete in, sent by the server (FederationRegistry::placements);
                 // the page's own guess — today's age, the generic table — only
                 // stands in for an event not on the platform yet.
-                'reg-status' => ["division: this.weightClassOf(g, ag, kg), status: 'Pending', mobile: sub.phone || '—', email: sub.email || '—',", "division: a.division || this.weightClassOf(g, ag, kg), status: a.approval === 'Approved' ? 'Approved' : 'Pending', mobile: sub.phone || '—', email: sub.email || '—',", 1],
+                'reg-status' => ["division: this.weightClassOf(g, ag, kg), status: 'Pending', mobile: sub.phone || '—', email: sub.email || '—',", "division: a.division || this.weightClassOf(g, ag, kg), divisionName: a.divisionName || (a.unplaced ? 'Not in a division yet' : ''), divisionAges: a.divisionAges || '', unplaced: !!a.unplaced, status: a.approval === 'Approved' ? 'Approved' : 'Pending', mobile: sub.phone || '—', email: sub.email || '—',", 1],
                 'reg-age-group' => ['gender: g, age, ageGroup: ag, weight: kg,', 'gender: g, age, ageGroup: a.ageGroup || ag, weight: kg,', 1],
                 // The readiness checklist was six fixed rows ("18 of 22" referees,
                 // "Venue contract signed"…). It is the server's now — every row
@@ -604,24 +619,94 @@ class FederationApp
                 // The event's Officials tab: its own appointments, grouped by job
                 // (FederationEventOfficials → resources/patches/event-officials.*).
                 'offs-tab' => ["['regs','Registrations'],['divs','Divisions']", "['regs','Registrations'],['offs','Officials'],['divs','Divisions']", 1],
-                'offs-vals' => ["tabStats: s.tab === 'stats',", "tabOffs: s.tab === 'offs', eo: s.tab === 'offs' ? this.evOfficialsVals(sel) : {chips: [], groups: []}, tabStats: s.tab === 'stats',", 1],
+                'offs-vals' => ["tabStats: s.tab === 'stats',", "tabOffs: s.tab === 'offs', eo: s.tab === 'offs' ? this.evOfficialsVals(sel) : {chips: [], groups: [], rows: [], ed: {open: false}}, tabStats: s.tab === 'stats',", 1],
                 'offs-methods' => ['  cssToObj(css) {', (string) file_get_contents(dirname(__DIR__).'/resources/patches/event-officials.js').'  cssToObj(css) {', 1],
                 'offs-markup' => ['      <sc-if value="{{ tabFin }}" hint-placeholder-val="{{ false }}">',
                     rtrim((string) file_get_contents(dirname(__DIR__).'/resources/patches/event-officials.html'))."\n".'      <sc-if value="{{ tabFin }}" hint-placeholder-val="{{ false }}">', 1],
+                // The event's Clubs tab: every club with an athlete entered and
+                // its Male / Female split (FederationEventFigures::entryClubs →
+                // resources/patches/event-clubs.*). Opened from the checklist's
+                // "Clubs" row too. The Registrations tab reads "Athletes".
+                'clubs-tab' => ["['regs','Registrations'],['offs','Officials']", "['regs','Athletes'],['clubs','Clubs'],['offs','Officials']", 1],
+                'clubs-vals' => ["tabOffs: s.tab === 'offs',", "tabClubs: s.tab === 'clubs', ec: s.tab === 'clubs' ? this.evClubsVals(sel) : {clubs: []}, tabOffs: s.tab === 'offs',", 1],
+                'clubs-methods' => ['  cssToObj(css) {', (string) file_get_contents(dirname(__DIR__).'/resources/patches/event-clubs.js').'  cssToObj(css) {', 1],
+                'clubs-markup' => ['      <sc-if value="{{ tabFin }}" hint-placeholder-val="{{ false }}">',
+                    rtrim((string) file_get_contents(dirname(__DIR__).'/resources/patches/event-clubs.html'))."\n".'      <sc-if value="{{ tabFin }}" hint-placeholder-val="{{ false }}">', 1],
+                // The Athletes tab edits an athlete in place: details, national
+                // ID, weight and photo (FederationAthleteEditor -> resources/
+                // patches/event-athlete-edit.*, cropper takeone-cropper.js).
+                'athed-row' => ["      onApprove: () => this.setState({regs: s.regs.map(x => x.id === r.id ? {...x, status: 'Approved'} : x)})", "      canEdit: !!(r.entryId && r.takeoneId && r.takeoneId !== 'Pending'), onEdit: () => this.athEdOpen(r),\n      onApprove: () => this.setState({regs: s.regs.map(x => x.id === r.id ? {...x, status: 'Approved'} : x)})", 1],
+                'athed-cols' => ['120px 100px 96px;gap:14px;align-items:center;min-width:1076px', '120px 100px 136px;gap:14px;align-items:center;min-width:1116px', 2],
+                'athed-list-btn' => ['                <div>'."\n".'                  <sc-if value="{{ r.pending }}" hint-placeholder-val="{{ false }}">',
+                    '                <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px">'."\n".'                  <sc-if value="{{ r.canEdit }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ r.onEdit }}" title="Edit this athlete" aria-label="Edit {{ r.name }}" style="width:34px;height:34px;flex:none;border:1px solid #d5dae3;border-radius:9px;background:#fff;color:#8a6d20;font-size:.95rem;cursor:pointer;display:grid;place-items:center" style-hover="border-color:#caa14f;background:#fdf6e6">&#9998;</button></sc-if>'."\n".'                  <sc-if value="{{ r.pending }}" hint-placeholder-val="{{ false }}">', 1],
+                'athed-group-btn' => ['                    <span style="{{ r.pillStyle }}">{{ r.status }}</span>'."\n".'                  </div>',
+                    '                    <span style="{{ r.pillStyle }}">{{ r.status }}</span>'."\n".'                    <sc-if value="{{ r.canEdit }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ r.onEdit }}" title="Edit this athlete" aria-label="Edit {{ r.name }}" style="width:34px;height:34px;flex:none;border:1px solid #d5dae3;border-radius:9px;background:#fff;color:#8a6d20;font-size:.95rem;cursor:pointer;display:grid;place-items:center" style-hover="border-color:#caa14f;background:#fdf6e6">&#9998;</button></sc-if>'."\n".'                  </div>', 1],
+                'athed-vals' => ["tabClubs: s.tab === 'clubs',", "ae: this.evAthleteEditVals(), tabClubs: s.tab === 'clubs',", 1],
+                'athed-methods' => ['  cssToObj(css) {', (string) file_get_contents(dirname(__DIR__).'/resources/patches/event-athlete-edit.js').'  cssToObj(css) {', 1],
+                'athed-markup' => ['      <sc-if value="{{ tabFin }}" hint-placeholder-val="{{ false }}">',
+                    rtrim((string) file_get_contents(dirname(__DIR__).'/resources/patches/event-athlete-edit.html'))."\n".'      <sc-if value="{{ tabFin }}" hint-placeholder-val="{{ false }}">', 1],
                 // "Registrations by division" listed only the first 8 divisions
                 // while the header counted them all. Every division is listed,
                 // most athletes first (ties keep the gender/age/weight order).
+                // Divisions were sorted as plain text, so "Kumite +55 kg" came
+                // before "-30" and age groups ran alphabetically. Order them as the
+                // event page does: age group youngest first, men then women, weight lightest
+                // first ("+X" after "-X"); a non-weight name goes last.
+                'div-sort-weight' => ['const divList2 = Object.values(divMap).sort((a, b) =>'."\n".'      a.gender.localeCompare(b.gender) || a.ageGroup.localeCompare(b.ageGroup) || String(a.division).localeCompare(String(b.division)));',
+                    'const ageRank = (g) => { const i = window.KarateShotukanWeightclasses.ageCategories().indexOf(g); return i < 0 ? 999 : i; };'."\n"
+                    .'    const kgRank = (n) => { const m = /([+-])\s*(\d+(?:\.\d+)?)/.exec(String(n)); return m ? +m[2] + (m[1] === \'+\' ? 0.5 : 0) : 9999; };'."\n"
+                    .'    const divList2 = Object.values(divMap).sort((a, b) =>'."\n"
+                    .'      (a.unplaced ? 1 : 0) - (b.unplaced ? 1 : 0) || ageRank(a.ageGroup) - ageRank(b.ageGroup) || String(b.gender).localeCompare(String(a.gender)) || kgRank(a.division) - kgRank(b.division) || String(a.division).localeCompare(String(b.division)));', 1],
                 'div-bars-all' => ['const divBars = divList2.slice(0, 8).map(d => ({', 'const divBars = divList2.slice().sort((a, b) => b.count - a.count).map(d => ({', 1],
                 // Each division's gender spelled out and coloured as everywhere
                 // else on the page (Male blue, Female pink), not "M" / "W".
                 'div-bars-gender' => ["label: (d.gender === 'F' ? 'W' : 'M') + ' · ' + d.ageGroup + ' · ' + d.division, count: d.count,",
-                    "gender: d.gender === 'F' ? 'Female' : 'Male', genderStyle: this.cssToObj('font-weight:600;color:' + (d.gender === 'F' ? '#db2777' : '#2563eb')), label: d.ageGroup + ' · ' + d.division, count: d.count,", 1],
+                    "gender: d.name ? '' : (d.gender === 'F' ? 'Female' : 'Male'), sep: d.name ? '' : ' · ', genderStyle: this.cssToObj('font-weight:600;color:' + (d.gender === 'F' ? '#db2777' : '#2563eb')), label: d.name || (window.KarateShotukanWeightclasses.englishName(d.ageGroup) + ' · ' + d.division), count: d.count,", 1],
                 'div-bars-gender-tpl' => ['<span style="font-weight:500">{{ d.label }}</span><span style="color:#6b7689">{{ d.count }}</span>',
-                    '<span style="font-weight:500"><span style="{{ d.genderStyle }}">{{ d.gender }}</span> · {{ d.label }}</span><span style="color:#6b7689">{{ d.count }}</span>', 1],
+                    '<span style="font-weight:500"><span style="{{ d.genderStyle }}">{{ d.gender }}</span>{{ d.sep }}{{ d.label }}</span><span style="color:#6b7689">{{ d.count }}</span>', 1],
+                // The Divisions tab as Cards or as a Table (gender, age group,
+                // division, entries, bracket), like the Clubs page's toggle
+                // (resources/patches/event-divisions.*).
+                'divs-card-fields' => ['const divCards = divList2.map(d => ({', "const divCards = divList2.map((d, i) => ({rank: String(i + 1), gender: d.unplaced ? '\u2014' : d.gender === 'F' ? 'Female' : 'Male', genderStyle: this.cssToObj('font-size:.8rem;font-weight:600;color:' + (d.gender === 'F' ? '#db2777' : '#2563eb')), ageGroup: d.name ? (d.ages ? 'Ages ' + d.ages : '\u2014') : window.KarateShotukanWeightclasses.englishName(d.ageGroup), division: d.division,", 1],
+                // A division is NAMED as the event names it — the category's own
+                // name ("Séniors Men -75 kg"), the same words the event's
+                // divisions page and the draw show. The dashboard's key
+                // ("Kumite -75 kg") stays underneath: saved draws are filed by it.
+                'divname-map' => ['division: r.division, count: 0}', 'division: r.division, name: r.divisionName || \'\', ages: r.divisionAges || \'\', unplaced: !!r.unplaced, count: 0}', 1],
+                // Every unplaced athlete is ONE card, not one per guessed division.
+                'divname-key' => ["const key = r.gender + '|' + (r.ageGroup || 'Séniors') + '|' + r.division;", "const key = r.unplaced ? 'unplaced' : r.gender + '|' + (r.ageGroup || 'Séniors') + '|' + r.division;", 1],
+                'divname-card' => ["label: (d.gender === 'F' ? 'Female' : 'Male') + ' ' + d.ageGroup + ' — ' + d.division, count: d.count,", "unplaced: d.unplaced, label: d.name || ((d.gender === 'F' ? 'Female' : 'Male') + ' ' + window.KarateShotukanWeightclasses.englishName(d.ageGroup) + ' — ' + d.division), divName: d.name || d.division, count: d.count,", 1],
+                'divname-detail' => ["detail: (d.gender === 'F' ? 'Women' : 'Men') + ' · ' + d.ageGroup + ' · ' + d.division,", "detail: d.unplaced ? 'Place them from the event\u2019s divisions page' : d.name ? (d.gender === 'F' ? 'Female' : 'Male') + (d.ages ? ' · Ages ' + d.ages : '') : (d.gender === 'F' ? 'Female' : 'Male') + ' · ' + window.KarateShotukanWeightclasses.englishName(d.ageGroup) + ' · ' + d.division,", 1],
+                'divname-bracket' => ["bracket: d.count >= 2 ? 'Ready to draw' : 'Needs 2+ entries',", "bracket: d.unplaced ? 'Not placed' : d.count >= 2 ? 'Ready to draw' : 'Needs 2+ entries',", 1],
+                'divname-open' => ["onOpen: () => this.setState({tab: 'draw', drawGender: d.gender === 'F' ? 'Women' : 'Men', drawAge: d.ageGroup, drawDiv: d.division})}));", "onOpen: () => d.unplaced ? this.setState({tab: 'regs'}) : this.setState({tab: 'draw', drawGender: d.gender === 'F' ? 'Women' : 'Men', drawAge: d.ageGroup, drawDiv: d.division})}));", 1],
+                'divname-reg' => ["const regs = filteredRegs.map(r => ({\n      ...r,", "const regs = filteredRegs.map(r => ({\n      ...r, divLabel: r.divisionName || r.division,", 1],
+                'divname-reg-tpl' => ['<div style="font-size:.76rem;font-weight:600;color:#1e2c4f">{{ r.division }}</div>', '<div style="font-size:.76rem;font-weight:600;color:#1e2c4f">{{ r.divLabel }}</div>', 1],
+                'divname-draw' => ['const divCounts = divList.map(label => [label, byGA.filter(r => r.division === label).length]);', "const nameOfDiv = {}; byGA.forEach(r => { if (r.divisionName) nameOfDiv[r.division] = r.divisionName; });\n    const divCounts = divList.map(label => [label, byGA.filter(r => r.division === label).length]);", 1],
+                'divname-draw-opts' => ['drawDivOpts: divCounts.map(([label, count]) => ({label, count:', 'drawDivOpts: divCounts.map(([label, count]) => ({label: nameOfDiv[label] || label, count:', 1],
+                'divname-draw-label' => ["drawDivLabel: curDiv || 'No divisions yet'", "drawDivLabel: (curDiv && nameOfDiv[curDiv]) || curDiv || 'No divisions yet'", 1],
+                // The age groups READ in English ("Under 12"), as the rule
+                // book now names them; the French name stays the page's key.
+                'en-catlabel' => ["catLabel: (r.gender === 'F' ? 'Female' : 'Male') + ' ' + (r.ageGroup || 'Séniors'),", "catLabel: (r.gender === 'F' ? 'Female' : 'Male') + ' ' + window.KarateShotukanWeightclasses.englishName(r.ageGroup || 'Séniors'),", 1],
+                'en-draw-age' => ['drawAgeLabel: curAge,', 'drawAgeLabel: window.KarateShotukanWeightclasses.englishName(curAge),', 1],
+                'en-draw-age-opts' => ['drawAgeOpts: ageCats.map(label => ({label, style:', 'drawAgeOpts: ageCats.map(label => ({label: window.KarateShotukanWeightclasses.englishName(label), style:', 1],
+                'en-dir-cat' => ["cat: catR ? catR.ageGroup + ' \\u00b7 ' + catR.label : '',", "cat: catR ? window.KarateShotukanWeightclasses.englishName(catR.ageGroup) + ' \\u00b7 ' + catR.label : '',", 1],
+                // The Draw tab's gender switch reads Male / Female (its state keeps 'Men'/'Women').
+                'en-draw-gender' => ["drawGenderOpts: ['Men', 'Women'].map(label => ({label, style:", "drawGenderOpts: ['Men', 'Women'].map(label => ({label: label === 'Women' ? 'Female' : 'Male', style:", 1],
+                'divs-vals' => ['checklist, divBars, divCards, divsEmpty,', "checklist, divBars, divCards, divsEmpty, divsAny: !divsEmpty, dv: s.tab === 'divs' ? this.evDivViewVals(divCards) : {rows: [], tabs: []},", 1],
+                'divs-methods' => ['  cssToObj(css) {', (string) file_get_contents(dirname(__DIR__).'/resources/patches/event-divisions.js').'  cssToObj(css) {', 1],
+                'divs-markup' => [['      <sc-if value="{{ tabDivs }}" hint-placeholder-val="{{ false }}">', '      <sc-if value="{{ tabDraw }}" hint-placeholder-val="{{ false }}">'],
+                    rtrim((string) file_get_contents(dirname(__DIR__).'/resources/patches/event-divisions.html'))."\n\n".'      <sc-if value="{{ tabDraw }}" hint-placeholder-val="{{ false }}">', 1],
                 'readiness' => [["    const checklist = [\n      {done: true,  label: 'Venue contract signed'", "    ].map(c => ({...c, mark: c.done"], "    const rowGo = (url) => { if (url) window.location.assign(url); };\n"
-                    ."    const checklist = (sel.readiness || []).map(c => ({...c, link: !!c.url, plain: !c.url, hint: c.url ? 'Open this event\u2019s officials' : '',\n"
-                    ."      onOpen: () => rowGo(c.url),\n"
-                    ."      subs: (c.subs || []).map(u => ({...u, link: !!u.url, plain: !u.url, hint: u.url ? 'Open this event\u2019s officials' : '', onOpen: () => rowGo(u.url)})), mark: c.done", 1],
+                    ."    // A row that names a TAB opens that tab of this dashboard (with its job\n"
+                    ."    // filter, for the officials) — nothing here leaves the federation view.\n"
+                    ."    const tabGo = (u) => this.setState({tab: u.tab, ...(u.tab === 'offs' ? {offEv: sel.id, offJob: u.job || '', offQ: ''} : {})});\n"
+                    ."    const checklist = (sel.readiness || []).map(c => ({...c, link: !!(c.url || c.tab), plain: !(c.url || c.tab), hint: (c.url || c.tab) ? (c.hint || 'Open this event\u2019s officials') : '',\n"
+                    ."      onOpen: () => c.tab ? tabGo(c) : rowGo(c.url),\n"
+                    ."      subs: (c.subs || []).map(u => ({...u, link: !!(u.url || u.tab), plain: !(u.url || u.tab), hint: (u.url || u.tab) ? (u.hint || 'Open this event\u2019s officials') : '', onOpen: () => u.tab ? tabGo(u) : rowGo(u.url),\n"
+                    ."        rowStyle: this.cssToObj('display:flex;align-items:center;gap:10px;padding:6px 0 6px 34px;border-bottom:1px solid #f4f6f9'),\n"
+                    ."        subDot: this.cssToObj('width:5px;height:5px;border-radius:50%;flex:none;background:' + (u.color || '#caa14f')),\n"
+                    ."        subLabel: this.cssToObj('font-size:.78rem;flex:1;color:#1e2c4f;font-weight:500'),\n"
+                    ."        subNote: this.cssToObj('font-size:.72rem;font-weight:600;color:#1e2c4f')})), mark: c.done", 1],
                 // The checklist rows, a row's breakdown as indented sub-rows
                 // beneath it (officials by job), and the rows that lead
                 // somewhere (Officials → the Officials page, filtered to this
@@ -646,17 +731,17 @@ class FederationApp
                     .'              <sc-for list="{{ c.subs }}" as="u" hint-placeholder-count="0">'."\n"
                     .'                <sc-if value="{{ u.link }}" hint-placeholder-val="{{ false }}">'."\n"
                     .'                  <div onClick="{{ u.onOpen }}" title="{{ u.hint }}" style="display:flex;align-items:center;gap:10px;padding:6px 0 6px 34px;border-bottom:1px solid #f4f6f9;cursor:pointer;border-radius:8px" style-hover="background:#f4f6fa">'."\n"
-                    .'                    <span style="width:5px;height:5px;border-radius:50%;background:#caa14f;flex:none"></span>'."\n"
+                    .'                    <span style="{{ u.subDot }}"></span>'."\n"
                     .'                    <span style="font-size:.78rem;flex:1;color:#1e2c4f;font-weight:500">{{ u.label }}</span>'."\n"
                     .'                    <span style="font-size:.72rem;font-weight:600;color:#1e2c4f">{{ u.note }}</span>'."\n"
                     .'                    <span aria-hidden="true" style="color:#caa14f;font-size:.95rem;line-height:1;padding-inline-end:4px">›</span>'."\n"
                     .'                  </div>'."\n"
                     .'                </sc-if>'."\n"
                     .'                <sc-if value="{{ u.plain }}" hint-placeholder-val="{{ true }}">'."\n"
-                    .'                  <div style="display:flex;align-items:center;gap:10px;padding:6px 0 6px 34px;border-bottom:1px solid #f4f6f9">'."\n"
-                    .'                    <span style="width:5px;height:5px;border-radius:50%;background:#c3cad6;flex:none"></span>'."\n"
-                    .'                    <span style="font-size:.78rem;flex:1;color:#4a5568">{{ u.label }}</span>'."\n"
-                    .'                    <span style="font-size:.72rem;font-weight:600;color:#1e2c4f">{{ u.note }}</span>'."\n"
+                    .'                  <div style="{{ u.rowStyle }}">'."\n"
+                    .'                    <span style="{{ u.subDot }}"></span>'."\n"
+                    .'                    <span style="{{ u.subLabel }}">{{ u.label }}</span>'."\n"
+                    .'                    <span style="{{ u.subNote }}">{{ u.note }}</span>'."\n"
                     .'                  </div>'."\n"
                     .'                </sc-if>'."\n"
                     .'              </sc-for>'."\n"

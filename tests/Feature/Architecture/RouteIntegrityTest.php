@@ -274,9 +274,17 @@ class RouteIntegrityTest extends TestCase
      * 1030 on 2026-10-12: +25 — the event gallery photos, officials' badges,
      * theme colour, corners and exhibition bouts (49327f77).
      * 1031 on 2026-10-13: +1 — the participants PDF
+     * 1042 on 2026-10-13: +11 — Budget & profit (me.events.budget*, EventBudgetController)
+     * 1043 on 2026-10-13: +1 — the budget advisor (me.events.budget.advisor)
+     * 1044 on 2026-10-13: +1 — the budget's division simulator (me.events.budget.divisions)
+     * 1046 on 2026-10-13: +2 — the advisor's memory (me.events.budget.advisor.history / .reset)
+     * 1048 on 2026-10-13: +2 — editing an athlete from the federation's Athletes tab
+     *   (federations.api.regs.athlete / .athlete.update, FederationAthleteEditor)
      * (me.events.participants.pdf, ParticipantsPdfController).
+     * 1050 on 2026-10-14: +2 — dragging a competitor into another division's draw
+     *   (me.events.bracket.transfer, tablet.draw.transfer; Transfer)
      */
-    private const EXPECTED_ROUTE_COUNT = 1031;
+    private const EXPECTED_ROUTE_COUNT = 1050;
 
     /** Routes handled by a Closure rather than a controller action. */
     private const EXPECTED_CLOSURE_COUNT = 22;
@@ -529,6 +537,12 @@ class RouteIntegrityTest extends TestCase
         // 992 on 2026-10-08: +3, tablet.draw.number / .renumber / .number.release.
         // 1017 on 2026-10-12: +25, the routes of 49327f77 (see EXPECTED_ROUTE_COUNT).
         // 1018 on 2026-10-13: +1, the participants PDF.
-        $this->assertCount(1018, $named, 'Named-route count changed — tripwire, see class docblock.');
+        // 1029 on 2026-10-13: +11, Budget & profit.
+        // 1030 on 2026-10-13: +1, the budget advisor.
+        // 1031 on 2026-10-13: +1, the division simulator.
+        // 1033 on 2026-10-13: +2, the advisor's memory.
+        // 1035 on 2026-10-13: +2, the federation's athlete edit (regs.athlete / .athlete.update).
+        // 1037 on 2026-10-14: +2, the split view's transfer doors (member + tablet).
+        $this->assertCount(1037, $named, 'Named-route count changed — tripwire, see class docblock.');
     }
 }

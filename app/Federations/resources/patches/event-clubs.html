@@ -1,0 +1,51 @@
+      <sc-if value="{{ tabClubs }}" hint-placeholder-val="{{ false }}">
+        <div style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:clamp(16px,2vw,24px);box-shadow:0 14px 40px rgba(30,44,79,.1)">
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px">
+            <div style="font-size:.7rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Club entries</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-left:auto">
+              <span style="display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:999px;background:#1e2c4f;color:#fff;font-size:.74rem;font-weight:600">Clubs <b style="font-weight:700;color:#edcd85">{{ ec.total }}</b></span>
+              <span style="display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:999px;background:#fff;border:1px solid #e4d3a8;color:#1e2c4f;font-size:.74rem;font-weight:500">Athletes <b style="font-weight:700;color:#8a6d20">{{ ec.athletes }}</b></span>
+              <span style="display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:999px;background:#fff;border:1px solid #bfdbfe;color:#1e2c4f;font-size:.74rem;font-weight:500">Male <b style="font-weight:700;color:#2563eb">{{ ec.male }}</b></span>
+              <span style="display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:999px;background:#fff;border:1px solid #fbcfe8;color:#1e2c4f;font-size:.74rem;font-weight:500">Female <b style="font-weight:700;color:#db2777">{{ ec.female }}</b></span>
+            </div>
+          </div>
+
+          <sc-if value="{{ ec.empty }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:.8rem;color:#6b7689;padding:8px 0">No club has entered an athlete yet.</div>
+          </sc-if>
+
+          <sc-if value="{{ ec.hasRows }}" hint-placeholder-val="{{ true }}">
+          <div style="overflow-x:auto">
+            <div style="display:grid;grid-template-columns:28px 40px minmax(220px,1fr) 90px 90px 90px 180px;gap:14px;align-items:center;min-width:820px;padding:0 0 8px;border-bottom:1px solid #eef1f6">
+              <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">#</div>
+              <div></div>
+              <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">Club</div>
+              <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">Male</div>
+              <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">Female</div>
+              <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">Athletes</div>
+              <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">Share</div>
+            </div>
+            <sc-for list="{{ ec.clubs }}" as="c" hint-placeholder-count="6">
+              <div onClick="{{ c.openRegs }}" title="Open this event's athletes" style="display:grid;grid-template-columns:28px 40px minmax(220px,1fr) 90px 90px 90px 180px;gap:14px;align-items:center;min-width:820px;padding:12px 0;border-bottom:1px solid #eef1f6;cursor:pointer;border-radius:8px" style-hover="background:#f7f8fb">
+                <div style="font-size:.76rem;font-weight:600;color:#8a6d20;font-variant-numeric:tabular-nums">{{ c.rank }}</div>
+                <div>
+                  <sc-if value="{{ c.hasLogo }}" hint-placeholder-val="{{ false }}"><span role="img" aria-label="{{ c.name }}" style="{{ c.logoStyle }}"></span></sc-if>
+                  <sc-if value="{{ c.noLogo }}" hint-placeholder-val="{{ true }}"><span style="width:36px;height:36px;border-radius:50%;background:rgba(216,178,95,.18);color:#8a6d20;display:grid;place-items:center;font-size:.72rem;font-weight:700">{{ c.initials }}</span></sc-if>
+                </div>
+                <div style="min-width:0">
+                  <div style="font-size:.86rem;font-weight:600;color:#1e2c4f;overflow-wrap:anywhere">{{ c.name }}</div>
+                  <sc-if value="{{ c.hasContact }}" hint-placeholder-val="{{ true }}"><div style="font-size:.72rem;color:#6b7689;margin-top:2px;overflow-wrap:anywhere"><span style="color:#8a6d20;font-weight:600">{{ c.contactRole }}</span> · {{ c.contact }}</div></sc-if>
+                </div>
+                <div style="font-size:.82rem;font-weight:600;color:#2563eb;font-variant-numeric:tabular-nums">{{ c.male }}</div>
+                <div style="font-size:.82rem;font-weight:600;color:#db2777;font-variant-numeric:tabular-nums">{{ c.female }}</div>
+                <div style="font-size:.86rem;font-weight:700;color:#1e2c4f;font-variant-numeric:tabular-nums">{{ c.athletes }}</div>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="flex:1;display:flex;gap:2px;height:6px;border-radius:3px;background:#eef1f6;overflow:hidden"><div style="{{ c.maleBar }}"></div><div style="{{ c.femaleBar }}"></div></div>
+                  <span style="font-size:.72rem;color:#6b7689;font-variant-numeric:tabular-nums;width:34px;text-align:end">{{ c.share }}</span>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          </sc-if>
+        </div>
+      </sc-if>

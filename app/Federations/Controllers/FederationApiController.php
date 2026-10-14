@@ -194,6 +194,41 @@ class FederationApiController extends Controller
         return response()->json(['success' => $ok, 'regs' => $desk->regs($access)], $ok ? 200 : 422);
     }
 
+    /** Athletes tab → an athlete's edit dialog: their editable details. */
+    public function regsAthlete(Request $request, \App\Federations\Services\FederationAthleteEditor $editor): JsonResponse
+    {
+        $access = $this->access($request);
+        $data = $request->validate(['entry' => ['required', 'uuid'], 'athlete' => ['required', 'string', 'max:16']]);
+        $shown = $editor->show($access, $data['entry'], $data['athlete']);
+        // One answer for "not yours" and "not there" (anti-enumeration).
+        abort_unless($shown, 404);
+
+        return response()->json(['success' => true, 'athlete' => $shown, 'canEdit' => (bool) ($access['manager'] ?? false)]);
+    }
+
+    /** Athletes tab → save an athlete's details and photo. Answers with the registrations again. */
+    public function regsAthleteUpdate(Request $request, FederationDesk $desk, \App\Federations\Services\FederationAthleteEditor $editor): JsonResponse
+    {
+        $access = $this->access($request);
+        $data = $request->validate([
+            'entry' => ['required', 'uuid'],
+            'athlete' => ['required', 'string', 'max:16'],
+            // A name is the one thing a person record cannot be without.
+            'name' => ['sometimes', 'required', 'string', 'min:2', 'max:150'],
+            'gender' => ['sometimes', 'nullable', 'in:Male,Female'],
+            'dob' => ['sometimes', 'nullable', 'date_format:Y-m-d', 'before:today', 'after:1900-01-01'],
+            'nat' => ['sometimes', 'nullable', 'string', 'size:3', 'alpha'],
+            'natId' => ['sometimes', 'nullable', 'string', 'max:40'],
+            'weight' => ['sometimes', 'nullable', 'numeric', 'min:10', 'max:250'],
+            // Already cropped to 3:4 in the browser; the bytes are checked
+            // for real by ProfilePhoto (StoresBase64Images).
+            'photo' => ['sometimes', 'nullable', 'string', 'starts_with:data:image/', 'max:8000000'],
+        ]);
+        $r = $editor->update($request->user(), $access, $data['entry'], $data['athlete'], $data);
+
+        return response()->json(['success' => $r['ok'], 'message' => $r['message'], 'athlete' => $r['athlete'] ?? null] + ($r['ok'] ? ['regs' => $desk->regs($access)] : []), $r['ok'] ? 200 : 422);
+    }
+
     /** Registrations → "Enroll athlete": one person entered by hand. Answers with the registrations again. */
     public function regsEnrol(Request $request, FederationDesk $desk, \App\Federations\Services\FederationEnrolment $enrolment): JsonResponse
     {

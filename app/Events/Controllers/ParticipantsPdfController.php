@@ -55,7 +55,7 @@ class ParticipantsPdfController extends Controller
 
         return response($bytes, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="'.$slug.'-'.['checkin' => 'check-in', 'all' => 'participants', 'list' => 'entry-list'][$kind].'.pdf"',
+            'Content-Disposition' => 'attachment; filename="'.$slug.'-'.['checkin' => 'check-in', 'checkin_club' => 'check-in-by-club', 'all' => 'participants', 'list' => 'entry-list'][$kind].'.pdf"',
             'Cache-Control' => 'private, no-store',
             'X-Content-Type-Options' => 'nosniff',
         ]);

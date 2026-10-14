@@ -62,7 +62,7 @@ class CategorySystemsTest extends TestCase
         $sport = app(CategorySystems::class)->sportFor(app(SportRegistry::class)->get('karate'), $event);
 
         $class = $sport->classify('male', 13, 42);
-        $this->assertSame('Minimes', $class['age_group']);
+        $this->assertSame('Under 14 Years', $class['age_group']);
         $this->assertSame('-45', $class['category']);
     }
 
@@ -81,7 +81,7 @@ class CategorySystemsTest extends TestCase
         $this->assertSame('shotokan', $event->fresh()->category_system);
         $placed = $reg->fresh()->category;
         $this->assertNotNull($placed);
-        $this->assertStringContainsString('Minimes', $placed->name);
+        $this->assertStringContainsString('Under 14 Years', $placed->name);
         $this->assertStringContainsString('-45', $placed->name);
     }
 

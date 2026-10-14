@@ -47,6 +47,17 @@ class OllamaTextDriver implements TextDriver
         }
 
         /*
+         * Thinking models (qwen3.5, gemma4) reason to themselves before they
+         * answer unless told not to — measured on 2026-10-13: 67 s and 8k
+         * characters of private reasoning for a one-line JSON answer that took
+         * 1.3 s with it off, and with a token cap the thinking can eat the whole
+         * budget and leave the answer EMPTY. Opt-in per call; absent = unchanged.
+         */
+        if (array_key_exists('think', $options)) {
+            $payload['think'] = (bool) $options['think'];
+        }
+
+        /*
          * Keep the weights resident between calls.
          *
          * Ollama unloads a model five minutes after its last request, so on a
@@ -56,6 +67,7 @@ class OllamaTextDriver implements TextDriver
          *
          * Opt-in, because it holds VRAM on a machine we may not own.
          */
+
         if (! empty($options['keep_alive'])) {
             $payload['keep_alive'] = (string) $options['keep_alive'];
         }

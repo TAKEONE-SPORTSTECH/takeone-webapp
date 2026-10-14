@@ -19,6 +19,10 @@
                                     // appointed official's — and re-read from
                                     // the data feed on every load.
     'myCompetitorIds' => [],        // highlights the viewer's own bouts
+    'transfer' => false,            // dropping a competitor on ANOTHER board on
+                                    // the page dispatches `bracket:transfer`
+                                    // (the draw stage's split view). Off: the
+                                    // board behaves exactly as it always has.
     'height' => '70vh',             // a CSS length, applied inline — see below
     'initialDivision' => null,      // open on THIS division instead of the first
     'showDivisions' => true,        // false when the host page has its own switcher
@@ -282,6 +286,9 @@
             entrantUrl: @json($entrantTemplate),
             admitUrl: @json($admitEndpoint),
             myCompetitorIds: @json(array_values((array) $myCompetitorIds)),
+            transfer: {{ $transfer ? 'true' : 'false' }},
+            // A drop on a division with no board lays its final (LoneFinal).
+            loneFinal: @json((bool) config('events.lone_entrant_final')),
             rtl: {{ $rtl ? 'true' : 'false' }},
             text: {
                 tbd: @json(__('events::events.bracket_tbd')),
@@ -291,6 +298,7 @@
                 provisional: @json(__('events::events.bracket_legend_provisional')),
                 noDraw: @json(__('events::events.bracket_no_draw')),
                 noDivisions: @json(__('events::events.bracket_no_divisions')),
+                dropToStart: @json(__('events::events.bracket_drop_to_start')),
                 loadFailed: @json(__('events::events.bracket_load_failed')),
                 moveFailed: @json(__('events::events.bracket_move_failed')),
                 clearTitle: @json(__('events::events.bracket_clear_title')),

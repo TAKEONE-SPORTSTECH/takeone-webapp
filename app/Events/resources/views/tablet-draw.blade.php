@@ -81,6 +81,7 @@
         :arrange-url="route('tablet.draw.arrange', $token)"
         :clear-url="false"
         :admit-url="route('tablet.draw.admit', $token)"
+        :transfer-url="route('tablet.draw.transfer', $token)"
         :board-can-manage="$editorManages"
         :outcome-url="str_replace('999999999', '__ID__', route('tablet.draw.outcome', [$token, 999999999]))"
         :entrant-url="str_replace('999999999', '__ID__', route('tablet.draw.entrant', [$token, 999999999]))">

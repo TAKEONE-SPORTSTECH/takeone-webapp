@@ -101,9 +101,8 @@ abstract class Enrolment
             ->classify($user->gender, Carbon::parse($user->birthdate)->age, $weight);
 
         if ($class) {
-            $name = $this->sport->divisionName($class['age_group'], $user->gender, $class['category']);
-
-            if ($byName = EventCategory::where('event_id', $event->id)->where('name', $name)->first()) {
+            if ($byName = \App\Events\Support\DivisionNames::find($event->id,
+                \App\Events\Support\DivisionNames::candidates($this->sport, $class['age_group'], $user->gender, $class['category']))) {
                 return $byName;
             }
         }

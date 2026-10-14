@@ -136,6 +136,12 @@ class TabletDrawController extends Controller
             [app(PersonalEventController::class), 'arrangeBracket'], ['request' => $request, 'event' => $tablet->event]));
     }
 
+    public function transfer(Request $request, string $token): Response
+    {
+        return $this->asEditor($token, fn ($tablet) => app()->call(
+            [app(PersonalEventController::class), 'transferBracket'], ['request' => $request, 'event' => $tablet->event]));
+    }
+
     public function admit(Request $request, string $token): Response
     {
         return $this->asEditor($token, fn ($tablet) => app()->call(

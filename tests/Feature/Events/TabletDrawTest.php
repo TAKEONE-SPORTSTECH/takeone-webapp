@@ -63,6 +63,35 @@ class TabletDrawTest extends ContractTestCase
         $this->getJson("/tablet/{$token}/draw/candidates?category_id=1")->assertForbidden();
     }
 
+    public function test_an_editing_tablet_offers_two_boards_only_while_the_flag_is_on(): void
+    {
+        config(['events.tablet_draw_pin' => false, 'events.draw_transfer' => true]);
+        [, $token] = $this->pairedTablet();
+
+        $this->get("/tablet/{$token}/draw")->assertOk()
+            ->assertSee(__('events::events.transfer_split'))
+            ->assertSee('drawSplit(', false)
+            // The tablet's own door, never the member route (JSON-escaped in the page).
+            ->assertSee('draw\\\\\\/transfer', false);
+
+        config(['events.draw_transfer' => false]);
+
+        $this->get("/tablet/{$token}/draw")->assertOk()
+            ->assertDontSee(__('events::events.transfer_split'))
+            ->assertDontSee('drawSplit(', false);
+    }
+
+    public function test_the_transfer_door_follows_the_same_device_rules(): void
+    {
+        config(['events.draw_transfer' => true]);
+        [, $token] = $this->pairedTablet();
+        $body = ['from_category_id' => 1, 'competitor_id' => 1, 'to_category_id' => 2, 'to' => ['type' => 'bench'], 'mode' => 'move'];
+
+        // Locked tablet: no edits. Dead token: 404, like every JSON door.
+        $this->putJson("/tablet/{$token}/draw/transfer", $body)->assertForbidden();
+        $this->putJson('/tablet/'.str_repeat('a', 40).'/draw/transfer', $body)->assertNotFound();
+    }
+
     public function test_the_right_pin_unlocks_editing_and_locking_ends_it(): void
     {
         [$event, $token, $organiser, $draw] = $this->pairedTablet();

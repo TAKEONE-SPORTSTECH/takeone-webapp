@@ -36,7 +36,9 @@
 
     Public API (window.BracketBoard):
       mount(cfg)      — cfg: { viewportId, dataUrl, arrangeUrl, clearUrl, csrf,
-                               eventUuid, rtl, text, myCompetitorIds }
+                               eventUuid, rtl, text, myCompetitorIds,
+                               transfer, realtimeKey }
+      create()        — a SECOND, independent board (split view); same API
       reload()        — re-fetch and re-render (called on realtime nudges)
       show(id)        — switch to a division
       zoomIn/zoomOut/fit()
@@ -46,6 +48,8 @@
       bracket:loaded   { divisions, division, canArrange, locked }
       bracket:state    { arrange, picked, division, divisions }
       bracket:match    { match, division }   — a bout was tapped (view mode)
+      bracket:transfer { competitorId, name, fromDivision, targetViewport, to }
+                       — a competitor was dropped on ANOTHER board (cfg.transfer)
 --}}
 
 <style id="bk-styles">
@@ -266,6 +270,8 @@
         -webkit-touch-callout:none;
     }
     .bk-slot.is-picked{outline:2px solid #d8b25f;outline-offset:-2px;background:#fdf6e6;}
+    /* A whole OTHER board lit as the drop target (split view, transfer). */
+    .bk-viewport.bk-drop-hot{box-shadow:inset 0 0 0 3px #2ecc71;}
     .bk-slot.is-target{outline:2px solid #2ecc71;outline-offset:-2px;background:#c9f0da;}
     .bk-slot.is-source{opacity:.35;}
     .bk-bench-item.is-picked{box-shadow:0 0 0 2px #d8b25f,0 4px 12px rgba(11,19,43,.3);}
@@ -286,6 +292,7 @@
     .bk-empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
         justify-content:center;text-align:center;padding:2rem;color:#97a1b4;gap:8px;}
     .bk-empty i{color:#d8b25f;}
+    .bk-empty-hint{font-size:.75rem;color:#d8b25f;max-width:22rem;}
 
     /* ── Read as a PHONE ───────────────────────────────────────────────────
        The draft's View setting, and it is not the same board shrunk: a screen
@@ -402,6 +409,14 @@
 
 <script>
 window.BracketBoard = window.BracketBoard || (function () {
+    /* ── ONE FACTORY, ANY NUMBER OF BOARDS ────────────────────────────────
+       Everything below is a single closure, and `window.BracketBoard` is the
+       instance every host has always used — same code, same state, same API.
+       `BracketBoard.create()` makes ANOTHER, fully separate instance from the
+       same closure: the split view's second board (x-draw-stage), so an
+       organiser can drag a competitor from one division into another. The
+       body is not re-indented on purpose, to keep the diff to the wrapper. */
+    function createBoard() {
     'use strict';
 
     /* ── The palette, in one place ─────────────────────────────────────────
@@ -775,7 +790,13 @@ window.BracketBoard = window.BracketBoard || (function () {
                faces: a padlock plus the day it opens, or the bracket glyph. */
             box.appendChild(el('i', S.hiddenMsg ? 'bi bi-lock-fill text-4xl' : 'bi bi-diagram-3 bracket-icon text-4xl'));
             const msg = el('div'); msg.textContent = S.hiddenMsg || S.cfg.text.noDraw; box.appendChild(msg);
-            S.canvas.appendChild(box);
+            if (!S.hiddenMsg && boardless() && S.cfg.text.dropToStart) {
+                const hint = el('div', 'bk-empty-hint'); hint.textContent = S.cfg.text.dropToStart; box.appendChild(hint);
+            }
+            /* On the viewport, like the no-division case above: the canvas is
+               the zoomed, content-sized layer, and with no rounds it has no
+               size, so `inset:0` there collapsed the card into its corner. */
+            S.vp.appendChild(box);
             return;
         }
 
@@ -1925,6 +1946,7 @@ window.BracketBoard = window.BracketBoard || (function () {
      */
     const BANNER_CLEARANCE = 52;   // arrange banner height + its top inset
     const CONTROL_LANE = 60;       // width of the zoom/arrange button column
+    const PICKER_CLEARANCE = 124;  // the stage's division picker (top 64 + ~40) + the basket's bottom inset
 
     /* The basket holds the same names the board does, so it is measured the
        same way. Its ceiling is lower, because it FLOATS over the board and a
@@ -1955,7 +1977,11 @@ window.BracketBoard = window.BracketBoard || (function () {
             b.width = benchWidth() + 'px';
             b.insetInlineStart = 'auto';
             b.insetInlineEnd = '14px';
-            b.maxHeight = S.benchMin ? 'none' : 'calc(100% - ' + (BANNER_CLEARANCE + 28) + 'px)';
+            /* Its top stops BELOW the draw stage's division picker, which floats
+               at the board's top-right corner while arranging (top-16, ~36px
+               tall). Reaching any higher put the basket's header — and its
+               expand/minimise button — underneath that picker. */
+            b.maxHeight = S.benchMin ? 'none' : 'calc(100% - ' + PICKER_CLEARANCE + 'px)';
         }
     }
 
@@ -2121,6 +2147,12 @@ window.BracketBoard = window.BracketBoard || (function () {
         const vp = S.vp;
 
         vp.addEventListener('pointerdown', e => {
+            // Holding somebody and tapping a division with no board: lay its
+            // final around them (the tap twin of dropping on it).
+            if (S.pick && boardless() && !(e.target.closest && e.target.closest('.bk-bench'))) {
+                commit(S.pick.from, { type: 'slot', match_id: null, side: 'a' });
+                return;
+            }
             if (!grabbable(e.target)) return;
             const origin = endpointOf(e.target);
             if (!origin || !origin.name) {
@@ -2166,6 +2198,20 @@ window.BracketBoard = window.BracketBoard || (function () {
             if (!drag.moved) { pickUp(drag.from, drag.name, drag.sourceEl); return; }
 
             const target = dropTargetAt(e.clientX, e.clientY);
+            if (target && target.foreign) {
+                // Hand the host everything it needs; it asks move-or-copy and
+                // writes. A hand-typed name has no entry to transfer.
+                const id = drag.from.type === 'bench'
+                    ? drag.from.competitor_id
+                    : Number(drag.sourceEl?.dataset.competitorId || 0);
+                if (id) {
+                    emit('bracket:transfer', {
+                        competitorId: id, name: drag.name,
+                        fromDivision: S.division, targetViewport: target.foreign, to: target.to,
+                    });
+                }
+                return;
+            }
             if (target) commit(drag.from, target.to);
         };
         vp.addEventListener('pointerup', finish);
@@ -2227,6 +2273,13 @@ window.BracketBoard = window.BracketBoard || (function () {
         emitState();
     }
 
+    /** Arranging a division that has no bouts at all, with the flag on. */
+    function boardless() {
+        const div = current();
+        return !!(S.cfg.loneFinal && S.arrange && arrangeable() && div
+            && !(div.rounds || []).some(r => r.name !== THIRD_ROUND));
+    }
+
     const sameEnd = (a, b) =>
         a.type === b.type && a.match_id === b.match_id && a.side === b.side && a.competitor_id === b.competitor_id;
 
@@ -2242,8 +2295,26 @@ window.BracketBoard = window.BracketBoard || (function () {
     function dropTargetAt(x, y) {
         const node = document.elementFromPoint(x, y);
         if (!node) return null;
+        /* Over ANOTHER board (the split view's second one)? That is not a move
+           inside this division, it is a transfer, and only a host that asked
+           for transfers (cfg.transfer) is offered one. Anywhere on that
+           board counts: a slot means "this corner", the rest its basket. */
+        const otherVp = node.closest ? node.closest('.bk-viewport') : null;
+        if (otherVp && otherVp !== S.vp) {
+            if (!S.cfg.transfer) return null;
+            const slot = node.closest('.bk-slot[data-arrangeable="1"]');
+            return slot
+                ? { foreign: otherVp, el: slot, to: { type: 'slot', match_id: Number(slot.dataset.matchId), side: slot.dataset.side } }
+                : { foreign: otherVp, el: otherVp, to: { type: 'bench' } };
+        }
+        if (!S.vp.contains(node)) return null;
         const point = endpointOf(node);
-        if (!point) return null;
+        if (!point) {
+            /* A division with NO board: the whole empty view is the target,
+               and the server lays its final around the drop (LoneFinal). */
+            if (boardless()) return { el: S.vp, lone: true, to: { type: 'slot', match_id: null, side: 'a' } };
+            return null;
+        }
         // A competitor may be dropped into a first-round slot or back into the
         // basket — nothing else is a target.
         if (point.to.type === 'bench') return { el: S.bench, to: { type: 'bench' } };
@@ -2253,7 +2324,15 @@ window.BracketBoard = window.BracketBoard || (function () {
     function highlight(target) {
         S.vp.querySelectorAll('.is-target').forEach(n => n.classList.remove('is-target'));
         S.bench?.classList.remove('is-target');
+        if (S.foreignHot) { S.foreignHot.classList.remove('is-target', 'bk-drop-hot'); S.foreignHot = null; }
+        S.vp.classList.remove('bk-drop-hot');
         if (!target) return;
+        if (target.lone) { S.vp.classList.add('bk-drop-hot'); return; }
+        if (target.foreign) {
+            S.foreignHot = target.el;
+            target.el.classList.add(target.el === target.foreign ? 'bk-drop-hot' : 'is-target');
+            return;
+        }
         if (target.to.type === 'bench') S.bench?.classList.add('is-target');
         else target.el?.classList.add('is-target');
     }
@@ -2355,11 +2434,14 @@ window.BracketBoard = window.BracketBoard || (function () {
     function bindRealtime() {
         // The mobile shell re-runs inline scripts on every AJAX nav, so the
         // previous handler is removed before a new one is added.
-        if (window.__bracketRealtime) {
-            window.removeEventListener('realtime:events', window.__bracketRealtime);
+        // A second board (BracketBoard.create) names its own key, so it never
+        // removes the main board's handler; the main board keeps the old one.
+        const RT = S.cfg.realtimeKey || '__bracketRealtime';
+        if (window[RT]) {
+            window.removeEventListener('realtime:events', window[RT]);
         }
         let pending = null;
-        window.__bracketRealtime = e => {
+        window[RT] = e => {
             const d = e.detail || {};
             if (!S || d.event !== S.cfg.eventUuid) return;
             // 'entry-updated' is a competitor themselves changing — a
@@ -2370,7 +2452,7 @@ window.BracketBoard = window.BracketBoard || (function () {
             clearTimeout(pending);
             pending = setTimeout(() => load(true), 250);
         };
-        window.addEventListener('realtime:events', window.__bracketRealtime);
+        window.addEventListener('realtime:events', window[RT]);
     }
 
     // -----------------------------------------------------------------
@@ -2479,6 +2561,7 @@ window.BracketBoard = window.BracketBoard || (function () {
         S.pick = null;
         if (S.arrange) S.edit = false;
         renderBench(current());
+        if (S.cfg.loneFinal && current() && !(current().rounds || []).length) render(true);
         applyArrangeClasses();
         emitState();
     }
@@ -2495,6 +2578,9 @@ window.BracketBoard = window.BracketBoard || (function () {
         // The add-fighter window asks the board which division it is over, and
         // hands back a competitor to admit.
         division: () => S.division,
+        // The config this board was mounted with — the split view mounts its
+        // second board from it, so the two can never be fed differently.
+        cfg: () => S && S.cfg,
         admit: id => write(S.cfg.admitUrl,
             { category_id: S.division, competitor_id: Number(id) }, S.cfg.text.moveFailed, 'PUT'),
         state: () => ({
@@ -2504,5 +2590,10 @@ window.BracketBoard = window.BracketBoard || (function () {
             edit: S.edit, background: !!S.bg,
         }),
     };
+    }
+
+    const board = createBoard();
+    board.create = createBoard;
+    return board;
 })();
 </script>

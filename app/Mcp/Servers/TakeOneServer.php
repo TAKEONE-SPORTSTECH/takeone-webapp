@@ -17,6 +17,11 @@ use App\Mcp\Tools\SetCornerSideTool;
 use App\Mcp\Tools\SetMatCornerSideTool;
 use App\Mcp\Tools\SetCornerLookTool;
 use App\Mcp\Tools\GetEventFeaturingTool;
+use App\Mcp\Tools\GetEventBudgetTool;
+use App\Mcp\Tools\ManageEventBudgetItemTool;
+use App\Mcp\Tools\SetEventBudgetTool;
+use App\Mcp\Tools\EventBudgetToolboxTool;
+use App\Mcp\Tools\AskEventBudgetAdvisorTool;
 use App\Mcp\Tools\ListEventEntryConsentsTool;
 use App\Mcp\Tools\ListEventCertificatesTool;
 use App\Mcp\Tools\SetEventCertificateSettingsTool;
@@ -30,6 +35,7 @@ use App\Mcp\Tools\ListMyCertificatesTool;
 use App\Mcp\Tools\ListEventFeatureRequestsTool;
 use App\Mcp\Tools\AddWorkHistoryTool;
 use App\Mcp\Tools\ArrangeEventBracketTool;
+use App\Mcp\Tools\TransferEventCompetitorTool;
 use App\Mcp\Tools\ClubFinancialsTool;
 use App\Mcp\Tools\ListClubOwnersTool;
 use App\Mcp\Tools\ProposeClubOwnershipTool;
@@ -135,6 +141,7 @@ class TakeOneServer extends Server
         ListBjjMatchEventsTool::class,
         ListCourtScreensTool::class,
         ArrangeEventBracketTool::class,
+        TransferEventCompetitorTool::class,
         GetEventTranslationTool::class,
         TranslateEventTool::class,
         SetEventTranslationTool::class,
@@ -145,6 +152,11 @@ class TakeOneServer extends Server
         AddWorkHistoryTool::class,
         ManageMemberPhotoTool::class,
         GetEventFeaturingTool::class,
+        GetEventBudgetTool::class,
+        ManageEventBudgetItemTool::class,
+        SetEventBudgetTool::class,
+        EventBudgetToolboxTool::class,
+        AskEventBudgetAdvisorTool::class,
         ListEventEntryConsentsTool::class,
         ListEventFeatureRequestsTool::class,
         DecideEventFeatureRequestTool::class,

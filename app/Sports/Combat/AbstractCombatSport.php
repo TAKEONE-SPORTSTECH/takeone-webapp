@@ -5,10 +5,10 @@ namespace App\Sports\Combat;
 /** Shared helpers for combat-sport plug-ins (naming conventions). */
 abstract class AbstractCombatSport implements CombatSport
 {
-    /** "male" => "Men", "female" => "Women". */
+    /** "male" => "Male", "female" => "Female" — never "Men"/"Women" (decided 2026-10-13). */
     public function genderWord(string $gender): string
     {
-        return strtolower($gender) === 'female' ? 'Women' : 'Men';
+        return strtolower($gender) === 'female' ? 'Female' : 'Male';
     }
 
     public function divisionName(string $ageGroup, string $gender, string $label): string

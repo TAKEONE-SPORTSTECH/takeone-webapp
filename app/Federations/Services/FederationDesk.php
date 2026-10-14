@@ -541,6 +541,21 @@ class FederationDesk
             ->get()->map(fn ($en) => $this->registry->regFeed($en, $ids))->values()->all();
     }
 
+    /**
+     * One athlete on one entry, if both are within this viewer's federation
+     * (FederationAthleteEditor). Active entries only: a withdrawn athlete is
+     * not on the event's list to be edited from it.
+     */
+    public function entryAthleteInScope(array $access, ?string $entryUuid, string $takeoneId): ?FederationEntryAthlete
+    {
+        $entry = $this->entryInScope($access, $entryUuid);
+
+        return $entry && $takeoneId !== ''
+            ? $entry->athletes()->with(['athlete.user', 'entry.event'])->where('status', 'Active')
+                ->whereHas('athlete', fn ($q) => $q->where('takeone_id', $takeoneId))->first()
+            : null;
+    }
+
     private function entryInScope(array $access, ?string $uuid): ?FederationEntry
     {
         return $uuid ? FederationEntry::whereIn('federation_event_id', $this->eventsOf($access)->pluck('id'))->where('uuid', $uuid)->first() : null;

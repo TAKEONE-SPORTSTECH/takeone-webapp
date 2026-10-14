@@ -75,6 +75,11 @@
     'admitUrl' => null,
     'outcomeUrl' => null,
     'entrantUrl' => null,
+    /* PUT → move or copy a competitor into ANOTHER division (the split view,
+       App\Events\Support\Tournament\Transfer). Null builds the member route;
+       the scoring tablet passes its own door. Only used while the
+       events.draw_transfer flag is on. */
+    'transferUrl' => null,
     /* Whether the BOARD offers the organiser's bout tools (decide a winner,
        a score, correct a name) — separately from the stage's own editing menu,
        which `canManage` draws. Null follows `canManage`, as before; the scoring
@@ -105,6 +110,16 @@
     $drawActions = $canManage ? $drawActions : [];
 
     $backLabel = $backLabel ?: __('personal.event_manage_title');
+
+    /* The split view (two boards, drag between divisions). Flag-gated and
+       offered only to an editor; with the flag off nothing below changes. */
+    $dsTransfer = config('events.draw_transfer') && ($canManage || $canArrange);
+    $dsTransferUrl = $dsTransfer ? ($transferUrl ?: route('me.events.bracket.transfer', $ev)) : null;
+    $dsPrice = null;
+    if ($dsTransfer && ($dsEvent = \App\Events\Models\ClubEvent::where('uuid', $ev)->first())) {
+        $dsList = \App\Events\Support\EventFee::listPrice($dsEvent);
+        $dsPrice = $dsList > 0 ? \App\Events\Support\EventFee::display($dsList, \App\Events\Support\EventFee::currency($dsEvent)) : null;
+    }
 @endphp
 
 {{--
@@ -159,6 +174,7 @@
      x-data="{
         divisions: [], division: null, arrange: false, open: false,
         target: @js($division),
+        split: false, splitTall: false,
 
         /* What the Actions menu ticks. Read off the board's own events rather
            than kept here, so the menu can never disagree with the board about
@@ -188,7 +204,7 @@
         // enough — no locale variants to chase. Tested with a word boundary
         // because 'men' is a substring of 'women'.
         genderOf(name) {
-            return /\bwomen\b/i.test(name || '') ? 'f' : 'm';
+            return /\b(female|women)\b/i.test(name || '') ? 'f' : 'm';
         },
         genderIcon(name) {
             return this.genderOf(name) === 'f' ? 'bi-gender-female' : 'bi-gender-male';
@@ -209,7 +225,8 @@
         onState(d) { this.settings(d); this.arrange = d.arrange; this.divisions = d.divisions; this.division = d.division; },
      }"
      @bracket:loaded="onLoaded($event.detail)"
-     @bracket:state="onState($event.detail)">
+     @bracket:state="onState($event.detail)"
+     @draw-split:changed.window="split = $event.detail.open; splitTall = $event.detail.tall">
 
     {{-- ===== Top bar: leave, and what you are arranging =====
 
@@ -506,6 +523,13 @@
          would hang the board off the viewport. It fills what the flex column
          leaves it, so the bar's height is nobody else's business. --}}
     <div class="flex-1 min-h-0 relative">
+        @if($dsTransfer)
+        {{-- Split view: the main board gives up half the room to the second
+             (x-draw-split). Absolute so the halves are exact; the wrapper only
+             exists while the flag is on. --}}
+        <div class="absolute inset-0 transition-all"
+             :style="split ? (splitTall ? 'bottom:50%' : 'inset-inline-end:50%') : ''">
+        @endif
         <x-tournament-bracket
             :id="$sid.'-bracket'"
             :data-url="$dataUrl ?: route('me.events.bracket.data', $ev)"
@@ -541,7 +565,14 @@
                  being wrong. --}}
             height="100%"
             :fill="true"
+            :transfer="$dsTransfer"
             bare />
+        @if($dsTransfer)
+        </div>
+
+        <x-draw-split :event="$ev" :transfer-url="$dsTransferUrl" :price="$dsPrice"
+                      :color="$dsColor" :id="$sid" />
+        @endif
 
         {{-- ⛳ TAP A BOUT, SAY WHO WON.
 
@@ -626,6 +657,7 @@
         <div x-show="divisions.length > 1" x-cloak
              class="absolute end-3 z-40 transition-all"
              :class="arrange ? 'top-16' : 'top-3'"
+             :style="split && ! splitTall ? 'inset-inline-end: calc(50% + .75rem)' : ''"
              @keydown.escape.window="open = false"
              @click.outside="open = false">
 

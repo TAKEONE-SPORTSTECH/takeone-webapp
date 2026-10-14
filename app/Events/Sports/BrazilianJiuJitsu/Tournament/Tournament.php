@@ -386,6 +386,7 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
         return match ($action) {
             'generate_draw' => $this->generateDraw($event),
             'arrange_draw' => $this->arrangeDraw($event, $payload),
+            'transfer_draw' => $this->transferDraw($event, $payload),
             'grow_draw' => $this->growDraw($event, $payload),
             'admit_late_entry' => $this->admitLateEntry($event, $payload),
             'clear_draw' => $this->clearDraw($event, $payload),
@@ -457,6 +458,16 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
                 'label' => __('event-bjj_tournament::messages.action_arrange_draw'),
                 'icon' => 'bi-arrows-move',
             ];
+
+            // Into ANOTHER division's draw — move or copy (Transfer). Offered
+            // exactly when arranging is, because every step of it IS arranging.
+            if (config('events.draw_transfer')) {
+                $actions[] = [
+                    'action' => 'transfer_draw',
+                    'label' => __('events::events.action_transfer_draw'),
+                    'icon' => 'bi-arrow-left-right',
+                ];
+            }
 
             /*
              * Growing a division to the next bracket size, so a late entrant
@@ -614,12 +625,48 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
     }
 
     /**
+     * Take a competitor into ANOTHER division's draw — moved, or copied as a
+     * second entry. The shared App\Events\Support\Tournament\Transfer does
+     * the work through this package's own Arrangement; this only answers with
+     * BOTH divisions, so the two boards on the organiser's screen redraw.
+     */
+    private function transferDraw(ClubEvent $event, array $payload): array
+    {
+        $result = (new \App\Events\Support\Tournament\Transfer($this->arrangement()))
+            ->run($event, $payload, auth()->id());
+
+        if (! $result['ok']) {
+            return ['success' => false, 'message' => $result['message']];
+        }
+
+        $this->scheduler->scheduleAndNumber($event->fresh());
+
+        $copied = ($payload['mode'] ?? null) === \App\Events\Support\Tournament\Transfer::COPY;
+        $name = $result['entry']->user?->full_name ?: $result['entry']->user?->name ?: __('events::events.athlete');
+
+        $response = $this->arrangedResponse($event, $result['to'], __(
+            $copied ? 'events::events.transfer_copied' : 'events::events.transfer_moved',
+            ['name' => $name, 'division' => $result['to']->name],
+        ));
+
+        // The division they came from changed too (a move empties a corner).
+        $this->broadcast($event, ['action' => 'draw', 'division' => $result['from']->id]);
+        $response['data']['source'] = (new BracketView)->division(
+            $result['from']->load(['matches', 'registrations.user:id,full_name,name,profile_picture,profile_picture_is_public,updated_at'])
+        );
+
+        return $response;
+    }
+
+    /**
      * Move one competitor within a division's first round, or in and out of it.
      * Returns the division's fresh bracket so the screen patches in place.
      */
     private function arrangeDraw(ClubEvent $event, array $payload): array
     {
-        $result = $this->arrangement()->move($event, $payload);
+        // A drop on a division with no board yet lays its final first (LoneFinal).
+        $result = \App\Events\Support\Tournament\LoneFinal::arrange($event, $payload,
+            fn (array $p) => $this->arrangement()->move($event, $p));
 
         if (! $result['ok']) {
             return ['success' => false, 'message' => $result['message']];
@@ -879,7 +926,8 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
         foreach ($event->categories()->get() as $category) {
             $entrants = $category->registrations()->where('role', 'participant')->count();
 
-            if ($entrants >= 2) {
+            // One is enough with events.lone_entrant_final: a final with an empty corner.
+            if ($entrants >= (\App\Sports\Combat\Engine\DrawEngine::loneFinals() ? 1 : 2)) {
                 $this->draws->build($event, $category, paidOnly: false);
                 $this->advanceByes($category);
 

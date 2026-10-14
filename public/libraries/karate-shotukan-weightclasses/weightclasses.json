@@ -6,19 +6,19 @@
   "unit": "kg",
   "minAge": 4,
   "ageCategories": [
-    {"name": "Mini poussins", "maxAge": 5},
-    {"name": "Poussins", "maxAge": 7},
-    {"name": "Pupilles", "maxAge": 9},
-    {"name": "Benjamins", "maxAge": 11},
-    {"name": "Minimes", "maxAge": 13},
-    {"name": "Cadets", "maxAge": 15},
-    {"name": "Juniors", "maxAge": 17},
-    {"name": "Séniors", "maxAge": 34},
-    {"name": "Vétérans 1", "maxAge": 45},
-    {"name": "Vétérans 2", "maxAge": 55},
-    {"name": "Vétérans 3", "maxAge": 65},
-    {"name": "Vétérans 4", "maxAge": 74},
-    {"name": "Vétérans 5", "maxAge": null}
+    {"name": "Mini poussins", "label": "Under 6 Years", "maxAge": 5},
+    {"name": "Poussins", "label": "Under 8 Years", "maxAge": 7},
+    {"name": "Pupilles", "label": "Under 10 Years", "maxAge": 9},
+    {"name": "Benjamins", "label": "Under 12 Years", "maxAge": 11},
+    {"name": "Minimes", "label": "Under 14 Years", "maxAge": 13},
+    {"name": "Cadets", "label": "Cadets", "maxAge": 15},
+    {"name": "Juniors", "label": "Juniors", "maxAge": 17},
+    {"name": "Séniors", "label": "Seniors", "maxAge": 34},
+    {"name": "Vétérans 1", "label": "Veterans 1", "maxAge": 45},
+    {"name": "Vétérans 2", "label": "Veterans 2", "maxAge": 55},
+    {"name": "Vétérans 3", "label": "Veterans 3", "maxAge": 65},
+    {"name": "Vétérans 4", "label": "Veterans 4", "maxAge": 74},
+    {"name": "Vétérans 5", "label": "Veterans 5", "maxAge": null}
   ],
   "weights": {
     "M": {

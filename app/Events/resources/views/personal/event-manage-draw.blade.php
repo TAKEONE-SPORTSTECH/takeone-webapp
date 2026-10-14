@@ -162,7 +162,7 @@
            AbstractCombatSport::genderWord() generates ('Women', else 'Men').
            Matched with a word boundary because 'men' is inside 'women'. This
            mirrors the draw stage's picker; if one changes, both do. */
-        genderOf(name) { return /\bwomen\b/i.test(name || '') ? 'f' : 'm'; },
+        genderOf(name) { return /\b(female|women)\b/i.test(name || '') ? 'f' : 'm'; },
         genderIcon(name) { return this.genderOf(name) === 'f' ? 'bi-gender-female' : 'bi-gender-male'; },
         genderColor(name) { return this.genderOf(name) === 'f' ? 'text-pink-500' : 'text-blue-500'; },
 

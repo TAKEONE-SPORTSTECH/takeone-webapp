@@ -64,15 +64,19 @@ class FederationEventFigures
 
         return [
             'reg' => $athletes,
+            'entryClubs' => $this->entryClubs($e),
             'divisions' => $divisions,
             'checkins' => $weighed,
             'readiness' => [
                 $this->venue($details),
-                ['done' => $athletes > 0, 'label' => 'Athletes entered', 'note' => $athletes.' from '.$clubs.' '.($clubs === 1 ? 'club' : 'clubs')],
-                ['done' => $divisions > 0 && $single === 0 && $unplaced === 0, 'label' => 'Divisions', 'note' => $divNote],
+                ['done' => $athletes > 0, 'label' => 'Athletes entered', 'note' => $athletes.' from '.$clubs.' '.($clubs === 1 ? 'club' : 'clubs'), 'subs' => [
+                    ['label' => 'Athletes', 'note' => (string) $athletes, 'tab' => 'regs', 'hint' => 'Open this event’s athletes'],
+                    ['label' => 'Clubs', 'note' => (string) $clubs, 'tab' => 'clubs', 'hint' => 'Open this event’s clubs'],
+                ]],
+                ['done' => $divisions > 0 && $single === 0 && $unplaced === 0, 'label' => 'Divisions', 'note' => $divNote, 'subs' => $this->divisionRows($ev, $perDivision, $unplaced)],
                 ['done' => $athletes > 0 && $weighed === $athletes, 'label' => 'Weigh-in', 'note' => $weighed.' of '.$athletes.' weighed in'],
                 ['done' => $drawable->isNotEmpty() && $drawn === $drawable->count(), 'label' => 'Draw', 'note' => $drawn.' of '.$drawable->count().' divisions drawn'],
-                ['done' => $officials > 0, 'label' => 'Officials appointed', 'note' => (string) $officials, 'subs' => $this->officialJobs($officialRows, $officialsUrl = route('me.events.officiating', $ev->uuid)), 'url' => $officialsUrl],
+                ['done' => $officials > 0, 'label' => 'Officials appointed', 'note' => (string) $officials, 'subs' => $this->officialJobs($officialRows), 'tab' => 'offs', 'hint' => 'Open this event’s officials'],
             ],
         ];
     }
@@ -85,12 +89,11 @@ class FederationEventFigures
      *
      * @return array<int, array{label: string, note: string}>
      */
-    private function officialJobs(\Illuminate\Support\Collection $rows, string $url): array
+    private function officialJobs(\Illuminate\Support\Collection $rows): array
     {
         return $rows->map(fn ($r) => self::jobOf($r->role, $r->role_label))->countBy()->sortDesc()->map(fn ($n, $job) => [
-            // Every job opens the event's own Officials screen — the full list
-            // behind the number, where an official is added, edited or removed.
-            'label' => $job, 'note' => (string) $n, 'url' => $url,
+            // Every job opens the dashboard's own Officials tab, filtered to it.
+            'label' => $job, 'note' => (string) $n, 'tab' => 'offs', 'job' => $job, 'hint' => 'Open this event’s '.mb_strtolower($job),
         ])->values()->all();
     }
 
@@ -120,11 +123,12 @@ class FederationEventFigures
 
         return [
             'reg' => $athletes,
+            'entryClubs' => $this->entryClubs($e),
             'divisions' => 0,
             'checkins' => 0,
             'readiness' => [
                 $this->venue($details),
-                ['done' => $athletes > 0, 'label' => 'Athletes entered', 'note' => $athletes.' from '.$clubs.' '.($clubs === 1 ? 'club' : 'clubs')],
+                ['done' => $athletes > 0, 'label' => 'Athletes entered', 'note' => $athletes.' from '.$clubs.' '.($clubs === 1 ? 'club' : 'clubs'), 'subs' => [['label' => 'Athletes', 'note' => (string) $athletes], ['label' => 'Clubs', 'note' => (string) $clubs]]],
             ],
         ];
     }
@@ -141,6 +145,81 @@ class FederationEventFigures
     {
         return FederationEntryAthlete::whereHas('entry', fn ($q) => $q->where('federation_event_id', $e->id))
             ->where('status', 'Active')->whereHas('athlete.user');
+    }
+
+    /**
+     * The rows under "Divisions": one per gender, its athletes and its
+     * divisions on one line, coloured as everywhere else (Male blue, Female pink); the
+     * athletes not yet placed in a division close the list.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function divisionRows(ClubEvent $ev, \Illuminate\Support\Collection $perDivision, int $unplaced): array
+    {
+        $genders = DB::table('event_categories')->where('event_id', $ev->id)
+            ->whereIn('id', $perDivision->keys())->pluck('gender', 'id');
+
+        $groups = ['male' => ['Male', '#2563eb'], 'female' => ['Female', '#db2777'], '' => ['Mixed', '#6b7689']];
+
+        $rows = [];
+        foreach ($groups as $key => [$label, $color]) {
+            $counts = $perDivision->filter(fn ($n, $id) => $key === ''
+                ? ! in_array((string) ($genders[$id] ?? ''), ['male', 'female'], true)
+                : (string) ($genders[$id] ?? '') === $key);
+            if ($counts->isEmpty()) {
+                continue;
+            }
+            $rows[] = ['label' => $label, 'note' => 'Athletes '.$counts->sum().' · Divisions '.$counts->count(), 'color' => $color,
+                'tab' => 'divs', 'hint' => 'Open this event’s divisions'];
+        }
+
+        if ($unplaced) {
+            $rows[] = ['label' => 'Not placed', 'note' => (string) $unplaced, 'tab' => 'regs', 'hint' => 'Open this event’s athletes'];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * The clubs entered in the event, for its Clubs tab — every club with
+     * an athlete entered (the same ones the checklist counts), with its active
+     * athletes split by gender, most athletes first. Name, logo and who
+     * answers for the club — a name, never a phone or an email.
+     *
+     * @return array<int, array{name: string, contact: ?string, contactRole: ?string, logo: ?string, athletes: int, male: int, female: int}>
+     */
+    private function entryClubs(FederationEvent $e): array
+    {
+        return \App\Federations\Models\FederationEntry::where('federation_event_id', $e->id)
+            ->with(['club.club:id,club_name,logo,owner_user_id,owner_name', 'club.club.owner:id,full_name,name', 'application:id,name,coach', 'athletes' => fn ($q) => $q->where('status', 'Active')->whereHas('athlete.user')->with('athlete.user:id,gender')])
+            ->get()
+            // A club not yet approved entered through its application.
+            ->groupBy(fn ($en) => $en->federation_club_id ? 'c'.$en->federation_club_id : 'a'.$en->club_application_id)
+            ->map(function ($entries) {
+                $tenant = $entries->first()->club?->club;
+                $people = $entries->flatMap->athletes;
+                $female = $people->filter(fn ($a) => $a->athlete?->user?->gender === 'Female')->count();
+
+                // Who answers for the club at this event: the team manager its
+                // entry names, else the club's owner (or, for a club not yet
+                // approved, the coach on its application). A name only.
+                $manager = $entries->map(fn ($en) => trim((string) data_get($en->officials, 'mgr.name')))->first(fn ($n) => $n !== '');
+                $owner = trim((string) ($tenant?->owner?->full_name ?: $tenant?->owner?->name ?: $tenant?->owner_name ?: $entries->first()->application?->coach));
+
+                return [
+                    'name' => (string) ($tenant?->club_name ?: $entries->first()->application?->name ?: 'Unknown club'),
+                    'contact' => $manager ?: ($owner !== '' ? $owner : null),
+                    'contactRole' => $manager ? 'Team manager' : ($owner !== '' ? ($tenant ? 'Owner' : 'Coach') : null),
+                    'logo' => $tenant?->logo ? file_url($tenant->logo) : null,
+                    'athletes' => $people->count(),
+                    'male' => $people->count() - $female,
+                    'female' => $female,
+                ];
+            })
+            // Clubs with an athlete in, as the checklist counts them.
+            ->filter(fn ($c) => $c['athletes'] > 0)
+            ->sortBy(fn ($c) => [-$c['athletes'], mb_strtolower($c['name'])])
+            ->values()->all();
     }
 
     private function clubCount(FederationEvent $e): int

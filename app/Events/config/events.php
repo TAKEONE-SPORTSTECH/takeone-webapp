@@ -217,6 +217,24 @@ return [
     'tablet_draw_pin' => (bool) env('EVENT_TABLET_DRAW_PIN', false),
 
     /*
+     | Two boards side by side while arranging, and dragging a competitor from
+     | one division's draw into another's — MOVE (out of the old, into the
+     | new) or COPY (a second entry; the organiser says whether it is charged).
+     | App\Events\Support\Tournament\Transfer. OFF by default (RULE #1).
+     | EVENT_DRAW_TRANSFER=true, then config:cache.
+     */
+    'draw_transfer' => (bool) env('EVENT_DRAW_TRANSFER', false),
+
+    /*
+     | A division of ONE competitor gets a board: a final with them in one
+     | corner and the other empty (champion by walkover until somebody is put
+     | in it). And dropping a competitor from the basket onto a division with
+     | NO board makes that final (App\Events\Support\Tournament\LoneFinal).
+     | OFF by default (RULE #1). EVENT_LONE_ENTRANT_FINAL=true, then config:cache.
+     */
+    'lone_entrant_final' => (bool) env('EVENT_LONE_ENTRANT_FINAL', false),
+
+    /*
      | The entry list as an A4 PDF — the participants page's organiser download,
      | in two editions: the entry list and the desk check-in sheet
      | (App\Events\Support\ParticipantsPdf). Printed by the same Chromium as
@@ -226,6 +244,22 @@ return [
      */
     'participants_pdf' => [
         'enabled' => (bool) env('EVENT_PARTICIPANTS_PDF', false),
+    ],
+
+    /*
+     | Budget & profit — the organiser's plan for what an event costs and earns:
+     | planned costs, medals counted from the real divisions, break-even and a
+     | suggested fee, saved scenarios (App\Events\Support\Budget\BudgetPlan).
+     |
+     | OFF by default (RULE #1). EVENT_BUDGET=true, then config:cache.
+     */
+    'budget' => [
+        'enabled' => (bool) env('EVENT_BUDGET', false),
+        // The AI advisor inside it (App\Events\Support\Budget\BudgetAdvisor). Its own
+        // switch because it calls a paid/hosted model. OFF by default.
+        'advisor' => (bool) env('EVENT_BUDGET_ADVISOR', false),
+        // A different model on the same Ollama server (e.g. qwen3.5:latest). Empty = the text provider's own.
+        'advisor_model' => env('EVENT_BUDGET_ADVISOR_MODEL', ''),
     ],
 
     'bracket_pdf' => [

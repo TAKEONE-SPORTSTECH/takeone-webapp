@@ -712,8 +712,8 @@ class BracketPdf
     public function genderOf(string $name): ?string
     {
         return match (true) {
-            (bool) preg_match('/\bWomen\b/i', $name) => 'female',
-            (bool) preg_match('/\bMen\b/i', $name) => 'male',
+            (bool) preg_match('/\b(Female|Women)\b/i', $name) => 'female',
+            (bool) preg_match('/\b(Male|Men)\b/i', $name) => 'male',
             default => null,
         };
     }

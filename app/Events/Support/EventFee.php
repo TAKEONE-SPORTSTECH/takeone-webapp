@@ -496,6 +496,49 @@ class EventFee
      * in for a missing record, and an estimate that can only be too LOW is one
      * an organiser can reason about.
      */
+    /**
+     * Rewrite the display line (and zero the base amount) now that the fee
+     * list is the price — see the long note on PersonalEventController's
+     * refreshFeeDisplay(), which calls this. Run AFTER options are synced.
+     */
+    public static function refreshDisplay(ClubEvent $event): void
+    {
+        $columns = [];
+
+        foreach (['participant' => 'participant_fee', 'spectator' => 'spectator_fee'] as $role => $column) {
+            // An event still priced the old way keeps its own line untouched.
+            if (! EventFee::hasOptions($event, $role)) {
+                continue;
+            }
+
+            if ($role === 'spectator' && ! $event->spectator_enabled) {
+                continue;
+            }
+
+            $columns[$column] = EventFee::headline($event, $role);
+
+            /*
+             * ⚠️ The amount column has to be written in the SAME breath.
+             *
+             * ClubEvent's saving hook re-derives `*_fee_amount` from the display
+             * line whenever the line is dirty and the amount is not — the last
+             * surviving scrape, kept for forms that still post only a sentence.
+             * Writing "From BHD 5" alone therefore scraped the 5 straight back
+             * into the base, and every entrant was charged a phantom five on top
+             * of whatever they ticked. Marking the amount dirty is what tells
+             * the hook this caller already knows its own price.
+             *
+             * Zero rather than null: null means "nobody ever stated a price",
+             * and this event has stated one — it is simply stated in the list.
+             */
+            $columns[$role === 'spectator' ? 'spectator_fee_amount' : 'participant_fee_amount'] = 0;
+        }
+
+        if ($columns !== []) {
+            $event->forceFill($columns)->save();
+        }
+    }
+
     public static function listPrice(ClubEvent $event, string $role = 'participant'): float
     {
         $base = (float) (self::amount($event, $role) ?? 0.0);

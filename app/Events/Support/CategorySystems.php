@@ -288,7 +288,8 @@ class CategorySystems
             if (! $class) {
                 return null;
             }
-            $name = mb_substr($sport->divisionName($class['age_group'], $gender, $class['category']).$suffix, 0, 190);
+            $names = DivisionNames::candidates($sport, $class['age_group'], $gender, $class['category'], $suffix);
+            $name = $names[0];
             $group = collect($this->forEvent($event)?->ageGroups ?? [])->firstWhere('key', $class['age_group']);
             $attrs = ['weight_class' => $class['category'], 'min_weight' => (float) $class['min'], 'max_weight' => (float) $class['max']];
         } else {
@@ -297,13 +298,14 @@ class CategorySystems
             if ($groupKey === null) {
                 return null;
             }
-            $word = method_exists($sport, 'genderWord') ? $sport->genderWord($gender) : ($gender === 'female' ? 'Women' : 'Men');
+            $word = method_exists($sport, 'genderWord') ? $sport->genderWord($gender) : ($gender === 'female' ? 'Female' : 'Male');
             $name = mb_substr($groupKey.' '.$word.$suffix, 0, 190);
+            $names = [$name, mb_substr($groupKey.' '.($gender === 'female' ? 'Women' : 'Men').$suffix, 0, 190)];
             $group = collect($system->ageGroups ?? [])->firstWhere('key', $groupKey);
             $attrs = [];
         }
 
-        $existing = \App\Events\Models\EventCategory::where('event_id', $event->id)->where('name', $name)->first();
+        $existing = DivisionNames::find($event->id, $names);
         if ($existing) {
             return $existing;
         }
@@ -323,7 +325,7 @@ class CategorySystems
     private function ensureDivision(ClubEvent $event, CombatSport $sport, array $class, string $gender): bool
     {
         $name = $sport->divisionName($class['age_group'], $gender, $class['category']);
-        if (\App\Events\Models\EventCategory::where('event_id', $event->id)->where('name', $name)->exists()) {
+        if (DivisionNames::find($event->id, DivisionNames::candidates($sport, $class['age_group'], $gender, $class['category']))) {
             return false;
         }
         $group = collect($this->forEvent($event)?->ageGroups ?? [])->firstWhere('key', $class['age_group']);

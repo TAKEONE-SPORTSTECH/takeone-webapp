@@ -22,6 +22,10 @@ use Illuminate\Support\Collection;
  *                 the organiser and the event's officials print it.
  *   · `all`     — everybody ONCE, A–Z, no division sections: the entry
  *                 list's columns on one long list (owner, 2026-10-13).
+ *   · `checkin_club` — the desk sheet again, but one block per CLUB, each
+ *                 athlete once under it with the divisions they entered, so a
+ *                 club's coach can be checked in as a team (owner, 2026-10-14).
+ *                 Staff-only for the same reason as `checkin`.
  *
  * Every edition carries the gender (owner, 2026-10-13).
  *
@@ -45,7 +49,7 @@ use Illuminate\Support\Collection;
 class ParticipantsPdf
 {
     /** `all` is everybody once, A–Z, with no division sections (owner, 2026-10-13). */
-    public const KINDS = ['list', 'checkin', 'all'];
+    public const KINDS = ['list', 'checkin', 'all', 'checkin_club'];
 
     /** Body height a page offers under its band and above its footer, in mm. */
     private const BODY_MM = 228;
@@ -54,7 +58,7 @@ class ParticipantsPdf
     private const HEAD_MM = 20;
 
     /** One row, per edition — the view sets these exact heights. */
-    private const ROW_MM = ['list' => 12.5, 'checkin' => 8, 'all' => 12.5];
+    private const ROW_MM = ['list' => 12.5, 'checkin' => 11, 'all' => 12.5, 'checkin_club' => 11];
 
     public function __construct(private BracketPdf $pdf) {}
 
@@ -107,16 +111,20 @@ class ParticipantsPdf
             // The weight is on every edition (owner, 2026-10-13); payment only on the desk's.
             // On the flat list a person is one row whatever they entered: one body,
             // one weight — the one signed at the scale first, else the one declared.
-            $e = $kind === 'all'
-                ? (($mine = $entries->filter(fn ($v, $k) => str_starts_with($k, ($r['uuid'] ?? '').'|')))
-                    ->first(fn ($v) => $v['signed'] && $v['weight'] !== null) ?? $mine->first(fn ($v) => $v['weight'] !== null))
+            $mine = $entries->filter(fn ($v, $k) => str_starts_with($k, ($r['uuid'] ?? '').'|'));
+            $e = in_array($kind, ['all', 'checkin_club'], true)
+                ? ($mine->first(fn ($v) => $v['signed'] && $v['weight'] !== null) ?? $mine->first(fn ($v) => $v['weight'] !== null))
                 : $entries->get(($r['uuid'] ?? '').'|'.($division ?? ''));
             $row['weight'] = $e['weight'] ?? null;
             $row['signed'] = (bool) ($e['signed'] ?? false);
-            if ($kind !== 'checkin') {
-                $row['photo'] = ! empty($r['photo']) ? $this->pdf->dataUri((string) $r['photo'], $viewer) : null;
-            } else {
+            // The face on every edition — the desk matches the athlete in front of it to the row.
+            $row['photo'] = ! empty($r['photo']) ? $this->pdf->dataUri((string) $r['photo'], $viewer) : null;
+            if ($kind === 'checkin') {
                 $row['paid'] = (bool) ($e['paid'] ?? false);
+            } elseif ($kind === 'checkin_club') {
+                // One row for every entry they hold: ticked only when ALL are paid.
+                $row['paid'] = $mine->isNotEmpty() && $mine->every(fn ($v) => $v['paid']);
+                $row['divnames'] = array_values(array_map(fn ($d) => (string) $d['name'], (array) ($r['division_rows'] ?? [])));
             }
 
             return $row;
@@ -126,6 +134,30 @@ class ParticipantsPdf
         if ($kind === 'all') {
             return [['id' => null, 'name' => __('events::events.participants_pdf_all_heading'), 'gender' => null,
                 'people' => array_map(fn ($r) => $person($r, null), $rows)]];
+        }
+
+        // Each club's athletes under it, clubs A–Z, the clubless last.
+        if ($kind === 'checkin_club') {
+            $clubs = [];
+            foreach ($rows as $r) {
+                $p = $person($r, null);
+                $clubs[(string) ($p['club'] ?? '')][] = $p;
+            }
+            uksort($clubs, fn ($a, $b) => ($a === '') <=> ($b === '') ?: strnatcasecmp($a, $b));
+            // Inside a club: males A–Z, then females A–Z (owner, 2026-10-14).
+            foreach ($clubs as &$people) {
+                usort($people, fn ($a, $b) => ($a['gender'] === 'female') <=> ($b['gender'] === 'female')
+                    ?: strnatcasecmp($a['name'], $b['name']));
+            }
+            unset($people);
+
+            return array_map(fn ($name, $people) => [
+                'id' => null,
+                'name' => $name !== '' ? $name : __('events::events.participants_pdf_no_club'),
+                'gender' => null,
+                'logo' => $people[0]['club_logo'] ?? null,
+                'people' => $people,
+            ], array_keys($clubs), array_values($clubs));
         }
 
         // Everybody, filed under each division they entered.
@@ -216,7 +248,7 @@ class ParticipantsPdf
                 $fit = max(1, (int) floor(($left - self::HEAD_MM) / $row));
                 $chunk = array_splice($people, 0, $fit);
                 $pages[array_key_last($pages)][] = [
-                    'id' => $d['id'], 'name' => $d['name'], 'gender' => $d['gender'],
+                    'id' => $d['id'], 'name' => $d['name'], 'gender' => $d['gender'], 'logo' => $d['logo'] ?? null,
                     'total' => count($d['people']), 'continued' => $continued,
                     'start' => $n, 'people' => $chunk,
                 ];

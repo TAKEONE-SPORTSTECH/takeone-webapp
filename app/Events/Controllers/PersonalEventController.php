@@ -2922,6 +2922,42 @@ class PersonalEventController extends Controller
     }
 
     /**
+     * Drag a competitor from one division's draw into ANOTHER's — the split
+     * view's drop (App\Events\Support\Tournament\Transfer).
+     *
+     * MOVE is arranging, so it takes the arranging gate (the appointed jury
+     * included). COPY makes a second entry and may put a fee on it, which is
+     * money and therefore the ORGANISER's — the same line the outcome tools
+     * already draw between arranging a draw and managing an event.
+     */
+    public function transferBracket(Request $request, ClubEvent $event): JsonResponse
+    {
+        abort_unless(config('events.draw_transfer'), 404);
+
+        $me = Auth::user();
+        $this->assertCanArrange($event, $me);
+
+        $data = $request->validate([
+            'from_category_id' => ['required', 'integer'],
+            'competitor_id' => ['required', 'integer'],
+            'to_category_id' => ['required', 'integer'],
+            'to.type' => ['required', Rule::in(['slot', 'bench'])],
+            'to.match_id' => ['nullable', 'integer'],
+            'to.side' => ['nullable', Rule::in(['a', 'b'])],
+            'mode' => ['required', Rule::in(['move', 'copy'])],
+            'charge' => ['nullable', 'boolean'],
+        ]);
+
+        if ($data['mode'] === 'copy' && ! app(\App\Events\Support\EventAccess::class)->canManage($event, $me)) {
+            return response()->json(['success' => false, 'message' => __('events::events.transfer_copy_organiser')], 403);
+        }
+
+        $data['charge'] = (bool) ($data['charge'] ?? false);
+
+        return $this->dispatchAction($event, 'transfer_draw', $data);
+    }
+
+    /**
      * Who could still be admitted to a division — the picker's list.
      *
      * Everybody entered in the championship who is NOT already standing in this
@@ -4155,7 +4191,10 @@ class PersonalEventController extends Controller
             $preselect = $host;
         }
 
-        return view('events::personal.event-create', ['clubs' => $clubs, 'preselectClub' => $preselect] + $this->schemaPayload());
+        // The fee hint under Fee types: the organiser's last planned budget, as a yardstick.
+        $budgetYardstick = \App\Events\Support\Budget\BudgetPlan::yardstick(Auth::user());
+
+        return view('events::personal.event-create', ['clubs' => $clubs, 'preselectClub' => $preselect, 'budgetYardstick' => $budgetYardstick] + $this->schemaPayload());
     }
 
     /** Schema + (in edit mode) the event's existing divisions for the form. */
@@ -4837,40 +4876,9 @@ class PersonalEventController extends Controller
      */
     private function refreshFeeDisplay(ClubEvent $event): void
     {
-        $columns = [];
-
-        foreach (['participant' => 'participant_fee', 'spectator' => 'spectator_fee'] as $role => $column) {
-            // An event still priced the old way keeps its own line untouched.
-            if (! EventFee::hasOptions($event, $role)) {
-                continue;
-            }
-
-            if ($role === 'spectator' && ! $event->spectator_enabled) {
-                continue;
-            }
-
-            $columns[$column] = EventFee::headline($event, $role);
-
-            /*
-             * ⚠️ The amount column has to be written in the SAME breath.
-             *
-             * ClubEvent's saving hook re-derives `*_fee_amount` from the display
-             * line whenever the line is dirty and the amount is not — the last
-             * surviving scrape, kept for forms that still post only a sentence.
-             * Writing "From BHD 5" alone therefore scraped the 5 straight back
-             * into the base, and every entrant was charged a phantom five on top
-             * of whatever they ticked. Marking the amount dirty is what tells
-             * the hook this caller already knows its own price.
-             *
-             * Zero rather than null: null means "nobody ever stated a price",
-             * and this event has stated one — it is simply stated in the list.
-             */
-            $columns[$role === 'spectator' ? 'spectator_fee_amount' : 'participant_fee_amount'] = 0;
-        }
-
-        if ($columns !== []) {
-            $event->forceFill($columns)->save();
-        }
+        // Moved verbatim to EventFee so the budget's "apply this fee" writes
+        // the line the same way (2026-10-13).
+        EventFee::refreshDisplay($event);
     }
 
     /** Set / update the event's winners (podium). Manager only. */

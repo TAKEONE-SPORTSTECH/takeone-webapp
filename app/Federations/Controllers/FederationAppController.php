@@ -172,6 +172,8 @@ class FederationAppController extends Controller
                 'transferDecide' => route('federations.api.transfers.decide'),
                 'regsWithdraw' => route('federations.api.regs.withdraw'),
                 'regsApprove' => route('federations.api.regs.approve'),
+                // An athlete's edit dialog on the Athletes tab (FederationAthleteEditor).
+                'regsAthlete' => ['show' => route('federations.api.regs.athlete'), 'update' => route('federations.api.regs.athlete.update')],
                 'regsEnrol' => config('federations.manual_enrolment') && \Illuminate\Support\Facades\Route::has('federations.api.regs.enrol') ? route('federations.api.regs.enrol') : null,
                 'regsImport' => config('federations.manual_enrolment') && \Illuminate\Support\Facades\Route::has('federations.api.regs.import') ? [
                     'template' => route('federations.api.regs.template'),
@@ -232,7 +234,7 @@ class FederationAppController extends Controller
             // The platform event's real bracket and results, for the Statistics tab.
             'brackets' => app(\App\Federations\Services\FederationEventBracket::class)->payload($access),
             // Each event's own officials, for the event's Officials tab.
-            'eventOfficials' => app(\App\Federations\Services\FederationEventOfficials::class)->payload($access),
+            'eventOfficials' => app(\App\Federations\Services\FederationEventOfficials::class)->payload($access, $user),
             'schedules' => app(\App\Federations\Services\FederationSchedule::class)->payload($access),
             'messageClubs' => $this->messages->clubMap($access),
             // The prototype's own storage keys, filled from the server. The

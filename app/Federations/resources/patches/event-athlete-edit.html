@@ -1,0 +1,114 @@
+      <sc-if value="{{ ae.open }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ ae.onClose }}" style="position:fixed;inset:0;background:rgba(30,44,79,.5);z-index:60;display:grid;place-items:center;padding:20px">
+          <div onClick="{{ ae.stop }}" role="dialog" aria-modal="true" aria-label="Edit athlete" style="background:#fff;border-radius:20px;border-top:4px solid #d8b25f;max-width:620px;width:100%;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(30,44,79,.35);animation:rise .25s cubic-bezier(.22,.68,.35,1) both;box-sizing:border-box">
+            <div style="padding:22px 28px 16px;border-bottom:1px solid #eef1f6;flex:none;display:flex;align-items:center;gap:12px">
+              <div style="min-width:0">
+                <div style="font-size:.66rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:#8a6d20;margin-bottom:4px">Athlete &#183; {{ ae.takeoneId }}</div>
+                <h2 style="margin:0;font-size:1.2rem;font-weight:700;letter-spacing:-.01em;overflow-wrap:anywhere">{{ ae.title }}</h2>
+              </div>
+              <button type="button" onClick="{{ ae.onClose }}" aria-label="Close" style="margin-left:auto;width:34px;height:34px;border:1px solid #d5dae3;border-radius:9px;background:#fff;font-size:.9rem;color:#6b7689;cursor:pointer;flex:none" style-hover="border-color:#caa14f;color:#1e2c4f">&#10005;</button>
+            </div>
+
+            <div style="flex:1;overflow-y:auto;padding:4px 28px 20px">
+              <sc-if value="{{ ae.hasMsg }}" hint-placeholder-val="{{ false }}">
+                <div role="alert" style="margin-top:14px;padding:10px 12px;border-radius:10px;font-size:.8rem;line-height:1.5;color:#8f2f25;background:#fdecea">{{ ae.msg }}</div>
+              </sc-if>
+              <sc-if value="{{ ae.loading }}" hint-placeholder-val="{{ false }}">
+                <div style="padding:26px 0;font-size:.82rem;color:#6b7689">Loading the athlete&#8230;</div>
+              </sc-if>
+
+              <sc-if value="{{ ae.ready }}" hint-placeholder-val="{{ true }}">
+                <sc-if value="{{ ae.locked }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:14px;padding:10px 12px;border-radius:10px;font-size:.76rem;line-height:1.5;color:#5d6880;background:#f4f6fa">This athlete has their own TakeOne account, so their name, gender, date of birth and photo are theirs to change. You can still update their nationality, national ID and weight.</div>
+                </sc-if>
+                <sc-if value="{{ ae.readOnly }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:14px;padding:10px 12px;border-radius:10px;font-size:.76rem;line-height:1.5;color:#5d6880;background:#f4f6fa">Only a federation manager can change an athlete.</div>
+                </sc-if>
+
+                <div style="display:flex;gap:18px;align-items:flex-start;margin-top:18px;flex-wrap:wrap">
+                  <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+                    <div style="{{ ae.photoStyle }}"><sc-if value="{{ ae.noPhoto }}" hint-placeholder-val="{{ false }}">{{ ae.initials }}</sc-if></div>
+                    <sc-if value="{{ ae.canPhoto }}" hint-placeholder-val="{{ true }}">
+                      <button type="button" onClick="{{ ae.onPhoto }}" style="height:32px;padding:0 12px;border:1px solid #caa14f;border-radius:9px;background:#fdf6e6;font-family:inherit;font-size:.72rem;font-weight:700;color:#8a6d20;cursor:pointer" style-hover="background:#fbeecb">{{ ae.photoLabel }}</button>
+                    </sc-if>
+                    <sc-if value="{{ ae.photoNew }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-size:.66rem;color:#2f7a4f;font-weight:600">New &#8212; saved with the form</span>
+                    </sc-if>
+                  </div>
+                  <div style="flex:1;min-width:240px">
+                    <div style="font-size:.66rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#8a6d20;margin:16px 0 6px;margin-top:0">Full name</div>
+                    <sc-if value="{{ ae.editOwn }}" hint-placeholder-val="{{ true }}">
+                      <input value="{{ ae.name }}" onChange="{{ ae.onName }}" aria-label="Full name" style="height:42px;width:100%;border:1px solid #e3e7ee;border-radius:11px;background:#f1f3f7;padding:0 12px;font-family:inherit;font-size:.82rem;color:#1e2c4f;outline:none;box-sizing:border-box" style-focus="background:#fff;border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+                    </sc-if>
+                    <sc-if value="{{ ae.viewOwn }}" hint-placeholder-val="{{ false }}">
+                      <div style="min-height:42px;display:flex;align-items:center;padding:0 12px;border-radius:11px;background:#f7f8fb;border:1px dashed #e3e7ee;font-size:.82rem;color:#1e2c4f">{{ ae.name }}</div>
+                    </sc-if>
+
+                    <div style="font-size:.66rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#8a6d20;margin:16px 0 6px">Gender</div>
+                    <div style="display:flex;gap:8px">
+                      <button type="button" onClick="{{ ae.onMale }}" style="{{ ae.maleStyle }}">Male</button>
+                      <button type="button" onClick="{{ ae.onFemale }}" style="{{ ae.femaleStyle }}">Female</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="font-size:.66rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#8a6d20;margin:16px 0 6px">Date of birth</div>
+                <sc-if value="{{ ae.editOwn }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:grid;grid-template-columns:72px 72px 110px;gap:8px">
+                    <input value="{{ ae.dd }}" onChange="{{ ae.onDd }}" inputmode="numeric" placeholder="Day" aria-label="Day of birth" style="height:42px;width:100%;border:1px solid #e3e7ee;border-radius:11px;background:#f1f3f7;padding:0 12px;font-family:inherit;font-size:.82rem;color:#1e2c4f;outline:none;box-sizing:border-box;text-align:center" style-focus="background:#fff;border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+                    <input value="{{ ae.mm }}" onChange="{{ ae.onMm }}" inputmode="numeric" placeholder="Month" aria-label="Month of birth" style="height:42px;width:100%;border:1px solid #e3e7ee;border-radius:11px;background:#f1f3f7;padding:0 12px;font-family:inherit;font-size:.82rem;color:#1e2c4f;outline:none;box-sizing:border-box;text-align:center" style-focus="background:#fff;border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+                    <input value="{{ ae.yy }}" onChange="{{ ae.onYy }}" inputmode="numeric" placeholder="Year" aria-label="Year of birth" style="height:42px;width:100%;border:1px solid #e3e7ee;border-radius:11px;background:#f1f3f7;padding:0 12px;font-family:inherit;font-size:.82rem;color:#1e2c4f;outline:none;box-sizing:border-box;text-align:center" style-focus="background:#fff;border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+                  </div>
+                  <div style="font-size:.7rem;color:#6b7689;margin-top:6px">Day, month, year. Leave all three empty if it is not known &#8212; a guessed birthdate puts an athlete in the wrong age group.</div>
+                </sc-if>
+                <sc-if value="{{ ae.viewOwn }}" hint-placeholder-val="{{ false }}">
+                  <div style="min-height:42px;display:flex;align-items:center;padding:0 12px;border-radius:11px;background:#f7f8fb;border:1px dashed #e3e7ee;font-size:.82rem;color:#1e2c4f">{{ ae.dobText }}</div>
+                </sc-if>
+
+                <div style="font-size:.66rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#8a6d20;margin:16px 0 6px">Nationality</div>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <button type="button" onClick="{{ ae.onNatOpen }}" style="flex:1;height:42px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;border:1px solid #e3e7ee;border-radius:11px;background:#fff;font-family:inherit;font-size:.82rem;color:#1e2c4f;cursor:pointer;text-align:start">{{ ae.natShown }}<span aria-hidden="true" style="color:#8a6d20;font-size:.7rem">&#9662;</span></button>
+                </div>
+                <sc-if value="{{ ae.natOpen }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:8px;padding:10px;border:1px solid #eef1f6;border-radius:12px;background:#fff;box-shadow:0 10px 24px rgba(30,44,79,.08)">
+                    <input value="{{ ae.natQ }}" onChange="{{ ae.onNatQ }}" placeholder="Type a country…" aria-label="Search countries" style="height:42px;width:100%;border:1px solid #e3e7ee;border-radius:11px;background:#f1f3f7;padding:0 12px;font-family:inherit;font-size:.82rem;color:#1e2c4f;outline:none;box-sizing:border-box" style-focus="background:#fff;border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+                    <sc-if value="{{ ae.natHasMatches }}" hint-placeholder-val="{{ false }}">
+                      <div style="margin-top:6px;max-height:220px;overflow-y:auto">
+                        <sc-for list="{{ ae.natMatches }}" as="c" hint-placeholder-count="3">
+                          <button type="button" onClick="{{ c.onPick }}" style="display:block;width:100%;text-align:start;padding:8px 10px;border:0;border-radius:8px;background:#fff;font-family:inherit;font-size:.8rem;color:#1e2c4f;cursor:pointer" style-hover="background:#f7f8fb">{{ c.label }}</button>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ ae.natNone }}" hint-placeholder-val="{{ false }}">
+                      <div style="font-size:.74rem;color:#6b7689;padding:8px 4px">No country matches.</div>
+                    </sc-if>
+                    <button type="button" onClick="{{ ae.onNatClear }}" style="margin-top:6px;height:30px;padding:0 10px;border:0;background:transparent;font-family:inherit;font-size:.72rem;font-weight:600;color:#b4483c;cursor:pointer">Clear nationality</button>
+                  </div>
+                </sc-if>
+
+                <div style="display:grid;grid-template-columns:1fr 160px;gap:12px">
+                  <div>
+                    <div style="font-size:.66rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#8a6d20;margin:16px 0 6px">National ID</div>
+                    <input value="{{ ae.natId }}" onChange="{{ ae.onNatId }}" aria-label="National ID" style="height:42px;width:100%;border:1px solid #e3e7ee;border-radius:11px;background:#f1f3f7;padding:0 12px;font-family:inherit;font-size:.82rem;color:#1e2c4f;outline:none;box-sizing:border-box" style-focus="background:#fff;border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+                  </div>
+                  <div>
+                    <div style="font-size:.66rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#8a6d20;margin:16px 0 6px">Weight (kg)</div>
+                    <input value="{{ ae.weight }}" onChange="{{ ae.onWeight }}" inputmode="decimal" aria-label="Weight in kilograms" style="height:42px;width:100%;border:1px solid #e3e7ee;border-radius:11px;background:#f1f3f7;padding:0 12px;font-family:inherit;font-size:.82rem;color:#1e2c4f;outline:none;box-sizing:border-box" style-focus="background:#fff;border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+                  </div>
+                </div>
+                <div style="font-size:.7rem;color:#6b7689;margin-top:6px">The weight on this entry. It stops following this form once the athlete has been weighed in.</div>
+              </sc-if>
+            </div>
+
+            <sc-if value="{{ ae.edit }}" hint-placeholder-val="{{ true }}">
+              <div style="padding:14px 28px;border-top:1px solid #eef1f6;flex:none;display:flex;align-items:center;gap:10px">
+                <button type="button" onClick="{{ ae.onClose }}" style="height:42px;padding:0 18px;border:1px solid #d5dae3;border-radius:11px;background:#fff;font-family:inherit;font-size:.8rem;font-weight:600;color:#5d6880;cursor:pointer">Cancel</button>
+                <button type="button" onClick="{{ ae.onSave }}" style="{{ ae.saveStyle }}">{{ ae.saveLabel }}</button>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ ae.hasFlash }}" hint-placeholder-val="{{ false }}">
+        <div role="status" style="position:fixed;right:24px;bottom:24px;z-index:70;padding:12px 16px;border-radius:12px;background:#1e2c4f;color:#fff;font-size:.8rem;font-weight:600;box-shadow:0 14px 40px rgba(30,44,79,.3);animation:rise .25s cubic-bezier(.22,.68,.35,1) both">{{ ae.flash }}</div>
+      </sc-if>

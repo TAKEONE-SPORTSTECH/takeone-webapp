@@ -273,6 +273,18 @@
                     </span>
                     <i class="bi bi-chevron-right text-gray-300 group-hover:text-primary transition-colors"></i>
                 </button>
+
+                @if (\App\Events\Support\Budget\BudgetPlan::enabled())
+                    <a href="{{ route('me.events.budget', $e['key']) }}"
+                       class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-start gap-4 text-start hover:shadow-md hover:border-primary/30 transition-all group">
+                        <span class="w-12 h-12 rounded-xl grid place-items-center flex-shrink-0" style="background:#efedfe;color:#5b4bd6"><i class="bi bi-graph-up-arrow text-xl"></i></span>
+                        <span class="min-w-0 flex-1">
+                            <span class="block text-sm font-bold text-gray-900">{{ __('events::events.budget_title') }}</span>
+                            <span class="block text-xs text-muted-foreground mt-1 truncate">{{ __('events::events.budget_row_sub') }}</span>
+                        </span>
+                        <i class="bi bi-chevron-right text-gray-300 group-hover:text-primary transition-colors rtl:rotate-180"></i>
+                    </a>
+                @endif
             @endif
         </div>
     @endif

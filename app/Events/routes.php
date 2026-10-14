@@ -430,6 +430,7 @@ Route::where(['token' => '[A-Za-z0-9]{40}'])->prefix('/tablet/{token}/draw')->na
     Route::post('/unlock', [App\Events\Controllers\TabletDrawController::class, 'unlock'])->name('.unlock')->middleware('throttle:10,1');
     Route::post('/lock', [App\Events\Controllers\TabletDrawController::class, 'lock'])->name('.lock')->middleware('throttle:30,1');
     Route::put('/arrange', [App\Events\Controllers\TabletDrawController::class, 'arrange'])->name('.arrange')->middleware('throttle:bracket-arrange');
+    Route::put('/transfer', [App\Events\Controllers\TabletDrawController::class, 'transfer'])->name('.transfer')->middleware('throttle:bracket-arrange');
     Route::put('/admit', [App\Events\Controllers\TabletDrawController::class, 'admit'])->name('.admit')->middleware('throttle:member-write');
     Route::get('/candidates', [App\Events\Controllers\TabletDrawController::class, 'candidates'])->name('.candidates')->middleware('throttle:event-desk');
     Route::post('/unnamed', [App\Events\Controllers\TabletDrawController::class, 'unnamed'])->name('.unnamed')->middleware('throttle:admin-write');
@@ -735,6 +736,7 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
     Route::put('/events/{event:uuid}/draw-pin', [App\Events\Controllers\DrawPinController::class, 'update'])->name('events.draw-pin.update')->middleware('throttle:member-write');
     Route::delete('/events/{event:uuid}/draw-pin', [App\Events\Controllers\DrawPinController::class, 'destroy'])->name('events.draw-pin.destroy')->middleware('throttle:member-write');
     Route::put('/events/{event:uuid}/brackets/arrange', [App\Events\Controllers\PersonalEventController::class, 'arrangeBracket'])->name('events.bracket.arrange')->middleware('throttle:bracket-arrange');
+    Route::put('/events/{event:uuid}/brackets/transfer', [App\Events\Controllers\PersonalEventController::class, 'transferBracket'])->name('events.bracket.transfer')->middleware('throttle:bracket-arrange');
     Route::put('/events/{event:uuid}/brackets/clear', [App\Events\Controllers\PersonalEventController::class, 'clearBracket'])->name('events.bracket.clear')->middleware('throttle:member-write');
     /* Whether THIS championship plays third place off. Re-cuts the play-off
        bouts on the way through, so the draw agrees with the setting the moment
@@ -899,6 +901,24 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
     // Paid featuring on /me/events — the organiser's side (App\Events\Support\EventFeaturing).
     Route::get('/events/{event:uuid}/feature', [App\Events\Controllers\EventFeatureController::class, 'show'])->name('events.feature')->middleware('throttle:60,1');
     Route::post('/events/{event:uuid}/feature', [App\Events\Controllers\EventFeatureController::class, 'store'])->name('events.feature.store')->middleware('throttle:uploads');
+    // Budget & profit — the organiser's plan for what the event costs and earns
+    // (App\Events\Support\Budget\BudgetPlan). Organiser only; behind EVENT_BUDGET.
+    Route::get('/events/{event:uuid}/budget', [App\Events\Controllers\EventBudgetController::class, 'show'])->name('events.budget')->middleware('throttle:60,1');
+    Route::get('/events/{event:uuid}/budget/data', [App\Events\Controllers\EventBudgetController::class, 'data'])->name('events.budget.data')->middleware('throttle:120,1');
+    Route::put('/events/{event:uuid}/budget', [App\Events\Controllers\EventBudgetController::class, 'update'])->name('events.budget.update')->middleware('throttle:member-write');
+    Route::post('/events/{event:uuid}/budget/items', [App\Events\Controllers\EventBudgetController::class, 'storeItem'])->name('events.budget.items.store')->middleware('throttle:member-write');
+    Route::put('/events/{event:uuid}/budget/items/{item}', [App\Events\Controllers\EventBudgetController::class, 'updateItem'])->name('events.budget.items.update')->whereUuid('item')->middleware('throttle:member-write');
+    Route::delete('/events/{event:uuid}/budget/items/{item}', [App\Events\Controllers\EventBudgetController::class, 'destroyItem'])->name('events.budget.items.destroy')->whereUuid('item')->middleware('throttle:member-write');
+    Route::post('/events/{event:uuid}/budget/scenarios', [App\Events\Controllers\EventBudgetController::class, 'storeScenario'])->name('events.budget.scenarios.store')->middleware('throttle:member-write');
+    Route::delete('/events/{event:uuid}/budget/scenarios/{scenario}', [App\Events\Controllers\EventBudgetController::class, 'destroyScenario'])->name('events.budget.scenarios.destroy')->whereUuid('scenario')->middleware('throttle:member-write');
+    Route::post('/events/{event:uuid}/budget/scenarios/{scenario}/approve', [App\Events\Controllers\EventBudgetController::class, 'approve'])->name('events.budget.scenarios.approve')->whereUuid('scenario')->middleware('throttle:member-write');
+    Route::get('/events/{event:uuid}/budget/sources', [App\Events\Controllers\EventBudgetController::class, 'sources'])->name('events.budget.sources')->middleware('throttle:60,1');
+    Route::post('/events/{event:uuid}/budget/divisions', [App\Events\Controllers\EventBudgetController::class, 'divisions'])->name('events.budget.divisions')->middleware('throttle:60,1');
+    Route::post('/events/{event:uuid}/budget/copy', [App\Events\Controllers\EventBudgetController::class, 'copy'])->name('events.budget.copy')->middleware('throttle:member-write');
+    // The advisor calls a language model — tightly throttled (application-layer cost, CLAUDE.md §14).
+    Route::get('/events/{event:uuid}/budget/advisor', [App\Events\Controllers\EventBudgetController::class, 'advisorHistory'])->name('events.budget.advisor.history')->middleware('throttle:60,1');
+    Route::delete('/events/{event:uuid}/budget/advisor', [App\Events\Controllers\EventBudgetController::class, 'advisorReset'])->name('events.budget.advisor.reset')->middleware('throttle:member-write');
+    Route::post('/events/{event:uuid}/budget/advisor', [App\Events\Controllers\EventBudgetController::class, 'advise'])->name('events.budget.advisor')->middleware('throttle:10,1');
 
     /*
      * ⚠️ These live under /day-order, NOT /running-order, and must stay there.

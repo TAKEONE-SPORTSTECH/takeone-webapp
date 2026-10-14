@@ -1,8 +1,10 @@
 {{--
     The entry list, as pages to print — App\Events\Support\ParticipantsPdf feeds
     this to headless Chromium (through BracketPdf::render) and returns what it
-    prints. Three editions: `list` (the entry list), `checkin` (the desk sheet)
-    and `all` (everybody once, A–Z, drawn with the entry list's columns).
+    prints. Four editions: `list` (the entry list), `checkin` (the desk sheet),
+    `checkin_club` (the desk sheet, one block per club, its Club column turned
+    into the divisions each athlete entered) and `all` (everybody once, A–Z,
+    drawn with the entry list's columns).
 
     The draw PDF's "Fight night" look — navy and gold, Barlow Condensed, a gold
     diagonal under every band, square edges and hairlines — so the two read as
@@ -21,7 +23,8 @@
     $navy = '#16213d';
     $goldInk = '#a8862f';   // gold dark enough to read as type on white
     $rtl = app()->getLocale() === 'ar';
-    $check = $kind === 'checkin';
+    $byClub = $kind === 'checkin_club';
+    $check = $kind === 'checkin' || $byClub;
     $total = count($pages);
     $heading = __('events::events.participants_pdf_'.($kind === 'all' ? 'all_title' : $kind));
 @endphp
@@ -91,13 +94,19 @@
         .r:last-child { border-bottom: 0; }
         .r:nth-child(even) { background: #fafbfd; }
         .grid-list { grid-template-columns: 6mm 7.5mm minmax(0, 1fr) 40mm 11mm 10mm 16mm 12mm; }
-        .grid-checkin { grid-template-columns: 7mm 6mm minmax(0, 1fr) 40mm 11mm 10mm 11mm 20mm 10mm; }
+        .grid-checkin { grid-template-columns: 7mm 6mm 7.5mm minmax(0, 1fr) 33mm 11mm 10mm 11mm 20mm 10mm; }
+        /* By club: the club is the block's heading, so its column carries the divisions instead. */
+        .grid-checkin.by-club { grid-template-columns: 7mm 6mm 7.5mm minmax(0, 1fr) minmax(0, 1fr) 11mm 8mm 11mm 18mm 9mm; }
+        .dvn { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: .3mm; }
+        .dvn span { font-size: 6.6pt; font-weight: 700; color: #5d6880; text-transform: uppercase; letter-spacing: .02em;
+                    white-space: nowrap; overflow: hidden; line-height: 1.35; }
+        .dv-h .lg { width: 6.5mm; height: 6.5mm; object-fit: contain; flex: 0 0 auto; }
         /* Gender: the platform's blue and pink, icon and a short word. */
         .sx { display: flex; align-items: center; justify-content: center; gap: .8mm; font-size: 7pt; font-weight: 800; white-space: nowrap; }
         .sx.male { color: #2563eb; } .sx.female { color: #db2777; } .sx.none { color: #b4bac7; }
         .sx i { font-size: 8pt; }
         .r.grid-list { height: 12.5mm; }
-        .r.grid-checkin { height: 8mm; }
+        .r.grid-checkin { height: 11mm; }
 
         .no { font-family: 'Barlow Condensed', 'Inter', sans-serif; font-weight: 800; font-size: 10pt; color: #9aa3b2; font-variant-numeric: tabular-nums; }
         /* The face, at the platform's 3:4. */
@@ -170,10 +179,14 @@
 
             <div class="body">
                 @foreach($page as $d)
-                    @php $grid = $check ? 'grid-checkin' : 'grid-list'; @endphp
+                    @php $grid = $check ? ('grid-checkin'.($byClub ? ' by-club' : '')) : 'grid-list'; @endphp
                     <div class="dv">
                         <div class="dv-h">
-                            <span class="g {{ $d['gender'] }}"></span>
+                            @if($byClub)
+                                @if($d['logo'] ?? null)<img class="lg" src="{{ $d['logo'] }}" alt="">@endif
+                            @else
+                                <span class="g {{ $d['gender'] }}"></span>
+                            @endif
                             <span class="nm pfit">{{ $d['name'] }}</span>
                             @if($d['continued'])<span class="cont">· {{ __('events::events.draw_print_continued') }}</span>@endif
                             <span class="n">{{ $d['total'] }}</span>
@@ -182,8 +195,9 @@
                             @if($check)
                                 <span class="ctr">{{ __('events::events.participants_pdf_col_here') }}</span>
                                 <span></span>
+                                <span></span>
                                 <span>{{ __('events::events.participants_pdf_col_athlete') }}</span>
-                                <span>{{ __('events::events.participants_pdf_col_club') }}</span>
+                                <span>{{ __('events::events.participants_pdf_col_'.($byClub ? 'division' : 'club')) }}</span>
                                 <span class="ctr">{{ __('events::events.participants_pdf_col_gender') }}</span>
                                 <span class="ctr">{{ __('events::events.participants_pdf_col_age') }}</span>
                                 <span class="ctr">{{ __('events::events.participants_pdf_col_belt') }}</span>
@@ -206,17 +220,20 @@
                                     <span class="box"></span>
                                 @endif
                                 <span class="no">{{ $d['start'] + $i + 1 }}</span>
-                                @unless($check)
-                                    <span class="ph">
-                                        @if($p['photo'])<img src="{{ $p['photo'] }}" alt="">@else<img class="none" src="{{ $placeholders[$p['gender']] }}" alt="">@endif
-                                    </span>
-                                @endunless
+                                <span class="ph">
+                                    @if($p['photo'])<img src="{{ $p['photo'] }}" alt="">@else<img class="none" src="{{ $placeholders[$p['gender']] }}" alt="">@endif
+                                </span>
                                 <div class="who-c">
                                     <div class="an pfit">@if($p['country'])<span class="fi fi-{{ $p['country'] }}"></span>@endif<bdi>{{ $p['name'] }}</bdi></div>
                                     @if(! $check && $p['stage'])
                                         <div class="as">{{ $p['stage'] }}</div>
                                     @endif
                                 </div>
+                                @if($byClub)
+                                <div class="dvn">
+                                    @forelse($p['divnames'] as $dn)<span class="pfit"><bdi>{{ $dn }}</bdi></span>@empty<span style="color:#b4bac7">—</span>@endforelse
+                                </div>
+                                @else
                                 <div class="cl">
                                     @if($p['club'])
                                         @if($p['club_logo'])<img src="{{ $p['club_logo'] }}" alt="">@endif
@@ -225,6 +242,7 @@
                                         <span style="color:#b4bac7">—</span>
                                     @endif
                                 </div>
+                                @endif
                                 <span class="sx {{ $p['sex'] ?? 'none' }}">
                                     @if($p['sex'])<i class="bi bi-gender-{{ $p['sex'] }}"></i>{{ __('events::events.participants_pdf_gender_'.$p['sex']) }}@else—@endif
                                 </span>

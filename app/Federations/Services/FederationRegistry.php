@@ -624,7 +624,7 @@ class FederationRegistry
      * The page used to guess the division from today's age and the generic
      * weight table; the event's own placement is the one the draw uses.
      *
-     * @return array{live: array<string, true>, division: array<string, array{ageGroup: string, division: string}>}
+     * @return array{live: array<string, true>, division: array<string, array{ageGroup?: string, division?: string, divisionName: string, divisionAges?: string, unplaced?: true}>}
      */
     private function placements(FederationEntry $entry): array
     {
@@ -637,7 +637,7 @@ class FederationRegistry
                 ->leftJoin('club_event_registrations as r', fn ($j) => $j->on('r.user_id', '=', 'u.id')
                     ->where('r.event_id', $eventId)->where('r.role', 'participant'))
                 ->leftJoin('event_categories as c', 'c.id', '=', 'r.category_id')
-                ->addSelect('c.name as cat', 'c.weight_class', 'c.min_age', 'c.sort_order'))
+                ->addSelect('c.name as cat', 'c.weight_class', 'c.min_age', 'c.max_age', 'c.sort_order'))
             ->where('ea.federation_entry_id', $entry->id)
             ->addSelect('fa.takeone_id')
             ->get();
@@ -652,10 +652,33 @@ class FederationRegistry
             }
             // The page's own vocabulary, so its division keys stay what they were —
             // one mapping, shared with the Statistics tab's bracket.
-            $division[$tk] = FederationEventBracket::division((string) $r->cat, $r->weight_class, $r->min_age !== null ? (int) $r->min_age : null);
+            $division[$tk] = FederationEventBracket::division((string) $r->cat, $r->weight_class, $r->min_age !== null ? (int) $r->min_age : null)
+                // The name the event itself gives the division — shown, never keyed on.
+                + ['divisionName' => (string) $r->cat, 'divisionAges' => self::ages($r->min_age, $r->max_age)];
+        }
+        // On an event that runs on the platform, an athlete the event has not
+        // placed is said to be unplaced — never given a division the page guessed.
+        if ($eventId) {
+            foreach (array_keys($live) as $tk) {
+                $division[$tk] ??= ['divisionName' => '', 'unplaced' => true];
+            }
         }
 
         return ['live' => $live, 'division' => $division];
+    }
+
+    /** A category's age range as the event set it: "6–11", "18+", "Under 12". */
+    private static function ages($min, $max): string
+    {
+        $min = $min !== null ? (int) $min : null;
+        $max = $max !== null ? (int) $max : null;
+
+        return match (true) {
+            $min !== null && $max !== null => $min === $max ? (string) $min : $min.'–'.$max,
+            $min !== null => $min.'+',
+            $max !== null => 'Up to '.$max,
+            default => '',
+        };
     }
 
     // ------------------------------------------------------------- transfers

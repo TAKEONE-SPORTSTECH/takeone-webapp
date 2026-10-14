@@ -377,13 +377,15 @@
                 </button>
 
                 <button type="button" x-show="! d.is_heading" @click="openEdit(d, i)" :disabled="! canManage"
+                        :style="cardTint(d)"
                         class="m-card m-press w-full text-start bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 flex items-center gap-3">
                     <span class="w-11 h-11 rounded-2xl grid place-items-center flex-shrink-0 text-white"
                           style="background: {{ $c }}">
                         <i class="bi bi-diagram-3-fill bracket-icon text-lg"></i>
                     </span>
                     <span class="min-w-0 flex-1">
-                        <span class="block text-sm font-bold text-foreground truncate" x-text="d.name || words.untitled"></span>
+                        {{-- The gender word inked: Male blue, Female pink (x-text only — never x-html). --}}
+                        <span class="block text-sm font-bold text-foreground truncate"><template x-for="(part, k) in nameParts(d.name || words.untitled)" :key="k"><span :style="part.style" x-text="part.text"></span></template></span>
                         <span class="block text-[11px] text-muted-foreground mt-0.5 truncate" x-text="summary(d)"></span>
 
         {{-- Who is IN it. A division's entrant count is a number in the
@@ -2083,6 +2085,26 @@
            is A, the next B. So it changes when cards are dragged, which is why
            the list re-letters auto-named rows after a reorder (see reletter).
            A hand-typed name never gets a letter imposed on it. */
+        /* A division's name in pieces, with its gender word inked the way the
+           event page inks its groups: Male blue, Female pink. */
+        /* The card takes its division's gender: Female pink, Male blue, anything
+           else (mixed, open, unset) stays white. */
+        cardTint(d) {
+            const g = String((d && ((d.range && d.range.gender) || d.gender)) || '').toLowerCase();
+            if (g === 'female') return 'background-color:#fbcfe8;border-color:#f472b6';
+            if (g === 'male') return 'background-color:#bfdbfe;border-color:#60a5fa';
+            return '';
+        },
+
+        nameParts(name) {
+            const text = String(name || '');
+            const m = /^(.*?)\b(Male|Female)\b(.*)$/i.exec(text);
+            if (! m) return [{text, style: ''}];
+            return [{text: m[1], style: ''},
+                {text: m[2], style: /^f/i.test(m[2]) ? 'color:#ec4899' : 'color:#3b82f6'},
+                {text: m[3], style: ''}];
+        },
+
         generatedName(index) {
             const body = this.nameBody(index);
             const letter = this.groupLetter(index);

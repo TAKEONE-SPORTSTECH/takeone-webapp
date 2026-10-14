@@ -160,6 +160,33 @@
     });
   };
 
+  // Athletes tab → edit one athlete: read their details, then save them.
+  // The server decides what may change (FederationAthleteEditor) and answers
+  // with the registrations again, so the list repaints in place.
+  window.TakeOneFed.athleteGet = function (r) {
+    var u = urls.regsAthlete;
+    if (!u || !r || !r.entryId || !r.takeoneId) return Promise.resolve({ok: false, message: 'This athlete cannot be edited here.'});
+    return fetch(u.show + '?entry=' + encodeURIComponent(r.entryId) + '&athlete=' + encodeURIComponent(r.takeoneId),
+      {credentials: 'same-origin', headers: {'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}})
+      .then(function (res) { return res.json().catch(function () { return {}; }).then(function (j) { return res.ok ? {ok: true, athlete: j.athlete, canEdit: !!j.canEdit} : {ok: false, message: 'That athlete could not be found.'}; }); })
+      .catch(function () { return {ok: false, message: 'Could not reach the server. Try again.'}; });
+  };
+  window.TakeOneFed.athleteSave = function (r, data) {
+    var u = urls.regsAthlete;
+    if (!u) return Promise.resolve({ok: false, message: ''});
+    return jsonPost(u.update, Object.assign({entry: r.entryId, athlete: r.takeoneId}, data)).then(function (j) {
+      if (j.__status === 401 || j.__status === 419) { window.location.reload(); return {ok: false, message: ''}; }
+      if (j.regs) {
+        put('takeone_club_regs', j.regs); lastRegs = JSON.stringify(j.regs);
+        try { window.dispatchEvent(new StorageEvent('storage', {key: 'takeone_club_regs'})); } catch (e) {}
+      }
+      var msg = j.message || '';
+      if (!j.success && j.errors) { var k = Object.keys(j.errors)[0]; if (k) msg = j.errors[k][0]; }
+      if (j.success && window.TakeOneFed.refresh) window.TakeOneFed.refresh();
+      return {ok: !!j.success, message: msg, athlete: j.athlete || null};
+    }).catch(function () { return {ok: false, message: 'Could not reach the server. Try again.'}; });
+  };
+
   // Registrations → "Enroll athlete": one person entered by the federation.
   window.TakeOneFed.canEnrol = function () { return !!urls.regsEnrol; };
   window.TakeOneFed.enrolAthlete = function (payload) {

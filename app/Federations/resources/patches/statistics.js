@@ -14,7 +14,7 @@
 
 //@@ data
   MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  AGES = ['Mini poussins', 'Poussins', 'Pupilles', 'Benjamins', 'Minimes', 'Cadets', 'Juniors', 'Séniors', 'Vétérans 1', 'Vétérans 2', 'Vétérans 3', 'Vétérans 4', 'Vétérans 5'];
+  AGES = ['Under 6 Years', 'Under 8 Years', 'Under 10 Years', 'Under 12 Years', 'Under 14 Years', 'Cadets', 'Juniors', 'Seniors', 'Veterans 1', 'Veterans 2', 'Veterans 3', 'Veterans 4', 'Veterans 5'];
   initials(n) { return String(n || '').split(/\s+/).filter(w => w && w[0] === w[0].toUpperCase()).map(w => w[0]).slice(0, 2).join('') || String(n || '?').slice(0, 1).toUpperCase(); }
   shift(iso, days) { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10); }
   dayLabel(iso) { return iso ? (+iso.slice(8, 10)) + ' ' + this.MON[+iso.slice(5, 7) - 1] : 'Date TBC'; }

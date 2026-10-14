@@ -935,6 +935,47 @@ class McpServerTest extends TestCase
         $this->assertStringContainsString('organiser', $result['error']);
         $this->assertNotNull($bout->fresh()->a_name);
     }
+
+    public function test_transfer_event_competitor_moves_them_into_another_division(): void
+    {
+        config(['events.draw_transfer' => true]);
+        [$event, $organiser, $category] = $this->drawnChampionship();
+        $other = \App\Events\Models\EventCategory::create([
+            'event_id' => $event->id, 'name' => 'Senior Men -63 kg', 'sort_order' => 2,
+        ]);
+        $this->actingAs($organiser);
+
+        $id = $category->matches()->orderBy('slot')->first()->a_competitor_id;
+
+        $result = $this->callTool(\App\Mcp\Tools\TransferEventCompetitorTool::class, [
+            'event' => $event->uuid, 'from_division' => 'Senior Men -58 kg', 'competitor_id' => $id,
+            'to_division' => 'Senior Men -63 kg', 'mode' => 'move',
+        ]);
+
+        $this->assertTrue($result['done']);
+        $this->assertSame($other->id, (int) \App\Events\Models\ClubEventRegistration::find($id)->category_id);
+    }
+
+    public function test_transfer_event_competitor_denies_a_non_organiser(): void
+    {
+        config(['events.draw_transfer' => true]);
+        [$event, , $category] = $this->drawnChampionship();
+        \App\Events\Models\EventCategory::create(['event_id' => $event->id, 'name' => 'Senior Men -63 kg', 'sort_order' => 2]);
+
+        $watcher = $this->createUser();
+        $watcher->memberClubs()->syncWithoutDetaching([$event->tenant_id => ['status' => 'active']]);
+        $this->actingAs($watcher->fresh());
+
+        $id = $category->matches()->orderBy('slot')->first()->a_competitor_id;
+
+        $result = $this->callTool(\App\Mcp\Tools\TransferEventCompetitorTool::class, [
+            'event' => $event->uuid, 'from_division' => 'Senior Men -58 kg', 'competitor_id' => $id,
+            'to_division' => 'Senior Men -63 kg', 'mode' => 'copy', 'charge' => false,
+        ]);
+
+        $this->assertStringContainsString('organiser', $result['error']);
+        $this->assertSame($category->id, (int) \App\Events\Models\ClubEventRegistration::find($id)->category_id);
+    }
     public function test_member_can_promote_and_delete_own_profile_photos_through_mcp(): void
     {
         $me = $this->createUser();

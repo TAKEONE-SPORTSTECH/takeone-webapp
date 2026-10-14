@@ -161,8 +161,9 @@ class DivisionSections
             $src = $source[$i] ?? $name;
             $translated = $src !== $name;
 
-            if (preg_match('/^(.*?)\s*\b(Men|Women)\b\s*(.*)$/i', $src, $m)) {
-                $female = strcasecmp($m[2], 'Women') === 0;
+            // "Male"/"Female" since 2026-10-13; "Men"/"Women" is still read for any name written before.
+            if (preg_match('/^(.*?)\s*\b(Male|Female|Men|Women)\b\s*(.*)$/i', $src, $m)) {
+                $female = in_array(strtolower($m[2]), ['female', 'women'], true);
                 $gender = $female
                     ? __('personal.event_show_women')
                     : __('personal.event_show_men');

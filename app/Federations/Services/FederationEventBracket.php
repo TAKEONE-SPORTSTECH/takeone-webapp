@@ -142,7 +142,8 @@ class FederationEventBracket
 
             return [
                 'key' => $key,
-                'label' => ($g === 'F' ? 'Female' : 'Male').' '.$age.' · '.preg_replace('/^Kumite\s*/i', '', $div),
+                // Named as the event names it ("Séniors Men -75 kg"), like its divisions page.
+                'label' => trim((string) $c->name) !== '' ? (string) $c->name : ($g === 'F' ? 'Female' : 'Male').' '.$age.' · '.preg_replace('/^Kumite\s*/i', '', $div),
                 'athletes' => (int) ($perCat[$c->id] ?? 0),
                 'ring' => (int) (array_key_first($mats) ?? 1),
             ];

@@ -44,6 +44,12 @@
     },
     get data() { return need(); },
     get season() { return need().season; },
+    // The English name of an age category ('Benjamins' -> 'Under 12').
+    englishName: function (category) {
+      var cs = need().ageCategories;
+      for (var i = 0; i < cs.length; i++) if (cs[i].name === category) return cs[i].label || cs[i].name;
+      return category;
+    },
     ageCategories: function () { return need().ageCategories.map(function (c) { return c.name; }); },
     ageCategoryOf: function (age) {
       var d = need(); age = +age;

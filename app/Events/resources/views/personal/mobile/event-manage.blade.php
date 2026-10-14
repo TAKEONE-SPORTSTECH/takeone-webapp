@@ -453,6 +453,19 @@
                 <i class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0"></i>
             </button>
 
+            {{-- Budget & profit — the plan beside the real numbers (App\Events\Support\Budget\BudgetPlan). --}}
+            @if (\App\Events\Support\Budget\BudgetPlan::enabled())
+                <a href="{{ route('me.events.budget', $e['key']) }}"
+                   class="m-card m-press w-full text-start bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 flex items-center gap-3">
+                    <span class="w-11 h-11 rounded-2xl grid place-items-center flex-shrink-0" style="background:#efedfe;color:#5b4bd6"><i class="bi bi-graph-up-arrow text-lg"></i></span>
+                    <span class="min-w-0 flex-1">
+                        <span class="block text-sm font-bold text-foreground truncate">{{ __('events::events.budget_title') }}</span>
+                        <span class="block text-[11px] text-muted-foreground mt-0.5 truncate">{{ __('events::events.budget_row_sub') }}</span>
+                    </span>
+                    <i class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0 rtl:rotate-180"></i>
+                </a>
+            @endif
+
             {{-- Documents — one row like the others, opening a sheet. The list and
                  its uploader used to sit open on the page, which put a file field
                  and a dashed drop box in the middle of a column of doors. --}}

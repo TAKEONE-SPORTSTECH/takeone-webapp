@@ -16,6 +16,12 @@ class Karate extends AbstractCombatSport
         return 'karate';
     }
 
+    /** "[Age Division] Kumite [Gender] [Weight Class]" — "Cadet Kumite Male -52 kg" (decided 2026-10-13). */
+    public function divisionName(string $ageGroup, string $gender, string $label): string
+    {
+        return $ageGroup.' Kumite '.$this->genderWord($gender).' '.$label.' kg';
+    }
+
     public function label(): string
     {
         return __('sport-karate::messages.sport_label');

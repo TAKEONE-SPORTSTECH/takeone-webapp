@@ -110,6 +110,7 @@ Route::prefix('federation')->name('federations.')->middleware(SealFederation::cl
             Route::post('/transfers/decide', [FederationApiController::class, 'transferDecide'])->middleware(RecordFederationTest::class)->name('transfers.decide');
             Route::post('/regs/withdraw', [FederationApiController::class, 'regsWithdraw'])->middleware([RecordFederationTest::class, \App\Federations\Middleware\SyncPlatformEntries::class])->name('regs.withdraw');
             Route::post('/regs/approve', [FederationApiController::class, 'regsApprove'])->middleware([RecordFederationTest::class, \App\Federations\Middleware\SyncPlatformEntries::class])->name('regs.approve');
+            Route::post('/regs/athlete', [FederationApiController::class, 'regsAthleteUpdate'])->middleware(['throttle:uploads', RecordFederationTest::class, \App\Federations\Middleware\SyncPlatformEntries::class])->name('regs.athlete.update');
             Route::post('/regs/enrol', [FederationApiController::class, 'regsEnrol'])->middleware([RecordFederationTest::class, \App\Federations\Middleware\SyncPlatformEntries::class])->name('regs.enrol');
             Route::post('/regs/import', [FederationApiController::class, 'regsImport'])->middleware([RecordFederationTest::class, \App\Federations\Middleware\SyncPlatformEntries::class])->name('regs.import');
             Route::post('/regs/import/preview', [FederationApiController::class, 'regsImportPreview'])->middleware('throttle:uploads')->name('regs.import.preview');
@@ -145,6 +146,8 @@ Route::prefix('federation')->name('federations.')->middleware(SealFederation::cl
         ->get('/api/clubs/detail', [FederationApiController::class, 'clubDetail'])->name('api.clubs.detail');
     Route::middleware(['auth', 'verified', 'two-factor', 'throttle:federation-lookup'])
         ->get('/api/regs/template', [FederationApiController::class, 'regsTemplate'])->name('api.regs.template');
+    Route::middleware(['auth', 'verified', 'two-factor', 'throttle:federation-lookup'])
+        ->get('/api/regs/athlete', [FederationApiController::class, 'regsAthlete'])->name('api.regs.athlete');
     Route::middleware(['auth', 'verified', 'two-factor', 'throttle:federation-lookup'])
         ->get('/api/athletes/export', [FederationApiController::class, 'athletesExport'])->name('api.athletes.export');
     Route::middleware(['auth', 'verified', 'two-factor', 'throttle:federation-lookup'])

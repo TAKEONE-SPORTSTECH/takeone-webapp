@@ -21,7 +21,7 @@ class FederationEventOfficials
     public function __construct(private FederationDirectory $directory) {}
 
     /** `__TAKEONE_FED.eventOfficials`: event uuid => {url, total, groups: [{label, count, people}]}. */
-    public function payload(array $access): object
+    public function payload(array $access, ?\App\Members\Models\User $viewer = null): object
     {
         $q = FederationEvent::whereIn('federation_id', collect($this->directory->subtree($access['root']))->pluck('id'))
             ->whereNotNull('club_event_id');
@@ -31,7 +31,7 @@ class FederationEventOfficials
 
         $out = [];
         foreach ($q->get() as $fe) {
-            $o = rescue(fn () => $this->of($fe), null, report: true);
+            $o = rescue(fn () => $this->of($fe, $viewer), null, report: true);
             if ($o) {
                 $out[$fe->uuid] = $o;
             }
@@ -40,18 +40,28 @@ class FederationEventOfficials
         return (object) $out;
     }
 
-    public function of(FederationEvent $fe): ?array
+    public function of(FederationEvent $fe, ?\App\Members\Models\User $viewer = null): ?array
     {
         $ev = $fe->club_event_id ? \App\Events\Models\ClubEvent::find($fe->club_event_id) : null;
         if (! $ev) {
             return null;
         }
 
+        /*
+         * May this viewer appoint, change and remove officials here? Asked of
+         * EventAccess — the very rule the officiating endpoints enforce — so
+         * the tab never offers a control the server would refuse. Only then
+         * does the payload carry what an edit needs (the appointment's id,
+         * its role key, club key and pay); a viewer who may only look gets
+         * names, jobs and clubs, as before.
+         */
+        $manage = $viewer !== null && app(\App\Events\Support\EventAccess::class)->canManage($ev, $viewer);
+
         $people = EventOfficial::where('event_id', $ev->id)
             ->with('user:id,full_name,name,gender,profile_picture,profile_picture_is_public,updated_at')
             ->orderBy('id')->get()
             ->filter(fn (EventOfficial $o) => $o->user !== null)
-            ->map(function (EventOfficial $o) {
+            ->map(function (EventOfficial $o) use ($manage) {
                 $name = (string) ($o->user->full_name ?: $o->user->name);
                 $club = $o->club();
 
@@ -68,7 +78,13 @@ class FederationEventOfficials
                             : null),
                     'club' => $club['name'] ?? null,
                     'clubLogo' => $club['logo'] ?? null,
-                ];
+                ] + ($manage ? [
+                    'id' => $o->id,
+                    'roleKey' => (string) $o->role,
+                    'clubKey' => $club['slug'] ?? '',
+                    'compensation' => (string) $o->compensation,
+                    'fee' => $o->fee !== null ? (float) $o->fee : null,
+                ] : []);
             });
 
         $groups = $people->groupBy('job')
@@ -84,6 +100,15 @@ class FederationEventOfficials
             'url' => route('me.events.officiating', $ev->uuid),
             'total' => $people->count(),
             'groups' => $groups,
+            // The officiating endpoints the tab writes through. Each re-checks
+            // EventAccess::canManage and validates exactly as the sheet's own
+            // form does; `{id}` is the appointment, scoped to this event there.
+            'manage' => $manage ? [
+                'list' => route('me.events.officials', $ev->uuid),
+                'store' => route('me.events.officials.store', $ev->uuid),
+                'person' => route('me.events.officials.person', $ev->uuid),
+                'one' => route('me.events.officials.update', [$ev->uuid, '__ID__']),
+            ] : null,
         ];
     }
 }

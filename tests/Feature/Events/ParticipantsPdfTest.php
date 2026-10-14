@@ -92,7 +92,7 @@ class ParticipantsPdfTest extends ContractTestCase
         $stranger = $this->createUser(['full_name' => 'Somebody Else']);
 
         foreach ([$athlete, $stranger] as $who) {
-            foreach (['list', 'checkin'] as $kind) {
+            foreach (['list', 'checkin', 'checkin_club'] as $kind) {
                 $this->actingAs($who)
                     ->getJson("/me/events/{$event->uuid}/participants/pdf?kind={$kind}")
                     ->assertNotFound();
@@ -142,10 +142,11 @@ class ParticipantsPdfTest extends ContractTestCase
         $this->assertStringContainsString('<span class="ag">25</span>', $list);
         $this->assertStringNotContainsString('box on', $list);
 
-        // The desk sheet: the weight on file and four paid entries.
+        // The desk sheet: the weight on file, four paid entries, and the faces.
         $this->assertSame(4, substr_count($check, 'box on'));
         $this->assertStringContainsString('57', $check);
-        $this->assertStringNotContainsString('class="ph"', $check);
+        // Faces on the desk sheet too, so the desk can match the athlete to the row.
+        $this->assertStringContainsString('class="ph"', $check);
     }
 
     public function test_a_long_division_runs_on_to_the_next_page(): void
@@ -221,5 +222,44 @@ class ParticipantsPdfTest extends ContractTestCase
             ->getJson("/me/events/{$event->uuid}/participants/pdf?kind=all")
             ->assertOk();
         $this->assertStringContainsString('-participants.pdf', (string) $res->headers->get('Content-Disposition'));
+    }
+
+    public function test_the_check_in_sheet_by_club_lists_each_athlete_once_under_their_club(): void
+    {
+        $this->enable();
+        $this->fakeBrowser();
+        [$organiser, $event] = $this->event();
+
+        $res = $this->actingAs($organiser)
+            ->getJson("/me/events/{$event->uuid}/participants/pdf?kind=checkin_club")
+            ->assertOk();
+        $this->assertStringContainsString('-check-in-by-club.pdf', (string) $res->headers->get('Content-Disposition'));
+
+        $pdf = app(ParticipantsPdf::class);
+        $groups = $pdf->divisions($event, $organiser, 'checkin_club');
+        $people = collect($groups)->flatMap(fn ($g) => $g['people']);
+
+        // One block per club, each athlete once, filed under their own club.
+        $this->assertSame(4, $people->count());
+        $this->assertSame($people->pluck('key')->unique()->count(), $people->count());
+        foreach ($groups as $g) {
+            foreach ($g['people'] as $p) {
+                $this->assertSame($g['name'], $p['club'] ?? __('events::events.participants_pdf_no_club'));
+            }
+        }
+
+        // Inside each club: males A–Z, then females A–Z.
+        foreach ($groups as $g) {
+            $order = collect($g['people'])->sortBy([fn ($a, $b) => ($a['gender'] === 'female') <=> ($b['gender'] === 'female'),
+                fn ($a, $b) => strnatcasecmp($a['name'], $b['name'])])->pluck('key')->all();
+            $this->assertSame($order, array_column($g['people'], 'key'));
+        }
+
+        // The desk's facts are there, and the club column now names the division.
+        $html = $pdf->html($event, $organiser, $groups, 'checkin_club');
+        $this->assertStringContainsString('Check-in sheet by club', $html);
+        $this->assertSame(4, substr_count($html, 'box on'));
+        $this->assertStringContainsString('Senior Men -58 kg', $html);
+        $this->assertStringContainsString('class="ph"', $html);
     }
 }

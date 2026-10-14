@@ -19,6 +19,12 @@ class DrawEngine
 {
     public function __construct(private Scheduler $scheduler, private GroupEngine $groups, private SportRegistry $sports) {}
 
+    /** Does a division of ONE get a final with an empty corner? (events.lone_entrant_final) */
+    public static function loneFinals(): bool
+    {
+        return (bool) config('events.lone_entrant_final');
+    }
+
     /** The round a play-off for bronze is held under. */
     public const ROUND_THIRD = 'Third place';
 
@@ -121,10 +127,13 @@ class DrawEngine
                 $changed = true;
             } else {
                 $entrants = $cat->registrations()->where('role', 'participant')->count();
-                if ($cat->draw_state === 'provisional' && $cat->draw_count === $entrants) {
+                // A lone entrant now has a board of their own (see build()), so
+                // a division of one that was counted but never drawn is not fresh.
+                $loneUndrawn = self::loneFinals() && $entrants === 1 && $cat->matches_count === 0;
+                if ($cat->draw_state === 'provisional' && $cat->draw_count === $entrants && ! $loneUndrawn) {
                     continue; // already fresh
                 }
-                if ($entrants < 2) {
+                if ($entrants < (self::loneFinals() ? 1 : 2)) {
                     continue;
                 }
                 $this->build($event, $cat, paidOnly: false);
@@ -330,13 +339,19 @@ class DrawEngine
         $cat->matches()->delete();
 
         $n = $competitors->count();
-        if ($n < 2) {
+        /*
+         * ONE entrant used to get no board at all: "No draw yet", the athlete
+         * in the basket, and nothing to drop them onto. With the flag on they
+         * get a FINAL with an empty corner — champion by walkover unless the
+         * organiser puts somebody in it (a late entry, a transfer, a drag).
+         */
+        if ($n < (self::loneFinals() ? 1 : 2)) {
             $cat->update(['draw_state' => $paidOnly ? 'final' : 'provisional', 'draw_count' => $n]);
 
             return;
         }
 
-        $size = 1;
+        $size = $n === 1 ? 2 : 1;
         while ($size < $n) {
             $size *= 2;
         }
