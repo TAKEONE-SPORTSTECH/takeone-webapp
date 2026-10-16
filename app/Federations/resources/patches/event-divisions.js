@@ -19,12 +19,23 @@
       cards: v === 'cards', table: v === 'table', total: String(divCards.filter(d => !d.unplaced).length),
       entries: String(divCards.reduce((n, d) => n + (d.count || 0), 0)),
       ready: String(divCards.filter(d => !d.unplaced && d.count >= 2).length),
-      // The card takes its division's gender: Female pink, Male blue, the
-      // "not in a division" card (no gender of its own) white.
-      rows: divCards.map(d => ({...d, ...this.evDivInk(d.label, 'l'), ...this.evDivInk(d.divName, 'n'),
-        cardStyle: this.cssToObj('border-radius:16px;border-top:3px solid #d8b25f;padding:20px;box-shadow:0 10px 30px rgba(30,44,79,.08);cursor:pointer;transition:transform .15s ease,box-shadow .15s ease;'
-          + (d.unplaced ? 'background:#fff' : d.gender === 'Female' ? 'background:#fbcfe8;border:1px solid #f472b6;border-top:3px solid #d8b25f' : d.gender === 'Male' ? 'background:#bfdbfe;border:1px solid #60a5fa;border-top:3px solid #d8b25f' : 'background:#fff')),
-        entriesBar: this.cssToObj('height:6px;border-radius:3px;background:linear-gradient(100deg,#edcd85,#d0a854);width:' + (100 * (d.count || 0) / max).toFixed(1) + '%')})),
+      // The card takes its division's gender: Female pink, Male blue, Mixed
+      // violet, the "not in a division" card (no gender of its own) white.
+      // Male, Female and Mixed divisions are never interleaved: one section
+      // each, in that order, then the athletes not yet in a division.
+      // Inside a section the tab's own order holds (age, then weight).
+      sections: [['Male', d => !d.unplaced && d.gender === 'Male', '#2563eb'], ['Female', d => !d.unplaced && d.gender === 'Female', '#db2777'],
+        ['Mixed', d => !d.unplaced && d.gender === 'Mixed', '#7c6bf5'], ['Not in a division', d => !!d.unplaced, '#6b7689']]
+        .map(([title, pick, ink]) => {
+          const list = divCards.filter(pick);
+          return {title, count: String(list.length), has: list.length > 0,
+            titleStyle: this.cssToObj('font-size:.7rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:' + ink),
+            dotStyle: this.cssToObj('width:10px;height:10px;border-radius:50%;flex:none;background:' + ink),
+            rows: list.map((d, i) => ({...d, rank: String(i + 1), ...this.evDivInk(d.label, 'l'), ...this.evDivInk(d.divName, 'n'),
+              cardStyle: this.cssToObj('border-radius:16px;border-top:3px solid #d8b25f;padding:20px;box-shadow:0 10px 30px rgba(30,44,79,.08);cursor:pointer;transition:transform .15s ease,box-shadow .15s ease;'
+                + (d.unplaced ? 'background:#fff' : d.gender === 'Female' ? 'background:#fbcfe8;border:1px solid #f472b6;border-top:3px solid #d8b25f' : d.gender === 'Male' ? 'background:#bfdbfe;border:1px solid #60a5fa;border-top:3px solid #d8b25f' : d.gender === 'Mixed' ? 'background:#ede9fe;border:1px solid #a78bfa;border-top:3px solid #d8b25f' : 'background:#fff')),
+              entriesBar: this.cssToObj('height:6px;border-radius:3px;background:linear-gradient(100deg,#edcd85,#d0a854);width:' + (100 * (d.count || 0) / max).toFixed(1) + '%')}))};
+        }).filter(sec => sec.has),
       tabs: [['cards', 'Cards', '▦'], ['table', 'Table', '☰']].map(([k, l, ic]) => ({
         label: l, icon: ic, pressed: v === k ? 'true' : 'false', onClick: () => setView(k),
         style: this.cssToObj('display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:8px;border:0;font-family:inherit;font-size:.74rem;cursor:pointer;transition:background .15s ease,color .15s ease;' + (v === k ? 'font-weight:700;color:#1e2c4f;background:#fff;box-shadow:0 2px 6px rgba(30,44,79,.12)' : 'font-weight:500;color:#6b7689;background:transparent'))

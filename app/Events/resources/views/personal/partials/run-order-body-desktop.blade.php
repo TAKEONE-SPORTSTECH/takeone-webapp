@@ -32,6 +32,12 @@
         'breakUrl' => route('me.events.run-order.break', $e['key']),
         'reorderUrl' => route('me.events.run-order.reorder', $e['key']),
         'slotUrl' => route('me.events.run-order.update', ['event' => $e['key'], 'slot' => '__SLOT__']),
+        'sessionUrl' => route('me.events.run-order.session', $e['key']),
+        // The GROUPS board (RunSessions): boxes, and a drag in and out of them.
+        'groups' => \App\Events\Support\RunSessions::enabled(),
+        'moveUrl' => route('me.events.run-order.move', $e['key']),
+        'groupText' => __('events::events.run_group_meta', ['n' => ':n']),
+        'interleavedText' => __('events::events.run_session_interleaved'),
         'errorText' => __('shared.something_went_wrong'),
         'enteredText' => __('events::events.run_order_entered', ['count' => ':count', 'bouts' => ':bouts']),
         'noBoutsText' => __('events::events.run_order_no_bouts'),
@@ -82,6 +88,9 @@
                         </div>
                     </template>
 
+                    {{-- The flat list — exactly as it always was, while groups are off. --}}
+                    <template x-if="! cfg.groups">
+                    <div>
                     <template x-for="(row, i) in rows" :key="row.uuid">
                         <div data-ro-row @pointerdown="rowDown($event, row.uuid, i)" @touchstart="rowDown($event, row.uuid, i)"
                          style="-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;">
@@ -168,6 +177,13 @@
                             {{ __('events::events.run_order_place_here') }}
                         </button>
                     </template>
+                    </div>
+                    </template>
+
+                    {{-- The GROUPS board: boxes on a list, dragged in and out (RunSessions). --}}
+                    <template x-if="cfg.groups">
+                        @include('events::personal.partials.run-order-groups-board', ['roColor' => $roColor])
+                    </template>
                 </div>
             </div>
         </div>
@@ -240,6 +256,9 @@
                 </template>
 
                 <div class="flex flex-wrap gap-2">
+@if(\App\Events\Support\RunSessions::enabled())
+                    <button type="button" @click="openBlock('group')" class="h-9 px-3.5 rounded-full border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors"><i class="bi bi-collection me-1"></i>{{ __('events::events.run_group_add') }}</button>
+                    @endif
                     <button type="button" @click="openBlock('custom')" class="h-9 px-3.5 rounded-full border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors">{{ __('events::events.run_order_add_custom') }}</button>
                 </div>
             </div>

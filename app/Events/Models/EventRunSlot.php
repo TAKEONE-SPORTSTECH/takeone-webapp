@@ -39,18 +39,31 @@ class EventRunSlot extends Model
 
     public const KIND_CUSTOM = 'custom';
 
-    public const KINDS = [self::KIND_DIVISION, self::KIND_CEREMONY, self::KIND_BREAK, self::KIND_CUSTOM];
+    /**
+     * A GROUP header: the weight classes listed after it (until the next
+     * group) run together, finishing every bout before the next group starts,
+     * called by the group's own method (`mode`, App\Events\Support\RunSessions).
+     * Takes no time of its own and is not shown on the public running order.
+     */
+    public const KIND_GROUP = 'group';
+
+    public const KINDS = [self::KIND_DIVISION, self::KIND_CEREMONY, self::KIND_BREAK, self::KIND_CUSTOM, self::KIND_GROUP];
 
     /** What a block defaults to when the organiser adds one without saying. */
     public const DEFAULT_DURATIONS = [
         self::KIND_CEREMONY => 15,
         self::KIND_BREAK => 30,
         self::KIND_CUSTOM => 15,
+        self::KIND_GROUP => 0,
     ];
 
     protected $fillable = [
         'uuid', 'event_id', 'category_id', 'parts', 'day', 'position',
         'kind', 'label', 'duration_minutes', 'pinned_at',
+        // A GROUP's: how its weight classes call their bouts (RunSessions).
+        'mode',
+        // A CLASS's: the id of the group slot it belongs to (RunSessions).
+        'group_id',
     ];
 
     protected $casts = [
@@ -58,6 +71,7 @@ class EventRunSlot extends Model
         'position' => 'integer',
         'duration_minutes' => 'integer',
         'pinned_at' => 'integer',
+        'group_id' => 'integer',
         // Which parts of the division this slot runs (App\Events\Support\BoutPart);
         // null is the whole division.
         'parts' => 'array',

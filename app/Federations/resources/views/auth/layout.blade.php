@@ -13,6 +13,10 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ $rtl ? 'rtl' : 'ltr' }}">
 <head>
 <meta charset="utf-8">
+{{-- Light by design: keep the browser's auto-dark and Dark Reader from inverting it (as layouts/app). --}}
+<meta name="color-scheme" content="light">
+<meta name="darkreader-lock">
+<style>html { color-scheme: only light; }</style>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>@yield('title') · {{ __('federations::messages.login_eyebrow') }}</title>

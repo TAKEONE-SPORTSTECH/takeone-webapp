@@ -33,7 +33,7 @@
 @section('personal-content')
 @php $roColor = preg_match('/^#[0-9a-fA-F]{3,8}$/', (string) ($e['color'] ?? '')) ? $e['color'] : '#7c3aed'; @endphp
 
-<div class="pb-6" x-data="orderPage(@js($view), @js((bool) ($canManage ?? false)))" x-cloak>
+<div class="pb-6" x-data="orderPage(@js($view), @js((bool) ($canManage ?? false)), @js(($canManage ?? false) ? route('me.events.order.renumber', $e['key']) : null))" x-cloak>
     <header class="m-hero -mx-4 -mt-4 px-5 pt-5 pb-16 text-white relative overflow-hidden"
             style="background: linear-gradient(150deg, {{ $roColor }}, {{ $roColor }}b0);">
         <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
@@ -87,6 +87,12 @@
                     <i class="bi bi-grid-1x2"></i>{{ __('events::events.order_tab_mats') }}
                 </button>
             </div>
+            {{-- Number every bout from this running order now (BoutNumbering). --}}
+            <button type="button" @click="renumber()" :disabled="renumbering"
+                    class="m-press mt-2 w-full h-11 rounded-xl bg-white border text-[13px] font-bold inline-flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+                    style="border-color: {{ $roColor }}55; color: {{ $roColor }};">
+                <i class="bi" :class="renumbering ? 'bi-arrow-repeat animate-spin' : 'bi-123'"></i>{{ __('events::events.renumber_button') }}
+            </button>
         </div>
 
         <div x-show="view === 'day'" x-transition:enter="transition ease-out duration-150"

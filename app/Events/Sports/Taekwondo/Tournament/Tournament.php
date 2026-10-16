@@ -208,7 +208,10 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
             return;
         }
 
-        if ($category->registrations()->where('role', 'participant')->count() >= 2) {
+        // One entrant is a board too when lone finals are on (a final with an
+        // empty corner — DrawEngine::loneFinals(), EVENT_LONE_ENTRANT_FINAL);
+        // off, two are needed, exactly as before.
+        if ($category->registrations()->where('role', 'participant')->count() >= (DrawEngine::loneFinals() ? 1 : 2)) {
             $this->draws->build($event, $category, paidOnly: false);
         } else {
             $category->matches()->delete();
@@ -354,6 +357,7 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
             'arrange_draw' => $this->arrangeDraw($event, $payload),
             'transfer_draw' => $this->transferDraw($event, $payload),
             'clear_draw' => $this->clearDraw($event, $payload),
+            'shuffle_draw' => $this->shuffleDraw($event, $payload),
             'admit_late_entry' => $this->admitLateEntry($event, $payload),
             'end_next_bout' => $this->endNextBout($event),
             default => ['success' => false, 'message' => __('events::events.action_unsupported')],
@@ -405,6 +409,15 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
                 'action' => 'clear_draw',
                 'label' => __('event-taekwondo_tournament::messages.action_clear_draw'),
                 'icon' => 'bi-eraser',
+            ];
+
+            // A fair random re-cut of one division: belts seeded apart, clubs
+            // split, the rest at random (App\Events\Support\Tournament\FairDraw,
+            // shared by every sport). Before the start only, like clearing.
+            $actions[] = [
+                'action' => 'shuffle_draw',
+                'label' => __('events::events.action_shuffle_draw'),
+                'icon' => 'bi-shuffle',
             ];
         }
 
@@ -598,6 +611,26 @@ class Tournament extends AbstractEventType implements \App\Events\Contracts\Awar
         $this->scheduler->scheduleAndNumber($event->fresh());
 
         return $this->arrangedResponse($event, $result['category'], __('event-taekwondo_tournament::messages.draw_arranged'));
+    }
+
+    /** Re-cut one division fairly — FairDraw decides where everyone stands. */
+    private function shuffleDraw(ClubEvent $event, array $payload): array
+    {
+        $category = $event->categories()->find($payload['category_id'] ?? null);
+
+        if (! $category) {
+            return ['success' => false, 'message' => __('events::events.division_not_found')];
+        }
+
+        $result = app(\App\Events\Support\Tournament\FairDraw::class)->shuffle($event, $category);
+
+        if (! $result['ok']) {
+            return ['success' => false, 'message' => $result['message']];
+        }
+
+        $this->scheduler->scheduleAndNumber($event->fresh());
+
+        return $this->arrangedResponse($event, $result['category'], __('events::events.draw_shuffled'));
     }
 
     /** Empty a division's draw onto the bench so it can be built by hand. */

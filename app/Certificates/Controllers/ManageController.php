@@ -48,6 +48,7 @@ class ManageController extends Controller
         $data = $request->validate([
             'participation' => ['sometimes', 'boolean'],
             'podium' => ['sometimes', 'boolean'],
+            'officials' => ['sometimes', 'boolean'],
             'trigger' => ['sometimes', Rule::in(['division', 'event', 'manual'])],
         ]);
         $provider->saveSettings($model, $data);

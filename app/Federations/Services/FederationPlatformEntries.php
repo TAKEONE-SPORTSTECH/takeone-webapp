@@ -71,6 +71,40 @@ class FederationPlatformEntries
         }
     }
 
+    /**
+     * Make sure ONE athlete the federation holds as Active is in the platform
+     * event (the Participants tab's edit window, owner 2026-10-15). An athlete
+     * whose request was decided long ago but who holds no entry any more — the
+     * row went, the request stayed — is never re-entered by sync(), which only
+     * acts on a pending request. Here the request is re-opened and accepted
+     * through the platform's own door (PublicEntry::accept, via one()), so the
+     * entry, its fee and its division are made exactly as for anybody else.
+     */
+    public function ensureEntered(FederationEvent $fe, FederationEntryAthlete $row): void
+    {
+        if (! $this->events->enabled() || ! ($ev = $this->events->of($fe)) || $row->status === 'Withdrawn') {
+            return;
+        }
+        $actor = $this->actor($ev, $fe);
+        $userId = $row->athlete?->user_id;
+        if (! $actor || ! $userId) {
+            return;
+        }
+
+        self::$syncing = true;
+        try {
+            $entered = ClubEventRegistration::where('event_id', $ev->id)->where('user_id', $userId)->where('role', 'participant')->exists();
+            $request = EventPublicEntry::where('event_id', $ev->id)->where('user_id', $userId)->first();
+            if (! $entered && $request && ! $request->isPending()) {
+                $request->forceFill(['state' => 'pending', 'registration_id' => null])->save();
+                Log::info('federation-entries: re-opened an entry with no registration', ['event' => $ev->uuid, 'user' => $userId]);
+            }
+            $this->one($ev, $row->fresh(['entry.club', 'entry.application', 'athlete']), $actor);
+        } finally {
+            self::$syncing = false;
+        }
+    }
+
     /** The console decided a request on a federation's event: record it on the federation's side. */
     public function decided(EventPublicEntry $entry): void
     {
@@ -212,14 +246,20 @@ class FederationPlatformEntries
         // A federation sorts its athletes by the rule book itself: an entered
         // athlete with no division is placed, the division created if needed.
         $registration ??= ClubEventRegistration::where('event_id', $ev->id)->where('user_id', $user->id)->where('role', 'participant')->first();
+        // Once weighed, the scale's reading is the weight — never the declared one.
+        $scale = \App\Events\Support\BodyWeight::weighed($ev->id, $user->id);
+        if ($scale !== null && \App\Events\Support\BodyWeight::spread($ev->id, $user->id) && $registration) {
+            $registration->refresh();
+        }
         if ($registration && \App\Events\Support\EventStreams::many($ev)) {
-            $this->streams($ev, $user, $types, (float) $row->weight, $actor);
+            $this->streams($ev, $user, $types, $scale ?? (float) $row->weight, $actor);
         } elseif ($registration && ! $registration->category_id) {
             app(\App\Events\Support\CategorySystems::class)->placeCreating($ev, $registration);
         }
 
-        // An entered athlete's weight follows the dashboard until they are weighed.
-        if ($registration && $row->weight) {
+        // An entered athlete's weight follows the dashboard until they are weighed
+        // — on ANY of their entries: after that the scale's reading is on them all.
+        if ($scale === null && $registration && $row->weight) {
             ClubEventRegistration::where('event_id', $ev->id)->where('user_id', $user->id)->where('role', 'participant')
                 ->whereNull('weighed_in_at')->get()
                 ->each(fn ($r) => (float) $r->weight !== (float) $row->weight ? $r->forceFill(['weight' => $row->weight])->save() : null);
@@ -348,10 +388,29 @@ class FederationPlatformEntries
         // What this sync used to write, so a row made before is found and moved over.
         $legacyClub = $entry->club?->tenant?->club_name ?? $entry->application?->name ?? '';
 
+        /*
+         * Act on what the CLUB changed, never on what the federation did since
+         * (2026-10-15). This used to compare names on every run: a manager who
+         * renamed an official or took one off had it undone by the next sync,
+         * which created a NEW person under the old name and swapped them in.
+         * `officials_synced` remembers the name last applied per slot; a slot
+         * whose form still says that is left exactly as it stands.
+         */
+        $applied = is_array($entry->officials_synced) ? $entry->officials_synced : [];
+        $appliedBefore = $applied;
+
         foreach ($slots as $slot => $title) {
             $label = mb_substr(trim($title), 0, 120);
             $legacy = mb_substr(trim($title.($legacyClub !== '' ? ' · '.$legacyClub : '')), 0, 120);
             $name = trim(strip_tags((string) ($named[$slot]['name'] ?? '')));
+            // "Nil", "None", "-" in the box means the club has nobody for this slot.
+            if (\App\Federations\Support\NobodyName::is($name)) {
+                $name = '';
+            }
+            if (array_key_exists($slot, $applied) && (string) $applied[$slot] === $name) {
+                continue;
+            }
+            $applied[$slot] = $name;
             $existing = \App\Events\Models\EventOfficial::where('event_id', $ev->id)
                 ->where('role', \App\Events\Models\EventOfficial::ROLE_OTHER)
                 ->whereIn('role_label', array_unique([$label, $legacy]))
@@ -409,6 +468,18 @@ class FederationPlatformEntries
             }
             $this->photo($o->fresh('user'), $named[$slot]['photo'] ?? null);
         }
+
+        if ($applied !== $appliedBefore) {
+            $this->rememberApplied($entry, $applied);
+        }
+    }
+
+    /** Remember what was applied from this entry's named officials (see officials()). */
+    private function rememberApplied(\App\Federations\Models\FederationEntry $entry, array $applied): void
+    {
+        \Illuminate\Support\Facades\DB::table('federation_entries')->where('id', $entry->id)
+            ->update(['officials_synced' => json_encode($applied, JSON_UNESCAPED_UNICODE)]);
+        $entry->setAttribute('officials_synced', $applied);
     }
 
     /**

@@ -125,6 +125,13 @@
             ? sprintf('%d:%02d:%02d', intdiv($s, 3600), intdiv($s % 3600, 60), $s % 60)
             : sprintf('%d:%02d', intdiv($s, 60), $s % 60);
     };
+
+    // The registration form row in the ⋯ menu — the people its route lets in.
+    $printForm = ($asMember ?? false) && (($canManage ?? false) || ($canOfficiate ?? false))
+        && \App\Events\Support\RegistrationFormPdf::available();
+    // The officials' merging handbook (MergeHandbookPdf) — same people, own switch.
+    $printHandbook = ($asMember ?? false) && (($canManage ?? false) || ($canOfficiate ?? false))
+        && \App\Events\Support\MergeHandbookPdf::available();
 @endphp
 {{-- ===== The entry cover — tapped away to reveal the page below ===== --}}
 @include('events::entry.public.partials.cover')
@@ -210,6 +217,18 @@
                 // The organiser's QR and printable poster, for whoever runs it.
                 'withQr' => $asMember && (($canManage ?? false) || ($canOfficiate ?? false)),
                 'shareUrl' => $shareUrl ?? null,
+                /* The blank registration form, English + Arabic, for whoever
+                   runs the event (App\Events\Support\RegistrationFormPdf).
+                   The route re-authorises; this only decides what is drawn. */
+                'menuRows' => array_merge($printForm ? [
+                    ['icon' => 'bi-file-earmark-person', 'label' => __('events::events.registration_form_pdf'),
+                     'sub' => __('events::events.registration_form_pdf_sub'),
+                     'click' => 'window.participantsPdf('.json_encode(route('me.events.registration-form.pdf', ['event' => $e['key']])).')'],
+                ] : [], $printHandbook ? [
+                    ['icon' => 'bi-journal-text', 'label' => __('events::events.merge_handbook_pdf'),
+                     'sub' => __('events::events.merge_handbook_pdf_sub'),
+                     'click' => 'window.participantsPdf('.json_encode(route('me.events.divisions.merge.handbook', ['event' => $e['key']])).')'],
+                ] : []),
             ])
         </x-slot:controls>
 
@@ -221,6 +240,10 @@
             </x-slot:banner>
         @endif
     </x-event-poster-band>
+
+    @if($printForm || $printHandbook)
+        @include('events::partials.pdf-download-script')
+    @endif
 
     @include('events::entry.public.partials.quick-facts')
 

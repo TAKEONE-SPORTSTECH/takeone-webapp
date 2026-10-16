@@ -50,18 +50,23 @@ return [
         'club_event' => App\Events\Support\EventCertificates::class,
         // Officials' badges: the same engine, design room and print-shop PDF, format `badge`.
         'event_badges' => App\Events\Support\EventBadges::class,
+        // Participants' badges (2026-10-15): the same badge, one per competitor.
+        'event_participant_badges' => App\Events\Support\EventParticipantBadges::class,
     ],
 
     'types' => [
         'participation' => 'cert::messages.types.participation',
         'podium' => 'cert::messages.types.podium',
         'official_badge' => 'cert::messages.types.official_badge',
+        'official_thanks' => 'cert::messages.types.official_thanks',
+        'participant_badge' => 'cert::messages.types.participant_badge',
     ],
 
     // The page format each type is drawn in (Ahl\Certificates\Support\Formats). A type
     // not named here is a certificate: A4, as every certificate always was.
     'formats' => [
         'official_badge' => 'badge',
+        'participant_badge' => 'badge',
     ],
     'grades' => [],
     'sources' => [

@@ -70,7 +70,7 @@ class FederationEventFigures
             'readiness' => [
                 $this->venue($details),
                 ['done' => $athletes > 0, 'label' => 'Athletes entered', 'note' => $athletes.' from '.$clubs.' '.($clubs === 1 ? 'club' : 'clubs'), 'subs' => [
-                    ['label' => 'Athletes', 'note' => (string) $athletes, 'tab' => 'regs', 'hint' => 'Open this event’s athletes'],
+                    ['label' => 'Participants', 'note' => (string) $athletes, 'tab' => 'regs', 'hint' => 'Open this event’s participants'],
                     ['label' => 'Clubs', 'note' => (string) $clubs, 'tab' => 'clubs', 'hint' => 'Open this event’s clubs'],
                 ]],
                 ['done' => $divisions > 0 && $single === 0 && $unplaced === 0, 'label' => 'Divisions', 'note' => $divNote, 'subs' => $this->divisionRows($ev, $perDivision, $unplaced)],
@@ -174,7 +174,7 @@ class FederationEventFigures
         }
 
         if ($unplaced) {
-            $rows[] = ['label' => 'Not placed', 'note' => (string) $unplaced, 'tab' => 'regs', 'hint' => 'Open this event’s athletes'];
+            $rows[] = ['label' => 'Not placed', 'note' => (string) $unplaced, 'tab' => 'regs', 'hint' => 'Open this event’s participants'];
         }
 
         return $rows;
@@ -191,7 +191,7 @@ class FederationEventFigures
     private function entryClubs(FederationEvent $e): array
     {
         return \App\Federations\Models\FederationEntry::where('federation_event_id', $e->id)
-            ->with(['club.club:id,club_name,logo,owner_user_id,owner_name', 'club.club.owner:id,full_name,name', 'application:id,name,coach', 'athletes' => fn ($q) => $q->where('status', 'Active')->whereHas('athlete.user')->with('athlete.user:id,gender')])
+            ->with(['club.club:id,club_name,logo,owner_user_id,owner_name', 'club.club.owner:id,full_name,name', 'application:id,uuid,name,coach', 'athletes' => fn ($q) => $q->where('status', 'Active')->whereHas('athlete.user')->with('athlete.user:id,gender')])
             ->get()
             // A club not yet approved entered through its application.
             ->groupBy(fn ($en) => $en->federation_club_id ? 'c'.$en->federation_club_id : 'a'.$en->club_application_id)
@@ -203,10 +203,14 @@ class FederationEventFigures
                 // Who answers for the club at this event: the team manager its
                 // entry names, else the club's owner (or, for a club not yet
                 // approved, the coach on its application). A name only.
-                $manager = $entries->map(fn ($en) => trim((string) data_get($en->officials, 'mgr.name')))->first(fn ($n) => $n !== '');
+                $manager = $entries->map(fn ($en) => trim((string) data_get($en->officials, 'mgr.name')))->first(fn ($n) => ! \App\Federations\Support\NobodyName::is($n));
                 $owner = trim((string) ($tenant?->owner?->full_name ?: $tenant?->owner?->name ?: $tenant?->owner_name ?: $entries->first()->application?->coach));
 
+                $first = $entries->first();
+
                 return [
+                    // The club as its entries name it (fc-… / fa-…), for "Remove from event".
+                    'key' => $first->federation_club_id ? ($first->club ? 'fc-'.$first->club->uuid : null) : ($first->application ? 'fa-'.$first->application->uuid : null),
                     'name' => (string) ($tenant?->club_name ?: $entries->first()->application?->name ?: 'Unknown club'),
                     'contact' => $manager ?: ($owner !== '' ? $owner : null),
                     'contactRole' => $manager ? 'Team manager' : ($owner !== '' ? ($tenant ? 'Owner' : 'Coach') : null),

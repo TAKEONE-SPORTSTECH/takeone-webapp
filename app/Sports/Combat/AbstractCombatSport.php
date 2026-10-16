@@ -138,4 +138,20 @@ abstract class AbstractCombatSport implements CombatSport
     {
         return 'left';
     }
+
+    /**
+     * What a competitor ticks to say what they are entering, on the printed
+     * registration form (App\Events\Support\RegistrationFormPdf) — e.g.
+     * Kata and Kumite. Each item is `['key' => …]`; the form reads its words
+     * from the sport's own lang file as `discipline_{key}` / `discipline_{key}_sub`.
+     *
+     * Empty (the default) means the sport has no such choice, and the form
+     * asks for the age group and weight category instead.
+     *
+     * @return list<array{key: string}>
+     */
+    public function entryDisciplines(): array
+    {
+        return [];
+    }
 }

@@ -16,7 +16,7 @@
 
           <sc-if value="{{ ec.hasRows }}" hint-placeholder-val="{{ true }}">
           <div style="overflow-x:auto">
-            <div style="display:grid;grid-template-columns:28px 40px minmax(220px,1fr) 90px 90px 90px 180px;gap:14px;align-items:center;min-width:820px;padding:0 0 8px;border-bottom:1px solid #eef1f6">
+            <div style="display:grid;grid-template-columns:28px 40px minmax(220px,1fr) 90px 90px 90px 180px 150px;gap:14px;align-items:center;min-width:980px;padding:0 0 8px;border-bottom:1px solid #eef1f6">
               <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">#</div>
               <div></div>
               <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">Club</div>
@@ -24,9 +24,10 @@
               <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">Female</div>
               <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">Athletes</div>
               <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">Share</div>
+              <div></div>
             </div>
             <sc-for list="{{ ec.clubs }}" as="c" hint-placeholder-count="6">
-              <div onClick="{{ c.openRegs }}" title="Open this event's athletes" style="display:grid;grid-template-columns:28px 40px minmax(220px,1fr) 90px 90px 90px 180px;gap:14px;align-items:center;min-width:820px;padding:12px 0;border-bottom:1px solid #eef1f6;cursor:pointer;border-radius:8px" style-hover="background:#f7f8fb">
+              <div onClick="{{ c.openRegs }}" role="button" aria-label="Open {{ c.name }}" style="display:grid;grid-template-columns:28px 40px minmax(220px,1fr) 90px 90px 90px 180px 150px;gap:14px;align-items:center;min-width:980px;padding:12px 0;border-bottom:1px solid #eef1f6;cursor:pointer;border-radius:8px" style-hover="background:#f7f8fb">
                 <div style="font-size:.76rem;font-weight:600;color:#8a6d20;font-variant-numeric:tabular-nums">{{ c.rank }}</div>
                 <div>
                   <sc-if value="{{ c.hasLogo }}" hint-placeholder-val="{{ false }}"><span role="img" aria-label="{{ c.name }}" style="{{ c.logoStyle }}"></span></sc-if>
@@ -43,9 +44,22 @@
                   <div style="flex:1;display:flex;gap:2px;height:6px;border-radius:3px;background:#eef1f6;overflow:hidden"><div style="{{ c.maleBar }}"></div><div style="{{ c.femaleBar }}"></div></div>
                   <span style="font-size:.72rem;color:#6b7689;font-variant-numeric:tabular-nums;width:34px;text-align:end">{{ c.share }}</span>
                 </div>
+                <div style="display:flex;justify-content:flex-end">
+                  <sc-if value="{{ c.canRemove }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ c.onRemove }}" title="Take every athlete of this club off the event" style="{{ c.removeStyle }}">{{ c.removeLabel }}</button></sc-if>
+                </div>
               </div>
             </sc-for>
           </div>
           </sc-if>
         </div>
+        <sc-if value="{{ ec.edOpen }}" hint-placeholder-val="{{ false }}">
+          <div onClick="{{ ec.onEdClose }}" style="position:fixed;inset:0;background:rgba(30,44,79,.5);z-index:60;display:grid;place-items:center;padding:20px">
+            <div onClick="{{ ec.edStop }}" role="dialog" aria-modal="true" aria-label="Edit club" style="background:#fff;border-radius:20px;max-width:640px;width:100%;height:min(720px,92vh);overflow:hidden;box-shadow:0 30px 80px rgba(30,44,79,.35);animation:rise .25s cubic-bezier(.22,.68,.35,1) both;box-sizing:border-box">
+              <iframe src="{{ ec.edSrc }}" title="Edit club" style="display:block;width:100%;height:100%;border:0;background:#fff"></iframe>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ ec.hasFlash }}" hint-placeholder-val="{{ false }}">
+          <div role="status" style="position:fixed;right:24px;bottom:24px;z-index:70;padding:12px 16px;border-radius:12px;background:#1e2c4f;color:#fff;font-size:.8rem;font-weight:600;box-shadow:0 14px 40px rgba(30,44,79,.3);animation:rise .25s cubic-bezier(.22,.68,.35,1) both">{{ ec.flash }}</div>
+        </sc-if>
       </sc-if>

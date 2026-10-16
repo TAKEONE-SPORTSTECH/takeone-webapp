@@ -224,6 +224,39 @@ class LateEntryTest extends TestCase
         $this->assertEmpty(array_intersect($drawn, $ids), 'someone already on the board was offered');
     }
 
+    public function test_the_picker_filters_by_gender_age_and_weight(): void
+    {
+        $event = $this->event();
+        $category = $this->runningDivision($event, 3);
+
+        $boy = $this->createUser(['full_name' => 'Small Boy', 'gender' => 'Male', 'birthdate' => now()->subYears(6)->subMonth()->toDateString()]);
+        $girl = $this->createUser(['full_name' => 'Small Girl', 'gender' => 'Female', 'birthdate' => now()->subYears(6)->subMonth()->toDateString()]);
+        $boyEntry = $this->enter($event, $boy, null);
+        $boyEntry->update(['weight' => 20]);
+        $girlEntry = $this->enter($event, $girl, null);
+        $girlEntry->update(['weight' => 20]);
+        $adult = $this->enter($event, $this->athlete('Grown Up'), null);   // 25 years, 57 kg
+
+        $ids = fn (string $qs) => array_column($this->actingAs($this->organiser)
+            ->getJson("/me/events/{$event->uuid}/brackets/admit-candidates?category_id={$category->id}&{$qs}")
+            ->assertOk()->json('candidates'), 'id');
+
+        $this->assertEqualsCanonicalizing([$boyEntry->id, $girlEntry->id], $ids('min_age=5&max_age=6'));
+        $this->assertSame([$boyEntry->id], $ids('min_age=5&max_age=6&gender=Male'));
+        $this->assertSame([$girlEntry->id], $ids('gender=Female&min_weight=17&max_weight=23'));
+        $this->assertSame([$adult->id], $ids('min_weight=50'));
+
+        $row = collect($this->actingAs($this->organiser)
+            ->getJson("/me/events/{$event->uuid}/brackets/admit-candidates?category_id={$category->id}&gender=Male&max_age=6")
+            ->json('candidates'))->first();
+        $this->assertSame(6, $row['age']);
+        $this->assertSame('Male', $row['gender']);
+
+        $this->actingAs($this->organiser)
+            ->getJson("/me/events/{$event->uuid}/brackets/admit-candidates?category_id={$category->id}&gender=other")
+            ->assertStatus(422);
+    }
+
     public function test_a_finished_division_says_so_rather_than_pretending_it_is_full(): void
     {
         $event = $this->event();

@@ -269,4 +269,10 @@ class Karate extends AbstractCombatSport
     {
         return 'right';
     }
+
+    /** A karateka enters Kata, Kumite, or both (the registration form's tick boxes). */
+    public function entryDisciplines(): array
+    {
+        return [['key' => 'kata'], ['key' => 'kumite']];
+    }
 }

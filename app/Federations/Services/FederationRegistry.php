@@ -614,7 +614,9 @@ class FederationRegistry
                     'name' => $a['name'], 'gender' => $a['gender'], 'dob' => $a['dob'], 'weight' => $a['weight'], 'nat' => $a['nat'],
                     'natId' => $a['natId'], 'photo' => $a['photo'], 'athleteId' => $a['athleteId'], 'takeoneId' => $a['athleteId'],
                     'types' => $a['types'], 'approval' => $a['approval'],
-                ] + ($placed['division'][(string) $a['athleteId']] ?? []))->values()->all(),
+                    'declaredAge' => $placed['declared'][(string) $a['athleteId']] ?? null,
+                ] + ($placed['division'][(string) $a['athleteId']] ?? [])
+                  + ($placed['weigh'][(string) $a['athleteId']] ?? []))->values()->all(),
         ];
     }
 
@@ -624,7 +626,7 @@ class FederationRegistry
      * The page used to guess the division from today's age and the generic
      * weight table; the event's own placement is the one the draw uses.
      *
-     * @return array{live: array<string, true>, division: array<string, array{ageGroup?: string, division?: string, divisionName: string, divisionAges?: string, unplaced?: true}>}
+     * @return array{live: array<string, true>, division: array<string, array{ageGroup?: string, division?: string, divisionName: string, divisionAges?: string, divisionGender?: string, divisionId?: int, unplaced?: true}>}
      */
     private function placements(FederationEntry $entry): array
     {
@@ -637,16 +639,37 @@ class FederationRegistry
                 ->leftJoin('club_event_registrations as r', fn ($j) => $j->on('r.user_id', '=', 'u.id')
                     ->where('r.event_id', $eventId)->where('r.role', 'participant'))
                 ->leftJoin('event_categories as c', 'c.id', '=', 'r.category_id')
-                ->addSelect('c.name as cat', 'c.weight_class', 'c.min_age', 'c.max_age', 'c.sort_order'))
+                ->addSelect('c.name as cat', 'c.weight_class', 'c.min_age', 'c.max_age', 'c.sort_order', 'c.gender as cat_gender', 'c.id as cat_id', 'r.declared_age',
+                    'r.id as reg_id', 'r.weight as reg_weight', 'r.weighed_in_at', 'r.weighed_in_by'))
             ->where('ea.federation_entry_id', $entry->id)
             ->addSelect('fa.takeone_id')
             ->get();
 
         $live = [];
         $division = [];
+        $declared = [];
+        // The weigh-in, per athlete: every entry they hold on the event is
+        // weighed through the platform's own desk endpoint
+        // (me.events.verify.weigh-in), which authorises and re-places them.
+        $weigh = [];
+        $eventUuid = $eventId ? \Illuminate\Support\Facades\DB::table('club_events')->where('id', $eventId)->value('uuid') : null;
         foreach ($rows->sortBy(fn ($r) => $r->sort_order ?? PHP_INT_MAX) as $r) {
             $tk = (string) $r->takeone_id;
             $live[$tk] = true;
+            if ($eventUuid && ($r->reg_id ?? null)) {
+                $w = $weigh[$tk] ?? ['weighUrls' => [], 'weighedIn' => true, 'weighedKg' => null];
+                $w['weighUrls'][] = route('me.events.verify.weigh-in', [$eventUuid, $r->reg_id]);
+                $done = $r->weighed_in_at !== null && $r->weighed_in_by !== null;
+                $w['weighedIn'] = $w['weighedIn'] && $done;
+                if ($done && $r->reg_weight !== null) {
+                    $w['weighedKg'] ??= (float) $r->reg_weight;
+                }
+                $weigh[$tk] = $w;
+            }
+            // A stated age, for an athlete whose date of birth is not known.
+            if (($r->declared_age ?? null) !== null) {
+                $declared[$tk] ??= (int) $r->declared_age;
+            }
             if (isset($division[$tk]) || empty($r->cat)) {
                 continue;
             }
@@ -654,7 +677,11 @@ class FederationRegistry
             // one mapping, shared with the Statistics tab's bracket.
             $division[$tk] = FederationEventBracket::division((string) $r->cat, $r->weight_class, $r->min_age !== null ? (int) $r->min_age : null)
                 // The name the event itself gives the division — shown, never keyed on.
-                + ['divisionName' => (string) $r->cat, 'divisionAges' => self::ages($r->min_age, $r->max_age)];
+                + ['divisionName' => (string) $r->cat, 'divisionAges' => self::ages($r->min_age, $r->max_age),
+                    // The DIVISION's gender, not the athlete's: X = a mixed (open) division.
+                    'divisionGender' => match (strtolower((string) $r->cat_gender)) { 'male' => 'M', 'female' => 'F', default => 'X' },
+                    // Which of the event's divisions — the draw board opens on it.
+                    'divisionId' => (int) $r->cat_id];
         }
         // On an event that runs on the platform, an athlete the event has not
         // placed is said to be unplaced — never given a division the page guessed.
@@ -664,7 +691,7 @@ class FederationRegistry
             }
         }
 
-        return ['live' => $live, 'division' => $division];
+        return ['live' => $live, 'division' => $division, 'declared' => $declared, 'weigh' => $weigh];
     }
 
     /** A category's age range as the event set it: "6–11", "18+", "Under 12". */

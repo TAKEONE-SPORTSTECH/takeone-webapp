@@ -18,7 +18,7 @@
 @section('content')
 @php $roColor = preg_match('/^#[0-9a-fA-F]{3,8}$/', (string) ($e['color'] ?? '')) ? $e['color'] : '#7c3aed'; @endphp
 
-<div x-data="orderPage(@js($view), @js((bool) ($canManage ?? false)))" x-cloak>
+<div x-data="orderPage(@js($view), @js((bool) ($canManage ?? false)), @js(($canManage ?? false) ? route('me.events.order.renumber', $e['key']) : null))" x-cloak>
 
     <div class="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 overflow-hidden shadow-sm mb-6 text-white relative"
          style="background: linear-gradient(150deg, {{ $roColor }}, {{ $roColor }}b0);">
@@ -66,6 +66,13 @@
                         :class="view === 'mats' ? '' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                         :style="view === 'mats' ? `border-color: {{ $roColor }}; color: {{ $roColor }};` : ''">
                     <i class="bi bi-grid-1x2"></i>{{ __('events::events.order_tab_mats') }}
+                </button>
+                {{-- Number every bout from this running order now — and refresh
+                     the brackets and walls (App\Events\Support\BoutNumbering). --}}
+                <button type="button" @click="renumber()" :disabled="renumbering"
+                        class="ms-auto mb-2 self-center inline-flex items-center gap-2 h-9 px-4 rounded-lg border text-sm font-semibold transition-colors disabled:opacity-50"
+                        style="border-color: {{ $roColor }}; color: {{ $roColor }};">
+                    <i class="bi" :class="renumbering ? 'bi-arrow-repeat animate-spin' : 'bi-123'"></i>{{ __('events::events.renumber_button') }}
                 </button>
             </nav>
         </div>

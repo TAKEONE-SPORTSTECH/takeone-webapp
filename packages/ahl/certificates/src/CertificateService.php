@@ -291,6 +291,11 @@ class CertificateService
         [$sw, $sh] = \Ahl\Certificates\Support\Formats::get(Formats::CERTIFICATE)->page($orientation);   // A4 the same way up
         $cols = (int) $sheet['cols'];
         $rows = (int) $sheet['rows'];
+        if (! empty($sheet['fit'])) {
+            // A card the organiser sized: as many as fit on the A4 turned the same way.
+            $cols = max(1, (int) floor($sw / $cw));
+            $rows = max(1, (int) floor($sh / $ch));
+        }
         $ox = max(0, ($sw - $cols * $cw) / 2);
         $oy = max(0, ($sh - $rows * $ch) / 2);
         $cut = 'position:absolute; background:#9a94a8;';
@@ -644,7 +649,8 @@ class CertificateService
         // A certificate keeps its configurable view and paper; another format brings its own.
         $format = Formats::current();
         $view = $format->key === Formats::CERTIFICATE ? config('certificates.pdf.view', $format->view) : $format->view;
-        $paper = $format->key === Formats::CERTIFICATE ? config('certificates.pdf.paper', 'a4') : $format->paperFor($orientation);
+        // A page the organiser sized (1.4) is drawn on exactly that paper.
+        $paper = $format->key === Formats::CERTIFICATE && $format->paper !== 'custom' ? config('certificates.pdf.paper', 'a4') : $format->paperFor($orientation);
 
         if ($this->capture !== null) {
             $this->capture = ['html' => view($view, $data)->render(), 'orientation' => $orientation, 'paper' => $paper, 'format' => $format];

@@ -184,7 +184,8 @@ class DivisionRange
         $born = $entrant->user?->birthdate;
 
         if (! $born) {
-            return null;
+            // A stated age, when that is all anybody has (2026-10-15).
+            return $entrant->declared_age !== null ? (int) $entrant->declared_age : null;
         }
 
         $born = \Illuminate\Support\Carbon::parse($born);

@@ -61,7 +61,11 @@
         color:#eef1f6;isolation:isolate;}
     .bk-viewport:active{cursor:grabbing;}
     .bk-viewport.is-arranging{cursor:default;}
-    .bk-canvas{position:absolute;top:0;left:0;transform-origin:0 0;will-change:transform;}
+    .bk-canvas{position:absolute;top:0;left:0;transform-origin:0 0;}
+    /* will-change only WHILE moving (apply() sets it, then drops it 160 ms
+       after the last change). Left on for good, the browser rasterises the
+       board once at 1× and stretches that bitmap — pixelated at max zoom. */
+    .bk-canvas.bk-moving{will-change:transform;}
     .bk-links{position:absolute;top:0;left:0;pointer-events:none;overflow:visible;}
     .bk-layer{position:relative;}
 
@@ -711,6 +715,8 @@ window.BracketBoard = window.BracketBoard || (function () {
     const summary = () => S.divisions.map(d => ({
         id: d.id, name: d.name, entrants: d.entrants,
         bench: (d.bench || []).length, is_heading: !!d.is_heading, podium: d.podium || [],
+        // Gender, ages and weights, for a division menu that says what each group is.
+        range: d.range || null,
     }));
 
     const current = () => S.divisions.find(d => d.id === S.division) || null;
@@ -1177,6 +1183,9 @@ window.BracketBoard = window.BracketBoard || (function () {
 
             const input = el('input', 'bk-name-in');
             input.type = 'text';
+            // No browser autofill: it offers names typed on OTHER events.
+            input.autocomplete = 'off';
+            input.spellcheck = false;
             input.value = p.name;
             input.disabled = !p.competitor_id;
             input.addEventListener('pointerdown', e => e.stopPropagation());
@@ -1244,6 +1253,7 @@ window.BracketBoard = window.BracketBoard || (function () {
             const input = el('input', 'bk-score-in');
             input.type = 'text';
             input.inputMode = 'numeric';
+            input.autocomplete = 'off';
             input.maxLength = 16;
             input.value = value;
             input.setAttribute('aria-label', S.cfg.text.score);
@@ -1993,6 +2003,12 @@ window.BracketBoard = window.BracketBoard || (function () {
     // -----------------------------------------------------------------
     function apply() {
         S.canvas.style.transform = 'translate(' + S.tx + 'px,' + S.ty + 'px) scale(' + S.scale + ')';
+        // Smooth while it moves, sharp once it stops: dropping the hint makes
+        // the browser redraw the board at the zoom it came to rest at.
+        const c = S.canvas;
+        c.classList.add('bk-moving');
+        clearTimeout(S.sharpT);
+        S.sharpT = setTimeout(() => c.classList.remove('bk-moving'), 160);
     }
 
     const clampScale = s => Math.min(2.4, Math.max(0.2, s));

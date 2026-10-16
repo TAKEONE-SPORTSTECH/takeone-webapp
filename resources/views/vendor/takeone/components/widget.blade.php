@@ -24,6 +24,9 @@
     $uploadAsIs = $attributes->get('uploadAsIs', false);          // Show "Upload As Is" button alongside crop
     $uploadAsIsText = $attributes->get('uploadAsIsText', 'Upload As Is'); // Label for the as-is button
     $inline = filter_var($attributes->get('inline', false), FILTER_VALIDATE_BOOLEAN); // Render crop UI inline (no modal popup)
+    // Opt-in (inline mode): a "New photo" button inside the crop sheet, so a
+    // picture opened for adjusting can also be swapped for another one.
+    $replaceable = filter_var($attributes->get('replaceable', false), FILTER_VALIDATE_BOOLEAN);
 
     // Inline-mode bottom-sheet shape/size (lets a caller match the crop sheet to a host form's sheet).
     $sheetMaxWidth = $attributes->get('sheetMaxWidth', 'min(92vw, ' . max(512, (int) $width + 96) . 'px)'); // CSS max-width of the sheet panel
@@ -101,7 +104,7 @@
     <input type="hidden" name="{{ $inputName }}_folder" value="{{ $folder }}">
     <input type="hidden" name="{{ $inputName }}_filename" value="{{ $filename }}">
     @endif
-    @include('takeone::components.widget-crop-body', ['showClose' => false])
+    @include('takeone::components.widget-crop-body', ['showClose' => false, 'replaceable' => $replaceable])
 </div>
 @elseif($mode === 'form')
 {{-- Form mode: Show preview and hidden input --}}
@@ -415,6 +418,22 @@ $(function() {
     // before anyone could click it, so the cropper could be opened but never
     // cancelled. Delegated, because the editor is moved onto <body>.
     $(document).on('click.tk{{ $id }}', '#cancel_{{ $id }}, #cancelBtn_{{ $id }}, #editorBackdrop_{{ $id }}', hideEditor_{{ $id }});
+
+    // Open the editor on a picture the page already has — to adjust the crop
+    // of the current photo rather than start from a file. Any caller:
+    //   document.dispatchEvent(new CustomEvent('cropper:open', {detail: {id, src}}))
+    // `src` must be an image this page may read (same origin, or a data: URL),
+    // or the crop cannot be exported from the canvas.
+    $(document).on('cropper:open.tk{{ $id }}', function(e) {
+        const d = (e.originalEvent && e.originalEvent.detail) || {};
+        if (d.id !== '{{ $id }}' || typeof d.src !== 'string' || ! /^(data:image\/|\/|https?:)/.test(d.src)) return;
+        showEditor_{{ $id }}();
+        initCropper_{{ $id }}(d.src);
+    });
+    // "New photo" inside the sheet: the same picker the page's own button uses.
+    $(document).on('click.tk{{ $id }}', '#replace_{{ $id }}', function() {
+        document.getElementById('input_{{ $id }}').click();
+    });
 @endif
 
     $(document).on('change.tk{{ $id }}', '#input_{{ $id }}', function() {

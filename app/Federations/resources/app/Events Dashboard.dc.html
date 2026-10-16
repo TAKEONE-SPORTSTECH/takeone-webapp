@@ -369,7 +369,22 @@
             <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ false }}">
               <button onClick="{{ onDeleteSel }}" style="height:36px;padding:0 14px;border:1px solid #c0392b;border-radius:9px;background:#fff;font-family:inherit;font-size:.76rem;font-weight:600;color:#c0392b;cursor:pointer" style-hover="background:#c0392b;color:#fff">Delete selected ({{ selCount }})</button>
             </sc-if>
-            <button onClick="{{ onClearAll }}" style="height:36px;padding:0 14px;border:1px solid #d5dae3;border-radius:9px;background:#fff;font-family:inherit;font-size:.76rem;font-weight:600;color:#6b7689;cursor:pointer" style-hover="border-color:#c0392b;color:#c0392b">Clear all</button>
+            <sc-if value="{{ rp.can }}" hint-placeholder-val="{{ false }}">
+              <div style="position:relative">
+                <button type="button" onClick="{{ rp.toggle }}" aria-haspopup="menu" aria-expanded="{{ rp.open }}" style="height:40px;padding:0 16px;border:1px solid #d5dae3;border-radius:11px;font-family:inherit;font-size:.8rem;font-weight:700;color:#1e2c4f;background:#fff;cursor:pointer;display:inline-flex;align-items:center;gap:7px" style-hover="border-color:#caa14f"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>{{ rp.label }}<span style="font-size:.7rem;color:#6b7689">&#9662;</span></button>
+                <sc-if value="{{ rp.open }}" hint-placeholder-val="{{ false }}">
+                  <div role="menu" onClick="{{ stopEvt }}" style="position:absolute;top:calc(100% + 6px);left:0;z-index:30;width:270px;max-width:calc(100vw - 2rem);background:#fff;border:1px solid #d5dae3;border-top:3px solid #d8b25f;border-radius:14px;box-shadow:0 18px 50px rgba(30,44,79,.14);padding:6px;animation:rise .25s cubic-bezier(.22,.68,.35,1) both">
+                    <div style="font-size:.64rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#6b7689;padding:4px 10px 6px">Download PDF</div>
+                    <sc-for list="{{ rp.items }}" as="it" hint-placeholder-count="4">
+                      <button type="button" role="menuitem" onClick="{{ it.onClick }}" style="{{ it.style }}" style-hover="background:#fdf6e6"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="flex:none;fill:none;stroke:#b08a3a;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><span style="display:flex;flex-direction:column;min-width:0"><span>{{ it.title }}</span><span style="font-size:.7rem;font-weight:500;color:#6b7689">{{ it.sub }}</span></span></button>
+                    </sc-for>
+                    <sc-if value="{{ rp.hasErr }}" hint-placeholder-val="{{ false }}">
+                      <div style="margin:4px 6px 2px;padding:8px 10px;border-radius:9px;background:#fdecea;color:#c0392b;font-size:.74rem;font-weight:600">{{ rp.err }}</div>
+                    </sc-if>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-if>
             <sc-if value="{{ en.can }}" hint-placeholder-val="{{ false }}">
               <sc-if value="{{ bulk.can }}" hint-placeholder-val="{{ false }}">
                 <button onClick="{{ bulk.onOpen }}" style="height:40px;padding:0 16px;border:1px solid #caa14f;border-radius:11px;font-family:inherit;font-size:.8rem;font-weight:700;color:#8a6d20;background:#fdf6e6;cursor:pointer;display:inline-flex;align-items:center;gap:7px" style-hover="background:#fbeecb"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13l3 3 5-6"/></svg>Import from Excel</button>
@@ -3142,6 +3157,48 @@ class Component extends DCLogic {
       onGo: go
     }};
   }
+  // Registrations → "Download": the event's participants PDFs, built by the
+  // platform event's own endpoint (ParticipantsPdf), which re-checks who asks.
+  regPdfVals() {
+    const s = this.state, T = window.TakeOneFed || {};
+    // The event on screen — not T.currentEvent, which only follows the Athletes tab's last load.
+    const url = T.participantsPdf ? T.participantsPdf(this.state.selectedId) : null;
+    if (!url) return {rp: {can: false, open: false}};
+    const open = s.ddOpen === 'regpdf', busy = s.rpBusy || null;
+    const get = (kind) => {
+      if (busy) return;
+      this.setState({rpBusy: kind, rpErr: ''});
+      fetch(url + '?kind=' + encodeURIComponent(kind), {credentials: 'same-origin', headers: {Accept: 'application/pdf, application/json', 'X-Requested-With': 'XMLHttpRequest'}})
+        .then(r => {
+          const ct = r.headers.get('Content-Type') || '';
+          if (r.ok && ct.indexOf('application/pdf') === 0) {
+            const cd = r.headers.get('Content-Disposition') || '', m = cd.match(/filename="([^"]+)"/);
+            return r.blob().then(b => {
+              const a = document.createElement('a'), href = URL.createObjectURL(b);
+              a.href = href; a.download = m ? m[1] : kind + '.pdf';
+              document.body.appendChild(a); a.click(); a.remove();
+              setTimeout(() => URL.revokeObjectURL(href), 4000);
+              this.setState({rpBusy: null, ddOpen: null});
+            });
+          }
+          return r.json().catch(() => ({})).then(j => this.setState({rpBusy: null,
+            rpErr: j.message || (r.status === 429 ? 'Too many downloads — wait a minute.' : 'The PDF could not be made. Try again.')}));
+        })
+        .catch(() => this.setState({rpBusy: null, rpErr: 'Could not reach the server. Try again.'}));
+    };
+    const row = 'width:100%;display:flex;align-items:center;gap:10px;padding:9px 10px;border:0;border-radius:9px;background:transparent;font-family:inherit;font-size:.8rem;font-weight:600;color:#1e2c4f;text-align:left;cursor:pointer';
+    return {rp: {
+      can: true, open,
+      label: busy ? 'Preparing PDF…' : 'Download',
+      toggle: e => { e.stopPropagation(); this.setState({ddOpen: open ? null : 'regpdf', rpErr: ''}); },
+      err: s.rpErr || '', hasErr: !!s.rpErr,
+      items: [['list', 'Entry List', 'By division, to share or pin up'], ['checkin', 'Check-In Sheet', 'By division, for the desk'],
+        ['checkin_club', 'Check-In Sheet by Club', 'One block per club'], ['all', 'All Participants A–Z', 'Everyone once, alphabetical']]
+        .map(([kind, title, sub]) => ({title, sub: busy === kind ? 'Preparing…' : sub,
+          style: this.cssToObj(row + (busy && busy !== kind ? ';opacity:.45;cursor:default' : '')),
+          onClick: e => { e.stopPropagation(); get(kind); }}))
+    }};
+  }
   // Registrations → "Enroll athlete" (FederationEnrolment on the server).
   enrolVals() {
     const s = this.state, T = window.TakeOneFed || {}, FS = window.FedStore;
@@ -5175,6 +5232,7 @@ class Component extends DCLogic {
         amtStyle: this.cssToObj('margin-left:auto;font-size:.84rem;font-weight:700;flex:none;color:' + (t.type === 'Income' ? '#2f7a4f' : '#1e2c4f'))})),
       checklist, divBars, divCards, divsEmpty, divBarsEmpty: divBars.length === 0, regs, schedule,
       ...this.enrolVals(),
+      ...this.regPdfVals(),
       ...this.importVals(),
       regQuery: s.regQuery || '', onRegQuery: e => this.setState({regQuery: e.target.value}), regsEmpty: regs.length === 0,
       selCount: selIds.length, hasSel: selIds.length > 0,

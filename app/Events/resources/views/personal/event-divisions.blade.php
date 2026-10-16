@@ -95,6 +95,9 @@
     <div class="px-4 mt-4 relative z-10 pb-6">
         <p class="text-[11px] text-muted-foreground mb-3">{{ __('events::events.divisions_page_hint') }}</p>
 
+        {{-- Merging small divisions — renders nothing while EVENT_DIVISION_MERGE is off. --}}
+        <x-division-merge :event="$e['key']" :color="$e['color']" class="mb-3" />
+
         <x-event-divisions :event="$e['key']" :server="true"
                            :divisions="$e['division_rows'] ?? []"
                            :phases="$e['phase_defs'] ?? []"

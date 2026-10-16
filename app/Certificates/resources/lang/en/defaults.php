@@ -12,6 +12,16 @@ return [
         'title' => 'Official',
         'body' => ' ',
     ],
+    // A competitor's badge: the same card, for the people who compete.
+    'participant_badge' => [
+        'title' => 'Athlete',
+        'body' => ' ',
+    ],
+    // An official's thank-you certificate.
+    'official_thanks' => [
+        'title' => 'Certificate of Appreciation',
+        'body' => 'with thanks for serving as {role} at {event} on {date}, and for helping make it a success.',
+    ],
     'participation' => [
         'title' => 'Certificate of Participation',
         'body' => 'competed in the {division} division of the {event} on {date}{representing}.',

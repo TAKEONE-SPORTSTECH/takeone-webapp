@@ -142,6 +142,34 @@ class TabletDrawController extends Controller
             [app(PersonalEventController::class), 'transferBracket'], ['request' => $request, 'event' => $tablet->event]));
     }
 
+    /**
+     * Shuffle one division fairly (App\Events\Support\Tournament\FairDraw) —
+     * the organiser's own action, so only a PIN owner who manages the event.
+     */
+    public function shuffle(Request $request, string $token): Response
+    {
+        return $this->asEditor($token, function ($tablet) use ($request) {
+            abort_unless($this->manages($tablet, Auth::user()), 403);
+
+            $request->replace(['category_id' => (int) $request->input('category_id')]);
+
+            return app()->call([app(PersonalEventController::class), 'performAction'],
+                ['request' => $request, 'event' => $tablet->event, 'action' => 'shuffle_draw']);
+        });
+    }
+
+    /** "Renumber bouts" (App\Events\Support\BoutNumbering) — organiser's action, so a managing PIN owner only. */
+    public function renumberAll(string $token): Response
+    {
+        return $this->asEditor($token, function ($tablet) {
+            abort_unless($this->manages($tablet, Auth::user()), 403);
+
+            $result = app(\App\Events\Support\BoutNumbering::class)->renumber($tablet->event);
+
+            return response()->json(['success' => $result['ok'], 'message' => $result['message']], $result['ok'] ? 200 : 422);
+        });
+    }
+
     public function admit(Request $request, string $token): Response
     {
         return $this->asEditor($token, fn ($tablet) => app()->call(
@@ -183,20 +211,7 @@ class TabletDrawController extends Controller
         return $this->asEditor($token, function ($tablet) use ($match) {
             abort_unless($this->manages($tablet, Auth::user()), 403);
 
-            $bout = \App\Events\Models\EventMatch::where('event_id', $tablet->event->id)->find($match);
-            abort_unless($bout !== null, 404);
-
-            $plan = app(\App\Events\Support\Tournament\OrderBoard::class)->plan($tablet->event, $bout->day ?: null);
-
-            return response()->json([
-                'success' => true,
-                'match' => [
-                    'id' => $bout->id, 'no' => $bout->match_no, 'court' => $bout->court,
-                    'day' => $plan['day'], 'decided' => $bout->winner !== null,
-                    'pinned' => (bool) $bout->number_pinned,
-                ],
-                'mats' => array_map(fn ($m) => ['court' => $m['court'], 'count' => count($m['bouts'])], $plan['mats']),
-            ]);
+            return app(\App\Events\Support\BoutNumbers::class)->place($tablet->event, $match);
         });
     }
 
@@ -210,30 +225,7 @@ class TabletDrawController extends Controller
         return $this->asEditor($token, function ($tablet) use ($request) {
             abort_unless($this->manages($tablet, Auth::user()), 403);
 
-            $data = $request->validate([
-                'match' => ['required', 'integer'],
-                'court' => ['required', 'string', 'max:40'],
-                'no' => ['required', 'integer', 'min:1', 'max:999'],
-                'day' => ['nullable', 'integer', 'min:1', 'max:60'],
-            ]);
-
-            abort_unless(\App\Events\Models\EventMatch::where('event_id', $tablet->event->id)
-                ->whereKey((int) $data['match'])->exists(), 404);
-
-            // Only a mat the day actually has — never a label typed into the request.
-            $mats = array_column(app(\App\Events\Support\Tournament\OrderBoard::class)
-                ->plan($tablet->event, $data['day'] ?? null)['mats'], 'court');
-            abort_unless(in_array($data['court'], $mats, true), 422);
-
-            $request->replace([
-                'match' => (int) $data['match'],
-                'court' => $data['court'],
-                'position' => (int) $data['no'] - 1,
-                'day' => $data['day'] ?? null,
-            ]);
-
-            return app()->call([app(PersonalEventController::class), 'moveInRunningOrder'],
-                ['request' => $request, 'event' => $tablet->event]);
+            return app(\App\Events\Support\BoutNumbers::class)->renumber($request, $tablet->event);
         });
     }
 
@@ -243,17 +235,7 @@ class TabletDrawController extends Controller
         return $this->asEditor($token, function ($tablet) use ($match) {
             abort_unless($this->manages($tablet, Auth::user()), 403);
 
-            $result = app(\App\Events\Support\Tournament\OrderBoard::class)->release($tablet->event, $match);
-
-            if (! ($result['ok'] ?? false)) {
-                return $this->no($result['message'] ?? __('events::events.action_failed'));
-            }
-
-            rescue(fn () => app(\App\Events\EventTypeRegistry::class)->for($tablet->event)
-                ->onEntrantsChanged($tablet->event, null), null, false);
-            \App\Events\Support\HallWalls::refresh($tablet->event);
-
-            return response()->json(['success' => true, 'message' => $result['message']]);
+            return app(\App\Events\Support\BoutNumbers::class)->release($tablet->event, $match);
         });
     }
 

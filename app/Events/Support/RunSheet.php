@@ -65,11 +65,17 @@ class RunSheet
              * beside it translate correctly. Same trap as the one the stat
              * cards hit by omitting `updated_at`.
              */
-            ->with('category:id,event_id,name')
+            ->with('category:id,event_id,name,gender')
             ->get();
 
         if ($slots->isEmpty()) {
             return [];
+        }
+
+        // With groups on, a group's classes run straight after its header,
+        // wherever their own positions put them (RunSessions::ordered).
+        if (RunSessions::enabled()) {
+            $slots = RunSessions::ordered($slots);
         }
 
         $bouts = $this->boutCounts($event);
@@ -106,6 +112,9 @@ class RunSheet
                 'kind' => $slot->kind,
                 'name' => $slot->displayName(),
                 'category_id' => $slot->category_id,
+                // The division's gender, for the board's card colour: 'male',
+                // 'female', or null (mixed or not said).
+                'gender' => $slot->isDivision() ? $this->genderOf($slot->category) : null,
                 'is_division' => $slot->isDivision(),
                 'pinned' => $slot->pinned_at !== null,
                 'starts_at' => $startsAt,
@@ -130,7 +139,88 @@ class RunSheet
             ];
         }
 
+        $rows = $this->withSessions($event, $slots, $rows, $day);
+
         return $this->withStatus($event, $rows, $day, $now);
+    }
+
+    /**
+     * Which GROUP each row sits in and how that group calls its bouts
+     * (App\Events\Support\RunSessions). A group row carries `group_head`
+     * (its method and how many classes it holds); every row under it carries
+     * `group` (the group's uuid) and `session_mode`.
+     *
+     * In a group that is NOT one class at a time, a class's bouts are spread
+     * across the whole group, so each class row reads the group's span — its
+     * start to its end — rather than a block of its own that the mat will not
+     * actually run.
+     */
+    private function withSessions(ClubEvent $event, Collection $slots, array $rows, int $day): array
+    {
+        $enabled = RunSessions::enabled();
+        $groups = $slots->where('kind', EventRunSlot::KIND_GROUP)->keyBy('id');
+        $heads = [];
+
+        foreach ($rows as $i => $row) {
+            $slot = $slots[$i];
+            if ($slot->kind === EventRunSlot::KIND_GROUP) {
+                $rows[$i]['group_head'] = $enabled ? ['mode' => RunSessions::normalise($slot->mode), 'size' => 0] : null;
+                $rows[$i]['group'] = null;
+                $rows[$i]['session_mode'] = null;
+                $heads[$slot->id] = $i;
+
+                continue;
+            }
+            $group = $enabled && $slot->group_id !== null ? $groups->get($slot->group_id) : null;
+            $rows[$i]['group'] = $group?->uuid;
+            $rows[$i]['session_mode'] = $group ? RunSessions::normalise($group->mode) : RunSessions::CLASS_AT_A_TIME;
+            if ($group && $row['is_division']) {
+                $rows[$heads[$group->id]]['group_head']['size']++;
+            }
+        }
+
+        // The span of each mixed group, over its division rows.
+        $span = [];
+        foreach ($rows as $row) {
+            if (! $row['is_division'] || $row['group'] === null
+                || $row['session_mode'] === RunSessions::CLASS_AT_A_TIME) {
+                continue;
+            }
+            $g = $row['group'];
+            $span[$g] = [
+                min($span[$g][0] ?? PHP_INT_MAX, $row['starts_at']),
+                max($span[$g][1] ?? 0, $row['ends_at']),
+            ];
+        }
+        foreach ($rows as $i => $row) {
+            if ($row['is_division'] && $row['group'] !== null && isset($span[$row['group']])) {
+                [$rows[$i]['starts_at'], $rows[$i]['ends_at']] = $span[$row['group']];
+                $rows[$i]['interleaved'] = true;
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * 'male', 'female' or null. The division's own column first; a division
+     * that never set one is read from its name ("Cadet Kumite Male -52 kg"),
+     * the way every generated division is named. Anything else is null.
+     */
+    private function genderOf(?EventCategory $category): ?string
+    {
+        $g = strtolower((string) ($category?->gender ?? ''));
+        if (in_array($g, ['male', 'female'], true)) {
+            return $g;
+        }
+
+        $name = (string) ($category?->getRawOriginal('name') ?? '');
+
+        return match (true) {
+            (bool) preg_match('/\b(female|women|girls?)\b/i', $name) => 'female',
+            (bool) preg_match('/\b(male|men|boys?)\b/i', $name) => 'male',
+            default => null,
+        };
     }
 
     /** When the day's last part ends, in minutes from midnight. */
@@ -251,6 +341,11 @@ class RunSheet
 
     private function duration(EventRunSlot $slot, array $bouts, array $entrants, int $boutMinutes): int
     {
+        // A group heads its classes; it takes no time of its own.
+        if ($slot->kind === EventRunSlot::KIND_GROUP) {
+            return 0;
+        }
+
         if (! $slot->isDivision()) {
             return (int) ($slot->duration_minutes
                 ?: (EventRunSlot::DEFAULT_DURATIONS[$slot->kind] ?? 15));

@@ -46,12 +46,18 @@ class EventBadges extends EventCertificates implements \App\Certificates\Contrac
 
     public function types(): array
     {
-        return [self::TYPE];
+        return [static::TYPE];
     }
 
     public function placeholderKeys(): array
     {
-        return ['name', 'role', 'club', 'event'];
+        return ['name', 'role', 'club', 'event', 'nationality'];
+    }
+
+    /** A badge's {tokens} are the person's, whichever design (not a certificate's). */
+    public function typePlaceholders(string $type): array
+    {
+        return $this->placeholderKeys();
     }
 
     public function placeholders(Certificate $certificate, string $locale): array
@@ -91,16 +97,43 @@ class EventBadges extends EventCertificates implements \App\Certificates\Contrac
 
     /* ── the badges themselves ─────────────────────────────────────── */
 
-    /** @return Collection<int, EventOfficial> the event's officials, in the order they were appointed */
+    /**
+     * The event's officials, ONE PER PERSON (owner, 2026-10-15): somebody holding two
+     * jobs gets one badge naming both, carried by their first appointment.
+     *
+     * @return Collection<int, EventOfficial>
+     */
     public function officials(ClubEvent $event): Collection
     {
         return EventOfficial::where('event_id', $event->id)->whereNotNull('user_id')->with('user')->orderBy('id')->get()
-            ->filter(fn (EventOfficial $o) => $o->user !== null)->values();
+            ->filter(fn (EventOfficial $o) => $o->user !== null)->unique('user_id')->values();
+    }
+
+    /** Every job this official's person holds at the event, in the badge's words ("Referee 1 · Scorekeeper"). */
+    public function rolesOf(EventOfficial $official, string $locale): string
+    {
+        return EventOfficial::where('event_id', $official->event_id)->where('user_id', $official->user_id)->orderBy('id')->get()
+            ->map(fn (EventOfficial $o) => $this->roleLabel($o, $locale))->filter()->unique()->implode(' · ')
+            ?: $this->roleLabel($official, $locale);
+    }
+
+    /** The event's own page — what every badge's QR opens (owner, 2026-10-15). */
+    public function eventPageUrl(ClubEvent $event): string
+    {
+        return route('me.events.show', ['event' => $event->uuid]);
+    }
+
+    /** A person's nationality as a badge prints it: the country's name. */
+    protected function nationalityOf(?\App\Members\Models\User $user): ?string
+    {
+        $code = trim((string) ($user?->nationality ?? ''));
+
+        return $code !== '' ? (\App\Support\Countries::name($code) ?: $code) : null;
     }
 
     public function template(ClubEvent $event): CertificateTemplate
     {
-        return app(CertificateService::class)->templateFor(self::TYPE, $event);
+        return app(CertificateService::class)->templateFor(static::TYPE, $event);
     }
 
     /** The random code behind the badge's QR, made the first time the badge is drawn. */
@@ -129,7 +162,15 @@ class EventBadges extends EventCertificates implements \App\Certificates\Contrac
             return trim((string) $official->role_label) ?: __('personal.personal_event_officials_role_other', [], $locale);
         }
 
-        return __('personal.personal_event_officials_role_'.$official->role, [], $locale);
+        // A platform role's word, else the sport's own name for a job on the mat
+        // ("Tatami Manager", "Judge 1 (Fukushin)") — never the raw key.
+        $key = 'personal.personal_event_officials_role_'.$official->role;
+        if (trans()->has($key, $locale)) {
+            return __($key, [], $locale);
+        }
+        $names = $official->event ? rescue(fn () => app(OfficialRoles::class)->labels($official->event), [], false) : [];
+
+        return (string) ($names[$official->role] ?? \Illuminate\Support\Str::headline((string) $official->role));
     }
 
     /**
@@ -148,11 +189,14 @@ class EventBadges extends EventCertificates implements \App\Certificates\Contrac
 
         return [
             'name' => (string) ($user?->full_name ?: $user?->name ?: ''),
-            'role' => $this->roleLabel($official, $locale),
+            // Every job they hold at the event, not only this appointment's.
+            'role' => $this->rolesOf($official, $locale),
             'club' => $official->club()['name'] ?? null,
             'event' => $official->event ? $this->headline($official->event) : '',
+            'nationality' => $this->nationalityOf($user),
             'photo' => $photo,
-            'qr' => $withQr ? $this->verifyUrl($official) : null,
+            // The QR opens the event's page (owner, 2026-10-15), not a check of the badge.
+            'qr' => $withQr && $official->event ? $this->eventPageUrl($official->event) : null,
             'certificate_no' => strtoupper(substr($this->token($official), 0, 8)),
         ];
     }
@@ -170,8 +214,9 @@ class EventBadges extends EventCertificates implements \App\Certificates\Contrac
             'role' => __('personal.personal_event_officials_role_jury', [], $locale),
             'club' => EventHost::of($event)->name ?: null,
             'event' => $this->headline($event),
+            'nationality' => null,
             'photo' => null,
-            'qr' => route('badges.verify', ['token' => str_repeat('0', 32)]),
+            'qr' => $this->eventPageUrl($event),
             'certificate_no' => 'SAMPLE',
         ];
     }
@@ -204,7 +249,7 @@ class EventBadges extends EventCertificates implements \App\Certificates\Contrac
 
     public function printCount(Model $context, string $type): int
     {
-        return $context instanceof ClubEvent && $type === self::TYPE ? $this->officials($context)->count() : 0;
+        return $context instanceof ClubEvent && $type === static::TYPE ? $this->officials($context)->count() : 0;
     }
 
     public function printSignature(Model $context, string $type): string
@@ -228,7 +273,7 @@ class EventBadges extends EventCertificates implements \App\Certificates\Contrac
     }
 
     /** A face for print: cut to 3:4 to fill its box, at most 480 × 640, as a data URI. */
-    private function face(?string $path): ?string
+    protected function face(?string $path): ?string
     {
         if (! is_string($path) || $path === '') {
             return null;

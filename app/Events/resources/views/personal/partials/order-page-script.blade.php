@@ -19,10 +19,12 @@
         if (! window.Alpine || window.Alpine.data.__orderPage) { return; }
         window.Alpine.data.__orderPage = true;
 
-        window.Alpine.data('orderPage', function (initial, canManage) {
+        window.Alpine.data('orderPage', function (initial, canManage, renumberUrl) {
             return {
                 view: canManage ? (initial === 'mats' ? 'mats' : 'day') : 'mats',
                 canManage: !! canManage,
+                renumberUrl: renumberUrl || null,
+                renumbering: false,
 
                 init() {
                     /*
@@ -48,6 +50,36 @@
                     }
                     window.__orderPageFocus = this._focus;
                     window.addEventListener('order-page:show-mats', this._focus);
+                },
+
+                /* "Renumber bouts": every bout numbered again from this running
+                   order. Asked first; the mats board re-reads on success and
+                   every open bracket and wall is told by the server. */
+                async renumber() {
+                    if (! this.renumberUrl || this.renumbering) { return; }
+                    const ok = window.confirmAction ? await window.confirmAction({
+                        title: @js(__('events::events.renumber_confirm_title')),
+                        message: @js(__('events::events.renumber_confirm_body')),
+                        confirmText: @js(__('events::events.renumber_confirm')), type: 'warning',
+                    }) : true;
+                    if (! ok) { return; }
+                    this.renumbering = true;
+                    try {
+                        const res = await fetch(this.renumberUrl, {
+                            method: 'POST', credentials: 'same-origin',
+                            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest',
+                                       'X-CSRF-TOKEN': (document.querySelector('meta[name=csrf-token]') || {}).content || '' },
+                        });
+                        const d = await res.json().catch(() => ({}));
+                        if (res.ok && d.success) {
+                            window.showToast && window.showToast('success', d.message);
+                            window.dispatchEvent(new CustomEvent('running-order:reload'));
+                        } else {
+                            window.showToast && window.showToast('error', d.message || @js(__('events::events.action_failed')));
+                        }
+                    } catch (e) {
+                        window.showToast && window.showToast('error', @js(__('events::events.action_failed')));
+                    } finally { this.renumbering = false; }
                 },
 
                 show(v) {

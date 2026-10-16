@@ -1,4 +1,284 @@
       <sc-if value="{{ tabSchedule }}" hint-placeholder-val="{{ false }}">
+        <sc-if value="{{ ro.on }}" hint-placeholder-val="{{ false }}">
+          <section aria-label="Running order" style="margin-bottom:28px;display:flex;flex-direction:column;gap:14px">
+
+            <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap">
+              <div style="min-width:0">
+                <div style="font-size:.7rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Running order</div>
+                <div style="font-size:1.35rem;font-weight:800;color:#1e2c4f;margin-top:4px;line-height:1.15">{{ ro.title }}</div>
+                <div style="font-size:.74rem;color:#6b7689;margin-top:4px">{{ ro.hint }}</div>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                <sc-if value="{{ ro.hasDayTabs }}" hint-placeholder-val="{{ false }}">
+                  <div role="group" aria-label="Day" style="display:inline-flex;padding:3px;gap:2px;border-radius:12px;background:#fff;border:1px solid #e3e7ee">
+                    <sc-for list="{{ ro.dayTabs }}" as="t" hint-placeholder-count="2"><button type="button" onClick="{{ t.onClick }}" style="{{ t.style }}">{{ t.label }}</button></sc-for>
+                  </div>
+                </sc-if>
+                <div role="group" aria-label="View" style="display:inline-flex;padding:3px;gap:2px;border-radius:12px;background:#fff;border:1px solid #e3e7ee">
+                  <sc-for list="{{ ro.views }}" as="v" hint-placeholder-count="3"><button type="button" onClick="{{ v.onClick }}" aria-pressed="{{ v.pressed }}" style="{{ v.style }}">{{ v.label }}</button></sc-for>
+                </div>
+                <sc-if value="{{ ro.canAuto }}" hint-placeholder-val="{{ false }}">
+                  <button type="button" onClick="{{ ro.onAuto }}" title="Put every division that is not on the day yet onto it — youngest first, then lightest, then male before female — and lay the bouts out on the mats. What you already placed stays where it is." style="height:38px;padding:0 15px;border:0;border-radius:11px;font-family:inherit;font-size:.78rem;font-weight:700;color:#1e2c4f;background:linear-gradient(100deg,#edcd85,#d0a854);cursor:pointer;box-shadow:0 6px 16px rgba(202,161,79,.3)" style-hover="transform:translateY(-1px)">{{ ro.autoLabel }}</button>
+                </sc-if>
+                <sc-if value="{{ ro.canRenumber }}" hint-placeholder-val="{{ false }}">
+                  <sc-if value="{{ ro.renumberAsk }}" hint-placeholder-val="{{ false }}">
+                    <span style="font-size:.76rem;font-weight:600;color:#1e2c4f">Renumber every bout?</span>
+                    <button type="button" onClick="{{ ro.onRenumber }}" style="height:38px;padding:0 15px;border:0;border-radius:11px;font-family:inherit;font-size:.78rem;font-weight:700;color:#1e2c4f;background:linear-gradient(100deg,#edcd85,#d0a854);cursor:pointer">Renumber</button>
+                    <button type="button" onClick="{{ ro.onRenumberCancel }}" style="height:38px;padding:0 13px;border:1px solid #d5dae3;border-radius:11px;font-family:inherit;font-size:.78rem;font-weight:600;color:#6b7689;background:#fff;cursor:pointer">Cancel</button>
+                  </sc-if>
+                  <sc-if value="{{ ro.renumberIdle }}" hint-placeholder-val="{{ true }}">
+                    <button type="button" onClick="{{ ro.onRenumber }}" title="Number every bout again from this running order. Numbers set by hand stay." style="height:38px;padding:0 15px;border:1px solid #caa14f;border-radius:11px;font-family:inherit;font-size:.78rem;font-weight:700;color:#8a6d20;background:#fdf6e6;cursor:pointer" style-hover="background:#fbeecb">{{ ro.renumberLabel }}</button>
+                  </sc-if>
+                </sc-if>
+                <sc-if value="{{ ro.hasFull }}" hint-placeholder-val="{{ false }}">
+                  <a href="{{ ro.fullUrl }}" target="_blank" rel="noopener" title="Add breaks, ceremonies and groups, set times and parts" style="height:38px;padding:0 15px;border-radius:11px;font-size:.78rem;font-weight:700;color:#1e2c4f;background:linear-gradient(100deg,#edcd85,#d0a854);display:inline-flex;align-items:center;gap:7px;text-decoration:none;box-shadow:0 6px 16px rgba(202,161,79,.3)">+ Breaks, groups &amp; times ↗</a>
+                </sc-if>
+              </div>
+            </div>
+
+            <sc-if value="{{ ro.loading }}" hint-placeholder-val="{{ false }}">
+              <div style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:28px;text-align:center;color:#6b7689;font-size:.84rem;box-shadow:0 14px 40px rgba(30,44,79,.08)">Loading the running order…</div>
+            </sc-if>
+            <sc-if value="{{ ro.hasErr }}" hint-placeholder-val="{{ false }}">
+              <div role="alert" style="padding:12px 16px;border-radius:12px;background:#fcefed;border:1px solid #f0c9c3;color:#b4483c;font-size:.8rem;display:flex;gap:12px;align-items:center;flex-wrap:wrap">{{ ro.err }}<button type="button" onClick="{{ ro.onRetry }}" style="margin-left:auto;height:32px;padding:0 12px;border:1px solid #f0c9c3;border-radius:9px;background:#fff;color:#b4483c;font-family:inherit;font-weight:600;cursor:pointer">Try again</button></div>
+            </sc-if>
+
+            <sc-if value="{{ ro.ready }}" hint-placeholder-val="{{ false }}">
+              <sc-if value="{{ ro.hasStats }}" hint-placeholder-val="{{ false }}">
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px">
+                  <sc-for list="{{ ro.stats }}" as="t" hint-placeholder-count="4">
+                    <div style="{{ t.style }}" onClick="{{ t.onClick }}">
+                      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span style="font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:#6b7689;font-weight:600">{{ t.k }}</span><sc-if value="{{ t.canEdit }}" hint-placeholder-val="{{ false }}"><span style="font-size:.66rem;font-weight:700;color:#8a6d20;background:#fdf6e6;border:1px solid #e8d3a0;border-radius:999px;padding:2px 9px">{{ t.editLabel }}</span></sc-if></div>
+                      <div style="display:flex;align-items:baseline;gap:7px;flex-wrap:wrap"><span style="{{ t.vStyle }}">{{ t.v }}</span><sc-if value="{{ t.extra }}" hint-placeholder-val="{{ false }}"><span style="font-size:.64rem;font-weight:700;color:#fff;background:#b45309;border-radius:6px;padding:1px 6px">{{ t.extra }}</span></sc-if></div>
+                      <sc-if value="{{ t.sub }}" hint-placeholder-val="{{ false }}"><div style="font-size:.7rem;color:#6b7689">{{ t.sub }}</div></sc-if>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ ro.longDay }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:#fff6e6;border:1px solid #f1d29c;border-radius:14px;padding:12px 16px">
+                  <div aria-hidden="true" style="width:34px;height:34px;border-radius:10px;background:#b45309;color:#fff;display:grid;place-items:center;font-weight:800;flex:none">!</div>
+                  <div style="flex:1 1 300px;min-width:0;font-size:.82rem;color:#1e2c4f"><b style="color:#b45309">{{ ro.longText }}</b> More mats finish the day sooner:</div>
+                  <div style="display:flex;gap:6px;flex-wrap:wrap">
+                    <sc-for list="{{ ro.projections }}" as="p" hint-placeholder-count="3"><span style="font-size:.72rem;font-weight:600;padding:4px 10px;border-radius:999px;background:#fff;border:1px solid #ecdcb8;color:#1e2c4f">{{ p.label }}</span></sc-for>
+                  </div>
+                  <sc-if value="{{ ro.manage }}" hint-placeholder-val="{{ false }}">
+                    <button type="button" onClick="{{ openEdit }}" style="height:36px;padding:0 14px;border:0;border-radius:10px;font-family:inherit;font-size:.78rem;font-weight:700;color:#1e2c4f;background:linear-gradient(100deg,#edcd85,#d0a854);cursor:pointer">Change mats</button>
+                  </sc-if>
+                </div>
+              </sc-if>
+
+              <div style="{{ ro.gridStyle }}">
+                <sc-if value="{{ ro.showDay }}" hint-placeholder-val="{{ true }}">
+                  <div style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;box-shadow:0 14px 40px rgba(30,44,79,.08);min-width:0">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 18px;border-bottom:1px solid #eef1f6">
+                      <div style="font-size:.95rem;font-weight:700;color:#1e2c4f">The day</div>
+                      <div style="font-size:.72rem;color:#6b7689">{{ ro.dayMeta }}</div>
+                    </div>
+                    <sc-if value="{{ ro.noRows }}" hint-placeholder-val="{{ false }}">
+                      <div style="padding:26px 20px;text-align:center;color:#6b7689;font-size:.82rem">No running order yet. Add the divisions to the day in the full editor.</div>
+                    </sc-if>
+                    <div id="ro-daylist" onDragOver="{{ ro.onDayDragOver }}" onDrop="{{ ro.onDayDrop }}" style="padding:8px 16px 16px 4px;position:relative">
+                      <sc-for list="{{ ro.dayItems }}" as="r" hint-placeholder-count="6">
+                        <sc-if value="{{ r.isLunch }}" hint-placeholder-val="{{ false }}">
+                          <div style="margin:6px 0 6px 70px;border-radius:12px;padding:10px 14px;font-size:.8rem;font-weight:600;color:#8a6d20;border:1px solid #ecdcb8;background:repeating-linear-gradient(135deg,#fdf6e6 0 10px,#fff 10px 20px)">{{ r.label }}</div>
+                        </sc-if>
+                        <sc-if value="{{ r.isMidnight }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex;align-items:center;gap:10px;margin:8px 0 6px 70px;font-size:.64rem;font-weight:700;letter-spacing:.1em;color:#b45309"><span style="flex:1;height:1px;background:#e9c58f"></span>MIDNIGHT — NEXT DAY<span style="flex:1;height:1px;background:#e9c58f"></span></div>
+                        </sc-if>
+                        <sc-if value="{{ r.isRow }}" hint-placeholder-val="{{ true }}">
+                          <div data-ro-row="{{ r.uuid }}" style="{{ r.rowStyle }}">
+                            <div style="{{ r.clockStyle }}">{{ r.clock }}<sc-if value="{{ r.next }}" hint-placeholder-val="{{ false }}"><span style="display:block;font-size:.6rem;font-weight:700;color:#b45309">+1</span></sc-if></div>
+                            <div style="{{ r.boxStyle }}">
+                            <div tabIndex="0" role="button" draggable="{{ r.draggable }}" onDragStart="{{ r.onDragStart }}" onDragEnd="{{ r.onDragEnd }}" onTouchStart="{{ r.onTouchStart }}" onClick="{{ r.onClick }}" onKeyDown="{{ r.onKeyDown }}" style="{{ r.slotStyle }}">
+                              <span aria-hidden="true" style="grid-row:span 2;width:0"></span>
+                              <div style="{{ r.nameStyle }}">{{ r.a }}<span style="{{ r.gStyle }}">{{ r.g }}</span>{{ r.b }}<sc-if value="{{ r.sub }}" hint-placeholder-val="{{ false }}"><span style="{{ r.subStyle }}">{{ r.sub }}</span></sc-if>
+                                <sc-if value="{{ r.hasModes }}" hint-placeholder-val="{{ false }}"><div role="group" aria-label="How this group calls its bouts" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px"><sc-for list="{{ r.modes }}" as="m" hint-placeholder-count="3"><button type="button" draggable="false" onClick="{{ m.onClick }}" style="{{ m.style }}">{{ m.label }}</button></sc-for></div></sc-if>
+                              </div>
+                              <div style="{{ r.numsStyle }}">
+                                <sc-if value="{{ r.canRemove }}" hint-placeholder-val="{{ false }}"><button type="button" draggable="false" title="{{ r.removeTitle }}" aria-label="{{ r.removeTitle }}" onClick="{{ r.onRemove }}" style="{{ r.removeStyle }}">{{ r.removeLabel }}</button></sc-if>
+                                <sc-if value="{{ r.hasNums }}" hint-placeholder-val="{{ false }}">
+                                  <div style="text-align:center;min-width:36px"><div style="font-size:.95rem;font-weight:800;color:#1e2c4f;line-height:1.1">{{ r.entrants }}</div><div style="font-size:.58rem;color:#6b7689;text-transform:uppercase;letter-spacing:.08em">entrants</div></div>
+                                  <div style="text-align:center;min-width:36px"><div style="font-size:.95rem;font-weight:800;color:#1e2c4f;line-height:1.1">{{ r.bouts }}</div><div style="font-size:.58rem;color:#6b7689;text-transform:uppercase;letter-spacing:.08em">bouts</div></div>
+                                </sc-if>
+                              </div>
+                              <sc-if value="{{ r.hasChips }}" hint-placeholder-val="{{ false }}">
+                                <div style="display:flex;gap:4px;flex-wrap:wrap"><sc-for list="{{ r.chips }}" as="c" hint-placeholder-count="3"><span style="{{ c.style }}">{{ c.label }}</span></sc-for></div>
+                              </sc-if>
+                              <sc-if value="{{ r.empty }}" hint-placeholder-val="{{ false }}"><div style="grid-column:1 / -1;font-size:.7rem;color:#97a1b4">{{ r.emptyText }}</div></sc-if>
+                            </div>
+                            </div>
+                          </div>
+                        </sc-if>
+                        <sc-if value="{{ r.isFoot }}" hint-placeholder-val="{{ false }}">
+                          <div style="{{ r.footStyle }}">
+                            <div></div>
+                            <div style="{{ r.boxStyle }}">
+                              <sc-if value="{{ r.canAdd }}" hint-placeholder-val="{{ false }}">
+                                <button type="button" onClick="{{ r.onAdd }}" style="width:100%;height:40px;border-radius:11px;border:2px dashed rgba(30,44,79,.3);background:#fff;font-family:inherit;font-size:.78rem;font-weight:700;color:#1e2c4f;cursor:pointer;transition:border-color .15s,background .15s" style-hover="border-color:#d0a854;background:#fdf8ec">{{ r.addLabel }}</button>
+                              </sc-if>
+                            </div>
+                          </div>
+                        </sc-if>
+                      </sc-for>
+                      <sc-if value="{{ ro.canNewGroup }}" hint-placeholder-val="{{ false }}">
+                        <div style="{{ ro.newGroupRow }}">
+                          <div></div>
+                          <button type="button" onClick="{{ ro.onNewGroup }}" style="height:44px;border-radius:14px;border:2px dashed rgba(30,44,79,.3);background:#fff;font-family:inherit;font-size:.8rem;font-weight:700;color:#1e2c4f;cursor:pointer;transition:border-color .15s,background .15s" style-hover="border-color:#d0a854;background:#fdf8ec">+ New group</button>
+                        </div>
+                      </sc-if>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{ ro.showMats }}" hint-placeholder-val="{{ true }}">
+                  <div style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;box-shadow:0 14px 40px rgba(30,44,79,.08);min-width:0;position:sticky;top:12px;max-height:calc(100vh - 24px);display:flex;flex-direction:column">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 18px;border-bottom:1px solid #eef1f6;flex-wrap:wrap">
+                      <div style="font-size:.95rem;font-weight:700;color:#1e2c4f">{{ ro.matName }}</div>
+                      <sc-if value="{{ ro.hasMatTabs }}" hint-placeholder-val="{{ false }}">
+                        <div role="group" aria-label="Mat" style="display:inline-flex;padding:3px;gap:2px;border-radius:12px;background:#f6f7fa;border:1px solid #e3e7ee;flex-wrap:wrap"><sc-for list="{{ ro.matTabs }}" as="t" hint-placeholder-count="2"><button type="button" onClick="{{ t.onClick }}" style="{{ t.style }}">{{ t.label }}</button></sc-for></div>
+                      </sc-if>
+                      <div style="font-size:.72rem;color:#6b7689">{{ ro.matMeta }}</div>
+                    </div>
+                    <div id="ro-matbox" style="overflow:auto;padding:4px 14px 16px;position:relative">
+                      <sc-if value="{{ ro.noBouts }}" hint-placeholder-val="{{ false }}">
+                        <div style="padding:26px 10px;text-align:center;color:#6b7689;font-size:.82rem">No bouts yet — make the draw first.</div>
+                      </sc-if>
+                      <sc-for list="{{ ro.groups }}" as="g" hint-placeholder-count="3">
+                        <div id="{{ g.domId }}" style="margin-top:10px">
+                          <div style="{{ g.headStyle }}"><span style="{{ g.dotStyle }}"></span><span style="flex:1;min-width:0;font-size:.76rem;font-weight:700;color:#1e2c4f;overflow-wrap:anywhere">{{ g.a }}<span style="{{ g.gStyle }}">{{ g.g }}</span>{{ g.b }}</span><span style="font-size:.66rem;color:#6b7689;font-family:ui-monospace,Menlo,monospace">{{ g.time }}</span></div>
+                          <sc-for list="{{ g.bouts }}" as="b" hint-placeholder-count="3">
+                            <div draggable="{{ b.draggable }}" onDragStart="{{ b.onDragStart }}" onDragOver="{{ b.onDragOver }}" onDrop="{{ b.onDrop }}" onDragEnd="{{ b.onDragEnd }}" style="{{ b.rowStyle }}">
+                              <span aria-hidden="true" style="color:#a8b0c0;font-size:.85rem;letter-spacing:-2px;user-select:none">⋮⋮</span>
+                              <div style="font-family:ui-monospace,Menlo,monospace;font-weight:700;font-size:1rem;color:#1e2c4f;display:flex;align-items:center;gap:4px;font-variant-numeric:tabular-nums">{{ b.no }}<sc-if value="{{ b.pinned }}" hint-placeholder-val="{{ false }}"><span title="Number set by hand" style="font-family:inherit;font-size:.56rem;font-weight:700;color:#8a6d20;background:#fdf6e6;border-radius:5px;padding:1px 4px">by hand</span></sc-if></div>
+                              <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+                                <div style="display:flex;align-items:center;gap:7px;font-size:.76rem;color:#1e2c4f;min-width:0"><i style="width:12px;height:12px;border-radius:3px;flex:none;background:#d6453d"></i><span style="overflow-wrap:anywhere">{{ b.a }}</span></div>
+                                <div style="display:flex;align-items:center;gap:7px;font-size:.76rem;color:#1e2c4f;min-width:0"><i style="width:12px;height:12px;border-radius:3px;flex:none;background:#2f6fd8"></i><span style="overflow-wrap:anywhere">{{ b.b }}</span></div>
+                              </div>
+                              <span style="{{ b.roundStyle }}">{{ b.round }}</span>
+                            </div>
+                          </sc-for>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-if>
+
+          <sc-if value="{{ ro.ng.open }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ ro.ng.overlayStyle }}" onClick="{{ ro.ng.onClose }}">
+              <div role="dialog" aria-modal="true" aria-label="New group" onClick="{{ ro.ng.stop }}" style="{{ ro.ng.panelStyle }}">
+                <div style="flex:none;padding:18px 20px 16px;background:linear-gradient(150deg,#1e2c4f,#2b3d68);color:#fff;position:relative;overflow:hidden">
+                  <div style="position:absolute;right:-40px;top:-50px;width:150px;height:150px;border-radius:50%;background:rgba(237,205,133,.12)"></div>
+                  <sc-if value="{{ ro.ng.sheet }}" hint-placeholder-val="{{ false }}"><div aria-hidden="true" style="position:relative;margin:-8px auto 12px;width:40px;height:4px;border-radius:999px;background:rgba(255,255,255,.4)"></div></sc-if>
+                  <div style="position:relative;display:flex;align-items:flex-start;gap:12px">
+                    <span aria-hidden="true" style="width:44px;height:44px;border-radius:14px;background:rgba(255,255,255,.14);display:grid;place-items:center;font-size:1.1rem;font-weight:800;flex:none;color:#edcd85">▭</span>
+                    <div style="min-width:0;flex:1">
+                      <div style="font-size:.66rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#edcd85">Running order</div>
+                      <div style="font-size:1.15rem;font-weight:800;margin-top:4px;line-height:1.2">New group</div>
+                      <div style="font-size:.72rem;color:rgba(255,255,255,.8);margin-top:3px;line-height:1.45">A box on the day. Every class in it is finished before the next item starts.</div>
+                    </div>
+                    <button type="button" onClick="{{ ro.ng.onClose }}" aria-label="Close" style="width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;font-size:1rem;cursor:pointer;flex:none">✕</button>
+                  </div>
+                </div>
+                <div style="flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:16px">
+                  <label style="display:block"><span style="display:block;font-size:.8rem;font-weight:700;color:#1e2c4f;margin-bottom:6px">Name</span>
+                    <input type="text" value="{{ ro.ng.name }}" onInput="{{ ro.ng.onName }}" maxlength="160" style="width:100%;box-sizing:border-box;height:44px;padding:0 12px;border:1px solid #d5dae3;border-radius:11px;font-family:inherit;font-size:.9rem;color:#1e2c4f" placeholder="e.g. Morning session — Kids"></label>
+                  <div><div style="font-size:.8rem;font-weight:700;color:#1e2c4f;margin-bottom:8px">How it calls its bouts</div>
+                    <div role="radiogroup" style="display:flex;flex-direction:column;gap:6px"><sc-for list="{{ ro.ng.modes }}" as="m" hint-placeholder-count="3"><button type="button" role="radio" onClick="{{ m.onClick }}" style="{{ m.style }}"><span style="{{ m.dot }}"></span><span style="min-width:0;flex:1"><span style="display:block;font-size:.84rem;font-weight:700;color:#1e2c4f">{{ m.label }}</span><span style="display:block;font-size:.7rem;color:#6b7689;margin-top:2px">{{ m.desc }}</span></span></button></sc-for></div>
+                  </div>
+                </div>
+                <div style="{{ ro.ng.footStyle }}">
+                  <button type="button" onClick="{{ ro.ng.onClose }}" style="height:44px;padding:0 14px;border:1px solid #d5dae3;border-radius:12px;background:#fff;color:#1e2c4f;font-family:inherit;font-size:.78rem;font-weight:600;cursor:pointer">Cancel</button>
+                  <button type="button" onClick="{{ ro.ng.onSave }}" style="{{ ro.ng.saveStyle }}">{{ ro.ng.saveLabel }}</button>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ ro.st.open }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ ro.st.overlayStyle }}" onClick="{{ ro.st.onClose }}">
+              <div role="dialog" aria-modal="true" aria-label="When the day starts" onClick="{{ ro.st.stop }}" style="{{ ro.st.panelStyle }}">
+                <div style="flex:none;padding:18px 20px 16px;background:linear-gradient(150deg,#1e2c4f,#2b3d68);color:#fff;position:relative;overflow:hidden">
+                  <div style="position:absolute;right:-40px;top:-50px;width:150px;height:150px;border-radius:50%;background:rgba(237,205,133,.12)"></div>
+                  <sc-if value="{{ ro.st.sheet }}" hint-placeholder-val="{{ false }}"><div aria-hidden="true" style="position:relative;margin:-8px auto 12px;width:40px;height:4px;border-radius:999px;background:rgba(255,255,255,.4)"></div></sc-if>
+                  <div style="position:relative;display:flex;align-items:flex-start;gap:12px">
+                    <span aria-hidden="true" style="width:44px;height:44px;border-radius:14px;background:rgba(255,255,255,.14);display:grid;place-items:center;font-size:1.1rem;flex:none;color:#edcd85">◷</span>
+                    <div style="min-width:0;flex:1">
+                      <div style="font-size:.66rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#edcd85">Running order</div>
+                      <div style="font-size:1.15rem;font-weight:800;margin-top:4px;line-height:1.2">When the day starts</div>
+                      <div style="font-size:.72rem;color:rgba(255,255,255,.8);margin-top:3px;line-height:1.45">The first division starts at this time; every time after it follows. Times you pinned by hand stay.</div>
+                    </div>
+                    <button type="button" onClick="{{ ro.st.onClose }}" aria-label="Close" style="width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;font-size:1rem;cursor:pointer;flex:none">✕</button>
+                  </div>
+                </div>
+                <div style="flex:1;overflow-y:auto;padding:22px 20px;display:flex;flex-direction:column;align-items:center;gap:18px">
+                  <div style="font-size:2.6rem;font-weight:800;color:#1e2c4f;font-variant-numeric:tabular-nums;line-height:1">{{ ro.st.time }} <span style="font-size:1.1rem;color:#8a6d20">{{ ro.st.ap }}</span></div>
+                  <div style="display:flex;gap:28px;align-items:center;flex-wrap:wrap;justify-content:center">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+                      <div style="font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:#6b7689;font-weight:600">Hour</div>
+                      <div style="display:flex;align-items:center;gap:10px"><button type="button" aria-label="Earlier hour" onClick="{{ ro.st.onHourDown }}" style="{{ ro.st.stepStyle }}">−</button><span style="min-width:74px;text-align:center;font-size:1.05rem;font-weight:800;color:#1e2c4f;font-variant-numeric:tabular-nums">{{ ro.st.hourLabel }}</span><button type="button" aria-label="Later hour" onClick="{{ ro.st.onHourUp }}" style="{{ ro.st.stepStyle }}">+</button></div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+                      <div style="font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:#6b7689;font-weight:600">Minutes</div>
+                      <div style="display:flex;align-items:center;gap:10px"><button type="button" aria-label="Five minutes earlier" onClick="{{ ro.st.onMinDown }}" style="{{ ro.st.stepStyle }}">−</button><span style="min-width:40px;text-align:center;font-size:1.05rem;font-weight:800;color:#1e2c4f;font-variant-numeric:tabular-nums">{{ ro.st.minLabel }}</span><button type="button" aria-label="Five minutes later" onClick="{{ ro.st.onMinUp }}" style="{{ ro.st.stepStyle }}">+</button></div>
+                    </div>
+                  </div>
+                  <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center"><sc-for list="{{ ro.st.presets }}" as="q" hint-placeholder-count="4"><button type="button" onClick="{{ q.onClick }}" style="{{ q.style }}">{{ q.label }}</button></sc-for></div>
+                </div>
+                <div style="{{ ro.st.footStyle }}">
+                  <button type="button" onClick="{{ ro.st.onClose }}" style="height:44px;padding:0 14px;border:1px solid #d5dae3;border-radius:12px;background:#fff;color:#1e2c4f;font-family:inherit;font-size:.78rem;font-weight:600;cursor:pointer">Cancel</button>
+                  <button type="button" onClick="{{ ro.st.onSave }}" style="{{ ro.st.saveStyle }}">{{ ro.st.saveLabel }}</button>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ ro.ga.open }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ ro.ga.overlayStyle }}" onClick="{{ ro.ga.onClose }}">
+              <div role="dialog" aria-modal="true" aria-label="Add classes to the group" onClick="{{ ro.ga.stop }}" style="{{ ro.ga.panelStyle }}">
+                <div style="flex:none;padding:18px 20px 16px;background:linear-gradient(150deg,#1e2c4f,#2b3d68);color:#fff;position:relative;overflow:hidden">
+                  <div style="position:absolute;right:-40px;top:-50px;width:150px;height:150px;border-radius:50%;background:rgba(237,205,133,.12)"></div>
+                  <sc-if value="{{ ro.ga.sheet }}" hint-placeholder-val="{{ false }}"><div aria-hidden="true" style="position:relative;margin:-8px auto 12px;width:40px;height:4px;border-radius:999px;background:rgba(255,255,255,.4)"></div></sc-if>
+                  <div style="position:relative;display:flex;align-items:flex-start;gap:12px">
+                    <span aria-hidden="true" style="width:44px;height:44px;border-radius:14px;background:rgba(255,255,255,.14);display:grid;place-items:center;font-size:1.1rem;font-weight:800;flex:none;color:#edcd85">+</span>
+                    <div style="min-width:0;flex:1">
+                      <div style="font-size:.66rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#edcd85">Add classes to the group</div>
+                      <div style="font-size:1.15rem;font-weight:800;margin-top:4px;line-height:1.2;overflow-wrap:anywhere">{{ ro.ga.title }}</div>
+                      <div style="font-size:.72rem;color:rgba(255,255,255,.8);margin-top:3px;line-height:1.45">Tick the weight classes to put in this group. They join at the end of it; the bout numbers follow.</div>
+                    </div>
+                    <button type="button" onClick="{{ ro.ga.onClose }}" aria-label="Close" style="width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;font-size:1rem;cursor:pointer;flex:none">✕</button>
+                  </div>
+                </div>
+                <div style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:14px">
+                  <sc-if value="{{ ro.ga.none }}" hint-placeholder-val="{{ false }}"><div style="padding:22px 16px;text-align:center;border-radius:13px;background:#f7f8fb;border:1px dashed #d5dae3;font-size:.8rem;color:#6b7689">Every weight class is already in this group.</div></sc-if>
+                  <div style="display:flex;justify-content:flex-end"><sc-if value="{{ ro.ga.hasAny }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ ro.ga.onAll }}" style="height:30px;padding:0 10px;border:1px solid #d5dae3;border-radius:9px;background:#fff;color:#1e2c4f;font-family:inherit;font-size:.72rem;font-weight:600;cursor:pointer">{{ ro.ga.allLabel }}</button></sc-if></div>
+                  <sc-if value="{{ ro.ga.hasOnDay }}" hint-placeholder-val="{{ true }}">
+                    <div>
+                      <div style="font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#8a6d20;margin-bottom:8px">On the day</div>
+                      <div style="display:flex;flex-direction:column;gap:6px"><sc-for list="{{ ro.ga.onDay }}" as="c" hint-placeholder-count="4"><button type="button" role="checkbox" onClick="{{ c.onClick }}" style="{{ c.style }}"><span style="{{ c.tickStyle }}">{{ c.tick }}</span><span style="min-width:0;flex:1"><span style="{{ c.nameStyle }}">{{ c.name }}</span><span style="display:block;font-size:.68rem;color:#6b7689;margin-top:2px">{{ c.sub }}</span></span></button></sc-for></div>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ ro.ga.hasBench }}" hint-placeholder-val="{{ false }}">
+                    <div>
+                      <div style="font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#8a6d20;margin-bottom:8px">Not on the day yet</div>
+                      <div style="display:flex;flex-direction:column;gap:6px"><sc-for list="{{ ro.ga.bench }}" as="c" hint-placeholder-count="2"><button type="button" role="checkbox" onClick="{{ c.onClick }}" style="{{ c.style }}"><span style="{{ c.tickStyle }}">{{ c.tick }}</span><span style="min-width:0;flex:1"><span style="{{ c.nameStyle }}">{{ c.name }}</span><span style="display:block;font-size:.68rem;color:#6b7689;margin-top:2px">{{ c.sub }}</span></span></button></sc-for></div>
+                    </div>
+                  </sc-if>
+                </div>
+                <div style="{{ ro.ga.footStyle }}">
+                  <button type="button" onClick="{{ ro.ga.onClose }}" style="height:44px;padding:0 14px;border:1px solid #d5dae3;border-radius:12px;background:#fff;color:#1e2c4f;font-family:inherit;font-size:.78rem;font-weight:600;cursor:pointer">Cancel</button>
+                  <button type="button" onClick="{{ ro.ga.onGo }}" style="{{ ro.ga.goStyle }}">{{ ro.ga.goLabel }}</button>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+            <sc-if value="{{ ro.hasToast }}" hint-placeholder-val="{{ false }}">
+              <div role="status" aria-live="polite" style="{{ ro.toastStyle }}">{{ ro.toast }}</div>
+            </sc-if>
+          </section>
+        </sc-if>
+
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
           <div style="min-width:0">
             <div style="font-size:.7rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Competition schedule</div>

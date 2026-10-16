@@ -55,7 +55,7 @@
         wiping: null,
         revoking: null,
         reason: '',
-        s: { settings: { participation: true, podium: true, trigger: 'division' }, eligible: { participation: 0, podium: 0, decided: 0, pending: 0 }, counts: { draft: 0, approved: 0, revoked: 0 }, certificates: [], design_url: null, batch: 15, bundles: [] },
+        s: { settings: { participation: true, podium: true, officials: false, trigger: 'division' }, eligible: { participation: 0, podium: 0, officials: 0, decided: 0, pending: 0 }, counts: { draft: 0, approved: 0, revoked: 0 }, certificates: [], design_url: null, batch: 15, bundles: [] },
         _bundleT: null,
         urls: @js($urls),
 
@@ -272,13 +272,13 @@
                     {{-- What gets issued --}}
                     <section class="space-y-2">
                         <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-1">{{ __('cert::messages.what_issued') }}</p>
-                        @foreach(['participation' => ['P', 'bg-accent text-primary', 'cert::messages.kind_participation_hint'], 'podium' => ['1', 'bg-amber-50 text-amber-700', 'cert::messages.kind_podium_hint']] as $kind => [$glyph, $tile, $hint])
+                        @foreach(['participation' => ['P', 'bg-accent text-primary', 'cert::messages.kind_participation_hint', 'participation'], 'podium' => ['1', 'bg-amber-50 text-amber-700', 'cert::messages.kind_podium_hint', 'podium'], 'officials' => ['O', 'bg-emerald-50 text-emerald-700', 'cert::messages.kind_officials_hint', 'official_thanks']] as $kind => [$glyph, $tile, $hint, $typeKey])
                             <button type="button" @click="setting({ {{ $kind }}: ! s.settings.{{ $kind }} })" role="switch" :aria-checked="s.settings.{{ $kind }}"
                                     class="m-press w-full text-start bg-white rounded-2xl border-2 p-3 flex items-center gap-3 min-h-[60px] transition-colors"
                                     :class="s.settings.{{ $kind }} ? 'border-primary' : 'border-gray-100'">
                                 <span class="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0 font-black {{ $tile }}">{{ $glyph }}</span>
                                 <span class="min-w-0 flex-1">
-                                    <span class="block text-sm font-bold text-foreground">{{ __('cert::messages.types.'.$kind) }}
+                                    <span class="block text-sm font-bold text-foreground">{{ __('cert::messages.types.'.$typeKey) }}
                                         <span class="text-muted-foreground font-semibold" x-text="'· ' + s.eligible.{{ $kind }}"></span></span>
                                     <span class="block text-[12px] text-muted-foreground mt-0.5 leading-snug">{{ __($hint) }}</span>
                                 </span>

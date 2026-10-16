@@ -155,6 +155,132 @@ class Scheduler
      *
      * @param  list<array{0: int, 1: ?array}>  $slots  [category id, parts or null] in running order
      */
+    /**
+     * The mat's order when the running order has GROUPS, each with a method.
+     *
+     * Walks the running order group by group. Each slot claims its
+     * division's bouts (the parts it names, or all of them) exactly as
+     * matOrderByParts() does; what changes is how a session's claims are
+     * sequenced:
+     *
+     *   class  — slot after slot, each drained before the next (as before);
+     *   round  — every slot's earliest round first, then the next round, the
+     *            bronze bouts before the finals and the finals last, slots in
+     *            running order within a round (World Taekwondo);
+     *   manual — the order the bouts already hold (their current number),
+     *            anything without one after, in class order.
+     *
+     * One queue per group, already in order, so the caller's round-robin
+     * never interleaves it. A division of another mat claims nothing here.
+     * Bouts no slot claims run after, phase by phase, as before.
+     *
+     * @param  list<array{cat: int, parts: ?array, mode: string, session: string}>  $plan
+     */
+    private function matOrderBySessions(array $ranks, array $plan): array
+    {
+        $perDivision = [];
+        foreach ($ranks as $divGroups) {
+            foreach ($divGroups as $catId => $bouts) {
+                foreach ($bouts as $bout) {
+                    $perDivision[$catId][] = $bout;
+                }
+            }
+        }
+
+        // Consecutive plan entries of one session run together.
+        $runs = [];
+        foreach ($plan as $entry) {
+            $last = array_key_last($runs);
+            if ($last !== null && $runs[$last]['session'] === $entry['session']) {
+                $runs[$last]['entries'][] = $entry;
+            } else {
+                $runs[] = ['session' => $entry['session'], 'mode' => $entry['mode'], 'entries' => [$entry]];
+            }
+        }
+
+        $claimed = [];
+        $groups = [];
+        foreach ($runs as $run) {
+            $queues = [];
+            foreach ($run['entries'] as $entry) {
+                $queue = [];
+                foreach ($perDivision[$entry['cat']] ?? [] as $bout) {
+                    if (! isset($claimed[$bout->id])
+                        && ($entry['parts'] === null || in_array(\App\Events\Support\BoutPart::of($bout->round), $entry['parts'], true))) {
+                        $queue[] = $bout;
+                        $claimed[$bout->id] = true;
+                    }
+                }
+                if ($queue) {
+                    $queues[] = $queue;
+                }
+            }
+
+            if (! $queues) {
+                continue;
+            }
+
+            if ($run['mode'] === \App\Events\Support\RunSessions::CLASS_AT_A_TIME) {
+                foreach ($queues as $queue) {
+                    $groups[] = [$queue];
+                }
+
+                continue;
+            }
+
+            // Flatten, remembering each bout's slot and its place in that slot.
+            $all = [];
+            foreach ($queues as $k => $queue) {
+                foreach ($queue as $i => $bout) {
+                    $all[] = ['b' => $bout, 'k' => $k, 'i' => $i, 'depth' => $this->roundDepth($bout->round)];
+                }
+            }
+
+            if ($run['mode'] === \App\Events\Support\RunSessions::ROUND_BY_ROUND) {
+                usort($all, fn ($x, $y) => [$y['depth'], $x['k'], $x['i']] <=> [$x['depth'], $y['k'], $y['i']]);
+            } else {
+                // MANUAL: the order the bouts already hold; unnumbered last, in class order.
+                usort($all, fn ($x, $y) => [$x['b']->match_no === null ? 1 : 0, (int) $x['b']->match_no, $x['k'], $x['i']]
+                    <=> [$y['b']->match_no === null ? 1 : 0, (int) $y['b']->match_no, $y['k'], $y['i']]);
+            }
+
+            $groups[] = [array_column($all, 'b')];
+        }
+
+        foreach ($ranks as $divGroups) {
+            $tail = [];
+            foreach ($divGroups as $catId => $bouts) {
+                $left = array_values(array_filter($bouts, fn ($b) => ! isset($claimed[$b->id])));
+                if ($left) {
+                    $tail[$catId] = $left;
+                }
+            }
+            if ($tail) {
+                $groups[] = $tail;
+            }
+        }
+
+        return $groups;
+    }
+
+    /**
+     * How far a round is from its division's final: 0 the final, 0.5 the
+     * bronze bout (fought before the finals), 1 the semi-finals, 2 the
+     * quarter-finals, 3 a round of 16… Anything else (a pool's rounds) comes
+     * first, before the ladder.
+     */
+    private function roundDepth(?string $round): float
+    {
+        return match (true) {
+            $round === 'Final' => 0.0,
+            $round === 'Third place' => 0.5,
+            $round === 'Semifinal' => 1.0,
+            $round === 'Quarterfinal' => 2.0,
+            (bool) preg_match('/^Round of (\d+)$/', (string) $round, $m) => max(3.0, log((int) $m[1], 2) - 1),
+            default => 99.0,
+        };
+    }
+
     private function matOrderByParts(array $ranks, array $slots): array
     {
         $perDivision = [];
@@ -280,6 +406,15 @@ class Scheduler
         $sheetSlots = $sheetSlots->contains(fn ($slot) => $slot->parts !== null)
             ? $sheetSlots->map(fn ($slot) => [(int) $slot->category_id, $slot->parts])->all()
             : [];
+        /*
+         * …and its GROUPS, each with its own method (App\Events\Support\
+         * RunSessions): one class at a time, round by round, or manual, every
+         * group finished before the next. Empty unless the running order has a
+         * group, which keeps the two paths above exactly as they were.
+         */
+        $sessionPlan = \App\Events\Support\RunSessions::inUse($event)
+            ? \App\Events\Support\RunSessions::plan($event)
+            : [];
         $capacity = $this->dailyCapacityPerCourt($event);
 
         $matches = EventMatch::where('event_id', $event->id)->orderBy('slot')->get();
@@ -382,7 +517,9 @@ class Scheduler
                     $m->save();
                 };
 
-                $groups = $sheetSlots ? $this->matOrderByParts($ranks, $sheetSlots) : $this->matOrder($ranks, $sheetPos);
+                $groups = $sessionPlan
+                    ? $this->matOrderBySessions($ranks, $sessionPlan)
+                    : ($sheetSlots ? $this->matOrderByParts($ranks, $sheetSlots) : $this->matOrder($ranks, $sheetPos));
                 foreach ($groups as $group) {
                     $queues = array_values($group);
                     do {

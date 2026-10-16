@@ -133,7 +133,11 @@ class FederationApp
         }
 
         $json = json_encode($boot, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
-        $inject = '<meta name="csrf-token" content="'.e($boot['csrf'] ?? '').'">'."\n"
+        // Light by design (as layouts/app): without this a computer in dark
+        // mode gets the page inverted by the browser's auto-dark or Dark Reader.
+        $inject = '<meta name="color-scheme" content="light">'."\n".'<meta name="darkreader-lock">'."\n"
+            .'<style>html { color-scheme: only light; }</style>'."\n"
+            .'<meta name="csrf-token" content="'.e($boot['csrf'] ?? '').'">'."\n"
             .(isset($boot['favicon']) ? '<link rel="icon" href="'.e($boot['favicon']).'">'."\n" : '')
             .'<script>window.__TAKEONE_FED = '.$json.';</script>'."\n"
             // Versioned: served with a cache lifetime, so a changed bridge
@@ -408,7 +412,10 @@ class FederationApp
         ], $file);
 
         return [
-            'es-tab' => ["['overview','Overview'],['regs','Registrations']", "['overview','Overview'],['stats','Statistics'],['regs','Registrations']", 1],
+            // The event's Statistics tab is parked (owner, 2026-10-15: "we will work
+            // on it later"): not offered in the tab row, everything behind it kept.
+            // To bring it back, insert ['stats','Statistics'] after Overview again.
+            'es-tab' => ["['overview','Overview'],['regs','Registrations']", "['overview','Overview'],['regs','Registrations']", 1],
             // Computed only while the tab is open — the simulation is not free.
             'es-vals' => ["tabDraw: s.tab === 'draw', tabFin: s.tab === 'fin',", "tabDraw: s.tab === 'draw', tabFin: s.tab === 'fin', tabStats: s.tab === 'stats', es: s.tab === 'stats' ? this.evStatsVals() : {$blank},", 1],
             'es-methods' => ['  cssToObj(css) {', $methods.'  cssToObj(css) {', 1],
@@ -427,14 +434,15 @@ class FederationApp
     private function scheduleRewrites(): array
     {
         $dir = dirname(__DIR__).'/resources/patches';
-        $methods = (string) file_get_contents($dir.'/schedule.js');
+        // The running order (Day + Mats) shares the tab: resources/patches/run-order.js.
+        $methods = (string) file_get_contents($dir.'/schedule.js')."\n".(string) file_get_contents($dir.'/run-order.js');
         $markup = rtrim((string) file_get_contents($dir.'/schedule.html'));
         $blank = '{days: [], empty: false, has: false, can: false}';
 
         return [
             'sch-data' => [["    const schedule = [\n      {day: 'Day 1 — Eliminations'", "{time: '19:00', what: 'Closing gala', where: 'Grand ballroom'}]}\n    ];"],
-                "    const schedule = [];\n    const sch = s.tab === 'schedule' ? this.schVals(sel) : {$blank};", 1],
-            'sch-vals' => ["tabSchedule: s.tab === 'schedule',", "tabSchedule: s.tab === 'schedule', sch,", 1],
+                "    const schedule = [];\n    const sch = s.tab === 'schedule' ? this.schVals(sel) : {$blank};\n    const ro = s.tab === 'schedule' ? this.roVals(sel) : {on: false};", 1],
+            'sch-vals' => ["tabSchedule: s.tab === 'schedule',", "tabSchedule: s.tab === 'schedule', sch, ro,", 1],
             'sch-methods' => ['  cssToObj(css) {', $methods.'  cssToObj(css) {', 1],
             'sch-markup' => [['      <sc-if value="{{ tabSchedule }}" hint-placeholder-val="{{ false }}">', "          </sc-for>\n        </div>\n      </sc-if>"], $markup, 1],
         ];
@@ -611,7 +619,9 @@ class FederationApp
                 // athlete in, sent by the server (FederationRegistry::placements);
                 // the page's own guess — today's age, the generic table — only
                 // stands in for an event not on the platform yet.
-                'reg-status' => ["division: this.weightClassOf(g, ag, kg), status: 'Pending', mobile: sub.phone || '—', email: sub.email || '—',", "division: a.division || this.weightClassOf(g, ag, kg), divisionName: a.divisionName || (a.unplaced ? 'Not in a division yet' : ''), divisionAges: a.divisionAges || '', unplaced: !!a.unplaced, status: a.approval === 'Approved' ? 'Approved' : 'Pending', mobile: sub.phone || '—', email: sub.email || '—',", 1],
+                'reg-status' => ["division: this.weightClassOf(g, ag, kg), status: 'Pending', mobile: sub.phone || '—', email: sub.email || '—',", "division: a.division || this.weightClassOf(g, ag, kg), divisionName: a.divisionName || (a.unplaced ? 'Not in a division yet' : ''), divisionAges: a.divisionAges || '', divisionGender: a.divisionGender || '', divisionId: a.divisionId || 0, unplaced: !!a.unplaced, status: a.approval === 'Approved' ? 'Approved' : 'Pending', mobile: sub.phone || '—', email: sub.email || '—',", 1],
+                // A stated age (no date of birth on file) is the athlete's age here too.
+                'reg-declared-age' => ['const age = this.calcAge(a.dob);', 'const age = a.dob ? this.calcAge(a.dob) : (a.declaredAge != null ? +a.declaredAge : 0);', 1],
                 'reg-age-group' => ['gender: g, age, ageGroup: ag, weight: kg,', 'gender: g, age, ageGroup: a.ageGroup || ag, weight: kg,', 1],
                 // The readiness checklist was six fixed rows ("18 of 22" referees,
                 // "Venue contract signed"…). It is the server's now — every row
@@ -627,7 +637,11 @@ class FederationApp
                 // its Male / Female split (FederationEventFigures::entryClubs →
                 // resources/patches/event-clubs.*). Opened from the checklist's
                 // "Clubs" row too. The Registrations tab reads "Athletes".
-                'clubs-tab' => ["['regs','Registrations'],['offs','Officials']", "['regs','Athletes'],['clubs','Clubs'],['offs','Officials']", 1],
+                'clubs-tab' => ["['regs','Registrations'],['offs','Officials']", "['regs','Participants'],['offs','Officials'],['clubs','Clubs']", 1],
+                // One tab, called Draw (owner, 2026-10-15): the divisions editor is
+                // the draw — each division's board opens from its card. The
+                // prototype's own Draw tab is not offered; its markup stays, unreached.
+                'draw-tab-off' => ["['divs','Divisions'],['draw','Draw'],", "['divs','Draw'],", 1],
                 'clubs-vals' => ["tabOffs: s.tab === 'offs',", "tabClubs: s.tab === 'clubs', ec: s.tab === 'clubs' ? this.evClubsVals(sel) : {clubs: []}, tabOffs: s.tab === 'offs',", 1],
                 'clubs-methods' => ['  cssToObj(css) {', (string) file_get_contents(dirname(__DIR__).'/resources/patches/event-clubs.js').'  cssToObj(css) {', 1],
                 'clubs-markup' => ['      <sc-if value="{{ tabFin }}" hint-placeholder-val="{{ false }}">',
@@ -635,12 +649,31 @@ class FederationApp
                 // The Athletes tab edits an athlete in place: details, national
                 // ID, weight and photo (FederationAthleteEditor -> resources/
                 // patches/event-athlete-edit.*, cropper takeone-cropper.js).
-                'athed-row' => ["      onApprove: () => this.setState({regs: s.regs.map(x => x.id === r.id ? {...x, status: 'Approved'} : x)})", "      canEdit: !!(r.entryId && r.takeoneId && r.takeoneId !== 'Pending'), onEdit: () => this.athEdOpen(r),\n      onApprove: () => this.setState({regs: s.regs.map(x => x.id === r.id ? {...x, status: 'Approved'} : x)})", 1],
+                'athed-row' => ["      onApprove: () => this.setState({regs: s.regs.map(x => x.id === r.id ? {...x, status: 'Approved'} : x)})", "      canEdit: !!(r.entryId && r.takeoneId && r.takeoneId !== 'Pending'), onEdit: () => this.athEdOpen(r), stop: e => { if (e && e.stopPropagation) e.stopPropagation(); },\n      onApprove: () => this.setState({regs: s.regs.map(x => x.id === r.id ? {...x, status: 'Approved'} : x)})", 1],
                 'athed-cols' => ['120px 100px 96px;gap:14px;align-items:center;min-width:1076px', '120px 100px 136px;gap:14px;align-items:center;min-width:1116px', 2],
+                // The whole row opens the athlete (owner, 2026-10-15: "make the
+                // entire row clickable, no edit button"). The tick box and the
+                // Approve button stop the click so they keep their own job.
                 'athed-list-btn' => ['                <div>'."\n".'                  <sc-if value="{{ r.pending }}" hint-placeholder-val="{{ false }}">',
-                    '                <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px">'."\n".'                  <sc-if value="{{ r.canEdit }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ r.onEdit }}" title="Edit this athlete" aria-label="Edit {{ r.name }}" style="width:34px;height:34px;flex:none;border:1px solid #d5dae3;border-radius:9px;background:#fff;color:#8a6d20;font-size:.95rem;cursor:pointer;display:grid;place-items:center" style-hover="border-color:#caa14f;background:#fdf6e6">&#9998;</button></sc-if>'."\n".'                  <sc-if value="{{ r.pending }}" hint-placeholder-val="{{ false }}">', 1],
-                'athed-group-btn' => ['                    <span style="{{ r.pillStyle }}">{{ r.status }}</span>'."\n".'                  </div>',
-                    '                    <span style="{{ r.pillStyle }}">{{ r.status }}</span>'."\n".'                    <sc-if value="{{ r.canEdit }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ r.onEdit }}" title="Edit this athlete" aria-label="Edit {{ r.name }}" style="width:34px;height:34px;flex:none;border:1px solid #d5dae3;border-radius:9px;background:#fff;color:#8a6d20;font-size:.95rem;cursor:pointer;display:grid;place-items:center" style-hover="border-color:#caa14f;background:#fdf6e6">&#9998;</button></sc-if>'."\n".'                  </div>', 1],
+                    '                <div onClick="{{ r.stop }}" style="display:flex;align-items:center;justify-content:flex-end;gap:6px">'."\n".'                  <sc-if value="{{ r.pending }}" hint-placeholder-val="{{ false }}">', 1],
+                'athed-list-row' => ['padding:12px 0;border-bottom:1px solid #eef1f6">'."\n".'                <div onClick="{{ r.onToggleSel }}"',
+                    'padding:12px 0;border-bottom:1px solid #eef1f6;cursor:pointer" role="button" aria-label="Open {{ r.name }}" onClick="{{ r.onEdit }}" style-hover="background:#faf7ef">'."\n".'                <div onClick="{{ r.onToggleSel }}"', 1],
+                'athed-group-row' => ['padding:10px 0;border-bottom:1px solid #eef1f6">'."\n".'                    <div style="{{ r.p.avStyle }}">',
+                    'padding:10px 0;border-bottom:1px solid #eef1f6;cursor:pointer" role="button" aria-label="Open {{ r.name }}" onClick="{{ r.onEdit }}" style-hover="background:#faf7ef">'."\n".'                    <div style="{{ r.p.avStyle }}">', 1],
+                // A Weigh-in button on every Participants row (owner, 2026-10-15),
+                // list and grouped views. The weight is saved through the
+                // platform's weigh-in desk (TakeOneFed.weighIn); the row shows
+                // the weight once signed off. Window: patches/event-athlete-edit.*.
+                // The Weight column (and its sort/filter) reads the scale once weighed.
+                'weigh-row-kg' => ['gender: g, age, ageGroup: a.ageGroup || ag, weight: kg,', 'gender: g, age, ageGroup: a.ageGroup || ag, weight: (a.weighedIn && a.weighedKg) ? +a.weighedKg : kg,', 1],
+                'weigh-row-data' => ['entryId: sub.entryId, dob: a.dob,', 'entryId: sub.entryId, weighUrls: a.weighUrls || [], weighedIn: !!a.weighedIn, weighedKg: a.weighedKg || null, dob: a.dob,', 1],
+                'weigh-row-vals' => ["onEdit: () => this.athEdOpen(r), stop:", "onEdit: () => this.athEdOpen(r), canWeigh: !!(r.weighUrls && r.weighUrls.length), weighLabel: r.weighedIn ? '\\u2713 ' + (r.weighedKg != null ? r.weighedKg + ' kg' : 'Weighed') : 'Weigh in', weighTitle: r.weighedIn ? 'Weighed in \\u2014 tap to weigh again' : 'Record this athlete\\u2019s weigh-in', noWeigh: !(r.weighUrls && r.weighUrls.length), weighStyle: this.cssToObj('width:100%;height:34px;padding:0 10px;font-family:inherit;font-size:.74rem;font-weight:600;border-radius:9px;cursor:pointer;white-space:nowrap;font-variant-numeric:tabular-nums;' + (r.weighedIn ? 'color:#fff;background:#2f7a4f;border:1px solid #2f7a4f;box-shadow:0 4px 12px rgba(47,122,79,.25)' : 'color:#8a6d20;background:#fff;border:1px solid #caa14f')), onWeigh: e => { if (e && e.stopPropagation) e.stopPropagation(); this.weighOpen(r); }, stop:", 1],
+                'weigh-list-btn' => ['                <div><span style="{{ r.pillStyle }}">{{ r.status }}</span></div>'."\n",
+                    '                <div><span style="{{ r.pillStyle }}">{{ r.status }}</span></div>'."\n"
+                    .'                <div onClick="{{ r.stop }}"><sc-if value="{{ r.canWeigh }}" hint-placeholder-val="{{ false }}"><button onClick="{{ r.onWeigh }}" title="{{ r.weighTitle }}" style="{{ r.weighStyle }}">{{ r.weighLabel }}</button></sc-if><sc-if value="{{ r.noWeigh }}" hint-placeholder-val="{{ false }}"><span style="font-size:.76rem;color:#97a1b4">&#8212;</span></sc-if></div>'."\n", 1],
+                'weigh-group-btn' => ['                    <span style="{{ r.pillStyle }}">{{ r.status }}</span>'."\n",
+                    '                    <span style="{{ r.pillStyle }}">{{ r.status }}</span>'."\n"
+                    .'                    <sc-if value="{{ r.canWeigh }}" hint-placeholder-val="{{ false }}"><button onClick="{{ r.onWeigh }}" title="{{ r.weighTitle }}" style="{{ r.weighStyle }}">{{ r.weighLabel }}</button></sc-if>'."\n", 1],
                 'athed-vals' => ["tabClubs: s.tab === 'clubs',", "ae: this.evAthleteEditVals(), tabClubs: s.tab === 'clubs',", 1],
                 'athed-methods' => ['  cssToObj(css) {', (string) file_get_contents(dirname(__DIR__).'/resources/patches/event-athlete-edit.js').'  cssToObj(css) {', 1],
                 'athed-markup' => ['      <sc-if value="{{ tabFin }}" hint-placeholder-val="{{ false }}">',
@@ -667,18 +700,18 @@ class FederationApp
                 // The Divisions tab as Cards or as a Table (gender, age group,
                 // division, entries, bracket), like the Clubs page's toggle
                 // (resources/patches/event-divisions.*).
-                'divs-card-fields' => ['const divCards = divList2.map(d => ({', "const divCards = divList2.map((d, i) => ({rank: String(i + 1), gender: d.unplaced ? '\u2014' : d.gender === 'F' ? 'Female' : 'Male', genderStyle: this.cssToObj('font-size:.8rem;font-weight:600;color:' + (d.gender === 'F' ? '#db2777' : '#2563eb')), ageGroup: d.name ? (d.ages ? 'Ages ' + d.ages : '\u2014') : window.KarateShotukanWeightclasses.englishName(d.ageGroup), division: d.division,", 1],
+                'divs-card-fields' => ['const divCards = divList2.map(d => ({', "const divCards = divList2.map((d, i) => ({rank: String(i + 1), mixed: !!d.mixed, gender: d.unplaced ? '\u2014' : d.mixed ? 'Mixed' : d.gender === 'F' ? 'Female' : 'Male', genderStyle: this.cssToObj('font-size:.8rem;font-weight:600;color:' + (d.mixed ? '#7c6bf5' : d.gender === 'F' ? '#db2777' : '#2563eb')), ageGroup: d.name ? (d.ages ? 'Ages ' + d.ages : '\u2014') : window.KarateShotukanWeightclasses.englishName(d.ageGroup), division: d.division,", 1],
                 // A division is NAMED as the event names it — the category's own
                 // name ("Séniors Men -75 kg"), the same words the event's
                 // divisions page and the draw show. The dashboard's key
                 // ("Kumite -75 kg") stays underneath: saved draws are filed by it.
-                'divname-map' => ['division: r.division, count: 0}', 'division: r.division, name: r.divisionName || \'\', ages: r.divisionAges || \'\', unplaced: !!r.unplaced, count: 0}', 1],
+                'divname-map' => ['division: r.division, count: 0}', 'division: r.division, name: r.divisionName || \'\', ages: r.divisionAges || \'\', mixed: r.divisionGender === \'X\', divisionId: r.divisionId || 0, unplaced: !!r.unplaced, count: 0}', 1],
                 // Every unplaced athlete is ONE card, not one per guessed division.
-                'divname-key' => ["const key = r.gender + '|' + (r.ageGroup || 'Séniors') + '|' + r.division;", "const key = r.unplaced ? 'unplaced' : r.gender + '|' + (r.ageGroup || 'Séniors') + '|' + r.division;", 1],
+                'divname-key' => ["const key = r.gender + '|' + (r.ageGroup || 'Séniors') + '|' + r.division;", "const key = r.unplaced ? 'unplaced' : (r.divisionGender === 'X' ? 'X' : r.gender) + '|' + (r.ageGroup || 'Séniors') + '|' + r.division;", 1],
                 'divname-card' => ["label: (d.gender === 'F' ? 'Female' : 'Male') + ' ' + d.ageGroup + ' — ' + d.division, count: d.count,", "unplaced: d.unplaced, label: d.name || ((d.gender === 'F' ? 'Female' : 'Male') + ' ' + window.KarateShotukanWeightclasses.englishName(d.ageGroup) + ' — ' + d.division), divName: d.name || d.division, count: d.count,", 1],
-                'divname-detail' => ["detail: (d.gender === 'F' ? 'Women' : 'Men') + ' · ' + d.ageGroup + ' · ' + d.division,", "detail: d.unplaced ? 'Place them from the event\u2019s divisions page' : d.name ? (d.gender === 'F' ? 'Female' : 'Male') + (d.ages ? ' · Ages ' + d.ages : '') : (d.gender === 'F' ? 'Female' : 'Male') + ' · ' + window.KarateShotukanWeightclasses.englishName(d.ageGroup) + ' · ' + d.division,", 1],
+                'divname-detail' => ["detail: (d.gender === 'F' ? 'Women' : 'Men') + ' · ' + d.ageGroup + ' · ' + d.division,", "detail: d.unplaced ? 'Place them from the event\u2019s divisions page' : d.name ? (d.mixed ? 'Mixed' : d.gender === 'F' ? 'Female' : 'Male') + (d.ages ? ' · Ages ' + d.ages : '') : (d.gender === 'F' ? 'Female' : 'Male') + ' · ' + window.KarateShotukanWeightclasses.englishName(d.ageGroup) + ' · ' + d.division,", 1],
                 'divname-bracket' => ["bracket: d.count >= 2 ? 'Ready to draw' : 'Needs 2+ entries',", "bracket: d.unplaced ? 'Not placed' : d.count >= 2 ? 'Ready to draw' : 'Needs 2+ entries',", 1],
-                'divname-open' => ["onOpen: () => this.setState({tab: 'draw', drawGender: d.gender === 'F' ? 'Women' : 'Men', drawAge: d.ageGroup, drawDiv: d.division})}));", "onOpen: () => d.unplaced ? this.setState({tab: 'regs'}) : this.setState({tab: 'draw', drawGender: d.gender === 'F' ? 'Women' : 'Men', drawAge: d.ageGroup, drawDiv: d.division})}));", 1],
+                'divname-open' => ["onOpen: () => this.setState({tab: 'draw', drawGender: d.gender === 'F' ? 'Women' : 'Men', drawAge: d.ageGroup, drawDiv: d.division})}));", "onOpen: () => { const dp = window.TakeOneFed && window.TakeOneFed.drawPage ? window.TakeOneFed.drawPage(sel && sel.id) : null; return d.unplaced ? this.setState({tab: 'regs'}) : (dp && d.divisionId) ? window.location.assign(dp + '?division=' + encodeURIComponent(d.divisionId) + '&back=' + encodeURIComponent(window.location.pathname + window.location.search)) : null; }}));", 1],
                 'divname-reg' => ["const regs = filteredRegs.map(r => ({\n      ...r,", "const regs = filteredRegs.map(r => ({\n      ...r, divLabel: r.divisionName || r.division,", 1],
                 'divname-reg-tpl' => ['<div style="font-size:.76rem;font-weight:600;color:#1e2c4f">{{ r.division }}</div>', '<div style="font-size:.76rem;font-weight:600;color:#1e2c4f">{{ r.divLabel }}</div>', 1],
                 'divname-draw' => ['const divCounts = divList.map(label => [label, byGA.filter(r => r.division === label).length]);', "const nameOfDiv = {}; byGA.forEach(r => { if (r.divisionName) nameOfDiv[r.division] = r.divisionName; });\n    const divCounts = divList.map(label => [label, byGA.filter(r => r.division === label).length]);", 1],
@@ -686,14 +719,48 @@ class FederationApp
                 'divname-draw-label' => ["drawDivLabel: curDiv || 'No divisions yet'", "drawDivLabel: (curDiv && nameOfDiv[curDiv]) || curDiv || 'No divisions yet'", 1],
                 // The age groups READ in English ("Under 12"), as the rule
                 // book now names them; the French name stays the page's key.
+                // The Division cell's second line repeated the name (gender, age
+                // group) and the Weight column. It now says only what the name
+                // does not: the division's age range (owner, 2026-10-15).
+                // The federation-wide Officials page is gone from the menu (owner,
+                // 2026-10-15); officials are managed in each event's Officials tab.
+                'nav-no-officials' => ["['athletes','Athletes'],['officials','Officials'],['financials','Financials']", "['athletes','Athletes'],['financials','Financials']", 1],
+                // Participants tab → the design room for certificates and badges
+                // (designVals in resources/patches/event-officials.js).
+                'regs-design-vals' => ["ae: this.evAthleteEditVals(), tabClubs: s.tab === 'clubs',", "ae: this.evAthleteEditVals(), dz: s.tab === 'regs' ? this.designVals(sel, 'participants') : {}, tabClubs: s.tab === 'clubs',", 1],
+                'regs-design-btns' => ["            </div>\n            <sc-if value=\"{{ hasSel }}\" hint-placeholder-val=\"{{ false }}\">", <<<'HTML'
+            </div>
+            <sc-if value="{{ dz.any }}" hint-placeholder-val="{{ false }}">
+              <div style="position:relative">
+                <button type="button" onClick="{{ dz.onToggle }}" aria-haspopup="menu" aria-expanded="{{ dz.open }}" title="Design and print badges and certificates" style="{{ dz.style }}" style-hover="border-color:#caa14f;background:#fdf6e6"><span aria-hidden="true" style="color:#8a6d20">&#9113;</span>Printables<span aria-hidden="true" style="font-size:.7rem;color:#8a6d20">{{ dz.caret }}</span></button>
+                <sc-if value="{{ dz.open }}" hint-placeholder-val="{{ false }}">
+                  <div onClick="{{ dz.onClose }}" style="position:fixed;inset:0;z-index:45"></div>
+                  <div role="menu" onClick="{{ dz.stop }}" style="position:absolute;top:46px;left:0;z-index:46;min-width:270px;padding:6px;background:#fff;border:1px solid #eef1f6;border-radius:14px;box-shadow:0 18px 40px rgba(30,44,79,.16);animation:rise .18s cubic-bezier(.22,.68,.35,1) both">
+                    <sc-for list="{{ dz.items }}" as="i" hint-placeholder-count="2">
+                      <button type="button" role="menuitem" onClick="{{ i.onClick }}" style="{{ i.style }}" style-hover="background:#fdf6e6"><span style="font-size:.82rem;font-weight:700;color:#1e2c4f">{{ i.label }}</span><span style="font-size:.7rem;color:#6b7689">{{ i.hint }}</span></button>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-if>
+            <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ false }}">
+HTML, 1],
+                // Participants → "Download": the consent form too, filled in for everyone or blank (regFormItems / regPdfUrl).
+                'regpdf-form-url' => ["this.setState({rpBusy: kind, rpErr: ''});\n      fetch(url + '?kind=' + encodeURIComponent(kind),", "this.setState({rpBusy: kind, rpErr: ''});\n      fetch(this.regPdfUrl(url, kind),", 1],
+                'regpdf-form-items' => ["['all', 'All Participants A–Z', 'Everyone once, alphabetical']]\n        .map(", "['all', 'All Participants A–Z', 'Everyone once, alphabetical']].concat(this.regFormItems())\n        .map(", 1],
+                'div-cell-dedupe' => ['<div style="font-size:.68rem;color:#6b7689">{{ r.catLabel }} &#183; {{ r.weightLabel }}</div>',
+                    '<sc-if value="{{ r.hasDivAges }}" hint-placeholder-val="{{ false }}"><div style="font-size:.68rem;color:#6b7689">Ages {{ r.divisionAges }}</div></sc-if>', 1],
+                'div-cell-dedupe-vals' => ["const regs = filteredRegs.map(r => ({\n      ...r, divLabel: r.divisionName || r.division,", "const regs = filteredRegs.map(r => ({\n      ...r, divLabel: r.divisionName || r.division, hasDivAges: !!r.divisionAges,", 1],
                 'en-catlabel' => ["catLabel: (r.gender === 'F' ? 'Female' : 'Male') + ' ' + (r.ageGroup || 'Séniors'),", "catLabel: (r.gender === 'F' ? 'Female' : 'Male') + ' ' + window.KarateShotukanWeightclasses.englishName(r.ageGroup || 'Séniors'),", 1],
                 'en-draw-age' => ['drawAgeLabel: curAge,', 'drawAgeLabel: window.KarateShotukanWeightclasses.englishName(curAge),', 1],
                 'en-draw-age-opts' => ['drawAgeOpts: ageCats.map(label => ({label, style:', 'drawAgeOpts: ageCats.map(label => ({label: window.KarateShotukanWeightclasses.englishName(label), style:', 1],
                 'en-dir-cat' => ["cat: catR ? catR.ageGroup + ' \\u00b7 ' + catR.label : '',", "cat: catR ? window.KarateShotukanWeightclasses.englishName(catR.ageGroup) + ' \\u00b7 ' + catR.label : '',", 1],
                 // The Draw tab's gender switch reads Male / Female (its state keeps 'Men'/'Women').
                 'en-draw-gender' => ["drawGenderOpts: ['Men', 'Women'].map(label => ({label, style:", "drawGenderOpts: ['Men', 'Women'].map(label => ({label: label === 'Women' ? 'Female' : 'Male', style:", 1],
-                'divs-vals' => ['checklist, divBars, divCards, divsEmpty,', "checklist, divBars, divCards, divsEmpty, divsAny: !divsEmpty, dv: s.tab === 'divs' ? this.evDivViewVals(divCards) : {rows: [], tabs: []},", 1],
-                'divs-methods' => ['  cssToObj(css) {', (string) file_get_contents(dirname(__DIR__).'/resources/patches/event-divisions.js').'  cssToObj(css) {', 1],
+                'divs-vals' => ['checklist, divBars, divCards, divsEmpty,', "checklist, divBars, divCards, divsEmpty, divsAny: !divsEmpty, dv: s.tab === 'divs' ? this.evDivViewVals(divCards) : {rows: [], tabs: []}, dm: s.tab === 'divs' ? this.dmVals(sel, divCards) : {on: false, off: true},", 1],
+                'divs-methods' => ['  cssToObj(css) {', (string) file_get_contents(dirname(__DIR__).'/resources/patches/event-divisions.js')
+                    // The division editor (weight classes, categories, headings) — div-manage.js.
+                    ."\n".(string) file_get_contents(dirname(__DIR__).'/resources/patches/div-manage.js').'  cssToObj(css) {', 1],
                 'divs-markup' => [['      <sc-if value="{{ tabDivs }}" hint-placeholder-val="{{ false }}">', '      <sc-if value="{{ tabDraw }}" hint-placeholder-val="{{ false }}">'],
                     rtrim((string) file_get_contents(dirname(__DIR__).'/resources/patches/event-divisions.html'))."\n\n".'      <sc-if value="{{ tabDraw }}" hint-placeholder-val="{{ false }}">', 1],
                 'readiness' => [["    const checklist = [\n      {done: true,  label: 'Venue contract signed'", "    ].map(c => ({...c, mark: c.done"], "    const rowGo = (url) => { if (url) window.location.assign(url); };\n"
@@ -820,6 +887,147 @@ class FederationApp
                 'tk-bank-rows' => [['<span style="color:#6b7689">Beneficiary</span><strong>TakeOne Sports Technologies W.L.L.</strong>', '<strong style="overflow-wrap:anywhere">[BH00 XXXX 0000 0000 0000 00]</strong>'],
                     '<span style="color:#6b7689">Beneficiary</span><strong>{{ tkBeneficiary }}</strong><sc-if value="{{ tkHasBankName }}" hint-placeholder-val="{{ false }}"><span style="color:#6b7689">Bank</span><strong>{{ tkBank }}</strong></sc-if><span style="color:#6b7689">IBAN</span><sc-if value="{{ tkHasIban }}" hint-placeholder-val="{{ true }}"><strong style="overflow-wrap:anywhere;font-family:ui-monospace,Menlo,monospace;letter-spacing:.04em">{{ tkIban }}</strong></sc-if><sc-if value="{{ tkNoIban }}" hint-placeholder-val="{{ false }}"><strong style="color:#a8620f">Being set up — contact TakeOne support</strong></sc-if><sc-if value="{{ tkHasSwift }}" hint-placeholder-val="{{ false }}"><span style="color:#6b7689">SWIFT</span><strong>{{ tkSwift }}</strong></sc-if>', 1],
                 'pay-footnote' =>['Payments are processed securely. Card details are never stored in full.', 'Your subscription activates once the transfer is confirmed.', 1],
+                // The Athletes list carries Gender, Age and Weight as columns of their
+                // own, between National ID and Division (after 'athed-cols').
+                'regcol-grid' => ['140px 120px 100px 136px;gap:14px;align-items:center;min-width:1116px', '140px 72px 64px 84px 120px 100px 136px;gap:14px;align-items:center;min-width:1378px', 2],
+                // The Weigh-in column, between Status and the actions ('weigh-list-btn').
+                'weigh-cols' => ['120px 100px 136px;gap:14px;align-items:center;min-width:1378px', '120px 100px 118px 136px;gap:14px;align-items:center;min-width:1510px', 2],
+                // Spread the columns across the card (owner, 2026-10-15): each keeps
+                // its old width as a minimum and shares the spare room, instead of
+                // the Athlete column taking all of it.
+                'regcol-spread' => ['24px 118px 36px minmax(200px,1fr) 175px 140px 72px 64px 84px 120px 100px 118px 136px;gap:14px;',
+                    '24px minmax(118px,.9fr) 36px minmax(200px,1.8fr) minmax(175px,1.3fr) minmax(140px,1fr) minmax(72px,.55fr) minmax(64px,.5fr) minmax(84px,.6fr) minmax(120px,1.1fr) minmax(100px,.75fr) minmax(118px,.85fr) minmax(136px,.9fr);gap:16px;', 2],
+                'regcol-head' => ['uppercase;color:#97a1b4">National ID</div>'."\n".'              <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">Division</div>',
+                    'uppercase;color:#97a1b4">National ID</div>'."\n"
+                    .'              <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">Gender</div>'."\n"
+                    .'              <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">Age</div>'."\n"
+                    .'              <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">Weight</div>'."\n"
+                    .'              <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">Division</div>', 1],
+                'regcol-cell' => ['<div style="font-size:.76rem;color:#1e2c4f">{{ r.natId }}</div>',
+                    '<div style="font-size:.76rem;color:#1e2c4f">{{ r.natId }}</div>'."\n"
+                    .'                <div style="{{ r.genderColStyle }}">{{ r.genderCol }}</div>'."\n"
+                    .'                <div style="font-size:.76rem;color:#1e2c4f;font-variant-numeric:tabular-nums">{{ r.ageCol }}</div>'."\n"
+                    .'                <div style="font-size:.76rem;color:#1e2c4f;white-space:nowrap;font-variant-numeric:tabular-nums">{{ r.weightLabel }}</div>', 1],
+                'regcol-vals' => ["weightLabel: r.weight ? r.weight + ' kg' : '\\u2014',", "weightLabel: r.weight ? r.weight + ' kg' : '\\u2014', ageCol: (r.age === 0 || (r.age && r.age !== '\\u2014')) ? String(r.age) : '\\u2014', genderCol: /^f/i.test(r.gender || '') ? 'Female' : /^m/i.test(r.gender || '') ? 'Male' : '\\u2014', genderColStyle: this.cssToObj('font-size:.76rem;font-weight:600;color:' + (/^f/i.test(r.gender || '') ? '#db2777' : /^m/i.test(r.gender || '') ? '#2563eb' : '#6b7689')),", 1],
+                // Sort by any column (click a header; again to reverse) and
+                // narrow by gender / status with chips. Blanks always sort last.
+                'regsort-filter' => ["    const filteredRegs = s.regs.filter(r => !rq || [r.name, r.mobile, r.email, r.club, r.natId, r.nat, r.takeoneId].some(v => v.toLowerCase().includes(rq)));", <<<'JS'
+    const rfG = s.regFGender || 'all', rfS = s.regFStatus || 'all', rsBy = s.regSort || '', rsDir = s.regSortDir || 1;
+    // Age / weight ranges: typed text, read as numbers; an empty box is no limit.
+    const rfR = {ageMin: s.regFAgeMin || '', ageMax: s.regFAgeMax || '', wMin: s.regFWMin || '', wMax: s.regFWMax || ''};
+    const rfNum = v => { const n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? null : n; };
+    const rfIn = (v, lo, hi) => { lo = rfNum(lo); hi = rfNum(hi); if (lo === null && hi === null) return true; const n = rfNum(v == null ? '' : String(v).replace(/[^0-9.,]/g, '')); return n !== null && (lo === null || n >= lo) && (hi === null || n <= hi); };
+    const rIsF = r => /^f/i.test(r.gender || ''), rIsM = r => /^m/i.test(r.gender || '');
+    const rNum = v => { const n = parseFloat(String(v == null ? '' : v).replace(/[^0-9.]/g, '')); return isNaN(n) ? null : n; };
+    const regKeys = {
+      id: r => r.takeoneId === 'Pending' ? '' : String(r.takeoneId || ''), name: r => String(r.name || ''), contact: r => String(r.mobile || ''),
+      natId: r => String(r.natId || ''), gender: r => rIsF(r) ? 'Female' : rIsM(r) ? 'Male' : '',
+      age: r => rNum(r.age), weight: r => rNum(r.weight), division: r => String(r.divisionName || r.division || ''), status: r => String(r.status || '')
+    };
+    const rKey = regKeys[rsBy];
+    const rBlank = v => v == null || v === '' || v === '—';
+    const filteredRegs = s.regs.filter(r => !rq || [r.name, r.mobile, r.email, r.club, r.natId, r.nat, r.takeoneId].some(v => String(v || '').toLowerCase().includes(rq)))
+      .filter(r => rfG === 'all' || (rfG === 'F' ? rIsF(r) : rIsM(r)))
+      .filter(r => rfS === 'all' || (rfS === 'Approved' ? r.status === 'Approved' : r.status !== 'Approved'))
+      .filter(r => rfIn(r.age, rfR.ageMin, rfR.ageMax) && rfIn(r.weight, rfR.wMin, rfR.wMax))
+      .sort((a, b) => {
+        if (!rKey) return 0;
+        const x = rKey(a), y = rKey(b), bx = rBlank(x), by = rBlank(y);
+        if (bx || by) return (bx ? 1 : 0) - (by ? 1 : 0);
+        return rsDir * (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), undefined, {numeric: true, sensitivity: 'base'}));
+      });
+    const regSortVals = {};
+    ['id', 'name', 'contact', 'natId', 'gender', 'age', 'weight', 'division', 'status'].forEach(k => {
+      const on = rsBy === k;
+      regSortVals[k] = {
+        arrow: on ? (rsDir > 0 ? '▲' : '▼') : '',
+        ariaSort: on ? (rsDir > 0 ? 'ascending' : 'descending') : 'none',
+        onClick: () => this.setState({regSort: k, regSortDir: on ? -rsDir : 1}),
+        style: this.cssToObj('display:inline-flex;align-items:center;gap:4px;padding:0;border:0;background:none;font-family:inherit;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;text-align:start;color:' + (on ? '#1e2c4f;font-weight:700' : '#97a1b4'))
+      };
+    });
+    const rChip = (on, color) => this.cssToObj('height:32px;padding:0 14px;border-radius:999px;font-family:inherit;font-size:.74rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s;'
+      + (on ? 'background:#fdf6e6;border:1px solid #caa14f;box-shadow:0 2px 8px rgba(202,161,79,.22);' : 'background:#fff;border:1px solid #d5dae3;') + 'color:' + (color || (on ? '#8a6d20' : '#5d6880')));
+    const regFilterVals = {
+      gender: [['all', 'All', ''], ['M', 'Male', '#2563eb'], ['F', 'Female', '#db2777']].map(([id, label, c]) => ({label, on: rfG === id, style: rChip(rfG === id, c), onClick: () => this.setState({regFGender: id})})),
+      status: [['all', 'All'], ['Approved', 'Approved'], ['Pending', 'Pending']].map(([id, label]) => ({label, on: rfS === id, style: rChip(rfS === id), onClick: () => this.setState({regFStatus: id})})),
+      ...(() => {
+        const box = v => this.cssToObj('height:32px;width:52px;min-width:0;max-width:52px;box-sizing:border-box;padding:0 6px;border-radius:999px;font-family:inherit;font-size:.74rem;font-weight:600;text-align:center;color:#1e2c4f;outline:none;font-variant-numeric:tabular-nums;'
+          + (v !== '' ? 'background:#fdf6e6;border:1px solid #caa14f' : 'background:#fff;border:1px solid #d5dae3'));
+        const clean = v => String(v).replace(/[^0-9.,]/g, '').slice(0, 5);
+        const f = (k, key) => ({value: rfR[k], style: box(rfR[k]), onChange: e => this.setState({[key]: clean(e.target.value)})});
+        return {ageMin: f('ageMin', 'regFAgeMin'), ageMax: f('ageMax', 'regFAgeMax'), wMin: f('wMin', 'regFWMin'), wMax: f('wMax', 'regFWMax')};
+      })(),
+      any: rfG !== 'all' || rfS !== 'all' || !!rsBy || Object.values(rfR).some(v => v !== ''),
+      onClear: () => this.setState({regFGender: 'all', regFStatus: 'all', regSort: '', regSortDir: 1, regFAgeMin: '', regFAgeMax: '', regFWMin: '', regFWMax: ''}),
+      count: filteredRegs.length + ' of ' + s.regs.length
+    };
+JS, 1],
+                'regsort-vals' => ['regsEmpty: regs.length === 0,', 'regsEmpty: regs.length === 0, rs: regSortVals, rf: regFilterVals,', 1],
+                'regsort-head' => [<<<'HTML'
+              <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">Takeone ID</div>
+              <div></div>
+              <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">Athlete</div>
+              <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">Contact</div>
+              <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">National ID</div>
+              <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">Gender</div>
+              <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">Age</div>
+              <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">Weight</div>
+              <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">Division</div>
+              <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">Status</div>
+HTML, <<<'HTML'
+              <div aria-sort="{{ rs.id.ariaSort }}"><button type="button" onClick="{{ rs.id.onClick }}" style="{{ rs.id.style }}"><span>Takeone ID</span><span>{{ rs.id.arrow }}</span></button></div>
+              <div></div>
+              <div aria-sort="{{ rs.name.ariaSort }}"><button type="button" onClick="{{ rs.name.onClick }}" style="{{ rs.name.style }}"><span>Athlete</span><span>{{ rs.name.arrow }}</span></button></div>
+              <div aria-sort="{{ rs.contact.ariaSort }}"><button type="button" onClick="{{ rs.contact.onClick }}" style="{{ rs.contact.style }}"><span>Contact</span><span>{{ rs.contact.arrow }}</span></button></div>
+              <div aria-sort="{{ rs.natId.ariaSort }}"><button type="button" onClick="{{ rs.natId.onClick }}" style="{{ rs.natId.style }}"><span>National ID</span><span>{{ rs.natId.arrow }}</span></button></div>
+              <div aria-sort="{{ rs.gender.ariaSort }}"><button type="button" onClick="{{ rs.gender.onClick }}" style="{{ rs.gender.style }}"><span>Gender</span><span>{{ rs.gender.arrow }}</span></button></div>
+              <div aria-sort="{{ rs.age.ariaSort }}"><button type="button" onClick="{{ rs.age.onClick }}" style="{{ rs.age.style }}"><span>Age</span><span>{{ rs.age.arrow }}</span></button></div>
+              <div aria-sort="{{ rs.weight.ariaSort }}"><button type="button" onClick="{{ rs.weight.onClick }}" style="{{ rs.weight.style }}"><span>Weight</span><span>{{ rs.weight.arrow }}</span></button></div>
+              <div aria-sort="{{ rs.division.ariaSort }}"><button type="button" onClick="{{ rs.division.onClick }}" style="{{ rs.division.style }}"><span>Division</span><span>{{ rs.division.arrow }}</span></button></div>
+              <div aria-sort="{{ rs.status.ariaSort }}"><button type="button" onClick="{{ rs.status.onClick }}" style="{{ rs.status.style }}"><span>Status</span><span>{{ rs.status.arrow }}</span></button></div>
+HTML, 1],
+                'weigh-head' => ['<span>Status</span><span>{{ rs.status.arrow }}</span></button></div>'."\n".'              <div></div>',
+                    '<span>Status</span><span>{{ rs.status.arrow }}</span></button></div>'."\n".'              <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">Weigh-in</div>'."\n".'              <div></div>', 1],
+                'regfilter-chips' => ['          <sc-if value="{{ regsEmpty }}" hint-placeholder-val="{{ false }}">', <<<'HTML'
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 14px;padding:10px 12px;border-radius:13px;background:#f7f8fb;border:1px solid #eef1f6">
+            <span style="font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#8a93a6;margin-inline-end:2px">Gender</span>
+            <sc-for list="{{ rf.gender }}" as="c" hint-placeholder-count="3"><button type="button" onClick="{{ c.onClick }}" aria-pressed="{{ c.on }}" style="{{ c.style }}">{{ c.label }}</button></sc-for>
+            <span aria-hidden="true" style="width:1px;height:22px;background:#d5dae3;margin:0 6px"></span>
+            <span style="font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#8a93a6;margin-inline-end:2px">Status</span>
+            <sc-for list="{{ rf.status }}" as="c" hint-placeholder-count="3"><button type="button" onClick="{{ c.onClick }}" aria-pressed="{{ c.on }}" style="{{ c.style }}">{{ c.label }}</button></sc-for>
+            <span aria-hidden="true" style="width:1px;height:22px;background:#d5dae3;margin:0 6px"></span>
+            <span style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap">
+            <span style="font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#8a93a6;margin-inline-end:2px">Age</span>
+            <input inputmode="decimal" aria-label="Minimum age" placeholder="Min" value="{{ rf.ageMin.value }}" onChange="{{ rf.ageMin.onChange }}" style="{{ rf.ageMin.style }}">
+            <span aria-hidden="true" style="color:#97a1b4;font-size:.74rem">&ndash;</span>
+            <input inputmode="decimal" aria-label="Maximum age" placeholder="Max" value="{{ rf.ageMax.value }}" onChange="{{ rf.ageMax.onChange }}" style="{{ rf.ageMax.style }}">
+            </span>
+            <span aria-hidden="true" style="width:1px;height:22px;background:#d5dae3;margin:0 6px"></span>
+            <span style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap">
+            <span style="font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#8a93a6;margin-inline-end:2px">Weight</span>
+            <input inputmode="decimal" aria-label="Minimum weight in kg" placeholder="Min" value="{{ rf.wMin.value }}" onChange="{{ rf.wMin.onChange }}" style="{{ rf.wMin.style }}">
+            <span aria-hidden="true" style="color:#97a1b4;font-size:.74rem">&ndash;</span>
+            <input inputmode="decimal" aria-label="Maximum weight in kg" placeholder="Max" value="{{ rf.wMax.value }}" onChange="{{ rf.wMax.onChange }}" style="{{ rf.wMax.style }}">
+            <span style="font-size:.7rem;color:#97a1b4">kg</span>
+            </span>
+            <span style="margin-inline-start:auto;display:inline-flex;align-items:center;gap:10px">
+              <span style="font-size:.74rem;color:#6b7689;font-variant-numeric:tabular-nums">{{ rf.count }}</span>
+              <sc-if value="{{ rf.any }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ rf.onClear }}" style="height:32px;padding:0 12px;border:0;border-radius:999px;background:none;font-family:inherit;font-size:.74rem;font-weight:700;color:#8a6d20;cursor:pointer;text-decoration:underline;text-underline-offset:3px">Reset</button></sc-if>
+            </span>
+          </div>
+          <sc-if value="{{ regsEmpty }}" hint-placeholder-val="{{ false }}">
+HTML, 1],
+                // The Participants table drops its Contact and Status columns
+                // (owner, 2026-10-16). Header and cell go together, and the grid
+                // loses the same two tracks, so every column stays under its head.
+                // Contact stays searchable; the Status filter chips stay.
+                'regcol-drop-grid' => ['24px minmax(118px,.9fr) 36px minmax(200px,1.8fr) minmax(175px,1.3fr) minmax(140px,1fr) minmax(72px,.55fr) minmax(64px,.5fr) minmax(84px,.6fr) minmax(120px,1.1fr) minmax(100px,.75fr) minmax(118px,.85fr) minmax(136px,.9fr);gap:16px;align-items:center;min-width:1510px',
+                    '24px minmax(118px,.9fr) 36px minmax(200px,1.8fr) minmax(140px,1fr) minmax(72px,.55fr) minmax(64px,.5fr) minmax(84px,.6fr) minmax(120px,1.1fr) minmax(118px,.85fr) minmax(136px,.9fr);gap:16px;align-items:center;min-width:1210px', 2],
+                'regcol-drop-contact-head' => ['              <div aria-sort="{{ rs.contact.ariaSort }}"><button type="button" onClick="{{ rs.contact.onClick }}" style="{{ rs.contact.style }}"><span>Contact</span><span>{{ rs.contact.arrow }}</span></button></div>'."\n", '', 1],
+                'regcol-drop-status-head' => ['              <div aria-sort="{{ rs.status.ariaSort }}"><button type="button" onClick="{{ rs.status.onClick }}" style="{{ rs.status.style }}"><span>Status</span><span>{{ rs.status.arrow }}</span></button></div>'."\n", '', 1],
+                'regcol-drop-contact-cell' => ['                <div style="min-width:0">'."\n".'                  <div style="font-size:.76rem;color:#1e2c4f">{{ r.mobile }}</div>'."\n".'                  <div style="font-size:.72rem;color:#6b7689;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.email }}</div>'."\n".'                </div>'."\n", '', 1],
+                'regcol-drop-status-cell' => ['                <div><span style="{{ r.pillStyle }}">{{ r.status }}</span></div>'."\n", '', 1],
             ],
             'Karate Statistics.dc.html' => $this->statisticsRewrites() + $this->statisticsLayoutRewrites() + [
                 'font' => ['https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap', './vendor/fonts/poppins.css', 1],

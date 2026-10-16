@@ -171,6 +171,65 @@
       .then(function (res) { return res.json().catch(function () { return {}; }).then(function (j) { return res.ok ? {ok: true, athlete: j.athlete, canEdit: !!j.canEdit} : {ok: false, message: 'That athlete could not be found.'}; }); })
       .catch(function () { return {ok: false, message: 'Could not reach the server. Try again.'}; });
   };
+  // The edit window is a platform page in a frame (federations::athlete.edit);
+  // after it saves, the registrations it answered with repaint the list here.
+  // Clubs tab → take a whole club off one event (managers only).
+  window.TakeOneFed.canWithdrawClub = function () { return !!urls.clubWithdraw; };
+  window.TakeOneFed.withdrawClub = function (eventId, clubKey) {
+    if (!urls.clubWithdraw) return Promise.resolve({ok: false, message: ''});
+    return jsonPost(urls.clubWithdraw, {event: eventId, club: clubKey}).then(function (j) {
+      if (j.__status === 401 || j.__status === 419) { window.location.reload(); return {ok: false, message: ''}; }
+      if (j.regs) {
+        put('takeone_club_regs', j.regs); lastRegs = JSON.stringify(j.regs);
+        try { window.dispatchEvent(new StorageEvent('storage', {key: 'takeone_club_regs'})); } catch (e) {}
+      }
+      if (j.success && window.TakeOneFed.refresh) window.TakeOneFed.refresh();
+      return {ok: !!j.success, message: j.message || (j.success ? '' : 'That club could not be removed. Try again.')};
+    }).catch(function () { return {ok: false, message: 'Could not reach the server. Try again.'}; });
+  };
+  window.TakeOneFed.officialFrame = function () { return urls.officialFrame || null; };
+  // The event Clubs tab's club editor frame (FederationClubManager decides what may change).
+  window.TakeOneFed.clubFrame = function () { return urls.clubFrame || null; };
+  window.TakeOneFed.athleteFrame = function () { return (urls.regsAthlete && urls.regsAthlete.frame) || null; };
+  window.TakeOneFed.athleteSaved = function (regs) {
+    if (Array.isArray(regs)) {
+      put('takeone_club_regs', regs); lastRegs = JSON.stringify(regs);
+      try { window.dispatchEvent(new StorageEvent('storage', {key: 'takeone_club_regs'})); } catch (e) {}
+    }
+    if (window.TakeOneFed.refresh) window.TakeOneFed.refresh();
+  };
+  // Participants tab → weigh an athlete in. Every entry they hold on the event
+  // goes through the platform's own weigh-in desk endpoint, which authorises,
+  // records who weighed them and re-places them by the scale.
+  window.TakeOneFed.weighIn = function (urls2, weight) {
+    var list = (urls2 || []).slice();
+    if (!list.length) return Promise.resolve({ok: false, message: 'This athlete has no entry on the event yet.'});
+    var last = {};
+    var step = function () {
+      var u = list.shift();
+      if (!u) return Promise.resolve({ok: true, message: last.message || 'Weight recorded.', unplaced: !!last.unplaced});
+      return fetch(u, {
+        method: 'PUT', credentials: 'same-origin',
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf(), 'X-Requested-With': 'XMLHttpRequest'},
+        body: JSON.stringify({weight: weight})
+      }).then(function (res) {
+        return res.json().catch(function () { return {}; }).then(function (j) {
+          if (res.status === 401 || res.status === 419) { window.location.reload(); return {ok: false, message: ''}; }
+          if (!res.ok || !j.success) {
+            var m = res.status === 403 ? 'You are not allowed to weigh athletes in at this event.'
+              : (j.errors && j.errors.weight ? j.errors.weight[0] : (j.message || 'The weight could not be saved. Try again.'));
+            return {ok: false, message: m};
+          }
+          last = j;
+          return step();
+        });
+      });
+    };
+    return step().then(function (r) {
+      if (window.TakeOneFed.refresh) window.TakeOneFed.refresh();
+      return r;
+    }).catch(function () { return {ok: false, message: 'Could not reach the server. Try again.'}; });
+  };
   window.TakeOneFed.athleteSave = function (r, data) {
     var u = urls.regsAthlete;
     if (!u) return Promise.resolve({ok: false, message: ''});
@@ -317,6 +376,30 @@
   // Each event's own officials (FederationEventOfficials), for its Officials tab.
   var eventOfficials = boot.eventOfficials || {};
   window.TakeOneFed.eventOfficials = function (eventId) { return eventId && eventOfficials[eventId] ? eventOfficials[eventId] : null; };
+  // The participants-PDF door per event — present only for a viewer the endpoint will serve.
+  var participantsPdf = boot.participantsPdf || {};
+  window.TakeOneFed.participantsPdf = function (eventId) { return eventId && participantsPdf[eventId] ? participantsPdf[eventId] : null; };
+  // The draw board per event (Divisions tab → a division's draw), same rule.
+  var drawPage = boot.drawPage || {};
+  window.TakeOneFed.drawPage = function (eventId) { return eventId && drawPage[eventId] ? drawPage[eventId] : null; };
+  // The running order per event (Schedule tab): the platform's own doors,
+  // present only for a viewer they will serve. `roFetch` is the one way the
+  // tab talks to them (GET / PUT / POST, JSON both ways).
+  var runOrder = boot.runOrder || {};
+  window.TakeOneFed.runOrder = function (eventId) { return eventId && runOrder[eventId] ? runOrder[eventId] : null; };
+  // The Divisions tab's editor doors per event — organisers only (same roFetch).
+  var divisionDoors = boot.divisions || {};
+  window.TakeOneFed.divisionDoors = function (eventId) { return eventId && divisionDoors[eventId] ? divisionDoors[eventId] : null; };
+  window.TakeOneFed.roFetch = function (method, url, body) {
+    return fetch(url, {
+      method: method, credentials: 'same-origin',
+      headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf(), 'X-Requested-With': 'XMLHttpRequest'},
+      body: body ? JSON.stringify(body) : undefined
+    }).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (j) { j.__ok = res.ok && j.success !== false; j.__status = res.status; return j; });
+    }).catch(function () { return {__ok: false, message: 'Could not reach the server. Try again.'}; });
+  };
+
   window.TakeOneFed.schedule = function (evId) { return (evId && schedules[evId]) || []; };
   window.TakeOneFed.canEditSchedule = function () { return !!urls.schedule; };
   window.TakeOneFed.scheduleOp = function (op, body) {
@@ -472,7 +555,7 @@
   //
   //   /federation/<section>                     statistics, events, clubs, …
   //   /federation/events/<event uuid>/<tab>     overview, statistics,
-  //                                             registrations, divisions, draw,
+  //                                             participants, draw,
   //                                             schedule, financials
   //   ?filter=<tab>   the small All / Registered / Pending switches
   //
@@ -481,9 +564,19 @@
   // is up, opens that screen, and from then on writes the address whenever the
   // screen changes. The prototype is never edited: its own state (nav, view,
   // selectedId, tab…) stays the truth, the address is its reflection.
-  var SECTIONS = ['statistics', 'events', 'clubs', 'calendar', 'athletes', 'officials', 'financials', 'reports', 'settings'];
-  var TABS = {overview: 'overview', stats: 'statistics', regs: 'registrations', offs: 'officials', divs: 'divisions', draw: 'draw', schedule: 'schedule', fin: 'financials'};
+  // The federation-wide Officials page was removed (owner, 2026-10-15); each
+  // event keeps its own Officials tab. An old /federation/officials link opens Events.
+  var SECTIONS = ['statistics', 'events', 'clubs', 'calendar', 'athletes', 'financials', 'reports', 'settings'];
+  var TABS = {overview: 'overview', stats: 'statistics', regs: 'participants', offs: 'officials', divs: 'draw', schedule: 'schedule', fin: 'financials'};
   var TAB_OF = {}; Object.keys(TABS).forEach(function (k) { TAB_OF[TABS[k]] = k; });
+  // The tab was called Athletes, at /registrations, until 2026-10-15. A saved or
+  // shared link to the old address still opens it, and is corrected in place.
+  TAB_OF.registrations = 'regs';
+  // On 2026-10-15 the prototype's Draw tab went and the Divisions tab took its
+  // name and address (/draw). An old /divisions link still opens it.
+  TAB_OF.divisions = 'divs';
+  // The Statistics tab is parked (2026-10-15): an old /statistics link opens Overview.
+  delete TABS.stats; TAB_OF.statistics = 'overview';
   // Per section, the small tab switch that has its own `?filter=`.
   var FILTERS = {clubs: 'clubTab', athletes: 'athTab'};
   var ROOT = '/federation';
@@ -504,7 +597,7 @@
 
   function stateOf(loc, comp) {
     var parts = loc.pathname.replace(/\/+$/, '').split('/').slice(2);   // after /federation
-    var nav = SECTIONS.indexOf(parts[0]) >= 0 ? parts[0] : 'statistics';
+    var nav = SECTIONS.indexOf(parts[0]) >= 0 ? parts[0] : (parts[0] === 'officials' ? 'events' : 'statistics');
     if (nav === 'settings' && comp.isRestricted && comp.isRestricted()) nav = 'statistics';
     var st = {nav: nav, view: 'overview'};
     if (nav === 'events' && parts[1]) {
@@ -609,6 +702,22 @@
     if (j.eventOfficials && !same(j.eventOfficials, eventOfficials)) {
       Object.keys(eventOfficials).forEach(function (k) { delete eventOfficials[k]; });
       Object.keys(j.eventOfficials).forEach(function (k) { eventOfficials[k] = j.eventOfficials[k]; });
+    }
+    if (j.participantsPdf && !same(j.participantsPdf, participantsPdf)) {
+      Object.keys(participantsPdf).forEach(function (k) { delete participantsPdf[k]; });
+      Object.keys(j.participantsPdf).forEach(function (k) { participantsPdf[k] = j.participantsPdf[k]; });
+    }
+    if (j.divisions && !same(j.divisions, divisionDoors)) {
+      Object.keys(divisionDoors).forEach(function (k) { delete divisionDoors[k]; });
+      Object.keys(j.divisions).forEach(function (k) { divisionDoors[k] = j.divisions[k]; });
+    }
+    if (j.runOrder && !same(j.runOrder, runOrder)) {
+      Object.keys(runOrder).forEach(function (k) { delete runOrder[k]; });
+      Object.keys(j.runOrder).forEach(function (k) { runOrder[k] = j.runOrder[k]; });
+    }
+    if (j.drawPage && !same(j.drawPage, drawPage)) {
+      Object.keys(drawPage).forEach(function (k) { delete drawPage[k]; });
+      Object.keys(j.drawPage).forEach(function (k) { drawPage[k] = j.drawPage[k]; });
     }
     if (j.schedules && !same(j.schedules, schedules)) {
       Object.keys(schedules).forEach(function (k) { delete schedules[k]; });

@@ -56,4 +56,9 @@ return [
     'style_wado_ryu' => 'وادو-ريو',
     'grade_ungraded' => 'بدون حزام (مبتدئ)',
     'grade_mukyu' => 'موكيو (مبتدئ)',
+
+    'discipline_kata' => 'كاتا',
+    'discipline_kata_sub' => 'الأداء الفردي',
+    'discipline_kumite' => 'كوميتيه',
+    'discipline_kumite_sub' => 'القتال · حسب الوزن',
 ];

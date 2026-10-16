@@ -180,6 +180,16 @@ class BracketView
             'name' => $c->name,
             'is_heading' => false,
             'weight_class' => $c->weight_class ?: null,
+            /* The division's own bounds — gender, ages, weights — so a division
+               menu can say what the group IS, not only what it is called. The
+               category's settings, nothing about any person. */
+            'range' => [
+                'gender' => in_array(strtolower((string) $c->gender), ['male', 'female'], true) ? strtolower((string) $c->gender) : null,
+                'min_age' => $c->min_age !== null ? (int) $c->min_age : null,
+                'max_age' => $c->max_age !== null ? (int) $c->max_age : null,
+                'min_weight' => $c->min_weight !== null ? (float) $c->min_weight : null,
+                'max_weight' => $c->max_weight !== null ? (float) $c->max_weight : null,
+            ],
             'status' => $c->status,
             'draw_state' => $c->draw_state,           // provisional | final | manual | null
             'entrants' => $entrants->count(),

@@ -53,9 +53,10 @@ class BracketPdfController extends Controller
         }
 
         try {
-            // The whole draw opens with the competition and its divisions (pages 1
-            // and 2); a single division prints as just its own sheet.
-            $bytes = $pdf->render($pdf->html($event, $me, $divisions, $data['layout'] ?? 'linear', $data['third'] ?? 'match', ! isset($data['division'])));
+            // The draw is the brackets and nothing else (owner, 2026-10-16): no
+            // cover, contents or club pages before them. The cover is still
+            // built by BracketPdf::html() when asked, so it can come back.
+            $bytes = $pdf->render($pdf->html($event, $me, $divisions, $data['layout'] ?? 'linear', $data['third'] ?? 'match', false));
         } catch (\Throwable $e) {
             Log::error('Bracket PDF failed', ['event' => $event->uuid, 'error' => $e->getMessage()]);
 

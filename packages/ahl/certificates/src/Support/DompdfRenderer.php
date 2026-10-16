@@ -15,7 +15,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
  */
 class DompdfRenderer implements ImageRenderer, PdfRenderer
 {
-    public function render(string $view, array $data, string $orientation = 'landscape', string $paper = 'a4'): string
+    public function render(string $view, array $data, string $orientation = 'landscape', string|array $paper = 'a4'): string
     {
         return Pdf::setOptions($this->options())->loadView($view, $data)->setPaper($paper, $orientation)->output();
     }
@@ -25,7 +25,7 @@ class DompdfRenderer implements ImageRenderer, PdfRenderer
      * preview cannot drift from the PDF. For screens that cannot show a PDF inline (an
      * Android WebView, a thumbnail).
      */
-    public function renderImage(string $view, array $data, string $orientation = 'landscape', string $paper = 'a4', int $dpi = 96): string
+    public function renderImage(string $view, array $data, string $orientation = 'landscape', string|array $paper = 'a4', int $dpi = 96): string
     {
         $dompdf = new \Dompdf\Dompdf($this->options() + ['pdfBackend' => 'GD']);
         $dompdf->getOptions()->setDpi($dpi);
@@ -40,7 +40,7 @@ class DompdfRenderer implements ImageRenderer, PdfRenderer
      * A ready-made page set (CertificateService::bundle) as one PDF. $dirs are extra
      * folders dompdf may read — the bundle's own scratch folder of shared pictures.
      */
-    public function renderHtml(string $html, string $orientation = 'landscape', string $paper = 'a4', array $dirs = []): string
+    public function renderHtml(string $html, string $orientation = 'landscape', string|array $paper = 'a4', array $dirs = []): string
     {
         $options = $this->options();
         $options['chroot'] = array_merge($options['chroot'], $dirs);

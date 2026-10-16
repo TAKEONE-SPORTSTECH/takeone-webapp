@@ -80,6 +80,11 @@ final class AdvisorToolbox
                 'merge_below' => $num('Merge every division with fewer than this many athletes (e.g. 3).'),
                 'split_above' => $num('Split every division with more than this many athletes in two (e.g. 12).'),
             ]),
+            // Safety before money: list_divisions / divisions_what_if count medals
+            // and cost only. This is the same judge the Divisions page uses
+            // (App\Events\Support\DivisionMerge), so the advisor can never
+            // recommend a merge the organiser's own tool would refuse.
+            $fn('merge_safety', 'Whether merging small divisions is SAFE for the athletes: each suggested merge graded green (safe), amber (only with written guardian consent) or red (never — different gender, a minor with an adult, weight gap or age gap over the limit), with the reasons in words; the lone athletes who have no safe merge and why; and divisions already wider than the safe weight limit. Check this before recommending ANY merge.'),
             $fn('cost_breakdown', 'Analysis of the costs: each line\'s share of the total, cost per athlete, groups, fixed vs per-athlete, paid vs not yet paid.'),
             $fn('risk_check', 'Risk analysis: margin above break-even, how many athletes can drop before a loss, the result if turnout falls 10/20/30%, how much of the cost is fixed, dependence on the biggest line, money not yet spent.'),
             $fn('fee_vs_turnout', 'Price sensitivity: for several fees, the result if turnout drops 0-30%, and how many athletes each fee can afford to lose before missing the target or breaking even. Use it whenever a fee change might make athletes stay away.', [
@@ -152,6 +157,7 @@ final class AdvisorToolbox
                     : ['currency' => $this->currency()] + BudgetPlan::divisionImpact($this->event, $this->budget, $this->screen,
                     isset($args['merge_below']) && is_numeric($args['merge_below']) ? max(2, (int) $args['merge_below']) : null,
                     isset($args['split_above']) && is_numeric($args['split_above']) ? max(2, (int) $args['split_above']) : null),
+                'merge_safety' => $this->mergeSafety(),
                 'cost_breakdown' => $this->costBreakdown(),
                 'risk_check' => $this->riskCheck(),
                 'fee_vs_turnout' => $this->feeVsTurnout($args),
@@ -170,6 +176,20 @@ final class AdvisorToolbox
         } catch (\Throwable $e) {
             return ['error' => 'That did not work: '.mb_substr($e->getMessage(), 0, 120)];
         }
+    }
+
+    /** The merge judge's answer, trimmed to what a reply needs. */
+    private function mergeSafety(): array
+    {
+        $s = app(\App\Events\Support\DivisionMerge::class)->suggest($this->event);
+
+        return [
+            'limits' => $s['limits'],
+            'merges' => array_map(fn ($j) => ['from' => $j['from_names'], 'into' => $j['into_name'], 'grade' => $j['grade'],
+                'athletes_after' => $j['after'], 'reasons' => array_column($j['reasons'], 'text')], $s['suggestions']),
+            'alone_no_safe_merge' => array_map(fn ($a) => ['division' => $a['name'], 'why' => $a['why']], $s['alone']),
+            'already_too_wide' => array_map(fn ($w) => ['division' => $w['name'], 'spread_percent' => $w['pct']], $s['wide']),
+        ];
     }
 
     /** Writes need the organiser's word: an instruction in this message, or a yes to a question. */

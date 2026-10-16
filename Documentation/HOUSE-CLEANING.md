@@ -99,6 +99,7 @@ cannot quietly become permanent.
 |---|---|---|
 | `event_recordings.play_video_id`, `play_video_key`, `play_url`, `play_revision`, `pushed_at`, `timeline_pulled_at`, `sync_error` | Dormant since `video.takeone.bh` was disconnected (2026-08-27). Nothing writes them; a handful of rows still carry a URL that renders as an outbound link. | When the last non-null `play_url` row is gone. |
 | `play_timeline_rounds`, `play_timeline_points` | Orphaned mirror tables from the same split. Their models are deleted and nothing reads them. | Verified backup + one migration. Nobody has needed it yet. |
+| `club_events.run_modes` (json, nullable) and its `'run_modes' => 'array'` cast on `ClubEvent` | Added 2026-10-14 (`2026_10_14_120000_add_session_modes_to_running_order`) for a "from the start of the day" session method; replaced the same day by running-order GROUPS (`EventRunSlot::KIND_GROUP`, method on the group's own `mode`). Nothing reads it: `grep -rn run_modes app resources` hits only the cast. One row holds a value (event 104, `{"1":"round"}`, the organiser trying the first version). Registered 2026-10-14. | Verified backup, then one migration dropping the column and removing the cast. |
 | `content_translations`, `content_translation_runs` (+ their models `App\Translation\Models\{ContentTranslation,TranslationRun}`) | The first content-translation store — one row per field per language. Replaced on 2026-09-09 by ONE JSON document per record (`translation_documents`), which is what the feature was asked to be. **Checked:** every row was copied forward by the `2026_09_09_090000` migration and verified against the live event (6 languages, 17 fields each, all rendering); `grep -rn 'ContentTranslation\|TranslationRun'` over `app/`, `resources/` and `tests/` returns only the two model files themselves and this line. | A verified backup + one migration. Not urgent: the tables are small and harmless, and keeping them a while is the cheap insurance if the JSON shape needs revisiting. Registered 2026-09-09. |
 | `certificates` rows (and their PDFs under `events/{uuid}/certificates/`) whose event is HARD-deleted | Not dead — a GAP to close. `certificates.context_id` has no foreign key (it is polymorphic), so deleting a `club_events` row outright would leave its certificates and files behind. Events are archived rather than deleted today, so no row is in this state (checked 2026-09-29: `select count(*) from certificates` = 0 on stage). Registered 2026-09-29. | Before any hard-delete path for events exists: delete an event's certificate files, then its rows (files first), in the same place the event is deleted. |
 
@@ -116,6 +117,8 @@ cannot quietly become permanent.
 | Item | Why | Gate |
 |---|---|---|
 | The demo showcase dataset | Built to be removable before go-live; manifest-tracked at `storage/app/private/demo/manifest.json`. | `php artisan demo:purge` as a go-live step. Verify it took the uploaded files with it. |
+| Energy Zone's duplicated official persons — users **1682, 2025, 2028** ("Saher"), **1683** ("Abu Abdallah"), **1687** ("Hassan Hussain") — all unclaimed, no appointments or entries | Registered 2026-10-15. The entry sync matched club-named officials by NAME on every run and created a new person on each mismatch (fixed: `federation_entries.officials_synced`, sync acts only on a club's change). *Checked:* each has 0 rows in `event_officials` and `club_event_registrations`. | Confirm with the owner which Saher / Hassan is real, then remove the rest through the model (backup first). |
+| Two "Nil" person records — users **1694** and **1695** (unclaimed, no email/phone) | Registered 2026-10-15. Created by the entry sync when Sparta Worrior wrote "Nil" in both referee boxes of the Premier League entry. `App\Federations\Support\NobodyName` now treats that as nobody, and their two appointments were removed (backup `db-20261015-081105.sqlite` taken first). *Checked:* `select count(*) from event_officials where user_id in (1694,1695)` = 0 after the sync. | Re-check nothing references them (registrations, officials, photos, family), then delete through the model so file hooks run. Backup first. |
 
 ### Artefacts
 
@@ -144,6 +147,12 @@ cannot quietly become permanent.
 |---|---|---|
 | The Google / Firebase service-account key | FCM was deleted 2026-09-01 (it had zero tokens, ever). The key itself still needs **revoking by hand** in the Google console. | Owner: the user. Revoke, then move to Done. |
 | Our SSH `authorized_keys` entry and API token **on the `video.takeone.bh` box** | That integration was removed here on 2026-08-27 and its Sanctum token revoked on this side. The credentials on THAT box are somebody else's machine now and still stand. | Owner: the user, with whoever holds that box. |
+
+### Federation Draw tab — views retired 2026-10-16
+
+| Item | Why | Gate |
+|---|---|---|
+| `app/Federations/resources/patches/div-manage.js` → `dmVals`: `orderRows`, `views`, `sections`/`card()` merge bits (`mergeBits`), `sortVals` chips, `showEmpty`/`onEmpty`/`emptyLabel`, the `hasStrip`/`stripLine` block, `dmMove` | Owner asked for the weight classes as a TABLE only (no Cards, no Order, empty divisions always shown, no navy merge strip). The markup is gone from `event-divisions.html`; `view` is forced to `'table'`, so these values are computed and never drawn. Checked: no `{{ dm.views/sections/orderRows/hasStrip/hasEmpty/sort.* }}` left in the template. `hasSafeAll`/`onSafeAll` are still used (moved into the Merge window). | Go-ahead; then delete and re-check the Draw tab renders. Note drag-to-arrange (the event's own division order) has no UI any more. |
 
 ### Memories
 

@@ -936,6 +936,53 @@ class McpServerTest extends TestCase
         $this->assertNotNull($bout->fresh()->a_name);
     }
 
+    public function test_shuffle_event_division_redraws_it(): void
+    {
+        [$event, $organiser, $category] = $this->drawnChampionship();
+        $this->actingAs($organiser);
+
+        $result = $this->callTool(\App\Mcp\Tools\ShuffleEventDivisionTool::class, [
+            'event' => $event->uuid,
+            'division' => 'Senior Men -58 kg',
+        ]);
+
+        $this->assertTrue($result['shuffled']);
+        $this->assertSame('manual', $category->fresh()->draw_state);
+    }
+
+    public function test_shuffle_event_division_denies_a_non_organiser(): void
+    {
+        [$event, , $category] = $this->drawnChampionship();
+
+        $watcher = $this->createUser();
+        $watcher->memberClubs()->syncWithoutDetaching([$event->tenant_id => ['status' => 'active']]);
+        $this->actingAs($watcher->fresh());
+
+        $result = $this->callTool(\App\Mcp\Tools\ShuffleEventDivisionTool::class, [
+            'event' => $event->uuid,
+            'division' => 'Senior Men -58 kg',
+        ]);
+
+        $this->assertStringContainsString('organiser', $result['error']);
+        $this->assertNotSame('manual', $category->fresh()->draw_state);
+    }
+
+    public function test_renumber_event_bouts_numbers_them_and_denies_a_non_organiser(): void
+    {
+        [$event, $organiser] = $this->drawnChampionship();
+
+        $watcher = $this->createUser();
+        $watcher->memberClubs()->syncWithoutDetaching([$event->tenant_id => ['status' => 'active']]);
+        $this->actingAs($watcher->fresh());
+        $denied = $this->callTool(\App\Mcp\Tools\RenumberEventBoutsTool::class, ['event' => $event->uuid]);
+        $this->assertStringContainsString('organiser', $denied['error']);
+
+        $this->actingAs($organiser);
+        $result = $this->callTool(\App\Mcp\Tools\RenumberEventBoutsTool::class, ['event' => $event->uuid]);
+        $this->assertTrue($result['renumbered']);
+        $this->assertGreaterThan(0, $result['numbered']);
+    }
+
     public function test_transfer_event_competitor_moves_them_into_another_division(): void
     {
         config(['events.draw_transfer' => true]);

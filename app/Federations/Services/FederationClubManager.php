@@ -34,6 +34,8 @@ use Illuminate\Support\Facades\Storage;
  */
 class FederationClubManager
 {
+    use \App\Traits\StoresBase64Images;
+
     public function __construct(
         private FederationDirectory $directory,
         private FederationRegistry $registry,
@@ -59,6 +61,7 @@ class FederationClubManager
                 'key' => $key, 'kind' => 'pending', 'editable' => true, 'unlinkable' => false,
                 'fields' => ['name' => (string) $c->name, 'coach' => (string) $c->coach, 'email' => (string) $c->email,
                     'phone' => (string) $c->phone, 'address' => (string) $c->address],
+                'logo' => $c->logo ? route('federations.invite.club-logo', $c->uuid) : null,
                 'matches' => $this->picker->matches($access, $c),
                 'deletion' => array_diff_key($this->deletionPlan($c), ['ids' => true]),
             ];
@@ -74,6 +77,7 @@ class FederationClubManager
                 'phone' => trim(($phone['code'] ?? '').' '.($phone['number'] ?? '')), 'address' => (string) $t->getRawOriginal('address')],
             'upcoming' => $this->upcomingEntries($c)->all(),
             'matches' => [],
+            'logo' => $t->logo ? file_url($t->logo) : null,
         ];
     }
 
@@ -110,6 +114,51 @@ class FederationClubManager
         activity()->causedBy($by)->performedOn($t)
             ->withProperties(['federation' => $access['root']->uuid ?? $access['root']->id])->log('federation.club_edited');
         $this->picker->signal($access, $by->id);
+
+        return null;
+    }
+
+    /**
+     * A new logo for a club the federation may edit (same rule as update()):
+     * the real bytes are checked and the name is ours (StoresBase64Images).
+     * The old file goes only when no other club or application still names it.
+     *
+     * @return string|null an error to show, or null on success
+     */
+    public function replaceLogo(User $by, array $access, string $key, string $base64): ?string
+    {
+        $c = $this->resolve($access, $key);
+        if (! $c) {
+            return 'That club could not be found.';
+        }
+        if ($c instanceof FederationClub && ! $this->createdHere($access, $c)) {
+            return 'This club is run by its owner — only they can change its details.';
+        }
+
+        $owner = $c instanceof FederationClubApplication ? $c : $c->club;
+        $folder = $c instanceof FederationClubApplication
+            ? 'federations/'.($c->federation?->uuid ?? 'unknown').'/clubs/'.$c->uuid.'/branding'
+            : \App\Support\StoragePath::clubBranding($owner);
+        $path = $this->storeBase64Image($base64, $folder, (string) \Illuminate\Support\Str::uuid(), 'public');
+        if ($path === null) {
+            return 'That picture could not be used. Choose a PNG, JPG or WebP image.';
+        }
+
+        $old = $owner->logo;
+        $owner->logo = $path;
+        $owner->save();
+
+        if ($old && $old !== $path
+            && ! Tenant::where('logo', $old)->exists()
+            && ! FederationClubApplication::where('logo', $old)->exists()) {
+            Storage::disk('public')->delete($old);
+        }
+
+        activity()->causedBy($by)->performedOn($owner)
+            ->withProperties(['federation' => $access['root']->uuid ?? $access['root']->id])->log('federation.club_logo_changed');
+        if ($c instanceof FederationClub) {
+            $this->picker->signal($access, $by->id);
+        }
 
         return null;
     }

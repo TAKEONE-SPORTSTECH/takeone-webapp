@@ -16,7 +16,9 @@ window.certDesign = window.certDesign || function (state, ep, strings) {
     const live = { d: null };
     return {
         state, ep, strings,
-        type: (state.templates[0] || {}).type,
+        // `?type=` opens the room on one design (the federation's Printables menu).
+        type: (function () { let q = null; try { q = new URLSearchParams(window.location.search).get('type'); } catch (e) {}
+            return q && state.templates.some(x => x.type === q) ? q : (state.templates[0] || {}).type; })(),
         lang: document.documentElement.lang === 'ar' && state.locales.includes('ar') ? 'ar' : (state.locales[0] || 'en'),
         form: null,
         panel: null,
@@ -45,7 +47,7 @@ window.certDesign = window.certDesign || function (state, ep, strings) {
            pause). Ctrl+Z / Ctrl+Shift+Z or the arrows above the page walk them. */
         designKeys: ['scope', 'title', 'body', 'signature1_name', 'signature1_title', 'signature2_name', 'signature2_title',
             'ornament_level', 'background', 'show_photo', 'accent', 'print_offset_x', 'print_offset_y',
-            'layout', 'orientation', 'layout_portrait', 'elements', 'artwork_fit', 'print_bare'],
+            'layout', 'orientation', 'layout_portrait', 'elements', 'artwork_fit', 'print_bare', 'page_size'],
         hist: [],
         hix: 0,
         histPending: false,
@@ -129,6 +131,7 @@ window.certDesign = window.certDesign || function (state, ep, strings) {
                 elements: f.elements || [],
                 artwork_fit: f.artwork_fit || null,
                 print_bare: !! f.print_bare,
+                page_size: f.page_size && f.page_size.long ? { long: +f.page_size.long, short: +f.page_size.short } : null,
             };
         },
         headers(json) {
@@ -251,9 +254,89 @@ window.certDesign = window.certDesign || function (state, ep, strings) {
         get photoToggle() { return ! this.fmt; },
         get isCert() { return ! this.fmt; },
         get els() { return this.fmt ? this.fmt.elements : this.state.elements; },
-        fdef(key) { return (this.fmt || this.state)[key]; },
-        get pageW() { return this.fmt ? this.fmt.page[this.portrait ? 'portrait' : 'landscape'][0] : (this.portrait ? 210 : 297); },
-        get pageH() { return this.fmt ? this.fmt.page[this.portrait ? 'portrait' : 'landscape'][1] : (this.portrait ? 297 : 210); },
+        /* ─────────────── page size (1.4) ───────────────
+           The format's own page (A4, A6) unless the organiser chose another. Every
+           starting box is scaled to the page in use, the same way the server's
+           Format::resized() does, so the screen and the PDF agree. */
+        get basePage() { const b = this.t && this.t.base_page; return b ? [b.long, b.short] : [297, 210]; },
+        get pageLS() { const p = this.form && this.form.page_size; return p && p.long ? [+p.long, +p.short] : this.basePage; },
+        get sizeFactor() {
+            const [L, S] = this.pageLS, [bL, bS] = this.basePage;
+            return { landscape: [L / bL, S / bS], portrait: [S / bS, L / bL] };
+        },
+        scaleBox(b, o) {
+            const [fx, fy] = this.sizeFactor[o === 'portrait' ? 'portrait' : 'landscape'];
+            if (! b || (fx === 1 && fy === 1)) return b;
+            const r = Object.assign({}, b);
+            ['x', 'w'].forEach(k => { if (typeof r[k] === 'number') r[k] = +(r[k] * fx).toFixed(1); });
+            ['y', 'h'].forEach(k => { if (typeof r[k] === 'number') r[k] = +(r[k] * fy).toFixed(1); });
+            r.scale = +((r.scale || 1) * Math.min(fx, fy)).toFixed(3);
+            return r;
+        },
+        fdef(key) {
+            const v = (this.fmt || this.state)[key];
+            const [fx, fy] = this.sizeFactor.landscape;
+            if (! v || (fx === 1 && fy === 1)) return v;
+            if (key === 'custom_default' || key === 'erase_default') return { landscape: this.scaleBox(v.landscape, 'landscape'), portrait: this.scaleBox(v.portrait, 'portrait') };
+            const o = key === 'layout_defaults_portrait' ? 'portrait' : 'landscape', out = {};
+            Object.keys(v).forEach(g => { out[g] = {}; Object.keys(v[g] || {}).forEach(k => { out[g][k] = this.scaleBox(v[g][k], o); }); });
+            return out;
+        },
+        get pageW() { const [L, S] = this.pageLS; return this.portrait ? S : L; },
+        get pageH() { const [L, S] = this.pageLS; return this.portrait ? L : S; },
+        sizeUnit: 'mm',
+        sizeCustom: false,
+        get sizePick() { return this.sizeCustom ? 'custom' : this.sizePreset; },
+        set sizePick(v) { if (v === 'custom') { this.sizeCustom = true; return; } this.sizeCustom = false; this.pickPreset(v); },
+        sizePresets: [
+            ['a3', 'A3', 420, 297], ['a4', 'A4', 297, 210], ['a5', 'A5', 210, 148], ['a6', 'A6', 148, 105],
+            ['letter', 'US Letter', 279.4, 215.9], ['legal', 'US Legal', 355.6, 215.9],
+            ['id', 'ID card (CR80)', 85.6, 54], ['4x3', '4 × 3 in badge', 101.6, 76.2], ['4x6', '4 × 6 in', 152.4, 101.6], ['5x7', '5 × 7 in', 177.8, 127],
+        ],
+        get sizePreset() {
+            const [L, S] = this.pageLS, near = (a, b) => Math.abs(a - b) < 0.6;
+            const p = this.sizePresets.find(x => near(x[2], L) && near(x[3], S));
+            return p ? p[0] : 'custom';
+        },
+        get sizeOptions() {
+            return this.sizePresets.map(p => ({ value: p[0], label: p[1] + ' — ' + this.fmtLen(p[2]) + ' × ' + this.fmtLen(p[3]) + ' ' + this.sizeUnit }))
+                .concat([{ value: 'custom', label: @js(__('cert::messages.size_custom')) }]);
+        },
+        /* mm ⇄ the unit shown. */
+        toUnit(mm) { return this.sizeUnit === 'in' ? mm / 25.4 : this.sizeUnit === 'cm' ? mm / 10 : mm; },
+        fromUnit(v) { const n = parseFloat(String(v).replace(',', '.')); if (! (n > 0)) return null; return this.sizeUnit === 'in' ? n * 25.4 : this.sizeUnit === 'cm' ? n * 10 : n; },
+        fmtLen(mm) { const v = this.toUnit(mm); return this.sizeUnit === 'mm' ? String(Math.round(v * 10) / 10) : (Math.round(v * 100) / 100).toString(); },
+        get sizeW() { return this.fmtLen(this.pageW); },
+        get sizeH() { return this.fmtLen(this.pageH); },
+        pickPreset(v) {
+            const p = this.sizePresets.find(x => x[0] === v);
+            if (p) this.setPageSize(p[2], p[3]);
+        },
+        /* Width and height as typed, the way up the page is now. */
+        typeSize(w, h) {
+            const W = this.fromUnit(w), H = this.fromUnit(h);
+            if (! W || ! H) return;
+            if (W < 40 || H < 40 || W > 600 || H > 600) { window.showToast && window.showToast('error', @js(__('cert::messages.size_range'))); return; }
+            this.setPageSize(Math.max(W, H), Math.min(W, H), W > H ? 'landscape' : (W < H ? 'portrait' : null));
+        },
+        /* Change the page, carrying the organiser's own arrangement along in proportion. */
+        setPageSize(long, short, orientation) {
+            const [oL, oS] = this.pageLS, [bL, bS] = this.basePage;
+            const L = Math.max(long, short), S = Math.min(long, short);
+            const scaleMap = (m, fx, fy) => { const out = {}; Object.keys(m || {}).forEach(k => {
+                const b = Object.assign({}, m[k]);
+                ['x', 'w'].forEach(q => { if (typeof b[q] === 'number') b[q] = +(b[q] * fx).toFixed(1); });
+                ['y', 'h'].forEach(q => { if (typeof b[q] === 'number') b[q] = +(b[q] * fy).toFixed(1); });
+                if (typeof b.scale === 'number') b.scale = +(b.scale * Math.min(fx, fy)).toFixed(3);
+                out[k] = b; }); return out; };
+            this.form.layout = scaleMap(this.form.layout, L / oL, S / oS);
+            this.form.layout_portrait = scaleMap(this.form.layout_portrait, S / oS, L / oL);
+            this.form.page_size = (Math.abs(L - bL) < 0.05 && Math.abs(S - bS) < 0.05) ? null : { long: +L.toFixed(1), short: +S.toFixed(1) };
+            if (orientation) this.form.orientation = orientation;
+            this.sel = null;
+            this.drawn = {}; this.drawnAt = {};
+            this.touch(0);
+        },
         get lkey() { return this.portrait ? 'layout_portrait' : 'layout'; },
         setOrientation(o) {
             if (this.form.orientation === o) return;

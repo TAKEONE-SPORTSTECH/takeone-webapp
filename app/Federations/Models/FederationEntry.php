@@ -12,7 +12,7 @@ class FederationEntry extends Model
 {
     protected $fillable = ['federation_event_id', 'federation_club_id', 'club_application_id', 'ref', 'teams', 'officials', 'payments', 'log'];
 
-    protected $casts = ['teams' => 'array', 'officials' => 'array', 'payments' => 'array', 'log' => 'array'];
+    protected $casts = ['teams' => 'array', 'officials' => 'array', 'payments' => 'array', 'log' => 'array', 'officials_synced' => 'array'];
 
     protected static function booted(): void
     {

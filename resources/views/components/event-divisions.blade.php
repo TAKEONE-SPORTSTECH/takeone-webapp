@@ -121,6 +121,14 @@
         'order' => route('me.events.divisions.order', $event),
         // Who a proposed range would hold, asked while it is still being typed.
         'preview' => route('me.events.divisions.preview', $event),
+        // The whole list again, for after a change made OUTSIDE this
+        // component — a merge from the division-merge component (DivisionMerge).
+        'data' => route('me.events.divisions.data', $event),
+        // Merge suggestions on the rows (DivisionMerge) — only while switched on.
+        'merge' => \App\Events\Support\DivisionMerge::enabled() && $canManage ? route('me.events.divisions.merge', $event) : null,
+        // Start again: delete every division / auto-place by the rule book (DivisionReset).
+        'deleteAll' => \App\Events\Support\DivisionReset::enabled() && $canManage ? route('me.events.divisions.delete-all', $event) : null,
+        'autoPlace' => \App\Events\Support\DivisionReset::enabled() && $canManage ? route('me.events.divisions.auto-place', $event) : null,
     ] : null;
 
     // The drawn 3:4 portrait a person falls back to (App\Members\Support\Avatars).
@@ -132,48 +140,7 @@
     /* The preset table, reduced to what the picker needs and nothing else: a
        band, a gender, and the classes under them. Built here rather than in the
        script so an event type with no table sends no table. */
-    $presetTable = [];
-
-    /* One entry per RULESET the sport weighs in under. Gi and no-gi are two
-       tables, not one table with a couple of kilos taken off: an athlete
-       weighs in without a gi, so both the limits and the ladder differ. A
-       sport that publishes only one simply offers one. */
-    $presetRulesets = array_filter([
-        'gi' => $presets['weight_divisions'] ?? null,
-        'nogi' => $presets['weight_divisions_nogi'] ?? null,
-    ]);
-
-    foreach ($presetRulesets as $ruleset => $table) {
-    foreach ((array) $table as $band => $byGender) {
-        if (! is_array($byGender)) {
-            continue;
-        }
-
-        $ages = $presets['age_bands'][$band] ?? null;
-        $entry = ['ruleset' => $ruleset, 'band' => (string) $band,
-            'min_age' => $ages['min'] ?? null, 'max_age' => $ages['max'] ?? null, 'genders' => []];
-
-        foreach ($byGender as $gender => $classes) {
-            if (! is_array($classes) || ! in_array(strtolower((string) $gender), ['male', 'female'], true)) {
-                continue;
-            }
-
-            $entry['genders'][strtolower((string) $gender)] = array_values(array_map(fn ($c) => [
-                'label' => (string) ($c['label'] ?? ''),
-                'name' => $c['name'] ?? null,
-                // 0 and 200 are the table's way of writing an open end; the
-                // division stores NULL for "no bound", so they are translated
-                // here rather than every reader having to know the convention.
-                'min' => ($c['min'] ?? 0) > 0 ? (float) $c['min'] : null,
-                'max' => ($c['max'] ?? 0) >= 200 ? null : (float) ($c['max'] ?? 0),
-            ], $classes));
-        }
-
-        if ($entry['genders']) {
-            $presetTable[] = $entry;
-        }
-    }
-    }
+    $presetTable = \App\Events\Support\DivisionEditor::presetTable((array) $presets);
 
     /* The event's OWN belts — BJJ's IBJJF ladder, Karate's kyu/dan,
        Taekwondo's geup/poom/dan (App\Sports\Combat\BeltLadder). Looked up
@@ -183,11 +150,7 @@
     /* The event's own belt system when it has one (CategorySystems), else
        the sport's ladder — unchanged for every event that chose none. */
     $beltEvent = $event ? \App\Events\Models\ClubEvent::where('uuid', $event)->first() : null;
-    $beltLadder = array_map(fn ($b) => [
-        'value' => $b['value'], 'label' => $b['label'], 'bg' => $b['bg'], 'fg' => $b['fg'],
-    ], $beltEvent && $beltEvent->belt_system
-        ? app(\App\Events\Support\CategorySystems::class)->ladderFor($beltEvent)
-        : \App\Sports\Combat\BeltRank::ladder($beltSport));
+    $beltLadder = \App\Events\Support\DivisionEditor::beltLadder($beltEvent, $beltSport);
 
     /* Where the sport is still being CHOSEN (the create form), every sport's
        ladder travels with the page and the list follows the choice live —
@@ -195,20 +158,7 @@
     /* The sports whose competitions divide by weight / by rank, from the
        profiles every event type gives of itself — so a new sport package that
        weighs its athletes is asked about weight without this file changing. */
-    $criteriaSports = ['weight' => [], 'rank' => []];
-    foreach (app(\App\Events\EventTypeRegistry::class)->all() as $profiledType) {
-        $profile = $profiledType->profile();
-        if (! $profile->sport) {
-            continue;
-        }
-        if ($profile->uses(\App\Events\Support\Competition\Criterion::Weight)) {
-            $criteriaSports['weight'][] = $profile->sport;
-        }
-        if ($profile->uses(\App\Events\Support\Competition\Criterion::Rank)) {
-            $criteriaSports['rank'][] = $profile->sport;
-        }
-    }
-
+    $criteriaSports = \App\Events\Support\DivisionEditor::criteriaSports();
     $beltsBySport = [];
     if ($sportModel) {
         foreach (array_keys(config('combat.sports', [])) as $sportKey) {
@@ -235,6 +185,41 @@
         'delete_ask' => __('events::events.divisions_delete_ask'),
         'delete' => __('events::events.divisions_delete'),
         'failed' => __('events::events.divisions_failed'),
+        'mg_alone' => __('events::events.merge_card_alone'),
+        'mg_n' => __('events::events.merge_card_n'),
+        'mg_safe_into' => __('events::events.merge_card_safe_into'),
+        'mg_can_into' => __('events::events.merge_card_can_into'),
+        'mg_merge' => __('events::events.merge_card_merge'),
+        'mg_confirm' => __('events::events.merge_card_confirm'),
+        'mg_review' => __('events::events.merge_card_review'),
+        'mg_none' => __('events::events.merge_card_none'),
+        'mg_strip_one' => __('events::events.merge_strip_one'),
+        'mg_strip_n' => __('events::events.merge_strip_n'),
+        'mg_strip_none' => __('events::events.merge_strip_none'),
+        'mg_strip_consent' => __('events::events.merge_strip_consent'),
+        'mg_strip_sub' => __('events::events.merge_strip_sub'),
+        'mg_all' => __('events::events.merge_strip_all'),
+        'mg_all_confirm' => __('events::events.merge_strip_all_confirm'),
+        'mg_review_all' => __('events::events.merge_strip_review'),
+        'mg_merging' => __('events::events.merge_ui_merging'),
+        'mg_done' => __('events::events.merge_strip_done'),
+        'rs_auto' => __('events::events.reset_btn_auto'),
+        'rs_delete' => __('events::events.reset_btn_delete'),
+        'rs_ask_title' => __('events::events.reset_ask_title'),
+        'rs_ask' => __('events::events.reset_ask'),
+        'rs_busy' => __('events::events.reset_busy'),
+        'rs_show_empty' => __('events::events.reset_show_empty'),
+        'rs_hide_empty' => __('events::events.reset_hide_empty'),
+        'ap_title' => __('events::events.autoplace_title'),
+        'ap_sub' => __('events::events.autoplace_sub'),
+        'ap_in_use' => __('events::events.autoplace_in_use'),
+        'ap_own' => __('events::events.autoplace_own'),
+        'ap_classes' => __('events::events.autoplace_classes'),
+        'ap_sport_classes' => __('events::events.autoplace_sport_classes'),
+        'ap_event_own' => __('events::events.autoplace_event_own'),
+        'ap_switch' => __('events::events.autoplace_switch'),
+        'ap_go' => __('events::events.autoplace_go'),
+        'ap_pick' => __('events::events.autoplace_pick'),
         'created' => __('events::events.division_created'),
         'saved' => __('events::events.division_saved'),
         'deleted' => __('events::events.division_deleted'),
@@ -342,7 +327,97 @@
         sportRead: () => {{ $sportModel }},
         @endif
      })"
+     @division-merge-done.window="reloadAfterMerge($event.detail)"
+     x-init="mgLoad()"
      class="space-y-2.5">
+
+    {{-- ===== Start again: auto-place, delete all (DivisionReset) =====
+         Auto-place puts everyone in no division where the rule book says,
+         creating the divisions needed. Delete all asks first (confirmAction). --}}
+    <div x-show="server && urls && (urls.autoPlace || urls.deleteAll)" x-cloak class="flex items-center gap-2 flex-wrap">
+        <button type="button" x-show="urls && urls.autoPlace" @click="rsAuto()" :disabled="!! rsBusy"
+                class="m-press h-9 px-3.5 rounded-xl text-[12px] font-bold text-white flex items-center gap-1.5 disabled:opacity-60" style="background: {{ $c }}">
+            <i class="bi bi-magic"></i><span x-text="rsBusy === 'auto' ? words.rs_busy : words.rs_auto"></span>
+        </button>
+        <button type="button" x-show="urls && urls.deleteAll && items.length" @click="rsDelete()" :disabled="!! rsBusy"
+                class="m-press h-9 px-3.5 rounded-xl text-[12px] font-bold border border-red-300 text-red-600 bg-white flex items-center gap-1.5 disabled:opacity-60">
+            <i class="bi bi-eraser"></i><span x-text="rsBusy === 'delete' ? words.rs_busy : words.rs_delete"></span>
+        </button>
+        <button type="button" x-show="emptyCount() > 0" @click="showEmpty = ! showEmpty"
+                class="ms-auto text-[12px] font-semibold text-muted-foreground underline underline-offset-2"
+                x-text="(showEmpty ? words.rs_hide_empty : words.rs_show_empty).replace(':n', emptyCount())"></button>
+    </div>
+
+    {{-- ===== Auto-place: which weight table (Design Rule #8 sheet) ===== --}}
+    <template x-teleport="body">
+        <div x-show="apOpen" x-cloak class="fixed inset-0 z-[70]" @keydown.escape.window="if (apOpen && ! rsBusy) apOpen = false">
+            <div class="absolute inset-0 bg-black/40" x-show="apOpen" x-transition.opacity @click="if (! rsBusy) apOpen = false"></div>
+            <div x-show="apOpen"
+                 x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                 x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+                 role="dialog" aria-modal="true" :aria-label="words.ap_title"
+                 class="fixed inset-x-0 bottom-0 mx-auto w-full max-w-2xl max-h-[92vh] flex flex-col bg-background rounded-t-3xl shadow-2xl">
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, {{ $c }}, {{ $c }}b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0"><i class="bi bi-magic text-xl"></i></span>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-black leading-tight" x-text="words.ap_title"></h3>
+                            <p class="text-[12px] text-white/85 mt-0.5" x-text="(apData && apData.sport ? apData.sport + ' · ' : '') + words.ap_sub"></p>
+                        </div>
+                        <button type="button" @click="if (! rsBusy) apOpen = false" aria-label="{{ __('shared.close') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto px-4 pt-4 space-y-2.5">
+                    <template x-for="s in ((apData && apData.systems) || [])" :key="s.key">
+                        <button type="button" role="radio" :aria-checked="apPick === s.key" @click="apPick = s.key"
+                                class="m-press w-full text-start rounded-2xl p-3.5 flex items-start gap-3 border transition-colors"
+                                :class="apPick === s.key ? 'border-primary bg-primary/5' : 'border-gray-100 bg-white'">
+                            <span class="w-5 h-5 mt-0.5 rounded-full flex-shrink-0 grid place-items-center text-[11px] font-black"
+                                  :class="apPick === s.key ? 'bg-primary text-white' : 'border-2 border-gray-300 text-transparent'">✓</span>
+                            <span class="min-w-0 flex-1">
+                                <span class="flex items-center gap-2 flex-wrap">
+                                    <span class="text-sm font-black text-foreground" x-text="s.label + (s.note ? ' · ' + s.note : '')"></span>
+                                    <span x-show="s.own || s.custom || s.current" class="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-muted text-muted-foreground"
+                                          x-text="s.own ? words.ap_event_own : (s.custom ? words.ap_own : words.ap_in_use)"></span>
+                                </span>
+                                <span class="block text-[12px] text-muted-foreground mt-1 leading-snug" x-text="(s.groups || []).slice(0, 6).join(' · ') + ((s.groups || []).length > 6 ? ' · +' + ((s.groups || []).length - 6) : '')"></span>
+                                <span class="block text-[11px] font-semibold mt-0.5" style="color:#8a6d20" x-text="s.own ? s.hint : (s.classes ? words.ap_classes.replace(':n', s.classes) : words.ap_sport_classes)"></span>
+                            </span>
+                        </button>
+                    </template>
+                    <p x-show="apPicked() && ! apPicked().current && ! apPicked().own" class="text-[12px] rounded-xl p-3" style="background:#fff6e6;color:#7a4a0c" x-text="words.ap_switch"></p>
+                </div>
+                <div class="flex-shrink-0 px-4 pt-3 border-t border-gray-100 bg-background" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
+                    <button type="button" @click="apGo()" :disabled="! apPick || !! rsBusy"
+                            class="m-press w-full h-12 rounded-xl text-white text-sm font-black disabled:opacity-50" style="background: {{ $c }}"
+                            x-text="rsBusy === 'auto' ? words.rs_busy : (apPicked() ? words.ap_go.replace(':name', apPicked().label) : words.ap_pick)"></button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    {{-- ===== Merge suggestions: the strip =====
+         Shown only when the merge judge has something to offer. "Merge all
+         safe" takes two taps and never includes a merge that needs consent. --}}
+    <div x-show="mgStrip()" x-cloak class="rounded-2xl p-3.5 text-white flex items-center gap-3 flex-wrap"
+         style="background: linear-gradient(135deg, {{ $c }}, {{ $c }}b0);">
+        <span class="w-10 h-10 rounded-xl bg-white/20 grid place-items-center flex-shrink-0"><i class="bi bi-intersect"></i></span>
+        <span class="min-w-0 flex-1">
+            <span class="block text-sm font-black" x-text="mgStripLine()"></span>
+            <span class="block text-[11px] text-white/85 mt-0.5" x-text="words.mg_strip_sub"></span>
+        </span>
+        <button type="button" @click="window.dispatchEvent(new CustomEvent('division-merge-open'))"
+                class="m-press h-9 px-3 rounded-xl bg-white/15 border border-white/25 text-[12px] font-bold" x-text="words.mg_review_all"></button>
+        <button type="button" x-show="mgSafe().length" @click="mgAllSafe()" :disabled="!! mgBusy"
+                class="m-press h-9 px-3.5 rounded-xl bg-white text-[12px] font-black disabled:opacity-60" style="color: {{ $c }}"
+                x-text="mgBusy === 'all' ? words.mg_merging : (mgArm === 'all' ? words.mg_all_confirm.replace(':n', mgSafe().length) : words.mg_all.replace(':n', mgSafe().length))"></button>
+    </div>
 
     {{-- ===== The list =====
          Name, one summary line, a chevron. Everything else is one tap away. --}}
@@ -355,6 +430,7 @@
              every heading landed underneath the divisions it was written to
              label, captioning nothing. --}}
         <div :data-row-index="i" data-division-row
+             x-show="showRow(d)"
              @pointerdown="cardDown(i, $event)"
              @touchstart="touchDown(i, $event)"
              :class="dragging === i ? (dragEl ? 'select-none' : 'opacity-40 select-none') : ''"
@@ -433,6 +509,28 @@
                     </span>
                     <i class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0 rtl:rotate-180" x-show="canManage"></i>
                 </button>
+
+                {{-- Merge suggestion for a small group (DivisionMerge). Outside the
+                     card's button, so a tap here never opens the editor. --}}
+                <template x-if="! d.is_heading && mgOf(d)">
+                    <div class="mt-1.5 rounded-xl border px-3 py-2.5 bg-white"
+                         :style="'border-color:' + (mgOf(d).j ? (mgOf(d).j.grade === 'green' ? '#9fd4b2' : '#f1d9a8') : '#f0c9c3')">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="inline-flex items-center h-5 px-2 rounded-full text-[10px] font-black uppercase tracking-wider"
+                                  :style="(d.entrants || 0) === 1 ? 'background:#b45309;color:#fff' : 'background:#fff6e6;color:#8a6d20'"
+                                  x-text="(d.entrants || 0) === 1 ? words.mg_alone : words.mg_n.replace(':n', d.entrants || 0)"></span>
+                            <span x-show="mgOf(d).j" class="text-[12px] font-bold min-w-0"
+                                  :style="'color:' + (mgOf(d).j && mgOf(d).j.grade === 'green' ? '#1f6f43' : '#8a4b08')"
+                                  x-text="mgOf(d).j ? (mgOf(d).j.grade === 'green' ? words.mg_safe_into : words.mg_can_into).replace(':name', mgOf(d).j.into_name) : ''"></span>
+                        </div>
+                        <p x-show="mgOf(d).j" class="text-[11px] text-muted-foreground mt-1 leading-snug" x-text="mgOf(d).j ? mgOf(d).j.headline : ''"></p>
+                        <p x-show="! mgOf(d).j" class="text-[11px] mt-1 leading-snug" style="color:#9b2c22" x-text="words.mg_none.replace(':why', mgOf(d).why || '')"></p>
+                        <button type="button" x-show="mgOf(d).j" @click="mgCard(mgOf(d).j)" :disabled="!! mgBusy"
+                                class="m-press mt-2 h-8 px-3 rounded-lg text-[12px] font-bold disabled:opacity-60"
+                                :style="mgArm === mgKey(mgOf(d).j) ? 'background:#1e2c4f;color:#fff' : (mgOf(d).j && mgOf(d).j.grade === 'green' ? 'background:{{ $c }};color:#fff' : 'background:#fff6e6;color:#8a4b08;border:1px solid #d9b77a')"
+                                x-text="mgBusy === mgKey(mgOf(d).j) ? words.mg_merging : (mgArm === mgKey(mgOf(d).j) ? words.mg_confirm : (mgOf(d).j && mgOf(d).j.grade === 'green' ? words.mg_merge : words.mg_review))"></button>
+                    </div>
+                </template>
             </div>
 
             {{-- No placement column: the CARD is the control.
@@ -505,7 +603,8 @@
     <template x-teleport="body" data-teleport-template="true">
         <div x-show="open" x-cloak class="fixed inset-0 z-[70] flex items-end justify-center"
              @keydown.escape.window="close()" style="display:none;">
-            <div x-show="open" x-transition.opacity class="absolute inset-0 bg-black/40" @click="close()"></div>
+            {{-- A form: only its own buttons close it, never a stray tap outside (owner, 2026-10-15). --}}
+            <div x-show="open" x-transition.opacity class="absolute inset-0 bg-black/40"></div>
 
             <div x-show="open"
                  x-transition:enter="transition ease-out duration-300"
@@ -1149,7 +1248,8 @@
         <div x-show="addOpen" x-cloak class="fixed inset-0 z-[70] flex items-end justify-center"
              @divisions-add.window="if (canManage) addOpen = true"
              @keydown.escape.window="addOpen = false" style="display:none;">
-            <div x-show="addOpen" x-transition.opacity class="absolute inset-0 bg-black/40" @click="addOpen = false"></div>
+            {{-- A form: only its own buttons close it, never a stray tap outside (owner, 2026-10-15). --}}
+            <div x-show="addOpen" x-transition.opacity class="absolute inset-0 bg-black/40"></div>
 
             <div x-show="addOpen"
                  x-transition:enter="transition ease-out duration-300"
@@ -2105,13 +2205,13 @@
                 {text: m[3], style: ''}];
         },
 
+        /* The suggested name is the group's letter and nothing else (owner,
+           2026-10-15): never an age word ("Kids"), a weight or a gender taken
+           from any table. Ages and weights live in the division's own columns
+           and are shown beside the name; the organiser names the division. */
         generatedName(index) {
-            const body = this.nameBody(index);
             const letter = this.groupLetter(index);
-            if (! letter) return body;
-
-            const prefix = (this.words.group || 'Group') + ' ' + letter;
-            return body ? (prefix + ' · ' + body) : prefix;
+            return letter ? ((this.words.group || 'Group') + ' ' + letter) : '';
         },
 
         /** The generated name WITHOUT its positional letter. */
@@ -2151,20 +2251,12 @@
            this it would look hand-typed the moment it moved, which is to say
            it would never be corrected at all. */
         looksGenerated(d, index) {
+            // Only a bare "Group X" counts as ours — every other name was typed
+            // (or is an older generated one) and is never rewritten.
             const name = String((d && d.name) || '').trim();
-            if (! name) return false;
-
-            const held = this.form;
-            this.form = this.flat(d);
-            const body = this.nameBody(index);
-            this.form = held;
-
-            if (! body) return false;
-
             const word = (this.words.group || 'Group').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const stripped = name.replace(new RegExp('^' + word + '\\s+[A-Z]\\s+·\\s+'), '');
 
-            return name === body || stripped === body;
+            return new RegExp('^' + word + '\\s+[A-Z]$').test(name);
         },
 
         /** A, B, C… among the divisions under the same heading. */
@@ -2917,6 +3009,118 @@
             window.dispatchEvent(new CustomEvent('event-divisions-changed', {
                 detail: { action: action, event: this.eventKey, division: division },
             }));
+        },
+
+        /* A merge (the division-merge component) removed groups and filled another. The
+           list is re-read rather than patched: which rows went and what the
+           survivor now holds is the server's answer, not a guess. */
+        async reloadAfterMerge(detail) {
+            if (! this.server || ! this.urls || ! this.urls.data || ! detail || detail.event !== this.eventKey) return;
+            const data = await this.request('GET', this.urls.data, null);
+            if (data && Array.isArray(data.rows)) this.items = data.rows;
+            this.mgLoad();
+        },
+
+        /* ── Start again (DivisionReset) and the empty-division filter ──────
+           A division nobody is in is hidden from the list (owner,
+           2026-10-15) — in server mode only: the create form's rows have no
+           entrants yet. "Show N empty" brings them back to edit or delete. */
+        showEmpty: false, rsBusy: '',
+        showRow(d) { return ! this.server || this.showEmpty || !! d.is_heading || (d.entrants || 0) > 0; },
+        emptyCount() { return this.server ? this.items.filter((d) => ! d.is_heading && ! (d.entrants || 0)).length : 0; },
+        /* Auto-place asks WHICH weight table first (owner, 2026-10-15): the
+           sport's own (WKF, Shotokan, World Taekwondo, IBJJF…) and the host's
+           custom ones, read from the same door it posts to. */
+        apOpen: false, apData: null, apPick: null,
+        async rsAuto() {
+            if (this.rsBusy || ! this.urls || ! this.urls.autoPlace) return;
+            this.apOpen = true; this.apData = null; this.apPick = null;
+            const data = await this.request('GET', this.urls.autoPlace, null);
+            if (data) { this.apData = data; this.apPick = data.pick || data.current || null; }
+        },
+        apPicked() { return ((this.apData && this.apData.systems) || []).find((s) => s.key === this.apPick) || null; },
+        async apGo() {
+            if (this.rsBusy || ! this.apPick) return;
+            this.rsBusy = 'auto';
+            const data = await this.request('POST', this.urls.autoPlace, { system: this.apPick });
+            this.rsBusy = '';
+            if (data) { window.showToast('success', data.message); this.apOpen = false; }
+            await this.reloadAfterMerge({ event: this.eventKey });
+        },
+        async rsDelete() {
+            if (this.rsBusy || ! this.urls || ! this.urls.deleteAll) return;
+            const n = this.items.filter((d) => ! d.is_heading).length;
+            const ok = window.confirmAction ? await window.confirmAction({ title: this.words.rs_ask_title, message: this.words.rs_ask.replace(':n', n),
+                type: 'danger', confirmText: this.words.rs_delete }) : false;
+            if (! ok) return;
+            this.rsBusy = 'delete';
+            const data = await this.request('POST', this.urls.deleteAll, { confirm: true });
+            this.rsBusy = '';
+            if (data) window.showToast('success', data.message);
+            await this.reloadAfterMerge({ event: this.eventKey });
+        },
+
+        /* ── Merge suggestions on the rows (DivisionMerge::suggest) ─────────
+           Read once on load and after every merge. The grade shown is never
+           trusted: the merge endpoint judges again. A green merge goes from a
+           row in two taps (arm, confirm); an amber one opens the merge sheet,
+           where the consent statement lives. */
+        mg: null, mgArm: '', mgBusy: '', mgArmTimer: null,
+
+        async mgLoad() {
+            if (! this.server || ! this.urls || ! this.urls.merge) return;
+            try {
+                const res = await fetch(this.urls.merge, { credentials: 'same-origin', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+                const data = await res.json().catch(() => null);
+                if (res.ok && data && data.success) this.mg = data;
+            } catch (e) { /* quiet: the rows simply show no suggestion */ }
+        },
+        mgKey(j) { return j ? (j.ids || []).join('-') : ''; },
+        mgOf(d) {
+            if (! this.mg || ! d || ! d.id) return null;
+            const n = d.entrants || 0, below = (this.mg.limits && this.mg.limits.below) || 3;
+            if (n < 1 || n >= below) return null;
+            const j = (this.mg.suggestions || []).find((x) => (x.from || []).indexOf(d.id) !== -1) || null;
+            const a = (this.mg.alone || []).find((x) => x.id === d.id) || null;
+            return (j || a) ? { j, why: a ? a.why : '' } : null;
+        },
+        mgSafe() { return ((this.mg && this.mg.suggestions) || []).filter((j) => j.grade === 'green'); },
+        mgStrip() { return !! (this.mg && (this.mg.suggestions || []).length); },
+        mgStripLine() {
+            const all = (this.mg && this.mg.suggestions) || [], safe = this.mgSafe().length, amber = all.length - safe;
+            let line = safe === 0 ? this.words.mg_strip_none : (safe === 1 ? this.words.mg_strip_one : this.words.mg_strip_n.replace(':n', safe));
+            if (amber) line += ' · ' + this.words.mg_strip_consent.replace(':n', amber);
+            return line;
+        },
+        mgArmFor(key) {
+            this.mgArm = key;
+            clearTimeout(this.mgArmTimer);
+            this.mgArmTimer = setTimeout(() => { if (this.mgArm === key) this.mgArm = ''; }, 5000);
+        },
+        async mgPost(j) {
+            return this.request('POST', this.urls.merge, { ids: j.ids, into: j.into });
+        },
+        async mgCard(j) {
+            if (! j || this.mgBusy) return;
+            if (j.grade !== 'green') { window.dispatchEvent(new CustomEvent('division-merge-open')); return; }
+            const key = this.mgKey(j);
+            if (this.mgArm !== key) { this.mgArmFor(key); return; }
+            this.mgArm = ''; this.mgBusy = key;
+            const data = await this.mgPost(j);
+            this.mgBusy = '';
+            if (data) window.showToast('success', data.message);
+            await this.reloadAfterMerge({ event: this.eventKey });
+        },
+        async mgAllSafe() {
+            const safe = this.mgSafe();
+            if (! safe.length || this.mgBusy) return;
+            if (this.mgArm !== 'all') { this.mgArmFor('all'); return; }
+            this.mgArm = ''; this.mgBusy = 'all';
+            let done = 0;
+            for (const j of safe) { if (await this.mgPost(j)) done++; }
+            this.mgBusy = '';
+            if (done) window.showToast('success', this.words.mg_done.replace(':n', done));
+            await this.reloadAfterMerge({ event: this.eventKey });
         },
 
         /** One door to the network, so every failure is reported the same way. */

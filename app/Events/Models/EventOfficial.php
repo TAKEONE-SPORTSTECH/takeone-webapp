@@ -92,11 +92,39 @@ class EventOfficial extends Model
 
     /*
      * The photo goes when the appointment does (CLAUDE.md → Delete Files Before
-     * Records). It is this row's own file, so nothing else can be pointing at
-     * it — unlike an entry's photo, which may be a copy of a member's profile
-     * picture and needs EntryPhoto's care.
+     * Records) — but only when nothing else still names it. See
+     * deleteUploadedFiles() below.
      */
     protected array $fileUploads = ['photo' => 'public'];
+
+    /**
+     * Delete this appointment's photo file — unless somebody else still uses it.
+     *
+     * ⚠️ An appointment's photo is NOT its own file any more. Since "a person's
+     * photo has one home" (CLAUDE.md) it is a REFERENCE to the person's picture
+     * under members/{uuid}/…, very often their profile picture itself. The old
+     * rule ("this row's own file, nothing else can point at it") deleted that
+     * picture whenever a job was taken off somebody, and every list then showed
+     * a broken image (found 2026-10-15). So the file is only deleted when no
+     * other record names it: the person's profile, their gallery, ANOTHER
+     * appointment, or an event entry.
+     */
+    public function deleteUploadedFiles(): void
+    {
+        $path = trim((string) $this->photo);
+        if ($path === '') {
+            return;
+        }
+
+        $inUse = \Illuminate\Support\Facades\DB::table('users')->where('profile_picture', $path)->exists()
+            || (\Illuminate\Support\Facades\Schema::hasTable('user_photos') && \Illuminate\Support\Facades\DB::table('user_photos')->where('path', $path)->exists())
+            || \Illuminate\Support\Facades\DB::table('event_officials')->where('photo', $path)->where('id', '!=', $this->id)->exists()
+            || \Illuminate\Support\Facades\DB::table('club_event_registrations')->where('photo', $path)->exists();
+
+        if (! $inUse) {
+            rescue(fn () => \Illuminate\Support\Facades\Storage::disk('public')->delete($path), null, true);
+        }
+    }
 
     protected $casts = [
         'fee' => 'decimal:3',

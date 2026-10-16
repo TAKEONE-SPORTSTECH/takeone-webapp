@@ -35,7 +35,7 @@ class RunOrder
      * @param  array<int, int>  $categoryIds
      * @return int  how many were added
      */
-    public function addDivisions(ClubEvent $event, array $categoryIds, int $day = 1, bool $together = false): int
+    public function addDivisions(ClubEvent $event, array $categoryIds, int $day = 1, bool $together = false, ?EventRunSlot $group = null): int
     {
         // `$together`: these divisions are awarded at ONE medal ceremony for
         // everyone at the end of the day (togetherCeremony), not each at its own.
@@ -95,6 +95,8 @@ class RunOrder
                 'day' => $day,
                 'position' => $position++,
                 'kind' => EventRunSlot::KIND_DIVISION,
+                // Straight into a group, when added from its box (RunSessions).
+                'group_id' => $group?->id,
             ]);
             $added++;
             $placed[] = $id;
@@ -143,11 +145,14 @@ class RunOrder
     }
 
     /** A part with no bouts: a ceremony, a break, or anything the organiser names. */
-    public function addBlock(ClubEvent $event, string $kind, ?string $label, ?int $duration, int $day = 1): EventRunSlot
+    public function addBlock(ClubEvent $event, string $kind, ?string $label, ?int $duration, int $day = 1, ?string $mode = null): EventRunSlot
     {
-        $kind = in_array($kind, [EventRunSlot::KIND_CEREMONY, EventRunSlot::KIND_BREAK, EventRunSlot::KIND_CUSTOM], true)
-            ? $kind
-            : EventRunSlot::KIND_CUSTOM;
+        $kinds = [EventRunSlot::KIND_CEREMONY, EventRunSlot::KIND_BREAK, EventRunSlot::KIND_CUSTOM];
+        if (RunSessions::enabled()) {
+            $kinds[] = EventRunSlot::KIND_GROUP;
+        }
+        $kind = in_array($kind, $kinds, true) ? $kind : EventRunSlot::KIND_CUSTOM;
+        $group = $kind === EventRunSlot::KIND_GROUP;
 
         return EventRunSlot::create([
             'event_id' => $event->id,
@@ -155,7 +160,9 @@ class RunOrder
             'position' => $this->nextPosition($event, $day),
             'kind' => $kind,
             'label' => $this->cleanLabel($label) ?: $this->defaultLabel($kind),
-            'duration_minutes' => $this->cleanDuration($duration) ?? EventRunSlot::DEFAULT_DURATIONS[$kind] ?? 15,
+            // A group is a heading over its classes: it takes no time itself.
+            'duration_minutes' => $group ? 0 : ($this->cleanDuration($duration) ?? EventRunSlot::DEFAULT_DURATIONS[$kind] ?? 15),
+            'mode' => $group ? RunSessions::normalise($mode) : null,
         ]);
     }
 
@@ -327,10 +334,110 @@ class RunOrder
 
     public function remove(EventRunSlot $slot): void
     {
+        // Removing a GROUP removes the box, not its classes: they go back to
+        // the main list, where they stood, and the mats are renumbered.
+        if ($slot->kind === EventRunSlot::KIND_GROUP) {
+            $event = $slot->event;
+            EventRunSlot::where('event_id', $slot->event_id)->where('group_id', $slot->id)->update(['group_id' => null]);
+            $slot->delete();
+            $event && $this->renumber($event);
+
+            return;
+        }
+
         $event = $slot->isDivision() ? $slot->event : null;
         $slot->delete();
 
         $event && $this->renumber($event);
+    }
+
+    /**
+     * Move ONE item of the day to a place in a list — the board's drag.
+     *
+     * The day is a main list (classes in no group, blocks, and the group boxes
+     * themselves) and, inside each box, what the group holds. `$group` names
+     * the box it lands in (null: the main list) and `$index` its place there.
+     * A class, a break, a ceremony or any block may go into a box; a group
+     * never does. Positions are rewritten in the order the day now runs, so
+     * the stored order and the board agree.
+     *
+     * Everything is scoped to this event and day; an unknown item or box is
+     * refused rather than guessed at.
+     */
+    public function move(ClubEvent $event, int $day, string $uuid, ?string $group, int $index): bool
+    {
+        $slots = EventRunSlot::where('event_id', $event->id)->where('day', $day)->get();
+        $slot = $slots->firstWhere('uuid', $uuid);
+        $box = $group !== null ? $slots->first(fn ($s) => $s->uuid === $group && $s->kind === EventRunSlot::KIND_GROUP) : null;
+
+        if (! $slot || ($group !== null && ! $box)) {
+            return false;
+        }
+        // A group never goes inside another; anything else may.
+        if ($box && $slot->kind === EventRunSlot::KIND_GROUP) {
+            return false;
+        }
+
+        // The day as it runs now, split into the main list and each box.
+        $main = [];
+        $members = [];
+        foreach (RunSessions::ordered($slots) as $s) {
+            if ($s->kind !== EventRunSlot::KIND_GROUP && $s->group_id !== null
+                && $slots->contains(fn ($g) => $g->id === $s->group_id && $g->kind === EventRunSlot::KIND_GROUP)) {
+                $members[$s->group_id][] = $s;
+            } else {
+                $main[] = $s;
+            }
+        }
+
+        // Out of where it was…
+        $main = array_values(array_filter($main, fn ($s) => $s->id !== $slot->id));
+        foreach ($members as $gid => $list) {
+            $members[$gid] = array_values(array_filter($list, fn ($s) => $s->id !== $slot->id));
+        }
+
+        // …and into where it is going.
+        if ($box) {
+            $list = $members[$box->id] ?? [];
+            array_splice($list, max(0, min(count($list), $index)), 0, [$slot]);
+            $members[$box->id] = $list;
+        } else {
+            array_splice($main, max(0, min(count($main), $index)), 0, [$slot]);
+        }
+
+        DB::transaction(function () use ($main, $members, $slot, $box) {
+            $n = 0;
+            foreach ($main as $s) {
+                EventRunSlot::where('id', $s->id)->update(['position' => (++$n) * 10]);
+                foreach ($s->kind === EventRunSlot::KIND_GROUP ? ($members[$s->id] ?? []) : [] as $m) {
+                    EventRunSlot::where('id', $m->id)->update(['position' => (++$n) * 10]);
+                }
+            }
+            EventRunSlot::where('id', $slot->id)->update(['group_id' => $box?->id]);
+        });
+
+        $this->renumber($event);
+
+        return true;
+    }
+
+    /**
+     * Put classes already on the day into a group — the box's "Add classes"
+     * picking classes that stand elsewhere. Each goes to the end of the box.
+     *
+     * @param  array<int, string>  $uuids
+     */
+    public function intoGroup(ClubEvent $event, int $day, array $uuids, EventRunSlot $group): int
+    {
+        $moved = 0;
+        foreach ($uuids as $uuid) {
+            $members = EventRunSlot::where('event_id', $event->id)->where('day', $day)->where('group_id', $group->id)->count();
+            if (is_string($uuid) && $this->move($event, $day, $uuid, $group->uuid, $members)) {
+                $moved++;
+            }
+        }
+
+        return $moved;
     }
 
     /**
@@ -505,6 +612,7 @@ class RunOrder
         return match ($kind) {
             EventRunSlot::KIND_CEREMONY => __('events::events.run_order_add_ceremony'),
             EventRunSlot::KIND_BREAK => __('events::events.run_order_add_break'),
+            EventRunSlot::KIND_GROUP => __('events::events.run_group_default'),
             default => __('events::events.run_order_add_custom'),
         };
     }

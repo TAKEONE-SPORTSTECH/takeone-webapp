@@ -28,7 +28,7 @@ class FederationAppController extends Controller
 
     /**
      * Every screen of the dashboard has its own address — /federation/events,
-     * /federation/events/<event uuid>/registrations, /federation/settings… —
+     * /federation/events/<event uuid>/participants, /federation/settings… —
      * all answered by home(); the bridge (takeone-bridge.js › routes) opens the
      * screen the address names and keeps the address in step as you move.
      * Also the only shape a sign-in may return to (FederationLoginController).
@@ -85,6 +85,84 @@ class FederationAppController extends Controller
         return response()->view('federations::draw.board', ['canRecord' => true])
             ->header('X-Frame-Options', 'SAMEORIGIN')
             ->header('Cache-Control', 'no-store, private');
+    }
+
+    /**
+     * The Participants tab's athlete editor, in a same-origin frame so it can
+     * use the platform's own form controls. Carries no athlete data: the frame
+     * reads and saves through federations.api.regs.athlete, which scope and
+     * authorise every request (FederationAthleteEditor).
+     */
+    public function athleteEdit(Request $request): Response
+    {
+        $this->ensureEnabled();
+        $access = $this->directory->access($request->user());
+        abort_unless($access, 404);
+        $q = $request->validate([
+            'entry' => ['required', 'uuid'],
+            'athlete' => ['required', 'string', 'max:16', 'regex:/^[A-Za-z0-9-]+$/'],
+        ]);
+
+        return response()->view('federations::athlete.edit', [
+            'entry' => $q['entry'], 'athlete' => $q['athlete'],
+            'canEdit' => (bool) ($access['manager'] ?? false),
+            'urls' => ['show' => route('federations.api.regs.athlete'), 'update' => route('federations.api.regs.athlete.update'),
+                // Taking them off the event: the dashboard's own withdrawal (FederationDesk::withdrawRegs).
+                'withdraw' => route('federations.api.regs.withdraw')],
+        ])->header('X-Frame-Options', 'SAMEORIGIN')->header('Cache-Control', 'no-store, private');
+    }
+
+    /**
+     * The Officials tab's editor (appoint, change, remove; and the person's own
+     * name, gender, nationality and photo), in a same-origin frame like the
+     * athlete editor. Carries no person data; every read and write goes through
+     * the event's officiating endpoints and federations.api.officials.*, which
+     * scope and authorise each request.
+     */
+    public function officialEdit(Request $request, \App\Federations\Services\FederationOfficialEditor $editor): Response
+    {
+        $this->ensureEnabled();
+        $access = $this->directory->access($request->user());
+        abort_unless($access, 404);
+        $q = $request->validate([
+            'event' => ['required', 'uuid'],
+            'official' => ['nullable', 'integer', 'min:1'],
+        ]);
+        $ev = $editor->eventInScope($access, $request->user(), $q['event']);
+        abort_unless($ev, 404);
+
+        return response()->view('federations::official.edit', [
+            'event' => $ev->uuid, 'official' => isset($q['official']) ? (int) $q['official'] : null,
+            'fedClubs' => $editor->clubs($access),
+            'urls' => [
+                'list' => route('me.events.officials', $ev->uuid),
+                'store' => route('me.events.officials.store', $ev->uuid),
+                'newPerson' => route('me.events.officials.person', $ev->uuid),
+                'one' => route('me.events.officials.update', [$ev->uuid, '__ID__']),
+                'show' => route('federations.api.officials.one'),
+                'person' => route('federations.api.officials.person'),
+            ],
+        ])->header('X-Frame-Options', 'SAMEORIGIN')->header('Cache-Control', 'no-store, private');
+    }
+
+    /**
+     * The event Clubs tab's club editor (name, contact, address, logo), in a
+     * same-origin frame like the athlete and official editors. Carries no club
+     * data; it reads and saves through federations.api.clubs.*, where
+     * FederationClubManager decides which clubs this federation may change.
+     */
+    public function clubEdit(Request $request, \App\Federations\Services\FederationClubManager $manager): Response
+    {
+        $this->ensureEnabled();
+        $access = $this->directory->access($request->user());
+        abort_unless($access && $manager->mayManage($access), 404);
+        $q = $request->validate(['club' => ['required', 'string', 'regex:/^(fc|fa)-[0-9a-f-]{36}$/']]);
+
+        return response()->view('federations::club.edit', [
+            'club' => $q['club'],
+            'urls' => ['show' => route('federations.api.clubs.detail'), 'update' => route('federations.api.clubs.update'),
+                'logo' => route('federations.api.clubs.logo')],
+        ])->header('X-Frame-Options', 'SAMEORIGIN')->header('Cache-Control', 'no-store, private');
     }
 
     /** The dashboard's file address (old bookmarks) lands on the clean one. */
@@ -171,9 +249,16 @@ class FederationAppController extends Controller
                 'transferReply' => route('federations.api.transfers.reply'),
                 'transferDecide' => route('federations.api.transfers.decide'),
                 'regsWithdraw' => route('federations.api.regs.withdraw'),
+                // Clubs tab → take a whole club off the event (managers only).
+                'clubWithdraw' => ($access['manager'] ?? false) && \Illuminate\Support\Facades\Route::has('federations.api.regs.withdraw-club') ? route('federations.api.regs.withdraw-club') : null,
                 'regsApprove' => route('federations.api.regs.approve'),
                 // An athlete's edit dialog on the Athletes tab (FederationAthleteEditor).
-                'regsAthlete' => ['show' => route('federations.api.regs.athlete'), 'update' => route('federations.api.regs.athlete.update')],
+                'regsAthlete' => ['show' => route('federations.api.regs.athlete'), 'update' => route('federations.api.regs.athlete.update'),
+                    'frame' => \Illuminate\Support\Facades\Route::has('federations.athlete-edit') ? route('federations.athlete-edit') : null],
+                // The Officials tab's editor frame (FederationOfficialEditor).
+                'officialFrame' => \Illuminate\Support\Facades\Route::has('federations.official-edit') ? route('federations.official-edit') : null,
+                // The event Clubs tab's club editor frame (managers, club management on).
+                'clubFrame' => ($access['manager'] ?? false) && config('federations.club_management') && \Illuminate\Support\Facades\Route::has('federations.club-edit') ? route('federations.club-edit') : null,
                 'regsEnrol' => config('federations.manual_enrolment') && \Illuminate\Support\Facades\Route::has('federations.api.regs.enrol') ? route('federations.api.regs.enrol') : null,
                 'regsImport' => config('federations.manual_enrolment') && \Illuminate\Support\Facades\Route::has('federations.api.regs.import') ? [
                     'template' => route('federations.api.regs.template'),
@@ -235,6 +320,9 @@ class FederationAppController extends Controller
             'brackets' => app(\App\Federations\Services\FederationEventBracket::class)->payload($access),
             // Each event's own officials, for the event's Officials tab.
             'eventOfficials' => app(\App\Federations\Services\FederationEventOfficials::class)->payload($access, $user),
+            // Per event, the platform doors this viewer may use: the participants
+            // PDFs (Athletes tab) and the full-screen draw board (Divisions tab).
+            ...$this->platformDoors($access, $user),
             'schedules' => app(\App\Federations\Services\FederationSchedule::class)->payload($access),
             'messageClubs' => $this->messages->clubMap($access),
             // The prototype's own storage keys, filled from the server. The
@@ -402,6 +490,124 @@ class FederationAppController extends Controller
         abort_unless($access, 404);
 
         return $access;
+    }
+
+    /**
+     * Each event's platform doors, keyed by the federation event's id — only
+     * for an event already running as a platform event, and only when this
+     * viewer is its organiser or an appointed official (the check the PDF
+     * endpoint makes). Every endpoint re-authorises; this decides only whether
+     * the tabs offer the link at all.
+     *  · participantsPdf — the entry list / check-in PDFs (Athletes tab)
+     *  · drawPage — the tablet's draw screen at a desk, opened on a division (Divisions tab)
+     *  · divisions — the Divisions tab's editor doors; organisers only
+     *  · runOrder — the Schedule tab's running order: what it may READ (the
+     *    mats, for anybody who may score; the day, for an organiser) and
+     *    what it may WRITE (organiser only). Every endpoint re-authorises.
+     *
+     * @return array{participantsPdf: object, drawPage: object, runOrder: object, divisions: object}
+     */
+    private function platformDoors(array $access, $user): array
+    {
+        $pdfOn = \App\Events\Support\ParticipantsPdf::available() && \Illuminate\Support\Facades\Route::has('me.events.participants.pdf');
+        $drawOn = \Illuminate\Support\Facades\Route::has('me.events.draw-desk');
+        $orderOn = \Illuminate\Support\Facades\Route::has('me.events.order')
+            && \Illuminate\Support\Facades\Route::has('me.events.run-order.data');
+        $divOn = \Illuminate\Support\Facades\Route::has('me.events.divisions.data');
+        if (! $pdfOn && ! $drawOn && ! $orderOn && ! $divOn) {
+            return ['participantsPdf' => (object) [], 'drawPage' => (object) [], 'runOrder' => (object) [], 'divisions' => (object) []];
+        }
+
+        $q = \App\Federations\Models\FederationEvent::whereIn('federation_id', collect($this->directory->subtree($access['root']))->pluck('id'))
+            ->whereNotNull('club_event_id');
+        if ($access['sports'] !== []) {
+            $q->whereIn('sport', $access['sports']);
+        }
+        $fes = $q->get(['uuid', 'club_event_id']);
+        $events = \App\Events\Models\ClubEvent::whereIn('id', $fes->pluck('club_event_id'))->where('is_archived', false)->get()->keyBy('id');
+        $gate = app(\App\Events\Support\EventAccess::class);
+
+        $pdf = $draw = $order = $divs = [];
+        foreach ($fes as $fe) {
+            $ev = $events[$fe->club_event_id] ?? null;
+            if ($ev && $orderOn && $gate->canScore($ev, $user)) {
+                $order[$fe->uuid] = $this->runOrderDoors($ev, $gate->canManage($ev, $user));
+            }
+            if ($ev && $divOn && $gate->canManage($ev, $user)) {
+                $k = ['event' => $ev->uuid];
+                // `base` is store, and update/destroy/duplicate/candidates/members
+                // are base + '/{id}…' — the same arrangement <x-event-divisions> uses.
+                $divs[$fe->uuid] = ['event' => $ev->uuid, 'data' => route('me.events.divisions.data', $k),
+                    'base' => route('me.events.divisions.store', $k), 'order' => route('me.events.divisions.order', $k),
+                    'preview' => route('me.events.divisions.preview', $k),
+                    // Divisions from a spreadsheet (DivisionImport): template, preview, import.
+                    'importTemplate' => \Illuminate\Support\Facades\Route::has('me.events.divisions.import') ? route('me.events.divisions.import.template', $k) : null,
+                    'importPreview' => \Illuminate\Support\Facades\Route::has('me.events.divisions.import') ? route('me.events.divisions.import.preview', $k) : null,
+                    'import' => \Illuminate\Support\Facades\Route::has('me.events.divisions.import') ? route('me.events.divisions.import', $k) : null,
+                    // Start again: delete every division / auto-place by the rule book (DivisionReset).
+                    'deleteAll' => \App\Events\Support\DivisionReset::enabled() && \Illuminate\Support\Facades\Route::has('me.events.divisions.delete-all') ? route('me.events.divisions.delete-all', $k) : null,
+                    'autoPlace' => \App\Events\Support\DivisionReset::enabled() && \Illuminate\Support\Facades\Route::has('me.events.divisions.auto-place') ? route('me.events.divisions.auto-place', $k) : null,
+                    // Who is in no division, and where each fits — placed through base/{id}/members.
+                    'unplaced' => \Illuminate\Support\Facades\Route::has('me.events.divisions.unplaced') ? route('me.events.divisions.unplaced', $k) : null,
+                    'draw' => \Illuminate\Support\Facades\Route::has('me.events.draw-desk') ? route('me.events.draw-desk', $k) : null,
+                    // Every division's bracket as one PDF (BracketPdf) — the draw desk's own "whole draw".
+                    'drawPdf' => \App\Events\Support\BracketPdf::available() && \Illuminate\Support\Facades\Route::has('me.events.bracket.pdf') ? route('me.events.bracket.pdf', $k) : null,
+                    // Merging small divisions — only while the feature is on, so
+                    // the tab never draws a control that would answer 404.
+                    'merge' => \App\Events\Support\DivisionMerge::enabled() && \Illuminate\Support\Facades\Route::has('me.events.divisions.merge')
+                        ? route('me.events.divisions.merge', $k) : null,
+                    // The registration & consent form (RegistrationFormPdf): blank, or ?fill=all
+                    // for every participant's form already filled in — the Participants "Download".
+                    'regForm' => \App\Events\Support\RegistrationFormPdf::available() && \Illuminate\Support\Facades\Route::has('me.events.registration-form.pdf')
+                        ? route('me.events.registration-form.pdf', $k) : null,
+                    // The officials' merging handbook PDF (MergeHandbookPdf).
+                    'mergeHandbook' => \App\Events\Support\MergeHandbookPdf::available() && \Illuminate\Support\Facades\Route::has('me.events.divisions.merge.handbook')
+                        ? route('me.events.divisions.merge.handbook', $k) : null];
+            }
+            if ($ev && ($gate->canManage($ev, $user) || $gate->canOfficiate($ev, $user))) {
+                if ($pdfOn) {
+                    $pdf[$fe->uuid] = route('me.events.participants.pdf', ['event' => $ev->uuid]);
+                }
+                if ($drawOn) {
+                    $draw[$fe->uuid] = route('me.events.draw-desk', ['event' => $ev->uuid]);
+                }
+            }
+        }
+
+        return ['participantsPdf' => (object) $pdf, 'drawPage' => (object) $draw, 'runOrder' => (object) $order, 'divisions' => (object) $divs];
+    }
+
+    /**
+     * The platform running order's own endpoints, for the Schedule tab — the
+     * same doors /me/events/{uuid}/order uses. Write doors only for somebody
+     * who manages the event.
+     *
+     * @return array<string, mixed>
+     */
+    private function runOrderDoors(\App\Events\Models\ClubEvent $ev, bool $manage): array
+    {
+        $k = ['event' => $ev->uuid];
+        $has = fn (string $name) => \Illuminate\Support\Facades\Route::has($name);
+
+        return [
+            'event' => $ev->uuid,
+            'manage' => $manage,
+            'mats' => route('me.events.order', $k),
+            'full' => $has('me.events.order.page') ? route('me.events.order.page', $k) : null,
+        ] + ($manage ? [
+            'day' => route('me.events.run-order.data', $k),
+            'reorder' => route('me.events.run-order.reorder', $k),
+            'move' => \App\Events\Support\RunSessions::enabled() && $has('me.events.run-order.move') ? route('me.events.run-order.move', $k) : null,
+            'boutMove' => route('me.events.order.move', $k),
+            'renumber' => $has('me.events.order.renumber') ? route('me.events.order.renumber', $k) : null,
+            'auto' => $has('me.events.run-order.auto') ? route('me.events.run-order.auto', $k) : null,
+            // When the day starts — the STARTS tile's editor (updateDayStart).
+            'start' => $has('me.events.run-order.start') ? route('me.events.run-order.start', $k) : null,
+            // A group box's "+ Add classes" (storeRunSlot with `group`) and its
+            // method switch (updateRunSession) — the mobile board's own doors.
+            'store' => \App\Events\Support\RunSessions::enabled() ? route('me.events.run-order.store', $k) : null,
+            'session' => \App\Events\Support\RunSessions::enabled() && $has('me.events.run-order.session') ? route('me.events.run-order.session', $k) : null,
+        ] : []);
     }
 
     private function securityUrl(): string

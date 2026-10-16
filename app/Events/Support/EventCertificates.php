@@ -23,8 +23,10 @@ use Illuminate\Support\Facades\Storage;
 /**
  * What a competition gives the people who took part in it (2026-09-29).
  *
- *   participation — everyone who stepped on the mat, one per division entered
- *   podium        — gold, silver and bronze, read off the division's stored podium
+ *   participation  — everyone who stepped on the mat, one per division entered
+ *   podium         — gold, silver and bronze, read off the division's stored podium
+ *   official_thanks — every official of the event, once per person: a thank-you
+ *                    for helping make it a success (2026-10-15; off by default)
  *
  * COMMON to every bracketed sport (CLAUDE.md → Shared Stays Shared): it reads
  * `event_categories.podium` — the one record Advancement writes, whatever the
@@ -43,6 +45,10 @@ class EventCertificates implements CertificateContext
     public const SOURCE_ENTRY = 'event_entry';
 
     public const SOURCE_PODIUM = 'event_podium';
+
+    public const SOURCE_OFFICIAL = 'event_official';
+
+    public const TYPE_OFFICIALS = 'official_thanks';
 
     /** @var array<int, array> brand per event, for one request */
     private array $brands = [];
@@ -165,7 +171,7 @@ class EventCertificates implements CertificateContext
 
     public function placeholderKeys(): array
     {
-        return ['division', 'event', 'place', 'medal', 'date', 'venue', 'club', 'representing'];
+        return ['division', 'event', 'place', 'medal', 'date', 'venue', 'club', 'representing', 'role'];
     }
 
     public function placeholders(Certificate $certificate, string $locale): array
@@ -184,6 +190,8 @@ class EventCertificates implements CertificateContext
             'venue' => $event instanceof ClubEvent ? (string) ($event->getRawOriginal('location') ?? '') : '',
             'club' => $club,
             'representing' => $club !== '' ? __('cert::messages.representing', ['club' => $club], $locale) : '',
+            // An official's job(s) at the event, for their thank-you certificate.
+            'role' => (string) ($d['role'] ?? ''),
         ];
     }
 
@@ -195,12 +203,28 @@ class EventCertificates implements CertificateContext
             'division' => $division ?: __('cert::messages.sample_division'),
             'club' => EventHost::of($context)->name ?: null,
             'place' => $type === 'podium' ? 1 : null,
+            'role' => $type === self::TYPE_OFFICIALS ? __('personal.personal_event_officials_role_jury') : null,
         ];
     }
 
     public function types(): array
     {
-        return ['participation', 'podium'];
+        return ['participation', 'podium', self::TYPE_OFFICIALS];
+    }
+
+    /**
+     * The {tokens} that mean something on each design (the design room offers only
+     * these): an official's certificate knows their job, not a division or a medal.
+     *
+     * @return list<string>
+     */
+    public function typePlaceholders(string $type): array
+    {
+        return match ($type) {
+            self::TYPE_OFFICIALS => ['name', 'role', 'club', 'event', 'date', 'venue'],
+            'podium' => ['name', 'division', 'place', 'medal', 'club', 'representing', 'event', 'date', 'venue'],
+            default => ['name', 'division', 'club', 'representing', 'event', 'date', 'venue'],
+        };
     }
 
     public function settings(Model $context): array
@@ -210,6 +234,7 @@ class EventCertificates implements CertificateContext
         return [
             'participation' => (bool) $s->participation,
             'podium' => (bool) $s->podium,
+            'officials' => (bool) $s->officials,
             'trigger' => in_array($s->trigger, EventCertificateSetting::TRIGGERS, true) ? $s->trigger : 'division',
         ];
     }
@@ -217,7 +242,7 @@ class EventCertificates implements CertificateContext
     public function saveSettings(Model $context, array $input): array
     {
         $s = EventCertificateSetting::for($context);
-        foreach (['participation', 'podium'] as $flag) {
+        foreach (['participation', 'podium', 'officials'] as $flag) {
             if (array_key_exists($flag, $input)) {
                 $s->{$flag} = (bool) $input[$flag];
             }
@@ -237,6 +262,7 @@ class EventCertificates implements CertificateContext
         return [
             'participation' => $plan['participation']->count(),
             'podium' => $plan['podium']->count(),
+            'officials' => $plan['officials']->count(),
             'decided' => $plan['decided'],
             'pending' => $plan['pending'],
         ];
@@ -286,6 +312,23 @@ class EventCertificates implements CertificateContext
                 }
             }
 
+            // Officials: one thank-you per person, whatever jobs they held.
+            if ($settings['officials']) {
+                foreach ($plan['officials'] as $row) {
+                    if ($service->exists($row['user'], self::SOURCE_OFFICIAL, $context->id)) {
+                        continue;
+                    }
+                    $service->createDraft($row['user'], self::TYPE_OFFICIALS, [
+                        'achievement' => $row['role'],
+                        'context' => $context,
+                        'source' => self::SOURCE_OFFICIAL,
+                        'source_id' => $context->id,
+                        'details' => array_filter(['role' => $row['role'], 'club' => $row['club']], fn ($v) => $v !== null && $v !== ''),
+                    ], $by);
+                    $created++;
+                }
+            }
+
             return ['created' => $created, 'pending' => $plan['pending']];
         });
     }
@@ -295,6 +338,9 @@ class EventCertificates implements CertificateContext
         $d = (array) ($certificate->details ?? []);
         $division = (string) ($d['division'] ?? $certificate->achievement ?? '');
         $place = isset($d['place']) ? (int) $d['place'] : null;
+        if ($certificate->source === self::SOURCE_OFFICIAL) {
+            return (string) ($d['role'] ?? $certificate->achievement ?? '');
+        }
 
         return $place && $place <= 3
             ? $division.' · '.__("cert::messages.medal_short.{$place}", [], $locale)
@@ -368,9 +414,31 @@ class EventCertificates implements CertificateContext
         return [
             'participation' => $participation,
             'podium' => $podium,
+            'officials' => $this->officialsPlan($event),
             'decided' => $decided->count(),
             'pending' => $divisions->count() - $decided->count(),
         ];
+    }
+
+    /**
+     * The event's officials, one row per PERSON: their jobs joined ("Referee 1 ·
+     * Scorekeeper") and the club they came with.
+     *
+     * @return Collection<int, array{user: User, role: string, club: ?string}>
+     */
+    public function officialsPlan(ClubEvent $event): Collection
+    {
+        $badges = app(EventBadges::class);
+        $locale = $badges->locale($event);
+
+        return \App\Events\Models\EventOfficial::where('event_id', $event->id)->with('user')->orderBy('id')->get()
+            ->filter(fn ($o) => $o->user !== null)
+            ->groupBy('user_id')
+            ->map(fn ($jobs) => [
+                'user' => $jobs->first()->user,
+                'role' => $jobs->map(fn ($o) => $badges->roleLabel($o, $locale))->unique()->implode(' · '),
+                'club' => $jobs->map(fn ($o) => $o->club()['name'] ?? null)->filter()->first(),
+            ])->values();
     }
 
     /** A podium draft follows its division's result until it is approved. */

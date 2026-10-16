@@ -367,7 +367,7 @@
         newSchedule() { return { preliminary: 1, quarterfinals: 1, finals: 1 }; },
         // ----- Combat weight-class picker -----
         genderWord(g) { return g === 'female' ? 'Female' : 'Male'; },
-        // Must match the sport's own divisionName() on the server — Karate reads "Cadet Kumite Male -52 kg".
+        // Must match the sport's own divisionName() on the server — Karate reads ‘Cadet Kumite Male -52 kg’.
         divName(age, gender, label) { return age + (String(this.sport || '').toLowerCase() === 'karate' ? ' Kumite' : '') + ' ' + this.genderWord(gender) + ' ' + label + ' kg'; },
         /* The package whose table this event should use: the one whose key
            starts with the chosen sport. No match -- boxing, padel, chess --

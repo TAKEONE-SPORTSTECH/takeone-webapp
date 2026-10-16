@@ -19,6 +19,28 @@
 @php
     $c = \App\Support\Palette::safe($color);
     $rtl = app()->getLocale() === 'ar';
+    /* Every address the page calls. The tablet's own doors by default; the
+       organiser's draw desk (DrawDeskController) hands its own set, so ONE
+       page serves both. `_ID_` is replaced by the bout/entry id in JS. */
+    $u = $urls ?? [
+        'data' => route('tablet.draw.data', $token),
+        'arrange' => route('tablet.draw.arrange', $token),
+        'admit' => route('tablet.draw.admit', $token),
+        'transfer' => route('tablet.draw.transfer', $token),
+        'outcome' => str_replace('999999999', '__ID__', route('tablet.draw.outcome', [$token, 999999999])),
+        'entrant' => str_replace('999999999', '__ID__', route('tablet.draw.entrant', [$token, 999999999])),
+        'candidates' => route('tablet.draw.candidates', $token),
+        'clubs' => route('tablet.draw.clubs', $token),
+        'unnamed' => route('tablet.draw.unnamed', $token),
+        'number' => route('tablet.draw.number', [$token, 999999999]),
+        'numberRelease' => route('tablet.draw.number.release', [$token, 999999999]),
+        'renumber' => route('tablet.draw.renumber', $token),
+        'shuffle' => route('tablet.draw.shuffle', $token),
+        'renumberAll' => route('tablet.draw.renumber-all', $token),
+        'unlock' => route('tablet.draw.unlock', $token),
+        'lock' => route('tablet.draw.lock', $token),
+    ];
+    $backLabel = $backLabel ?? __('events::events.tablet_back_console');
 @endphp
 <!DOCTYPE html>
 <html lang="{{ app()->getLocale() }}" dir="{{ $rtl ? 'rtl' : 'ltr' }}">
@@ -27,6 +49,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="robots" content="noindex, nofollow">
+    {{-- Light only, like the app layout: a browser's or extension's automatic
+         dark mode (Dark Reader, Android force-dark) repainted this page and its
+         division menu in inverted colours. darkreader-lock is that extension's
+         own documented opt-out. --}}
+    <meta name="color-scheme" content="light">
+    <meta name="darkreader-lock">
+    <style>html { color-scheme: only light; }</style>
     <title>{{ __('events::events.tablet_draw_button') }} · {{ $title }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -77,18 +106,19 @@
         :color="$c"
         :can-manage="false"
         :can-arrange="$editing"
-        :data-url="route('tablet.draw.data', $token)"
-        :arrange-url="route('tablet.draw.arrange', $token)"
+        :data-url="$u['data']"
+        :arrange-url="$u['arrange']"
         :clear-url="false"
-        :admit-url="route('tablet.draw.admit', $token)"
-        :transfer-url="route('tablet.draw.transfer', $token)"
+        :admit-url="$u['admit']"
+        :transfer-url="$u['transfer']"
         :board-can-manage="$editorManages"
-        :outcome-url="str_replace('999999999', '__ID__', route('tablet.draw.outcome', [$token, 999999999]))"
-        :entrant-url="str_replace('999999999', '__ID__', route('tablet.draw.entrant', [$token, 999999999]))">
+        :outcome-url="$u['outcome']"
+        :entrant-url="$u['entrant']"
+        :division="$division ?? null">
 
         <x-slot:controls>
-            <a href="{{ $consoleUrl }}" class="td-ctl" title="{{ __('events::events.tablet_back_console') }}"
-               aria-label="{{ __('events::events.tablet_back_console') }}">
+            <a href="{{ $consoleUrl }}" class="td-ctl" title="{{ $backLabel }}"
+               aria-label="{{ $backLabel }}">
                 <i class="bi bi-chevron-left rtl:rotate-180"></i>
             </a>
 
@@ -98,6 +128,16 @@
                 </p>
                 <h1 class="text-sm font-bold text-white truncate leading-tight mt-0.5">{{ $title }}</h1>
             </div>
+
+            @if(! empty($u['pdf']))
+                {{-- Download the bracket on show as a PDF (owner, 2026-10-16) — next
+                     to Edit. The board's own download (drawStagePdf): fetched, so a
+                     failure is a toast here, and the screen's layout rides along. --}}
+                <button type="button" class="td-pill is-ghost" @click="window.drawStagePdf && window.drawStagePdf(@js($u['pdf']), true)"
+                        title="{{ __('events::events.tablet_download_hint') }}">
+                    <i class="bi bi-download"></i><span>{{ __('events::events.tablet_download') }}</span>
+                </button>
+            @endif
 
             @if($editing)
                 {{-- Without a PIN nothing locks by itself, so the table says when it
@@ -137,8 +177,27 @@
                         </button>
                     </span>
                 @endif
-                <button type="button" class="td-pill is-light" @click="$dispatch('bracket-add:open')">
-                    <i class="bi bi-person-plus-fill"></i><span class="hidden sm:inline">{{ __('events::events.tablet_late_entry') }}</span>
+                @if($editorManages && ! empty($u['shuffle']))
+                    {{-- A fair random re-cut of the division on show (FairDraw):
+                         belts seeded apart, clubs split, the rest at random.
+                         Before the start only — the server refuses otherwise. --}}
+                    <button type="button" class="td-pill is-gold" @click="shuffle()" :disabled="busy">
+                        <i class="bi bi-shuffle"></i><span>{{ __('events::events.action_shuffle_draw') }}</span>
+                    </button>
+                @endif
+                @if($editorManages && ! empty($u['renumberAll']))
+                    {{-- Every bout numbered again from the day's running order (BoutNumbering). --}}
+                    <button type="button" class="td-pill is-ghost" @click="renumberAll()" :disabled="busy">
+                        <i class="bi bi-123"></i><span class="hidden sm:inline">{{ __('events::events.renumber_button') }}</span>
+                    </button>
+                @endif
+                {{-- In edit: bring anybody from the participants list into the
+                     bracket on show (owner, 2026-10-15) — labelled always, not
+                     an icon on its own. The window's server side (LateEntry)
+                     fills a bye first and never touches a fought bout. --}}
+                <button type="button" class="td-pill is-gold" @click="$dispatch('bracket-add:open')"
+                        title="{{ __('events::events.tablet_add_athlete_hint') }}">
+                    <i class="bi bi-person-plus-fill"></i><span>{{ __('events::events.tablet_add_athlete') }}</span>
                 </button>
                 @if($pinRequired)
                 <button type="button" class="td-pill is-ghost" @click="lock()" :disabled="busy">
@@ -170,9 +229,9 @@
                 <x-bracket-add-competitor
                     :event="$event->uuid"
                     id="tdadd"
-                    :candidates-url="route('tablet.draw.candidates', $token)"
-                    :clubs-url="route('tablet.draw.clubs', $token)"
-                    :unnamed-url="route('tablet.draw.unnamed', $token)"
+                    :candidates-url="$u['candidates']"
+                    :clubs-url="$u['clubs']"
+                    :unnamed-url="$u['unnamed']"
                     :clubs-link="false" />
             </x-slot:overlay>
         @endif
@@ -247,7 +306,7 @@
                                     <i class="bi bi-dash-lg"></i>
                                 </button>
                                 <div class="text-center" style="min-width:6rem">
-                                    <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3"
+                                    <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off"
                                            class="w-24 text-center text-5xl font-black text-gray-900 bg-transparent border-0 focus:ring-0 p-0"
                                            :value="num.no" :disabled="num.match.decided"
                                            @input="num.no = clampNo(parseInt($event.target.value.replace(/\D/g, ''), 10) || 1); $event.target.value = num.no">
@@ -339,6 +398,7 @@
 </div>
 
 @include('partials.toast-host')
+<x-confirm-dialog />
 {{-- Stacks AFTER the body: this is a page, not a layout, so a stack printed
      in <head> would be emptied before the components below pushed into it. --}}
 @stack('styles')
@@ -416,7 +476,7 @@ function tabletDraw() {
             // gone" — reload, and the page sends it to the pairing room.
             setInterval(async () => {
                 try {
-                    const r = await fetch(@js(route('tablet.draw.data', $token)), { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
+                    const r = await fetch(@js($u['data']), { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
                     if (r.status === 404) { window.location.reload(); return; }
                     if (! r.ok) return;
                     // Redraw only when the draw actually CHANGED: a redraw replays
@@ -454,7 +514,7 @@ function tabletDraw() {
             if (! id) return;
             this.num = { open: true, loading: true, match: null, mats: [], court: null, no: 1 };
             try {
-                const r = await fetch(@js(route('tablet.draw.number', [$token, 999999999])).replace('999999999', id),
+                const r = await fetch(@js($u['number']).replace('999999999', id),
                     { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
                 if (r.status === 404) { window.location.reload(); return; }
                 const d = await r.json().catch(() => ({}));
@@ -487,7 +547,7 @@ function tabletDraw() {
             if (this.busy || ! this.num.match) return;
             this.busy = true;
             try {
-                const r = await fetch(@js(route('tablet.draw.number.release', [$token, 999999999])).replace('999999999', this.num.match.id), {
+                const r = await fetch(@js($u['numberRelease']).replace('999999999', this.num.match.id), {
                     method: 'DELETE', credentials: 'same-origin',
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest',
                                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
@@ -510,7 +570,7 @@ function tabletDraw() {
             if (this.busy || ! this.num.match || ! this.num.court) return;
             this.busy = true;
             try {
-                const r = await fetch(@js(route('tablet.draw.renumber', $token)), {
+                const r = await fetch(@js($u['renumber']), {
                     method: 'PUT', credentials: 'same-origin',
                     headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest',
                                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
@@ -574,7 +634,7 @@ function tabletDraw() {
             if (this.busy || this.pin.length < 4) return;
             this.busy = true;
             try {
-                const res = await this.post(@js(route('tablet.draw.unlock', $token)), { pin: this.pin });
+                const res = await this.post(@js($u['unlock']), { pin: this.pin });
                 if (! res) return;
                 if (res.ok && res.data.success) {
                     try { if (this.intent === 'add') sessionStorage.setItem('tdraw-after', 'add'); } catch (e) {}
@@ -590,9 +650,58 @@ function tabletDraw() {
             } finally { this.busy = false; }
         },
 
+        /* Shuffle the division on show — asked first, because it replaces
+           every hand move in that division. */
+        async shuffle() {
+            const BB = window.BracketBoard, division = BB && BB.division ? BB.division() : null;
+            if (this.busy || ! division) return;
+            const ok = window.confirmAction ? await window.confirmAction({
+                title: @js(__('events::events.shuffle_confirm_title')),
+                message: @js(__('events::events.shuffle_confirm_body')),
+                confirmText: @js(__('events::events.shuffle_confirm')), type: 'warning',
+            }) : true;
+            if (! ok) return;
+            this.busy = true;
+            try {
+                const res = await this.post(@js($u['shuffle'] ?? ''), { category_id: division });
+                if (! res) return;
+                if (res.data.locked) { window.location.reload(); return; }
+                if (res.ok && res.data.success) {
+                    window.showToast && window.showToast('success', res.data.message || @js(__('events::events.draw_shuffled')));
+                    BB.reload(true);
+                } else {
+                    window.showToast && window.showToast('error', res.data.message || @js(__('events::events.action_failed')));
+                }
+            } catch (e) {
+                window.showToast && window.showToast('error', @js(__('events::events.action_failed')));
+            } finally { this.busy = false; }
+        },
+
+        /* "Renumber bouts" — every bout numbered again from the running order. */
+        async renumberAll() {
+            if (this.busy) return;
+            const ok = window.confirmAction ? await window.confirmAction({
+                title: @js(__('events::events.renumber_confirm_title')),
+                message: @js(__('events::events.renumber_confirm_body')),
+                confirmText: @js(__('events::events.renumber_confirm')), type: 'warning',
+            }) : true;
+            if (! ok) return;
+            this.busy = true;
+            try {
+                const res = await this.post(@js($u['renumberAll'] ?? ''));
+                if (! res) return;
+                if (res.data.locked) { window.location.reload(); return; }
+                window.showToast && window.showToast(res.ok && res.data.success ? 'success' : 'error',
+                    res.data.message || @js(__('events::events.action_failed')));
+                if (res.ok && res.data.success && window.BracketBoard) window.BracketBoard.reload(true);
+            } catch (e) {
+                window.showToast && window.showToast('error', @js(__('events::events.action_failed')));
+            } finally { this.busy = false; }
+        },
+
         async lock() {
             this.busy = true;
-            try { await this.post(@js(route('tablet.draw.lock', $token))); } catch (e) {}
+            try { await this.post(@js($u['lock'])); } catch (e) {}
             window.location.reload();
         },
     };

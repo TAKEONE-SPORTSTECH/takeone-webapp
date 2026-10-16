@@ -305,6 +305,23 @@
                 }
                 window.__roBoardFocus = this._focus;
                 window.addEventListener('running-order:focus', this._focus);
+
+                /* Numbers changed somewhere else — "Renumber bouts" on this page
+                   (running-order:reload), or a draw change pushed over realtime
+                   to everyone watching this event: read the mats again. Deduped
+                   for the same reason as the focus listener. */
+                this._reload = (e) => {
+                    const d = e && e.detail ? e.detail : {};
+                    if (e.type === 'realtime:events' && (d.action !== 'draw' || ! d.event || String(this.dataUrl).indexOf(d.event) < 0)) { return; }
+                    if (! this.busy) { this.load(); }
+                };
+                if (window.__roBoardReload) {
+                    window.removeEventListener('running-order:reload', window.__roBoardReload);
+                    window.removeEventListener('realtime:events', window.__roBoardReload);
+                }
+                window.__roBoardReload = this._reload;
+                window.addEventListener('running-order:reload', this._reload);
+                window.addEventListener('realtime:events', this._reload);
             },
 
             async load() {

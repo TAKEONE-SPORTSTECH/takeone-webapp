@@ -38,8 +38,10 @@
                         <i class="bi bi-plus-lg text-xl"></i>
                     </span>
                     <div class="min-w-0 flex-1">
-                        <h3 class="text-lg font-black leading-tight">{{ __('events::events.run_order_add_all') }}</h3>
-                        <p class="text-[12px] text-white/85 mt-0.5">{{ __('events::events.run_order_bench') }}</p>
+                        <h3 class="text-lg font-black leading-tight"
+                            x-text="addGroup ? @js(__('events::events.run_group_add_classes', ['name' => '__N__'])).replace('__N__', addGroup.name) : @js(__('events::events.run_order_add_all'))"></h3>
+                        <p class="text-[12px] text-white/85 mt-0.5"
+                           x-text="addGroup ? @js(__('events::events.run_group_sheet_sub')) : @js(__('events::events.run_order_bench'))"></p>
                     </div>
                     <button type="button" @click="addOpen = false" aria-label="{{ __('shared.close') }}"
                             class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
@@ -51,7 +53,7 @@
             <div class="flex-1 overflow-y-auto p-4 space-y-2">
                 {{-- Medals: each division its own ceremony (its Awarding part), or
                      ONE ceremony for everyone at the end of the day. --}}
-                <button type="button" @click="together = ! together; chosenParts = {}"
+                <button type="button" @click="together = ! together; chosenParts = {}" x-show="! addGroup"
                         class="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-start bg-white border"
                         :style="together ? `border-color: {{ $roColor }};` : 'border-color:#e5e7eb;'">
                     <span class="w-9 h-9 rounded-xl grid place-items-center flex-shrink-0" style="background:#fef3c7;color:#b45309;"><i class="bi bi-award-fill"></i></span>
@@ -66,7 +68,7 @@
                 </button>
 
                 {{-- Select all — nothing is ticked until the organiser says so. --}}
-                <button type="button" @click="toggleAll()"
+                <button type="button" @click="toggleAll()" x-show="bench.length"
                         class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-start bg-white border border-gray-200">
                     <span class="flex-none w-5 h-5 rounded-md border-2 grid place-items-center"
                           :style="allChosen ? `border-color: {{ $roColor }}; background: {{ $roColor }};` : 'border-color:#d1d5db;'">
@@ -114,6 +116,28 @@
                         </div>
                     </div>
                 </template>
+
+                {{-- From a group's box: classes already on the day can join it too. --}}
+                <template x-if="addGroup && daySlotsFor(addGroup).length">
+                    <div class="pt-3 space-y-2">
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-1">{{ __('events::events.run_group_on_day') }}</p>
+                        <template x-for="s in daySlotsFor(addGroup)" :key="s.uuid">
+                            <button type="button" @click="toggleSlot(s.uuid)"
+                                    class="w-full flex items-center gap-3 p-3 rounded-xl border bg-white text-start"
+                                    :style="isSlotChosen(s.uuid) ? `border-color: {{ $roColor }}; background: {{ $roColor }}0d;` : 'border-color:#e5e7eb;'">
+                                <span class="flex-none w-5 h-5 rounded-md border-2 grid place-items-center"
+                                      :style="isSlotChosen(s.uuid) ? `border-color: {{ $roColor }}; background: {{ $roColor }};` : 'border-color:#d1d5db;'">
+                                    <i class="bi bi-check text-white text-[11px]" x-show="isSlotChosen(s.uuid)"></i>
+                                </span>
+                                <span class="min-w-0 flex-1">
+                                    <span class="mq block text-[13.5px] font-bold text-foreground"><span dir="auto" x-text="s.name"></span></span>
+                                    <span class="block text-[11.5px] text-muted-foreground"
+                                          x-text="s.group ? @js(__('events::events.run_group_in', ['name' => '__N__'])).replace('__N__', nameOf(s.group)) : @js(__('events::events.run_group_none'))"></span>
+                                </span>
+                            </button>
+                        </template>
+                    </div>
+                </template>
             </div>
 
             <div class="flex-shrink-0 border-t border-gray-100 bg-white px-4 pt-3"
@@ -121,7 +145,7 @@
                 <button type="button" @click="addDivisions()" :disabled="busy"
                         class="w-full h-12 rounded-xl text-white font-bold text-[15px] disabled:opacity-60"
                         style="background: {{ $roColor }};">
-                    <span x-text="chosen.length"></span> &middot; {{ __('events::events.run_order_add_chosen') }}
+                    <span x-text="chosen.length + chosenSlots.length"></span> &middot; {{ __('events::events.run_order_add_chosen') }}
                 </button>
             </div>
         </div>
@@ -200,12 +224,13 @@
                 <div class="relative flex items-start gap-3">
                     <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
                         <i class="bi text-xl"
-                           :class="blockKind === 'break' ? 'bi-cup-hot-fill' : (blockKind === 'ceremony' ? 'bi-award-fill' : 'bi-bookmark-fill')"></i>
+                           :class="blockKind === 'group' ? 'bi-collection-fill' : (blockKind === 'break' ? 'bi-cup-hot-fill' : (blockKind === 'ceremony' ? 'bi-award-fill' : 'bi-bookmark-fill'))"></i>
                     </span>
                     <div class="min-w-0 flex-1">
                         <h3 class="text-lg font-black leading-tight"
-                            x-text="blockKind === 'break' ? @js(__('events::events.run_order_add_break')) : (blockKind === 'ceremony' ? @js(__('events::events.run_order_add_ceremony')) : @js(__('events::events.run_order_add_custom')))"></h3>
-                        <p class="text-[12px] text-white/85 mt-0.5">{{ __('events::events.run_order_no_bouts') }}</p>
+                            x-text="blockKind === 'group' ? @js(__('events::events.run_group_add')) : (blockKind === 'break' ? @js(__('events::events.run_order_add_break')) : (blockKind === 'ceremony' ? @js(__('events::events.run_order_add_ceremony')) : @js(__('events::events.run_order_add_custom'))))"></h3>
+                        <p class="text-[12px] text-white/85 mt-0.5"
+                           x-text="blockKind === 'group' ? @js(__('events::events.run_group_sheet_sub')) : @js(__('events::events.run_order_no_bouts'))"></p>
                     </div>
                     <button type="button" @click="blockOpen = false" aria-label="{{ __('shared.close') }}"
                             class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
@@ -222,7 +247,35 @@
                            placeholder="{{ __('events::events.run_order_label_placeholder') }}">
                 </div>
 
-                <div>
+                {{-- A GROUP: how its classes are called (RunSessions) — selection cards. --}}
+                <template x-if="blockKind === 'group'">
+                    <div class="space-y-2">
+                        <p class="text-sm font-medium text-gray-700">{{ __('events::events.run_session_label') }}</p>
+                        @foreach ([
+                            'class' => ['bi-collection', __('events::events.run_session_class'), __('events::events.run_group_class_hint')],
+                            'round' => ['bi-arrow-repeat', __('events::events.run_session_round'), __('events::events.run_group_round_hint')],
+                            'manual' => ['bi-hand-index-thumb', __('events::events.run_session_manual'), __('events::events.run_group_manual_hint')],
+                        ] as $gm => [$gmIcon, $gmLabel, $gmHint])
+                            <button type="button" @click="blockMode = '{{ $gm }}'"
+                                    class="w-full text-start p-3 rounded-xl border bg-white flex items-center gap-3 transition-colors"
+                                    :style="blockMode === '{{ $gm }}' ? 'border-color: {{ $roColor }}; background: {{ $roColor }}0d;' : 'border-color:#f3f4f6;'">
+                                <span class="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0" style="background: {{ $roColor }}14; color: {{ $roColor }};">
+                                    <i class="bi {{ $gmIcon }} text-lg"></i>
+                                </span>
+                                <span class="min-w-0 flex-1">
+                                    <span class="block text-sm font-bold text-gray-900">{{ $gmLabel }}</span>
+                                    <span class="block text-[11.5px] text-muted-foreground leading-snug mt-0.5">{{ $gmHint }}</span>
+                                </span>
+                                <span class="w-5 h-5 rounded-full border-2 grid place-items-center flex-shrink-0"
+                                      :style="blockMode === '{{ $gm }}' ? 'border-color: {{ $roColor }};' : 'border-color:#d1d5db;'">
+                                    <span class="w-2.5 h-2.5 rounded-full" x-show="blockMode === '{{ $gm }}'" style="background: {{ $roColor }};"></span>
+                                </span>
+                            </button>
+                        @endforeach
+                    </div>
+                </template>
+
+                <div x-show="blockKind !== 'group'">
                     <label for="ro-block-duration" class="block text-sm font-medium text-gray-700 mb-1">{{ __('events::events.run_order_duration') }}</label>
                     <div class="flex items-center gap-2">
                         <button type="button" @click="blockDuration = Math.max(1, (parseInt(blockDuration,10)||0) - 5)"

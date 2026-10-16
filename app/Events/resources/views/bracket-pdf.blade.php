@@ -555,7 +555,7 @@
                 @if($hostLogo)<span class="hlogo" role="img" aria-label="{{ $host }}"></span>@endif
                 <div style="position:relative; min-width:0;">
                     <div class="eye">{{ $p['podium'] ? __('events::events.bracket_pdf_eyebrow_result') : __('events::events.bracket_pdf_eyebrow') }} · {{ $title }}</div>
-                    <div class="pdf-title">{{ $p['name'] }}</div>
+                    <div class="pdf-title">{{ $p['title'] ?? $p['name'] }}</div>
                     @if($date || $host)
                         <div class="pdf-sub">{{ collect([$date, $host])->filter()->implode(' · ') }}</div>
                     @endif

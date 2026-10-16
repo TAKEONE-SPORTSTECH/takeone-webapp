@@ -1239,6 +1239,11 @@ class PersonalEventController extends Controller
             'weighed_in_by' => $me->id,
         ], fn ($v) => $v !== null));
 
+        // One body, one weight: the scale's reading goes onto this person's
+        // other entries here too, so no placement reads a declared weight the
+        // scale already replaced (App\Events\Support\BodyWeight).
+        \App\Events\Support\BodyWeight::spread($event->id, $registration->user_id);
+
         // An athlete their club entered before anyone had a weight for them is
         // unclassified until exactly this moment. The scale is what places them,
         // so the package is asked where this weight puts them — and the draw is
@@ -2978,6 +2983,14 @@ class PersonalEventController extends Controller
         $data = $request->validate([
             'category_id' => ['required', 'integer'],
             'q' => ['nullable', 'string', 'max:60'],
+            // The desk's filter (owner, 2026-10-15): narrow by who the person
+            // IS, not only by name. Each bound is optional; set, it excludes
+            // anybody whose value is unknown.
+            'gender' => ['nullable', Rule::in(['Male', 'Female'])],
+            'min_age' => ['nullable', 'integer', 'min:0', 'max:120'],
+            'max_age' => ['nullable', 'integer', 'min:0', 'max:120'],
+            'min_weight' => ['nullable', 'numeric', 'min:0', 'max:400'],
+            'max_weight' => ['nullable', 'numeric', 'min:0', 'max:400'],
         ]);
 
         $category = $event->categories()->find($data['category_id']);
@@ -3004,6 +3017,8 @@ class PersonalEventController extends Controller
             ->whereIn('id', $drawn)->pluck('user_id')->unique()->all();
 
         $term = trim((string) ($data['q'] ?? ''));
+        $category->setRelation('event', $event);
+        $ages = new \App\Events\Support\DivisionRange($category);
 
         $rows = $event->registrations()
             ->where('role', 'participant')
@@ -3012,18 +3027,36 @@ class PersonalEventController extends Controller
             ->when($term !== '', fn ($q) => $q->whereHas('user', fn ($u) => $u
                 ->where('full_name', 'like', '%'.$term.'%')
                 ->orWhere('name', 'like', '%'.$term.'%')))
+            ->when(isset($data['gender']), fn ($q) => $q->whereHas('user', fn ($u) => $u->where('gender', $data['gender'])))
+            ->when(isset($data['min_weight']), fn ($q) => $q->whereNotNull('weight')->where('weight', '>=', $data['min_weight']))
+            ->when(isset($data['max_weight']), fn ($q) => $q->whereNotNull('weight')->where('weight', '<=', $data['max_weight']))
             /* ⚠️ `nationality`, `representingTenant` and `memberClubs` are NOT
                optional in this load: countryCode() and competingClub() read
                all three, and a constrained eager load that does not name a
                column reads it back as NULL rather than raising. Same trap
-               BracketView records against its own select. */
+               BracketView records against its own select. `birthdate` is read
+               by the age filter and the age shown on each row. */
             ->with([
-                'user:id,full_name,name,nationality,profile_picture,profile_picture_is_public,gender,updated_at',
+                'user:id,full_name,name,nationality,profile_picture,profile_picture_is_public,gender,birthdate,updated_at',
                 'user.memberClubs:id,club_name,country',
                 'representingTenant:id,club_name,country',
                 'category:id,name',
             ])
             ->get()
+            /* Age is worked out the way a division works it out (on the
+               event's own date, or the age the desk wrote down), so a filter
+               of 5–6 finds exactly who a 5–6 division would. Before the cap
+               below, so nobody in range is cut off by it. */
+            ->filter(function ($r) use ($data, $ages) {
+                if (! isset($data['min_age']) && ! isset($data['max_age'])) {
+                    return true;
+                }
+                $age = $ages->ageOf($r);
+
+                return $age !== null
+                    && (! isset($data['min_age']) || $age >= $data['min_age'])
+                    && (! isset($data['max_age']) || $age <= $data['max_age']);
+            })
             /*
              * ⚠️ ONE ROW PER PERSON, not per entry.
              *
@@ -3062,6 +3095,8 @@ class PersonalEventController extends Controller
                 'in_this_division' => $r->category_id === $category->id,
                 'belt' => $r->belt_colour,
                 'weight' => $r->weight,
+                'age' => $ages->ageOf($r),
+                'gender' => $r->user?->gender,
                 /*
                  * The face, the flag and the club — what the desk actually
                  * recognises somebody by. Same three answers, from the same
@@ -5037,6 +5072,24 @@ class PersonalEventController extends Controller
         ] + $board->plan($event, $data['day'] ?? null));
     }
 
+    /**
+     * "Renumber bouts" — number every bout from the day's running order now,
+     * and refresh every bracket, wall and mats board (App\Events\Support\BoutNumbering).
+     */
+    public function renumberBouts(ClubEvent $event): JsonResponse
+    {
+        $this->assertCanManage($event, Auth::user());
+
+        $result = app(\App\Events\Support\BoutNumbering::class)->renumber($event);
+
+        return response()->json([
+            'success' => $result['ok'],
+            'message' => $result['message'],
+            'numbered' => $result['numbered'] ?? null,
+            'kept' => $result['kept'] ?? null,
+        ], $result['ok'] ? 200 : 422);
+    }
+
     /** Lay the whole day out again from scratch — every hand placement goes. */
     public function autoRunningOrder(Request $request, ClubEvent $event): JsonResponse
     {
@@ -6151,6 +6204,57 @@ class PersonalEventController extends Controller
     }
 
 
+    /**
+     * The divisions editor's data, as JSON — everything the weight-classes page
+     * renders <x-event-divisions> with, for an editor that is not a Blade page:
+     * the federation dashboard's Divisions tab (owner, 2026-10-14). Same
+     * organiser-only rule as the page; every write still goes through the
+     * endpoints below.
+     */
+    public function divisionsData(ClubEvent $event): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertCanManage($event, $me);
+
+        $cats = $event->categories()->orderBy('sort_order')->orderBy('id')->get();
+        $faces = $this->facesFor($cats->pluck('id')->all());
+        $presets = $this->rulebookPresets($event, rescue(fn () => $this->typeFor($event)->formCatalog(), [], false) ?: []);
+        $criteria = \App\Events\Support\DivisionEditor::criteriaSports();
+        $sport = $event->sport ?: null;
+
+        return response()->json([
+            'success' => true,
+            'rows' => $cats->map(fn ($c) => $this->divisionPayload($c, $faces[$c->id] ?? []))->values()->all(),
+            'phases' => $this->phaseDefs(),
+            'days' => $this->dayCount($event),
+            'presets' => \App\Events\Support\DivisionEditor::presetTable($presets),
+            'belts' => \App\Events\Support\DivisionEditor::beltLadder($event, $sport),
+            // Asked only where the sport divides by it — the same rule the
+            // component applies (no sport at all asks both).
+            'asks' => [
+                'weight' => ! $sport || in_array($sport, $criteria['weight'], true),
+                'rank' => ! $sport || in_array($sport, $criteria['rank'], true),
+            ],
+            'streams' => array_values(array_filter(EventStreams::of($event), fn ($r) => is_array($r) && ($r['key'] ?? '') !== '')),
+        ]);
+    }
+
+    /** The phases a division can be scheduled across. */
+    private function phaseDefs(): array
+    {
+        return [
+            ['key' => 'preliminary', 'label' => __('personal.event_phase_prelim')],
+            ['key' => 'quarterfinals', 'label' => __('personal.event_phase_quarters')],
+            ['key' => 'finals', 'label' => __('personal.event_phase_finals')],
+        ];
+    }
+
+    /** How many days the event runs over. Inclusive: a one-day event is 1, an end date the day after is 2. */
+    private function dayCount(ClubEvent $e): int
+    {
+        return $e->end_date && $e->date ? max(1, $e->date->diffInDays($e->end_date) + 1) : 1;
+    }
+
     public function storeDivision(Request $request, ClubEvent $event): JsonResponse
     {
         $me = Auth::user();
@@ -6172,6 +6276,177 @@ class PersonalEventController extends Controller
             'message' => __('events::events.division_created'),
             'division' => $this->divisionPayload($division),
         ]);
+    }
+
+    /**
+     * Divisions from a spreadsheet (App\Events\Support\DivisionImport) — the
+     * template, a preview, and the import. Organiser only, like every other
+     * division write.
+     *
+     * Each row is judged by validateDivision(), the same rules a division typed
+     * into the editor meets, so a spreadsheet can never make a division the
+     * form would refuse. A row with no name is called by its group letter
+     * ("Group A") and nothing else — never an age word or a weight (owner,
+     * 2026-10-15).
+     */
+    public function divisionsImportTemplate(ClubEvent $event): \Symfony\Component\HttpFoundation\Response
+    {
+        $this->assertCanManage($event, Auth::user());
+
+        return response(app(\App\Events\Support\DivisionImport::class)->template(), 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="divisions-template.xlsx"',
+            'Cache-Control' => 'no-store, private',
+        ]);
+    }
+
+    /** Read the file and judge every row. Writes nothing. */
+    public function divisionsImportPreview(Request $request, ClubEvent $event): JsonResponse
+    {
+        $this->assertCanManage($event, Auth::user());
+
+        $request->validate(['file' => ['required', 'file', 'max:'.\App\Events\Support\DivisionImport::MAX_KB]],
+            ['file.max' => 'That file is too large. Keep it under 1 MB.']);
+
+        $read = app(\App\Events\Support\DivisionImport::class)->read($request->file('file')->getRealPath());
+        if (! $read['ok']) {
+            return response()->json(['success' => false, 'message' => $read['message']], 422);
+        }
+
+        $rows = $this->judgeImportRows($event, $read['rows']);
+
+        return response()->json([
+            'success' => true,
+            'rows' => $rows,
+            'ignored' => $read['ignored'],
+            'ready' => count(array_filter($rows, fn ($r) => $r['status'] === 'ready')),
+        ]);
+    }
+
+    /**
+     * Create the rows the preview showed. Sent back as data rather than as the
+     * file again, and judged again here — nothing the page says is trusted.
+     * All or nothing: if any row is refused, none is made.
+     */
+    public function divisionsImport(Request $request, ClubEvent $event): JsonResponse
+    {
+        $this->assertCanManage($event, Auth::user());
+
+        $data = $request->validate([
+            'rows' => ['required', 'array', 'min:1', 'max:'.\App\Events\Support\DivisionImport::MAX_ROWS],
+            'rows.*' => ['array'],
+        ]);
+
+        $fields = ['name', 'gender', 'min_age', 'max_age', 'min_weight', 'max_weight', 'capacity'];
+        $rows = array_map(fn ($r, $i) => ['line' => (int) ($r['line'] ?? $i + 1), 'errors' => []]
+            + array_intersect_key($r, array_flip($fields)), $data['rows'], array_keys($data['rows']));
+
+        $judged = $this->judgeImportRows($event, $rows);
+        $bad = array_values(array_filter($judged, fn ($r) => $r['status'] === 'error'));
+        if ($bad !== []) {
+            return response()->json(['success' => false, 'rows' => $judged,
+                'message' => 'Line '.$bad[0]['line'].': '.$bad[0]['errors'][0]], 422);
+        }
+
+        $make = array_values(array_filter($judged, fn ($r) => $r['status'] === 'ready'));
+        $created = DB::transaction(function () use ($event, $make) {
+            $order = (int) $event->categories()->max('sort_order');
+
+            return array_map(fn ($r) => EventCategory::create($r['data'] + [
+                'event_id' => $event->id,
+                'status' => 'enrolling',
+                'sort_order' => ++$order,
+            ]), $make);
+        });
+
+        foreach ($created as $division) {
+            $this->redrawDivision($event, $division);
+        }
+        if ($created !== []) {
+            $this->pushDivisionsChanged($event);
+        }
+
+        $skipped = count($judged) - count($created);
+
+        return response()->json([
+            'success' => true,
+            'message' => count($created).' '.(count($created) === 1 ? 'division' : 'divisions').' created'
+                .($skipped ? ' · '.$skipped.' already in the event, skipped' : '').'.',
+            'divisions' => array_map(fn ($d) => $this->divisionPayload($d), $created),
+        ]);
+    }
+
+    /**
+     * Judge each imported row: 'ready', 'duplicate' (the event already has a
+     * division with the same gender, ages and weights — or an earlier row of
+     * the same file does), or 'error' with the reasons. A ready row carries
+     * the validated data, named.
+     */
+    private function judgeImportRows(ClubEvent $event, array $rows): array
+    {
+        $existing = $event->categories()->orderBy('sort_order')->orderBy('id')->get();
+        $sig = fn ($g, $a1, $a2, $w1, $w2) => implode('|', [
+            strtolower((string) $g), $a1 === null ? '' : (int) $a1, $a2 === null ? '' : (int) $a2,
+            $w1 === null ? '' : round((float) $w1, 2), $w2 === null ? '' : round((float) $w2, 2)]);
+        $seen = [];
+        foreach ($existing as $c) {
+            if (! $c->is_heading) {
+                $seen[$sig($c->gender, $c->min_age, $c->max_age, $c->min_weight, $c->max_weight)] = true;
+            }
+        }
+
+        // The group letter carries on from the last division in the list,
+        // restarting after a heading — the editor's own lettering.
+        $letter = 0;
+        foreach ($existing as $c) {
+            $letter = $c->is_heading ? 0 : $letter + 1;
+        }
+
+        $out = [];
+        foreach ($rows as $r) {
+            $r['errors'] = array_values($r['errors'] ?? []);
+            $key = $sig($r['gender'] ?? null, $r['min_age'] ?? null, $r['max_age'] ?? null, $r['min_weight'] ?? null, $r['max_weight'] ?? null);
+
+            if ($r['errors'] === [] && isset($seen[$key])) {
+                $out[] = $r + ['status' => 'duplicate'];
+
+                continue;
+            }
+
+            $name = trim((string) ($r['name'] ?? ''));
+            if ($name === '' && $r['errors'] === []) {
+                $name = $letter < 26 ? 'Group '.chr(65 + $letter) : '';
+            }
+
+            if ($r['errors'] === []) {
+                $input = ['name' => $name, 'is_heading' => false, 'format' => 'knockout'];
+                foreach (['gender', 'min_age', 'max_age', 'min_weight', 'max_weight', 'capacity'] as $k) {
+                    if (($r[$k] ?? null) !== null && $r[$k] !== '') {
+                        $input[$k] = $r[$k];
+                    }
+                }
+                try {
+                    $valid = $this->validateDivision(Request::create('/', 'POST', $input), $event);
+                    $r['data'] = $this->headingSafe($valid) + ['schedule' => ['preliminary' => 1, 'quarterfinals' => 1, 'finals' => 1]];
+                } catch (\Illuminate\Validation\ValidationException $e) {
+                    $r['errors'] = collect($e->errors())->flatten()->map(fn ($m) => $name === '' && str_contains((string) $m, 'name')
+                        ? 'Give this division a name — the group letters stop at Z.' : (string) $m)->values()->all();
+                }
+            }
+
+            if ($r['errors'] !== []) {
+                $out[] = $r + ['status' => 'error'];
+
+                continue;
+            }
+
+            $seen[$key] = true;
+            $letter++;
+            $r['name'] = $name;
+            $out[] = $r + ['status' => 'ready'];
+        }
+
+        return $out;
     }
 
     /**
@@ -8150,11 +8425,18 @@ class PersonalEventController extends Controller
             'divisions.*.id' => ['required', 'integer'],
             'divisions.*.parts' => ['nullable', 'array', 'max:4'],
             'divisions.*.parts.*' => ['string', Rule::in(\App\Events\Support\BoutPart::PLACEABLE)],
-            'kind' => ['nullable', Rule::in([
+            'kind' => ['nullable', Rule::in(array_merge([
                 \App\Events\Models\EventRunSlot::KIND_CEREMONY,
                 \App\Events\Models\EventRunSlot::KIND_BREAK,
                 \App\Events\Models\EventRunSlot::KIND_CUSTOM,
-            ])],
+            ], \App\Events\Support\RunSessions::enabled() ? [\App\Events\Models\EventRunSlot::KIND_GROUP] : []))],
+            // A group's method (RunSessions).
+            'mode' => ['nullable', Rule::in(\App\Events\Support\RunSessions::MODES)],
+            // Added from a group's box: into that group (RunSessions). `slots`
+            // are classes already on the day, moved into it.
+            'group' => ['nullable', 'string', 'uuid'],
+            'slots' => ['nullable', 'array', 'max:200'],
+            'slots.*' => ['string', 'uuid'],
             'label' => ['nullable', 'string', 'max:160'],
             'duration_minutes' => ['nullable', 'integer', 'min:1', 'max:600'],
             // The break set on the event itself (RunOrder::addEventBreak).
@@ -8167,19 +8449,67 @@ class PersonalEventController extends Controller
         $day = (int) ($data['day'] ?? 1);
         $order = app(\App\Events\Support\RunOrder::class);
 
-        if (! empty($data['event_break'])) {
+        $group = null;
+        if (! empty($data['group'])) {
+            abort_unless(\App\Events\Support\RunSessions::enabled(), 404);
+            // This event's group on this day, or nothing.
+            $group = \App\Events\Models\EventRunSlot::where('event_id', $event->id)->where('day', $day)
+                ->where('kind', \App\Events\Models\EventRunSlot::KIND_GROUP)->where('uuid', $data['group'])->first();
+            abort_unless($group !== null, 404);
+        }
+
+        if ($group) {
+            if (! empty($data['divisions'])) {
+                $order->addDivisions($event, $data['divisions'], $day, false, $group);
+            }
+            if (! empty($data['slots'])) {
+                $order->intoGroup($event, $day, $data['slots'], $group);
+            }
+        } elseif (! empty($data['event_break'])) {
             $order->addEventBreak($event, $day);
         } elseif (! empty($data['divisions'])) {
             $order->addDivisions($event, $data['divisions'], $day, ! empty($data['together_ceremony']));
         } elseif (! empty($data['category_ids'])) {
             $order->addDivisions($event, $data['category_ids'], $day);
         } elseif (! empty($data['kind'])) {
-            $order->addBlock($event, $data['kind'], $data['label'] ?? null, $data['duration_minutes'] ?? null, $day);
+            $order->addBlock($event, $data['kind'], $data['label'] ?? null, $data['duration_minutes'] ?? null, $day, $data['mode'] ?? null);
         } else {
             return response()->json(['success' => false, 'message' => __('events::events.run_order_saved')], 422);
         }
 
         return $this->runOrderResponse($event, $day);
+    }
+
+    /**
+     * When the day starts (owner, 2026-10-16) — the event's own start time,
+     * which every unpinned time on the running order flows from. Organiser
+     * only. Only the start is written: the rest of the event is left exactly
+     * as it was, and a host that keeps its own copy (a federation's dashboard)
+     * is told through EventHost::changed, the same as any console edit.
+     */
+    public function updateDayStart(Request $request, ClubEvent $event): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+        abort_unless($this->canManage($event, $me), 403);
+
+        $data = $request->validate([
+            'day' => ['nullable', 'integer', 'min:1', 'max:60'],
+            'start' => ['required', 'date_format:H:i'],
+        ]);
+
+        // Never at or after the time the event says it ends — the event's own
+        // dates would then disagree with themselves.
+        $end = $event->end_time ? substr((string) $event->end_time, 0, 5) : null;
+        if ($end && $end !== '00:00' && $data['start'] >= $end) {
+            return response()->json(['success' => false,
+                'message' => 'The day cannot start at or after the event\'s end time ('.$end.'). Change the end time in Edit event first.'], 422);
+        }
+
+        $event->forceFill(['start_time' => $data['start'].':00'])->save();
+        \App\Events\Support\EventHost::changed($event->fresh());
+
+        return $this->runOrderResponse($event->fresh(), (int) ($data['day'] ?? 1));
     }
 
     /**
@@ -8221,6 +8551,65 @@ class PersonalEventController extends Controller
 
         $day = (int) ($data['day'] ?? 1);
         app(\App\Events\Support\RunOrder::class)->reorder($event, $day, $data['order']);
+
+        return $this->runOrderResponse($event, $day);
+    }
+
+    /**
+     * How one GROUP of the running order calls its bouts — one class at a
+     * time, round by round, or manual (App\Events\Support\RunSessions). The
+     * mats are renumbered through the same door every running-order save uses,
+     * so nothing is renumbered once the day has been fought.
+     */
+    public function updateRunSession(Request $request, ClubEvent $event): JsonResponse
+    {
+        abort_unless(\App\Events\Support\RunSessions::enabled(), 404);
+
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+        abort_unless($this->canManage($event, $me), 403);
+
+        $data = $request->validate([
+            'day' => ['nullable', 'integer', 'min:1', 'max:60'],
+            'group' => ['required', 'string', 'uuid'],
+            'mode' => ['required', Rule::in(\App\Events\Support\RunSessions::MODES)],
+        ]);
+
+        // Scoped to THIS event: a uuid from another event resolves to nothing.
+        $group = \App\Events\Models\EventRunSlot::where('event_id', $event->id)->where('uuid', $data['group'])->first();
+        abort_unless($group !== null, 404);
+
+        if (! \App\Events\Support\RunSessions::set($event, $group, $data['mode'])) {
+            return response()->json(['success' => false, 'message' => __('events::events.run_group_not_a_group')], 422);
+        }
+
+        return $this->runOrderResponse($event->fresh(), (int) ($data['day'] ?? $group->day ?? 1));
+    }
+
+    /**
+     * The day board's drag: one item to a place in the main list, or into a
+     * group's box (RunOrder::move). Only a class goes into a box.
+     */
+    public function moveRunSlot(Request $request, ClubEvent $event): JsonResponse
+    {
+        abort_unless(\App\Events\Support\RunSessions::enabled(), 404);
+
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+        abort_unless($this->canManage($event, $me), 403);
+
+        $data = $request->validate([
+            'day' => ['nullable', 'integer', 'min:1', 'max:60'],
+            'slot' => ['required', 'string', 'uuid'],
+            'group' => ['nullable', 'string', 'uuid'],
+            'index' => ['required', 'integer', 'min:0', 'max:400'],
+        ]);
+
+        $day = (int) ($data['day'] ?? 1);
+
+        if (! app(\App\Events\Support\RunOrder::class)->move($event, $day, $data['slot'], $data['group'] ?? null, (int) $data['index'])) {
+            return response()->json(['success' => false, 'message' => __('events::events.run_group_cannot_move')], 422);
+        }
 
         return $this->runOrderResponse($event, $day);
     }
@@ -8282,6 +8671,86 @@ class PersonalEventController extends Controller
      * who is reading it, so each one re-fetches what it is allowed to see
      * (CLAUDE.md → Realtime, §11).
      */
+    /**
+     * Auto-schedule (owner, 2026-10-16): every division not on the day yet goes
+     * onto it, youngest first, then lightest, then male before female — each
+     * on the day its preliminaries are set for. What the organiser already
+     * placed stays exactly where it is; this only appends.
+     *
+     * Then the ordinary save: the mats re-read the sheet (applyRunOrderToMats —
+     * numbers set by hand are kept, and nothing is renumbered once a bout has
+     * been fought), the hall and other organisers are told.
+     */
+    public function autoRunOrder(Request $request, ClubEvent $event): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+        abort_unless($this->canManage($event, $me), 403);
+
+        $data = $request->validate(['day' => ['nullable', 'integer', 'min:1', 'max:60']]);
+        $days = $this->dayCount($event);
+        $n = fn ($v, $d) => $v === null ? $d : (float) $v;
+
+        $divisions = $event->categories()->orderBy('sort_order')->orderBy('id')->get()
+            ->reject(fn (EventCategory $c) => $c->isHeading())
+            ->sortBy(fn (EventCategory $c) => [
+                $n($c->min_age, 0), $n($c->max_age, 999),
+                ($c->max_weight === null || (float) $c->max_weight <= 0 || (float) $c->max_weight >= 200) ? 999 : (float) $c->max_weight,
+                $n($c->min_weight, 0),
+                match (strtolower((string) $c->gender)) { 'male' => 0, 'female' => 1, default => 2 },
+            ])
+            ->groupBy(fn (EventCategory $c) => min($days, max(1, (int) (($c->schedule ?? [])['preliminary'] ?? 1))));
+
+        $order = app(\App\Events\Support\RunOrder::class);
+        $wt = \App\Events\Support\RunSessions::enabled();
+        $added = 0;
+        foreach ($divisions as $day => $list) {
+            $day = (int) $day;
+            if (! $wt) {
+                $added += $order->addDivisions($event, $list->pluck('id')->all(), $day);
+
+                continue;
+            }
+
+            /*
+             * World Taekwondo (owner, 2026-10-16): on each court, every class's
+             * first round, then the next round, the finals last — the running
+             * order's ROUND BY ROUND group (RunSessions), which the Scheduler
+             * already numbers per court. One group per day: the round-by-round
+             * group already there, or a new one. Classes standing on the day in
+             * no group join it in their current order; the rest follow, sorted.
+             * A group the organiser made with another method is left alone.
+             */
+            $group = \App\Events\Models\EventRunSlot::where('event_id', $event->id)->where('day', $day)
+                ->where('kind', \App\Events\Models\EventRunSlot::KIND_GROUP)
+                ->where('mode', \App\Events\Support\RunSessions::ROUND_BY_ROUND)
+                ->orderBy('position')->first()
+                ?? $order->addBlock($event, \App\Events\Models\EventRunSlot::KIND_GROUP, 'Round by round (WT)', null, $day, \App\Events\Support\RunSessions::ROUND_BY_ROUND);
+
+            $groupIds = \App\Events\Models\EventRunSlot::where('event_id', $event->id)
+                ->where('kind', \App\Events\Models\EventRunSlot::KIND_GROUP)->pluck('id')->all();
+            $loose = \App\Events\Models\EventRunSlot::where('event_id', $event->id)->where('day', $day)
+                ->where('kind', \App\Events\Models\EventRunSlot::KIND_DIVISION)
+                ->where(fn ($q) => $q->whereNull('group_id')->orWhereNotIn('group_id', $groupIds))
+                ->orderBy('position')->orderBy('id')->pluck('uuid')->all();
+            if ($loose) {
+                $order->intoGroup($event, $day, $loose, $group);
+            }
+
+            $added += $order->addDivisions($event, $list->pluck('id')->all(), $day, false, $group);
+        }
+
+        $response = $this->runOrderResponse($event, (int) ($data['day'] ?? 1));
+        $payload = $response->getData(true);
+        $payload['added'] = $added;
+        $how = $wt ? 'bouts run round by round on each court (World Taekwondo).' : 'bouts laid out on the mats.';
+        $payload['message'] = $added
+            ? ($added === 1 ? 'One division added to the day' : $added.' divisions added to the day').' — '.$how
+            : 'Every division is already on the day — '.$how;
+
+        return response()->json($payload);
+    }
+
     private function runOrderResponse(ClubEvent $event, int $day): JsonResponse
     {
         $this->applyRunOrderToMats($event);
@@ -8397,6 +8866,8 @@ class PersonalEventController extends Controller
             'finishes_at' => $sheet->finishesAt($event, $day),
             'finishes_label' => $clock($sheet->finishesAt($event, $day)),
             'starts_label' => $start ? \App\Support\Cldr::time($start) : null,
+            // The same start as "HH:MM", for an editor to begin from.
+            'start_time' => $start ? $start->format('H:i') : null,
             'bout_minutes' => (int) ($event->minutes_per_match ?: \App\Events\Support\RunSheet::DEFAULT_BOUT_MINUTES),
         ];
     }
@@ -8991,15 +9462,8 @@ class PersonalEventController extends Controller
              * supply its own rather than being described by a list typed into a
              * Blade file.
              */
-            'phase_defs' => [
-                ['key' => 'preliminary', 'label' => __('personal.event_phase_prelim')],
-                ['key' => 'quarterfinals', 'label' => __('personal.event_phase_quarters')],
-                ['key' => 'finals', 'label' => __('personal.event_phase_finals')],
-            ],
-            // Inclusive: a one-day event is 1, and an end date the day after is 2.
-            'day_count' => $e->end_date && $e->date
-                ? max(1, $e->date->diffInDays($e->end_date) + 1)
-                : 1,
+            'phase_defs' => $this->phaseDefs(),
+            'day_count' => $this->dayCount($e),
         ];
 
         return $view;

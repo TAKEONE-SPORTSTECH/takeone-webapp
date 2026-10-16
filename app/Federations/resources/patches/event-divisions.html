@@ -1,4 +1,547 @@
       <sc-if value="{{ tabDivs }}" hint-placeholder-val="{{ false }}">
+        <sc-if value="{{ dm.on }}" hint-placeholder-val="{{ false }}">
+          <section aria-label="Divisions" style="display:flex;flex-direction:column;gap:14px">
+
+            <sc-if value="{{ dm.loading }}" hint-placeholder-val="{{ false }}">
+              <div style="background:#fff;border-radius:16px;border-top:3px solid #d8b25f;padding:28px;text-align:center;color:#6b7689;font-size:.84rem;box-shadow:0 10px 30px rgba(30,44,79,.08)">Loading the divisions…</div>
+            </sc-if>
+            <sc-if value="{{ dm.hasErr }}" hint-placeholder-val="{{ false }}">
+              <div role="alert" style="padding:12px 16px;border-radius:12px;background:#fcefed;border:1px solid #f0c9c3;color:#b4483c;font-size:.8rem;display:flex;gap:12px;align-items:center;flex-wrap:wrap">{{ dm.err }}<button type="button" onClick="{{ dm.onRetry }}" style="margin-left:auto;height:32px;padding:0 12px;border:1px solid #f0c9c3;border-radius:9px;background:#fff;color:#b4483c;font-family:inherit;font-weight:600;cursor:pointer">Try again</button></div>
+            </sc-if>
+
+
+
+            <sc-if value="{{ dm.table }}" hint-placeholder-val="{{ false }}">
+              <div style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:clamp(16px,2vw,24px);box-shadow:0 14px 40px rgba(30,44,79,.1)">
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+                  <div style="font-size:.7rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Weight classes</div>
+                  <span style="display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:999px;background:#1e2c4f;color:#fff;font-size:.74rem;font-weight:600">Divisions <b style="font-weight:700;color:#edcd85">{{ dm.total }}</b></span>
+                  <span style="display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:999px;background:#fff;border:1px solid #e4d3a8;color:#1e2c4f;font-size:.74rem;font-weight:500">Entries <b style="font-weight:700;color:#8a6d20">{{ dm.entries }}</b></span>
+                  <span style="display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:999px;background:#fff;border:1px solid #bfe3cc;color:#1e2c4f;font-size:.74rem;font-weight:500">Ready to draw <b style="font-weight:700;color:#2f7a4f">{{ dm.readyCount }}</b></span>
+                  <sc-if value="{{ dm.hasUnplaced }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ dm.onUnplaced }}" title="See who is not in a division yet" style="height:34px;padding:0 14px;border-radius:999px;border:1px solid #e4d3a8;background:#fdf8ec;color:#8a6d20;font-family:inherit;font-size:.74rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px" style-hover="border-color:#caa14f">Not in a division <b style="color:#1e2c4f">{{ dm.unplacedCount }}</b> ›</button></sc-if>
+                  <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                    <sc-if value="{{ dm.canPdf }}" hint-placeholder-val="{{ false }}">
+                      <button type="button" onClick="{{ dm.onPdf }}" title="Download every division's bracket as one PDF" style="height:40px;padding:0 14px;border:1px solid #d5dae3;border-radius:11px;font-family:inherit;font-size:.8rem;font-weight:700;color:#1e2c4f;background:#fff;cursor:pointer" style-hover="border-color:#caa14f">{{ dm.pdfLabel }}</button>
+                    </sc-if>
+                    <sc-if value="{{ dm.canDelAll }}" hint-placeholder-val="{{ false }}">
+                      <button type="button" onClick="{{ dm.onDelAll }}" title="Clear every division away — no athlete leaves the event" style="height:40px;padding:0 14px;border:1px solid #f0c9c3;border-radius:11px;font-family:inherit;font-size:.8rem;font-weight:700;color:#c0392b;background:#fff;cursor:pointer" style-hover="background:#fcefed">Clear divisions</button>
+                    </sc-if>
+                    <sc-if value="{{ dm.canAuto }}" hint-placeholder-val="{{ false }}">
+                      <button type="button" onClick="{{ dm.onAuto }}" title="Put everyone in no division where the rule book says, creating the divisions needed" style="height:40px;padding:0 14px;border:1px solid #d9b77a;border-radius:11px;font-family:inherit;font-size:.8rem;font-weight:700;color:#8a6d20;background:#fdf8ec;cursor:pointer" style-hover="border-color:#caa14f">{{ dm.autoLabel }}</button>
+                    </sc-if>
+                    <sc-if value="{{ dm.canMerge }}" hint-placeholder-val="{{ false }}">
+                      <button type="button" onClick="{{ dm.onMerge }}" title="Merge small divisions" style="height:40px;padding:0 14px;border:1px solid #d5dae3;border-radius:11px;font-family:inherit;font-size:.8rem;font-weight:700;color:#1e2c4f;background:#fff;cursor:pointer;display:inline-flex;align-items:center;gap:8px" style-hover="border-color:#caa14f">⇄ Merge<sc-if value="{{ dm.mergeBadge }}" hint-placeholder-val="{{ false }}"><span style="min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#b45309;color:#fff;font-size:.66rem;font-weight:800;display:inline-grid;place-items:center">{{ dm.mergeBadge }}</span></sc-if></button>
+                    </sc-if>
+                    <div style="position:relative">
+                      <button type="button" onClick="{{ dm.onAdd }}" aria-haspopup="menu" aria-expanded="{{ dm.addOpen }}" style="height:40px;padding:0 18px;border:0;border-radius:11px;font-family:inherit;font-size:.8rem;font-weight:700;color:#1e2c4f;background:linear-gradient(100deg,#edcd85,#d0a854);box-shadow:0 6px 16px rgba(202,161,79,.3);cursor:pointer" style-hover="transform:translateY(-1px)">+ Add</button>
+                      <sc-if value="{{ dm.addOpen }}" hint-placeholder-val="{{ false }}">
+                        <div role="menu" onClick="{{ dm.stop }}" style="position:absolute;right:0;top:calc(100% + 8px);z-index:40;width:320px;max-width:calc(100vw - 2rem);background:#fff;border:1px solid #d5dae3;border-top:3px solid #d8b25f;border-radius:14px;box-shadow:0 18px 50px rgba(30,44,79,.18);padding:6px;animation:rise .25s cubic-bezier(.22,.68,.35,1) both">
+                          <div style="padding:8px 10px 6px"><div style="font-size:.84rem;font-weight:700;color:#1e2c4f">Add to this event</div><div style="font-size:.7rem;color:#6b7689">A weight class, a batch of them, or a heading over several</div></div>
+                          <button type="button" role="menuitem" onClick="{{ dm.onAddOne }}" style="width:100%;display:flex;gap:12px;align-items:center;padding:10px;border:0;border-radius:10px;background:transparent;text-align:left;font-family:inherit;cursor:pointer" style-hover="background:#fdf6e6"><span aria-hidden="true" style="width:34px;height:34px;border-radius:10px;background:#1e2c4f;color:#edcd85;display:grid;place-items:center;font-weight:800;flex:none">+</span><span><span style="display:block;font-size:.8rem;font-weight:700;color:#1e2c4f">Add division</span><span style="display:block;font-size:.7rem;color:#6b7689">One group, set up by hand</span></span></button>
+                          <sc-if value="{{ dm.hasPresets }}" hint-placeholder-val="{{ false }}">
+                            <button type="button" role="menuitem" onClick="{{ dm.onAddPresets }}" style="width:100%;display:flex;gap:12px;align-items:center;padding:10px;border:0;border-radius:10px;background:transparent;text-align:left;font-family:inherit;cursor:pointer" style-hover="background:#fdf6e6"><span aria-hidden="true" style="width:34px;height:34px;border-radius:10px;background:linear-gradient(140deg,#edcd85,#d0a854);color:#1e2c4f;display:grid;place-items:center;font-weight:800;font-size:.7rem;flex:none">kg</span><span><span style="display:block;font-size:.8rem;font-weight:700;color:#1e2c4f">Add from the sport's weight classes</span><span style="display:block;font-size:.7rem;color:#6b7689">Pick them off the federation's own table</span></span></button>
+                          </sc-if>
+                          <sc-if value="{{ dm.canImport }}" hint-placeholder-val="{{ false }}">
+                            <button type="button" role="menuitem" onClick="{{ dm.onAddImport }}" style="width:100%;display:flex;gap:12px;align-items:center;padding:10px;border:0;border-radius:10px;background:transparent;text-align:left;font-family:inherit;cursor:pointer" style-hover="background:#fdf6e6"><span aria-hidden="true" style="width:34px;height:34px;border-radius:10px;background:#e8f5ec;color:#2f7a4f;display:grid;place-items:center;font-weight:800;font-size:.66rem;flex:none">XLS</span><span><span style="display:block;font-size:.8rem;font-weight:700;color:#1e2c4f">Import from a spreadsheet</span><span style="display:block;font-size:.7rem;color:#6b7689">Your own weight classes, from the Excel template</span></span></button>
+                          </sc-if>
+                          <button type="button" role="menuitem" onClick="{{ dm.onAddHeading }}" style="width:100%;display:flex;gap:12px;align-items:center;padding:10px;border:0;border-radius:10px;background:transparent;text-align:left;font-family:inherit;cursor:pointer" style-hover="background:#fdf6e6"><span aria-hidden="true" style="width:34px;height:34px;border-radius:10px;background:#eef1f7;color:#1e2c4f;display:grid;place-items:center;font-weight:800;flex:none">H</span><span><span style="display:block;font-size:.8rem;font-weight:700;color:#1e2c4f">Add heading</span><span style="display:block;font-size:.7rem;color:#6b7689">A title over the divisions under it</span></span></button>
+                        </div>
+                      </sc-if>
+                    </div>
+                  </div>
+                </div>
+                <sc-if value="{{ dm.empty }}" hint-placeholder-val="{{ false }}">
+                  <div style="padding:28px 16px;text-align:center;border-radius:13px;background:#f7f8fb;border:1px dashed #d5dae3"><div style="font-size:.95rem;font-weight:700;color:#1e2c4f">No divisions yet</div><div style="font-size:.8rem;color:#6b7689;margin-top:6px">Use + Add to create one by hand, add them from the sport's weight classes, or add a heading.</div></div>
+                </sc-if>
+                <sc-if value="{{ dm.flt.inTable }}" hint-placeholder-val="{{ true }}">
+                  <div role="group" aria-label="Filter divisions" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 14px;padding:10px 12px;border-radius:13px;background:#f7f8fb;border:1px solid #eef1f6">
+                    <span style="font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#8a93a6;margin-inline-end:2px">Gender</span>
+                    <sc-for list="{{ dm.flt.genders }}" as="g" hint-placeholder-count="3"><button type="button" onClick="{{ g.onClick }}" aria-pressed="{{ g.pressed }}" style="{{ g.style }}">{{ g.label }}</button></sc-for>
+                    <span aria-hidden="true" style="width:1px;height:22px;background:#d5dae3;margin:0 6px"></span>
+                    <span style="font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#8a93a6;margin-inline-end:2px">Status</span>
+                    <sc-for list="{{ dm.flt.statuses }}" as="c" hint-placeholder-count="5"><button type="button" onClick="{{ c.onClick }}" aria-pressed="{{ c.pressed }}" style="{{ c.style }}">{{ c.label }}</button></sc-for>
+                    <span aria-hidden="true" style="width:1px;height:22px;background:#d5dae3;margin:0 6px"></span>
+                    <span style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap">
+                      <span style="font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#8a93a6;margin-inline-end:2px">Age</span>
+                      <input inputmode="decimal" autocomplete="off" aria-label="Minimum age" placeholder="Min" value="{{ dm.flt.aMin }}" onChange="{{ dm.flt.onAMin }}" style="{{ dm.flt.aMinStyle }}">
+                      <span aria-hidden="true" style="color:#97a1b4;font-size:.74rem">–</span>
+                      <input inputmode="decimal" autocomplete="off" aria-label="Maximum age" placeholder="Max" value="{{ dm.flt.aMax }}" onChange="{{ dm.flt.onAMax }}" style="{{ dm.flt.aMaxStyle }}">
+                    </span>
+                    <span aria-hidden="true" style="width:1px;height:22px;background:#d5dae3;margin:0 6px"></span>
+                    <span style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap">
+                      <span style="font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#8a93a6;margin-inline-end:2px">Weight</span>
+                      <input inputmode="decimal" autocomplete="off" aria-label="Minimum weight in kg" placeholder="Min" value="{{ dm.flt.wMin }}" onChange="{{ dm.flt.onWMin }}" style="{{ dm.flt.wMinStyle }}">
+                      <span aria-hidden="true" style="color:#97a1b4;font-size:.74rem">–</span>
+                      <input inputmode="decimal" autocomplete="off" aria-label="Maximum weight in kg" placeholder="Max" value="{{ dm.flt.wMax }}" onChange="{{ dm.flt.onWMax }}" style="{{ dm.flt.wMaxStyle }}">
+                      <span style="font-size:.7rem;color:#97a1b4">kg</span>
+                    </span>
+                    <span style="margin-inline-start:auto;display:inline-flex;align-items:center;gap:10px">
+                      <span style="font-size:.74rem;color:#6b7689;font-variant-numeric:tabular-nums">{{ dm.flt.count }}</span>
+                      <sc-if value="{{ dm.flt.any }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ dm.flt.onReset }}" style="height:32px;padding:0 12px;border:0;border-radius:999px;background:none;font-family:inherit;font-size:.74rem;font-weight:700;color:#8a6d20;cursor:pointer;text-decoration:underline;text-underline-offset:3px">Reset</button></sc-if>
+                    </span>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ dm.flt.noMatch }}" hint-placeholder-val="{{ false }}">
+                  <div style="font-size:.84rem;color:#6b7689;padding:6px 2px">No division matches this filter.</div>
+                </sc-if>
+                <sc-if value="{{ dm.hasTableRows }}" hint-placeholder-val="{{ true }}">
+                <div style="overflow-x:auto">
+                  <div style="display:grid;grid-template-columns:28px minmax(240px,2fr) minmax(84px,.6fr) minmax(80px,.6fr) minmax(110px,.8fr) minmax(150px,1fr) minmax(130px,.9fr) 76px;gap:16px;align-items:center;min-width:1080px;padding:0 0 8px;border-bottom:1px solid #eef1f6">
+                    <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">#</div>
+                    <div aria-sort="{{ dm.th.division.ariaSort }}"><button type="button" onClick="{{ dm.th.division.onClick }}" style="{{ dm.th.division.style }}"><span>Division</span><span>{{ dm.th.division.arrow }}</span></button></div>
+                    <div aria-sort="{{ dm.th.gender.ariaSort }}"><button type="button" onClick="{{ dm.th.gender.onClick }}" style="{{ dm.th.gender.style }}"><span>Gender</span><span>{{ dm.th.gender.arrow }}</span></button></div>
+                    <div aria-sort="{{ dm.th.age.ariaSort }}"><button type="button" onClick="{{ dm.th.age.onClick }}" style="{{ dm.th.age.style }}"><span>Age</span><span>{{ dm.th.age.arrow }}</span></button></div>
+                    <div aria-sort="{{ dm.th.weight.ariaSort }}"><button type="button" onClick="{{ dm.th.weight.onClick }}" style="{{ dm.th.weight.style }}"><span>Weight</span><span>{{ dm.th.weight.arrow }}</span></button></div>
+                    <div aria-sort="{{ dm.th.entrants.ariaSort }}"><button type="button" onClick="{{ dm.th.entrants.onClick }}" style="{{ dm.th.entrants.style }}"><span>Entries</span><span>{{ dm.th.entrants.arrow }}</span></button></div>
+                    <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">Status</div>
+                    <div></div>
+                  </div>
+                  <sc-for list="{{ dm.tableRows }}" as="d" hint-placeholder-count="6">
+                    <div role="button" onClick="{{ d.onOpen }}" title="Open this division's draw" style="display:grid;grid-template-columns:28px minmax(240px,2fr) minmax(84px,.6fr) minmax(80px,.6fr) minmax(110px,.8fr) minmax(150px,1fr) minmax(130px,.9fr) 76px;gap:16px;align-items:center;min-width:1080px;padding:12px 0;border-bottom:1px solid #eef1f6;cursor:pointer" style-hover="background:#fbfaf6">
+                      <div style="font-size:.76rem;font-weight:600;color:#8a6d20;font-variant-numeric:tabular-nums">{{ d.rank }}</div>
+                      <div style="min-width:0">
+                        <div style="font-size:.86rem;font-weight:600;color:#1e2c4f;overflow-wrap:anywhere">{{ d.a }}<span style="{{ d.gStyle }}">{{ d.g }}</span>{{ d.b }}</div>
+                        <div style="font-size:.72rem;color:#6b7689;margin-top:2px;overflow-wrap:anywhere">{{ d.detail }}</div>
+                      </div>
+                      <div style="{{ d.genderStyle }}">{{ d.gender }}</div>
+                      <div style="font-size:.76rem;color:#1e2c4f;font-variant-numeric:tabular-nums;white-space:nowrap">{{ d.ageNum }}</div>
+                      <div style="font-size:.76rem;color:#1e2c4f;font-variant-numeric:tabular-nums;white-space:nowrap">{{ d.weightNum }}</div>
+                      <div style="display:flex;align-items:center;gap:10px"><span style="font-size:.86rem;font-weight:700;color:#1e2c4f;font-variant-numeric:tabular-nums;min-width:20px">{{ d.count }}</span><div style="flex:1;height:6px;border-radius:3px;background:#eef1f6;overflow:hidden"><div style="{{ d.bar }}"></div></div></div>
+                      <div><span style="{{ d.pillStyle }}">{{ d.pill }}</span></div>
+                      <div style="display:flex;justify-content:flex-end"><button type="button" onClick="{{ d.onEdit }}" title="Edit division" style="height:30px;padding:0 10px;border:1px solid #d5dae3;border-radius:9px;background:#fff;color:#1e2c4f;font-family:inherit;font-size:.72rem;font-weight:600;cursor:pointer" style-hover="border-color:#caa14f">✎ Edit</button></div>
+                    </div>
+                  </sc-for>
+                </div>
+                </sc-if>
+              </div>
+            </sc-if>
+
+          </section>
+
+          <sc-if value="{{ dm.ed.open }}" hint-placeholder-val="{{ false }}">
+            <div style="position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(15,21,36,.45)">
+              <div role="dialog" aria-modal="true" aria-label="{{ dm.ed.title }}" onClick="{{ dm.stop }}" style="width:min(760px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 30px 80px rgba(15,21,36,.35);animation:rise .25s cubic-bezier(.22,.68,.35,1) both">
+                <div style="flex:none;padding:18px 20px 14px;background:linear-gradient(150deg,#1e2c4f,#2b3d68);color:#fff;position:relative;overflow:hidden">
+                  <div style="position:absolute;right:-40px;top:-50px;width:150px;height:150px;border-radius:50%;background:rgba(237,205,133,.12)"></div>
+                  <div style="position:relative;display:flex;align-items:flex-start;gap:12px">
+                    <div style="min-width:0;flex:1">
+                      <div style="font-size:.66rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#edcd85">{{ dm.ed.sub }}</div>
+                      <div style="font-size:1.15rem;font-weight:800;margin-top:4px;line-height:1.2;overflow-wrap:anywhere">{{ dm.ed.title }}</div>
+                    </div>
+                    <sc-if value="{{ dm.ed.hasDraw }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ dm.ed.onDraw }}" title="Open this division's draw" style="height:36px;padding:0 12px;border-radius:10px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;font-family:inherit;font-size:.74rem;font-weight:600;cursor:pointer">Open draw</button></sc-if>
+                    <button type="button" onClick="{{ dm.ed.onClose }}" aria-label="Close" style="width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;font-size:1rem;cursor:pointer;flex:none">✕</button>
+                  </div>
+                  <sc-if value="{{ dm.ed.isDivision }}" hint-placeholder-val="{{ true }}">
+                    <div style="position:relative;display:flex;gap:6px;margin-top:14px">
+                      <button type="button" onClick="{{ dm.ed.onTabSettings }}" style="{{ dm.ed.tabSettingsStyle }}">Settings</button>
+                      <sc-if value="{{ dm.ed.canPeople }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ dm.ed.onTabPeople }}" style="{{ dm.ed.tabPeopleStyle }}">People · {{ dm.ed.inCount }}</button></sc-if>
+                    </div>
+                  </sc-if>
+                </div>
+
+                <sc-if value="{{ dm.ed.settings }}" hint-placeholder-val="{{ true }}">
+                  <div style="flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:18px">
+                    <div>
+                      <label for="dm-name" style="display:block;font-size:.72rem;font-weight:600;color:#6b7689;margin-bottom:5px">{{ dm.ed.nameLabel }}</label>
+                      <input id="dm-name" type="text" maxlength="80" autocomplete="off" value="{{ dm.ed.name }}" onChange="{{ dm.ed.onName }}" placeholder="{{ dm.ed.namePh }}" style="width:100%;height:44px;border:1px solid #d5dae3;border-radius:12px;padding:0 14px;font-family:inherit;font-size:.86rem;color:#1e2c4f;outline:none;box-sizing:border-box" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+                      <sc-if value="{{ dm.ed.hasNameErr }}" hint-placeholder-val="{{ false }}"><div style="margin-top:5px;font-size:.74rem;color:#b4483c">{{ dm.ed.nameErr }}</div></sc-if>
+                      <sc-if value="{{ dm.ed.autoName }}" hint-placeholder-val="{{ false }}"><div style="margin-top:5px;font-size:.7rem;color:#8a6d20">Named from its settings — type to name it yourself</div></sc-if>
+                      <sc-if value="{{ dm.ed.isHeading }}" hint-placeholder-val="{{ false }}"><div style="margin-top:8px;font-size:.74rem;color:#6b7689;line-height:1.5">A title in this list — it groups the divisions under it. It holds nobody, is never drawn, and takes no weight or age range.</div></sc-if>
+                    </div>
+
+                    <sc-if value="{{ dm.ed.isDivision }}" hint-placeholder-val="{{ true }}">
+                      <div style="display:flex;flex-direction:column;gap:18px">
+                        <div>
+                          <div style="font-size:.82rem;font-weight:700;color:#1e2c4f;margin-bottom:10px">Who it's for</div>
+                          <div style="font-size:.72rem;font-weight:600;color:#6b7689;margin-bottom:5px">Gender</div>
+                          <div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ dm.ed.genders }}" as="g" hint-placeholder-count="3"><button type="button" onClick="{{ g.onClick }}" style="{{ g.style }}">{{ g.label }}</button></sc-for></div>
+                          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:12px">
+                            <div>
+                              <div style="font-size:.72rem;font-weight:600;color:#6b7689;margin-bottom:5px">Age</div>
+                              <div style="display:flex;gap:8px;align-items:center"><input type="number" min="2" max="100" inputmode="numeric" autocomplete="off" placeholder="From" value="{{ dm.ed.minAge }}" onChange="{{ dm.ed.onMinAge }}" style="width:100%;height:42px;border:1px solid #d5dae3;border-radius:11px;padding:0 12px;font-family:inherit;font-size:.84rem;box-sizing:border-box"><span style="color:#97a1b4">–</span><input type="number" min="2" max="100" inputmode="numeric" autocomplete="off" placeholder="To" value="{{ dm.ed.maxAge }}" onChange="{{ dm.ed.onMaxAge }}" style="width:100%;height:42px;border:1px solid #d5dae3;border-radius:11px;padding:0 12px;font-family:inherit;font-size:.84rem;box-sizing:border-box"></div>
+                              <sc-if value="{{ dm.ed.hasAgeErr }}" hint-placeholder-val="{{ false }}"><div style="margin-top:5px;font-size:.74rem;color:#b4483c">{{ dm.ed.ageErr }}</div></sc-if>
+                            </div>
+                            <sc-if value="{{ dm.ed.asksWeight }}" hint-placeholder-val="{{ true }}">
+                              <div>
+                                <div style="font-size:.72rem;font-weight:600;color:#6b7689;margin-bottom:5px">Weight (kg)</div>
+                                <div style="display:flex;gap:8px;align-items:center"><input type="number" min="10" max="300" step="0.1" inputmode="decimal" autocomplete="off" placeholder="From" value="{{ dm.ed.minW }}" onChange="{{ dm.ed.onMinW }}" style="width:100%;height:42px;border:1px solid #d5dae3;border-radius:11px;padding:0 12px;font-family:inherit;font-size:.84rem;box-sizing:border-box"><span style="color:#97a1b4">–</span><input type="number" min="10" max="300" step="0.1" inputmode="decimal" autocomplete="off" placeholder="To" value="{{ dm.ed.maxW }}" onChange="{{ dm.ed.onMaxW }}" style="width:100%;height:42px;border:1px solid #d5dae3;border-radius:11px;padding:0 12px;font-family:inherit;font-size:.84rem;box-sizing:border-box"></div>
+                                <sc-if value="{{ dm.ed.hasWErr }}" hint-placeholder-val="{{ false }}"><div style="margin-top:5px;font-size:.74rem;color:#b4483c">{{ dm.ed.wErr }}</div></sc-if>
+                              </div>
+                            </sc-if>
+                          </div>
+                        </div>
+
+                        <sc-if value="{{ dm.ed.hasStreams }}" hint-placeholder-val="{{ false }}">
+                          <div>
+                            <div style="font-size:.82rem;font-weight:700;color:#1e2c4f;margin-bottom:4px">Part of the event</div>
+                            <div style="font-size:.72rem;color:#6b7689;margin-bottom:8px">People who did not enter this part are not offered for it.</div>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ dm.ed.streamChips }}" as="c" hint-placeholder-count="2"><button type="button" onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.label }}</button></sc-for></div>
+                          </div>
+                        </sc-if>
+
+                        <sc-if value="{{ dm.ed.asksRank }}" hint-placeholder-val="{{ false }}">
+                          <div>
+                            <div style="font-size:.82rem;font-weight:700;color:#1e2c4f;margin-bottom:8px">Belts</div>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap">
+                              <button type="button" onClick="{{ dm.ed.onAnyBelt }}" style="{{ dm.ed.anyBeltStyle }}">Any belt</button>
+                              <sc-for list="{{ dm.ed.beltChips }}" as="b" hint-placeholder-count="6"><button type="button" onClick="{{ b.onClick }}" title="{{ b.label }}" style="{{ b.style }}"><span style="{{ b.swatch }}"></span>{{ b.label }}</button></sc-for>
+                            </div>
+                          </div>
+                        </sc-if>
+
+                        <div>
+                          <div style="font-size:.82rem;font-weight:700;color:#1e2c4f;margin-bottom:8px">How it runs</div>
+                          <div style="display:flex;gap:10px;flex-wrap:wrap">
+                            <sc-for list="{{ dm.ed.formats }}" as="fm" hint-placeholder-count="2"><button type="button" onClick="{{ fm.onClick }}" style="{{ fm.style }}"><span style="display:block;font-size:.84rem;font-weight:800;color:#1e2c4f">{{ fm.label }}</span><span style="display:block;font-size:.72rem;color:#6b7689;margin-top:2px;line-height:1.4">{{ fm.hint }}</span></button></sc-for>
+                          </div>
+                          <div style="margin-top:12px;max-width:240px">
+                            <div style="font-size:.72rem;font-weight:600;color:#6b7689;margin-bottom:5px">Capacity</div>
+                            <input type="number" min="2" inputmode="numeric" autocomplete="off" placeholder="No cap" value="{{ dm.ed.capacity }}" onChange="{{ dm.ed.onCapacity }}" style="width:100%;height:42px;border:1px solid #d5dae3;border-radius:11px;padding:0 12px;font-family:inherit;font-size:.84rem;box-sizing:border-box">
+                            <div style="margin-top:4px;font-size:.68rem;color:#6b7689">Leave blank for no cap.</div>
+                            <sc-if value="{{ dm.ed.hasCapErr }}" hint-placeholder-val="{{ false }}"><div style="margin-top:4px;font-size:.74rem;color:#b4483c">{{ dm.ed.capErr }}</div></sc-if>
+                          </div>
+                        </div>
+
+                        <sc-if value="{{ dm.ed.hasDays }}" hint-placeholder-val="{{ false }}">
+                          <div>
+                            <div style="font-size:.82rem;font-weight:700;color:#1e2c4f;margin-bottom:8px">Which day each phase runs</div>
+                            <sc-for list="{{ dm.ed.phaseRows }}" as="ph" hint-placeholder-count="3">
+                              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px"><span style="min-width:110px;font-size:.78rem;color:#1e2c4f">{{ ph.label }}</span><sc-for list="{{ ph.days }}" as="dy" hint-placeholder-count="2"><button type="button" onClick="{{ dy.onClick }}" style="{{ dy.style }}">{{ dy.label }}</button></sc-for></div>
+                            </sc-for>
+                          </div>
+                        </sc-if>
+
+                        <sc-if value="{{ dm.ed.showFits }}" hint-placeholder-val="{{ false }}">
+                          <div style="padding:12px 14px;border-radius:12px;background:#f6f7fa;border:1px solid #e3e7ee">
+                            <div style="font-size:.84rem;font-weight:700;color:#1e2c4f">{{ dm.ed.fitsLine }}</div>
+                            <sc-if value="{{ dm.ed.hasFitsSub }}" hint-placeholder-val="{{ false }}"><div style="font-size:.72rem;color:#6b7689;margin-top:2px">{{ dm.ed.fitsSub }}</div></sc-if>
+                            <div style="display:flex;margin-top:8px">
+                              <sc-for list="{{ dm.ed.faces }}" as="fc" hint-placeholder-count="0">
+                                <span style="width:28px;height:37px;border-radius:7px;margin-right:-6px;border:2px solid #fff;background:#dfe4ec;overflow:hidden;display:grid;place-items:center;font-size:.58rem;font-weight:700;color:#6b7689">
+                                  <sc-if value="{{ fc.hasPhoto }}" hint-placeholder-val="{{ false }}"><img src="{{ fc.photo }}" alt="" style="width:100%;height:100%;object-fit:cover"></sc-if>
+                                  <sc-if value="{{ fc.noPhoto }}" hint-placeholder-val="{{ true }}">{{ fc.initials }}</sc-if>
+                                </span>
+                              </sc-for>
+                            </div>
+                          </div>
+                        </sc-if>
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{ dm.ed.delAsk }}" hint-placeholder-val="{{ false }}">
+                      <div role="alert" style="padding:12px 14px;border-radius:12px;background:#fcefed;border:1px solid #f0c9c3;font-size:.8rem;color:#7a2a22;line-height:1.5">{{ dm.ed.delText }}
+                        <div style="display:flex;gap:8px;margin-top:10px"><button type="button" onClick="{{ dm.ed.onDelete }}" style="height:36px;padding:0 14px;border:0;border-radius:10px;background:#c0392b;color:#fff;font-family:inherit;font-size:.78rem;font-weight:700;cursor:pointer">Delete</button><button type="button" onClick="{{ dm.ed.onDelCancel }}" style="height:36px;padding:0 14px;border:1px solid #d5dae3;border-radius:10px;background:#fff;color:#1e2c4f;font-family:inherit;font-size:.78rem;font-weight:600;cursor:pointer">Keep it</button></div>
+                      </div>
+                    </sc-if>
+                  </div>
+                  <div style="flex:none;display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:12px 20px;border-top:1px solid #eef1f6;background:#fff">
+                    <sc-if value="{{ dm.ed.isEdit }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ dm.ed.onDelete }}" style="height:40px;padding:0 14px;border:1px solid #f0c9c3;border-radius:11px;background:#fff;color:#c0392b;font-family:inherit;font-size:.78rem;font-weight:600;cursor:pointer">{{ dm.ed.delLabel }}</button></sc-if>
+                    <sc-if value="{{ dm.ed.canDuplicate }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ dm.ed.onDuplicate }}" style="height:40px;padding:0 14px;border:1px solid #d5dae3;border-radius:11px;background:#fff;color:#1e2c4f;font-family:inherit;font-size:.78rem;font-weight:600;cursor:pointer">Duplicate</button></sc-if>
+                    <button type="button" onClick="{{ dm.ed.onSave }}" style="margin-left:auto;height:42px;padding:0 22px;border:0;border-radius:12px;font-family:inherit;font-size:.84rem;font-weight:700;color:#1e2c4f;background:linear-gradient(100deg,#edcd85,#d0a854);cursor:pointer;box-shadow:0 6px 16px rgba(202,161,79,.3)">{{ dm.ed.saveLabel }}</button>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{ dm.ed.people }}" hint-placeholder-val="{{ false }}">
+                  <div style="flex:1;overflow-y:auto;padding:16px 20px">
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><sc-for list="{{ dm.ed.ptabs }}" as="t" hint-placeholder-count="3"><button type="button" onClick="{{ t.onClick }}" style="{{ t.style }}">{{ t.label }}</button></sc-for></div>
+                    <sc-if value="{{ dm.ed.rosterLoading }}" hint-placeholder-val="{{ false }}"><div style="padding:26px;text-align:center;color:#6b7689;font-size:.82rem">Loading…</div></sc-if>
+                    <sc-if value="{{ dm.ed.noPeople }}" hint-placeholder-val="{{ false }}"><div style="padding:26px;text-align:center;color:#6b7689;font-size:.82rem">{{ dm.ed.noPeopleText }}</div></sc-if>
+                    <div style="display:flex;flex-direction:column;gap:8px">
+                      <sc-for list="{{ dm.ed.peopleRows }}" as="p" hint-placeholder-count="4">
+                        <div role="button" tabIndex="0" onClick="{{ p.onClick }}" style="{{ p.rowStyle }}">
+                          <span style="{{ p.tickStyle }}">{{ p.tick }}</span>
+                          <span style="{{ p.avatarStyle }}"><sc-if value="{{ p.hasPhoto }}" hint-placeholder-val="{{ false }}"><img src="{{ p.photo }}" alt="" style="width:100%;height:100%;object-fit:cover"></sc-if><sc-if value="{{ p.noPhoto }}" hint-placeholder-val="{{ true }}">{{ p.initials }}</sc-if></span>
+                          <div style="flex:1;min-width:0">
+                            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:.84rem;font-weight:600;color:#1e2c4f;overflow-wrap:anywhere">{{ p.name }}</span><sc-if value="{{ p.hasBadge }}" hint-placeholder-val="{{ false }}"><span style="{{ p.badgeStyle }}">{{ p.badge }}</span></sc-if></div>
+                            <div style="font-size:.72rem;color:#6b7689">{{ p.meta }}</div>
+                            <sc-if value="{{ p.hasWhere }}" hint-placeholder-val="{{ false }}"><div style="font-size:.7rem;color:#8a6d20">{{ p.where }}</div></sc-if>
+                            <sc-if value="{{ p.hasActs }}" hint-placeholder-val="{{ false }}"><div style="font-size:.68rem;color:#97a1b4">{{ p.acts }}</div></sc-if>
+                          </div>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+                  <div style="flex:none;display:flex;justify-content:flex-end;padding:12px 20px;border-top:1px solid #eef1f6">
+                    <button type="button" onClick="{{ dm.ed.onSavePeople }}" style="height:42px;padding:0 22px;border:0;border-radius:12px;font-family:inherit;font-size:.84rem;font-weight:700;color:#1e2c4f;background:linear-gradient(100deg,#edcd85,#d0a854);cursor:pointer">{{ dm.ed.peopleSaveLabel }}</button>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ dm.pr.open }}" hint-placeholder-val="{{ false }}">
+            <div style="position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(15,21,36,.45)" onClick="{{ dm.pr.onClose }}">
+              <div role="dialog" aria-modal="true" aria-label="Weight classes" onClick="{{ dm.stop }}" style="width:min(760px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 30px 80px rgba(15,21,36,.35);animation:rise .25s cubic-bezier(.22,.68,.35,1) both">
+                <div style="flex:none;padding:18px 20px 14px;background:linear-gradient(150deg,#1e2c4f,#2b3d68);color:#fff;display:flex;align-items:flex-start;gap:12px">
+                  <div style="flex:1;min-width:0"><div style="font-size:.66rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#edcd85">Add from the sport's weight classes</div><div style="font-size:1.15rem;font-weight:800;margin-top:4px">Weight classes</div><div style="font-size:.74rem;color:rgba(255,255,255,.8);margin-top:2px">The federation's own table — pick the ones you are running</div></div>
+                  <button type="button" onClick="{{ dm.pr.onClose }}" aria-label="Close" style="width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;font-size:1rem;cursor:pointer;flex:none">✕</button>
+                </div>
+                <div style="flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:16px">
+                  <sc-if value="{{ dm.pr.hasRulesets }}" hint-placeholder-val="{{ false }}"><div><div style="font-size:.72rem;font-weight:600;color:#6b7689;margin-bottom:6px">The same athlete is a different class with and without a gi</div><div style="display:flex;gap:6px"><sc-for list="{{ dm.pr.rulesets }}" as="r" hint-placeholder-count="2"><button type="button" onClick="{{ r.onClick }}" style="{{ r.style }}">{{ r.label }}</button></sc-for></div></div></sc-if>
+                  <div><div style="font-size:.82rem;font-weight:700;color:#1e2c4f;margin-bottom:8px">Age category</div><div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ dm.pr.bands }}" as="b" hint-placeholder-count="5"><button type="button" onClick="{{ b.onClick }}" style="{{ b.style }}">{{ b.label }}</button></sc-for></div></div>
+                  <div><div style="font-size:.82rem;font-weight:700;color:#1e2c4f;margin-bottom:8px">Gender</div><div style="display:flex;gap:6px"><sc-for list="{{ dm.pr.genders }}" as="g" hint-placeholder-count="2"><button type="button" onClick="{{ g.onClick }}" style="{{ g.style }}">{{ g.label }}</button></sc-for></div></div>
+                  <div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><span style="font-size:.82rem;font-weight:700;color:#1e2c4f">Weight classes</span><button type="button" onClick="{{ dm.pr.onAll }}" style="height:30px;padding:0 10px;border:1px solid #d5dae3;border-radius:9px;background:#fff;color:#1e2c4f;font-family:inherit;font-size:.72rem;font-weight:600;cursor:pointer">{{ dm.pr.allLabel }}</button></div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ dm.pr.classes }}" as="c" hint-placeholder-count="8"><button type="button" onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.label }}</button></sc-for></div>
+                  </div>
+                  <sc-if value="{{ dm.pr.asksRank }}" hint-placeholder-val="{{ false }}">
+                    <div><div style="font-size:.82rem;font-weight:700;color:#1e2c4f;margin-bottom:8px">Belts</div><div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" onClick="{{ dm.pr.onAllBelts }}" style="{{ dm.pr.allBeltsStyle }}">All</button><sc-for list="{{ dm.pr.belts }}" as="b" hint-placeholder-count="6"><button type="button" onClick="{{ b.onClick }}" style="{{ b.style }}"><span style="{{ b.swatch }}"></span>{{ b.label }}</button></sc-for></div></div>
+                  </sc-if>
+                  <div><div style="font-size:.82rem;font-weight:700;color:#1e2c4f;margin-bottom:8px">How they run</div><div style="display:flex;gap:6px"><sc-for list="{{ dm.pr.formats }}" as="f" hint-placeholder-count="2"><button type="button" onClick="{{ f.onClick }}" style="{{ f.style }}">{{ f.label }}</button></sc-for></div></div>
+                </div>
+                <div style="flex:none;display:flex;justify-content:flex-end;padding:12px 20px;border-top:1px solid #eef1f6"><button type="button" onClick="{{ dm.pr.onAdd }}" style="{{ dm.pr.addStyle }}">{{ dm.pr.addLabel }}</button></div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ dm.im.open }}" hint-placeholder-val="{{ false }}">
+            <div style="position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(15,21,36,.45)" onClick="{{ dm.im.onClose }}">
+              <div role="dialog" aria-modal="true" aria-label="Import divisions" onClick="{{ dm.stop }}" style="width:min(820px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 30px 80px rgba(15,21,36,.35);animation:rise .25s cubic-bezier(.22,.68,.35,1) both">
+                <div style="flex:none;padding:18px 20px 16px;background:linear-gradient(150deg,#1e2c4f,#2b3d68);color:#fff;position:relative;overflow:hidden">
+                  <div style="position:absolute;right:-40px;top:-50px;width:150px;height:150px;border-radius:50%;background:rgba(237,205,133,.12)"></div>
+                  <div style="position:relative;display:flex;align-items:flex-start;gap:12px">
+                    <span aria-hidden="true" style="width:44px;height:44px;border-radius:14px;background:rgba(255,255,255,.14);display:grid;place-items:center;font-size:.78rem;font-weight:800;flex:none;color:#edcd85">XLS</span>
+                    <div style="min-width:0;flex:1">
+                      <div style="font-size:.66rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#edcd85">Import from a spreadsheet</div>
+                      <div style="font-size:1.15rem;font-weight:800;margin-top:4px;line-height:1.2">Your own weight classes</div>
+                      <div style="font-size:.72rem;color:rgba(255,255,255,.8);margin-top:3px;line-height:1.45">Gender, ages and weights — one division per row. A row with no name becomes Group A, Group B, … Nothing is created until you confirm.</div>
+                    </div>
+                    <button type="button" onClick="{{ dm.im.onClose }}" aria-label="Close" style="width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;font-size:1rem;cursor:pointer;flex:none">✕</button>
+                  </div>
+                </div>
+                <div style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px">
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                    <a href="{{ dm.im.templateUrl }}" style="height:40px;padding:0 14px;border:1px solid #d5dae3;border-radius:11px;background:#fff;color:#1e2c4f;font-size:.78rem;font-weight:700;display:inline-flex;align-items:center;gap:8px;text-decoration:none" style-hover="border-color:#caa14f">⤓ Download the template</a>
+                    <label style="height:40px;padding:0 16px;border:0;border-radius:11px;color:#1e2c4f;background:linear-gradient(100deg,#edcd85,#d0a854);font-size:.78rem;font-weight:700;display:inline-flex;align-items:center;gap:8px;cursor:pointer">⤒ {{ dm.im.pickLabel }}<input type="file" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" onChange="{{ dm.im.onFile }}" style="display:none"></label>
+                    <span style="font-size:.74rem;color:#6b7689;overflow-wrap:anywhere">{{ dm.im.fileName }}</span>
+                  </div>
+                  <sc-if value="{{ dm.im.reading }}" hint-placeholder-val="{{ false }}"><div style="padding:24px;text-align:center;color:#6b7689;font-size:.82rem">Reading the file…</div></sc-if>
+                  <sc-if value="{{ dm.im.hasErr }}" hint-placeholder-val="{{ false }}"><div role="alert" style="padding:10px 14px;border-radius:12px;background:#fcefed;border:1px solid #f0c9c3;color:#b4483c;font-size:.8rem">{{ dm.im.err }}</div></sc-if>
+                  <sc-if value="{{ dm.im.noRows }}" hint-placeholder-val="{{ false }}"><div style="padding:22px 16px;text-align:center;border-radius:13px;background:#f7f8fb;border:1px dashed #d5dae3;font-size:.8rem;color:#6b7689">Columns: Name (optional) · Gender (male, female or mix) · Min Age · Max Age · Min Weight · Max Weight · Capacity (optional)</div></sc-if>
+                  <sc-if value="{{ dm.im.hasRows }}" hint-placeholder-val="{{ false }}">
+                    <div style="font-size:.8rem;font-weight:700;color:#1e2c4f">{{ dm.im.summary }}</div>
+                    <sc-if value="{{ dm.im.hasIgnored }}" hint-placeholder-val="{{ false }}"><div style="font-size:.72rem;color:#8a6d20">{{ dm.im.ignoredLine }}</div></sc-if>
+                    <div style="overflow-x:auto;border:1px solid #eef1f6;border-radius:12px">
+                      <table style="width:100%;border-collapse:collapse;font-size:.78rem">
+                        <thead><tr style="background:#f7f8fb;color:#6b7689;text-align:left"><th style="padding:8px 10px;font-weight:600">Line</th><th style="padding:8px 10px;font-weight:600">Name</th><th style="padding:8px 10px;font-weight:600">Gender</th><th style="padding:8px 10px;font-weight:600">Ages</th><th style="padding:8px 10px;font-weight:600">Weights</th><th style="padding:8px 10px;font-weight:600"></th></tr></thead>
+                        <tbody>
+                          <sc-for list="{{ dm.im.rows }}" as="r" hint-placeholder-count="4">
+                            <tr style="border-top:1px solid #eef1f6">
+                              <td style="padding:8px 10px;color:#6b7689">{{ r.line }}</td>
+                              <td style="padding:8px 10px"><span style="{{ r.ink }}">{{ r.name }}</span><sc-if value="{{ r.hasErrors }}" hint-placeholder-val="{{ false }}"><div style="font-size:.7rem;color:#b4483c;margin-top:2px">{{ r.errors }}</div></sc-if></td>
+                              <td style="padding:8px 10px"><span style="{{ r.ink }}">{{ r.gender }}</span></td>
+                              <td style="padding:8px 10px;white-space:nowrap"><span style="{{ r.ink }}">{{ r.ages }}</span></td>
+                              <td style="padding:8px 10px;white-space:nowrap"><span style="{{ r.ink }}">{{ r.weights }}</span></td>
+                              <td style="padding:8px 10px;text-align:right"><span style="{{ r.tagStyle }}">{{ r.tag }}</span></td>
+                            </tr>
+                          </sc-for>
+                        </tbody>
+                      </table>
+                    </div>
+                  </sc-if>
+                </div>
+                <div style="flex:none;display:flex;justify-content:flex-end;gap:8px;padding:12px 20px;border-top:1px solid #eef1f6">
+                  <button type="button" onClick="{{ dm.im.onClose }}" style="height:44px;padding:0 14px;border:1px solid #d5dae3;border-radius:12px;background:#fff;color:#1e2c4f;font-family:inherit;font-size:.78rem;font-weight:600;cursor:pointer">Cancel</button>
+                  <sc-if value="{{ dm.im.hasRows }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ dm.im.onGo }}" style="{{ dm.im.goStyle }}">{{ dm.im.goLabel }}</button></sc-if>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ dm.ap.open }}" hint-placeholder-val="{{ false }}">
+            <div style="position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(15,21,36,.45)" onClick="{{ dm.ap.onClose }}">
+              <div role="dialog" aria-modal="true" aria-label="Which weight table" onClick="{{ dm.stop }}" style="width:min(640px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 30px 80px rgba(15,21,36,.35);animation:rise .25s cubic-bezier(.22,.68,.35,1) both">
+                <div style="flex:none;padding:18px 20px 16px;background:linear-gradient(150deg,#1e2c4f,#2b3d68);color:#fff;position:relative;overflow:hidden">
+                  <div style="position:absolute;right:-40px;top:-50px;width:150px;height:150px;border-radius:50%;background:rgba(237,205,133,.12)"></div>
+                  <div style="position:relative;display:flex;align-items:flex-start;gap:12px">
+                    <span aria-hidden="true" style="width:44px;height:44px;border-radius:14px;background:rgba(255,255,255,.14);display:grid;place-items:center;font-size:1rem;font-weight:800;flex:none;color:#edcd85">kg</span>
+                    <div style="min-width:0;flex:1">
+                      <div style="font-size:.66rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#edcd85">{{ dm.ap.eyebrow }} · {{ dm.ap.sport }}</div>
+                      <div style="font-size:1.15rem;font-weight:800;margin-top:4px;line-height:1.2">{{ dm.ap.title }}</div>
+                      <div style="font-size:.72rem;color:rgba(255,255,255,.8);margin-top:3px;line-height:1.45">{{ dm.ap.sub }}</div>
+                    </div>
+                    <button type="button" onClick="{{ dm.ap.onClose }}" aria-label="Close" style="width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;font-size:1rem;cursor:pointer;flex:none">✕</button>
+                  </div>
+                </div>
+                <div style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:10px">
+                  <sc-if value="{{ dm.ap.loading }}" hint-placeholder-val="{{ false }}"><div style="padding:24px;text-align:center;color:#6b7689;font-size:.82rem">Loading the weight tables…</div></sc-if>
+                  <sc-if value="{{ dm.ap.hasErr }}" hint-placeholder-val="{{ false }}"><div role="alert" style="padding:10px 14px;border-radius:12px;background:#fcefed;border:1px solid #f0c9c3;color:#b4483c;font-size:.8rem">{{ dm.ap.err }}</div></sc-if>
+                  <sc-for list="{{ dm.ap.cards }}" as="c" hint-placeholder-count="2">
+                    <button type="button" role="radio" onClick="{{ c.onClick }}" style="{{ c.style }}">
+                      <span style="{{ c.dotStyle }}">{{ c.dot }}</span>
+                      <span style="flex:1;min-width:0">
+                        <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:.92rem;font-weight:800;color:#1e2c4f">{{ c.label }}</span><sc-if value="{{ c.hasTag }}" hint-placeholder-val="{{ false }}"><span style="font-size:.6rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:#eef1f6;color:#4b5568">{{ c.tag }}</span></sc-if></span>
+                        <span style="display:block;font-size:.72rem;color:#4b5568;margin-top:4px;line-height:1.45">{{ c.groups }}</span>
+                        <span style="display:block;font-size:.68rem;color:#8a6d20;margin-top:2px;font-weight:600">{{ c.classes }}</span>
+                      </span>
+                    </button>
+                  </sc-for>
+                  <sc-if value="{{ dm.ap.hasNote }}" hint-placeholder-val="{{ false }}"><div style="padding:10px 12px;border-radius:12px;background:#fff6e6;border:1px solid #f1d9a8;font-size:.74rem;color:#7a4a0c">{{ dm.ap.note }}</div></sc-if>
+                </div>
+                <div style="flex:none;display:flex;justify-content:flex-end;gap:8px;padding:12px 20px;border-top:1px solid #eef1f6">
+                  <button type="button" onClick="{{ dm.ap.onClose }}" style="height:42px;padding:0 14px;border:1px solid #d5dae3;border-radius:12px;background:#fff;color:#1e2c4f;font-family:inherit;font-size:.78rem;font-weight:600;cursor:pointer">Cancel</button>
+                  <button type="button" onClick="{{ dm.ap.onGo }}" style="{{ dm.ap.goStyle }}">{{ dm.ap.goLabel }}</button>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ dm.rs.open }}" hint-placeholder-val="{{ false }}">
+            <div style="position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(15,21,36,.45)" onClick="{{ dm.rs.onClose }}">
+              <div role="alertdialog" aria-modal="true" aria-label="Clear the divisions" onClick="{{ dm.stop }}" style="width:min(520px,100%);background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 30px 80px rgba(15,21,36,.35);animation:rise .25s cubic-bezier(.22,.68,.35,1) both">
+                <div style="padding:18px 20px 16px;background:linear-gradient(150deg,#7a2a22,#c0392bb0);color:#fff;position:relative;overflow:hidden">
+                  <div style="position:absolute;right:-40px;top:-50px;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.1)"></div>
+                  <div style="position:relative;font-size:.66rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#ffd9d3">Start the divisions again</div>
+                  <div style="position:relative;font-size:1.15rem;font-weight:800;margin-top:4px">Clear all {{ dm.rs.count }} divisions?</div>
+                </div>
+                <div style="padding:16px 20px;font-size:.82rem;color:#1e2c4f;line-height:1.55">
+                  Every division and its draw is cleared away. <b>No athlete is removed from the event</b> — all {{ dm.rs.people }} go to <b>Not in a division</b>, still entered, paid and weighed as before.
+                  <div style="margin-top:10px;padding:10px 12px;border-radius:12px;background:#fdf8ec;border:1px solid #e4d3a8;font-size:.76rem;color:#6b5418"><b>Clear and auto-place</b> rebuilds them at once from the rule book — by gender, age group and weight class — creating only the divisions somebody fits. Anyone missing a weight, birthdate or gender stays in Not in a division.</div>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;padding:12px 20px;border-top:1px solid #eef1f6">
+                  <button type="button" onClick="{{ dm.rs.onClose }}" style="height:40px;padding:0 14px;border:1px solid #d5dae3;border-radius:11px;background:#fff;color:#1e2c4f;font-family:inherit;font-size:.78rem;font-weight:600;cursor:pointer">Keep them</button>
+                  <button type="button" onClick="{{ dm.rs.onDeleteOnly }}" style="height:40px;padding:0 14px;border:1px solid #f0c9c3;border-radius:11px;background:#fff;color:#c0392b;font-family:inherit;font-size:.78rem;font-weight:700;cursor:pointer">{{ dm.rs.deleteLabel }}</button>
+                  <sc-if value="{{ dm.rs.canRebuild }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ dm.rs.onRebuild }}" style="height:40px;padding:0 16px;border:0;border-radius:11px;background:#c0392b;color:#fff;font-family:inherit;font-size:.78rem;font-weight:700;cursor:pointer">{{ dm.rs.rebuildLabel }}</button></sc-if>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ dm.up.open }}" hint-placeholder-val="{{ false }}">
+            <div style="position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(15,21,36,.45)" onClick="{{ dm.up.onClose }}">
+              <div role="dialog" aria-modal="true" aria-label="Not in a division" onClick="{{ dm.stop }}" style="width:min(640px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 30px 80px rgba(15,21,36,.35);animation:rise .25s cubic-bezier(.22,.68,.35,1) both">
+                <div style="flex:none;padding:18px 20px 16px;background:linear-gradient(150deg,#1e2c4f,#2b3d68);color:#fff;position:relative;overflow:hidden">
+                  <div style="position:absolute;right:-40px;top:-50px;width:150px;height:150px;border-radius:50%;background:rgba(237,205,133,.12)"></div>
+                  <div style="position:relative;display:flex;align-items:flex-start;gap:12px">
+                    <span aria-hidden="true" style="width:44px;height:44px;border-radius:14px;background:rgba(255,255,255,.14);display:grid;place-items:center;font-size:1.05rem;font-weight:800;flex:none;color:#edcd85">{{ dm.up.count }}</span>
+                    <div style="min-width:0;flex:1">
+                      <div style="font-size:.66rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#edcd85">Entered, but in no group</div>
+                      <div style="font-size:1.15rem;font-weight:800;margin-top:4px;line-height:1.2">Not in a division</div>
+                      <div style="font-size:.72rem;color:rgba(255,255,255,.8);margin-top:3px">They are on no bracket and no bench until they are placed. Tap a division to place them.</div>
+                    </div>
+                    <button type="button" onClick="{{ dm.up.onClose }}" aria-label="Close" style="width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;font-size:1rem;cursor:pointer;flex:none">✕</button>
+                  </div>
+                </div>
+                <div style="flex:1;overflow-y:auto;padding:14px 20px;display:flex;flex-direction:column;gap:8px">
+                  <sc-if value="{{ dm.up.loading }}" hint-placeholder-val="{{ false }}"><div style="padding:24px;text-align:center;color:#6b7689;font-size:.82rem">Loading…</div></sc-if>
+                  <sc-if value="{{ dm.up.empty }}" hint-placeholder-val="{{ false }}"><div style="padding:24px;text-align:center;color:#2f7a4f;font-size:.82rem;font-weight:600">Everyone entered is in a division.</div></sc-if>
+                  <sc-for list="{{ dm.up.rows }}" as="p" hint-placeholder-count="3">
+                    <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid #eef1f6;background:#fff">
+                      <span style="{{ p.avatarStyle }}"><sc-if value="{{ p.hasPhoto }}" hint-placeholder-val="{{ false }}"><img src="{{ p.photo }}" alt="" style="width:100%;height:100%;object-fit:cover"></sc-if><sc-if value="{{ p.noPhoto }}" hint-placeholder-val="{{ true }}">{{ p.initials }}</sc-if></span>
+                      <div style="flex:1;min-width:0">
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:.86rem;font-weight:700;color:#1e2c4f;overflow-wrap:anywhere">{{ p.name }}</span><span style="{{ p.genderStyle }}">{{ p.gender }}</span></div>
+                        <div style="font-size:.72rem;color:#6b7689;margin-top:1px">{{ p.club }} · {{ p.meta }}</div>
+                        <sc-if value="{{ p.hasMissing }}" hint-placeholder-val="{{ false }}"><div style="font-size:.7rem;color:#b45309;margin-top:2px">{{ p.missing }}</div></sc-if>
+                        <sc-if value="{{ p.notListed }}" hint-placeholder-val="{{ false }}"><div style="font-size:.7rem;color:#8a6d20;margin-top:4px">{{ p.notListedText }}</div></sc-if>
+                        <sc-if value="{{ p.noFit }}" hint-placeholder-val="{{ false }}"><div style="font-size:.7rem;color:#b4483c;margin-top:4px">{{ p.noFitText }}</div></sc-if>
+                        <sc-if value="{{ p.canPlace }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px">
+                            <sc-if value="{{ p.hasBest }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ p.onBest }}" title="The tightest division they fit" style="{{ p.bestStyle }}">✓ {{ p.bestLabel }}</button></sc-if>
+                            <sc-if value="{{ p.hasOthers }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ p.onOthers }}" style="height:34px;padding:0 10px;border:0;background:transparent;color:#8a6d20;font-family:inherit;font-size:.72rem;font-weight:700;cursor:pointer">{{ p.othersLabel }}</button></sc-if>
+                          </div>
+                          <sc-if value="{{ p.othersOpen }}" hint-placeholder-val="{{ false }}">
+                            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><sc-for list="{{ p.others }}" as="o" hint-placeholder-count="3"><button type="button" onClick="{{ o.onClick }}" title="{{ o.title }}" style="{{ o.style }}">{{ o.label }}</button></sc-for></div>
+                          </sc-if>
+                        </sc-if>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="flex:none;display:flex;justify-content:flex-end;padding:12px 20px;border-top:1px solid #eef1f6">
+                  <button type="button" onClick="{{ dm.up.onAthletes }}" style="height:42px;padding:0 20px;border:0;border-radius:12px;font-family:inherit;font-size:.82rem;font-weight:700;color:#1e2c4f;background:linear-gradient(100deg,#edcd85,#d0a854);cursor:pointer">Place them in the Participants tab ›</button>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ dm.mg.open }}" hint-placeholder-val="{{ false }}">
+            <div style="position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(15,21,36,.45)" onClick="{{ dm.mg.onClose }}">
+              <div role="dialog" aria-modal="true" aria-label="Merge small divisions" onClick="{{ dm.stop }}" style="width:min(820px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;background:#f6f7fa;border-radius:18px;overflow:hidden;box-shadow:0 30px 80px rgba(15,21,36,.35);animation:rise .25s cubic-bezier(.22,.68,.35,1) both">
+                <div style="flex:none;padding:18px 20px 16px;background:linear-gradient(150deg,#1e2c4f,#2b3d68);color:#fff;position:relative;overflow:hidden">
+                  <div style="position:absolute;right:-40px;top:-50px;width:150px;height:150px;border-radius:50%;background:rgba(237,205,133,.12)"></div>
+                  <div style="position:relative;display:flex;align-items:flex-start;gap:12px">
+                    <span aria-hidden="true" style="width:44px;height:44px;border-radius:14px;background:rgba(255,255,255,.14);display:grid;place-items:center;font-size:1.2rem;flex:none;color:#edcd85">⇄</span>
+                    <div style="min-width:0;flex:1">
+                      <div style="font-size:.66rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#edcd85">Safety first, then fairness</div>
+                      <div style="font-size:1.15rem;font-weight:800;margin-top:4px;line-height:1.2">Merge small divisions</div>
+                      <div style="font-size:.72rem;color:rgba(255,255,255,.8);margin-top:3px">{{ dm.mg.sub }}</div>
+                    </div>
+                    <sc-if value="{{ dm.mg.hasPdf }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ dm.mg.onPdf }}" title="The officials' merging handbook, with this event's own chapter" style="height:36px;padding:0 12px;border-radius:10px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;font-family:inherit;font-size:.74rem;font-weight:600;cursor:pointer;flex:none">⬇ {{ dm.mg.pdfLabel }}</button></sc-if>
+                    <button type="button" onClick="{{ dm.mg.onClose }}" aria-label="Close" style="width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;font-size:1rem;cursor:pointer;flex:none">✕</button>
+                  </div>
+                </div>
+                <div style="flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:20px">
+                  <sc-if value="{{ dm.mg.loading }}" hint-placeholder-val="{{ false }}"><div style="padding:24px;text-align:center;color:#6b7689;font-size:.82rem">Checking every division…</div></sc-if>
+                  <sc-if value="{{ dm.mg.hasErr }}" hint-placeholder-val="{{ false }}"><div role="alert" style="padding:10px 14px;border-radius:12px;background:#fcefed;border:1px solid #f0c9c3;color:#b4483c;font-size:.8rem">{{ dm.mg.err }}</div></sc-if>
+
+                  <div>
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px"><div style="font-size:.7rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#6b7689">Suggested merges</div><sc-if value="{{ dm.hasSafeAll }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ dm.onSafeAll }}" style="{{ dm.safeAllStyle }}">{{ dm.safeAllLabel }}</button></sc-if></div>
+                    <sc-if value="{{ dm.mg.noSuggestions }}" hint-placeholder-val="{{ false }}"><div style="padding:14px 16px;border-radius:14px;background:#fff;border:1px solid #eef1f6;font-size:.8rem;color:#4b5568">No small division has a safe neighbour to join. The groups below stay as they are.</div></sc-if>
+                    <div style="display:flex;flex-direction:column;gap:10px">
+                      <sc-for list="{{ dm.mg.suggestions }}" as="s" hint-placeholder-count="2">
+                        <div style="{{ s.cardStyle }}">
+                          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="{{ s.gradeStyle }}">{{ s.grade }}</span><span style="font-size:.74rem;color:#6b7689">{{ s.counts }}</span></div>
+                          <div style="font-size:.86rem;color:#1e2c4f;line-height:1.4;overflow-wrap:anywhere"><b>{{ s.from }}</b> <span style="color:#8a6d20">→ into</span> <b>{{ s.into }}</b></div>
+                          <div style="display:flex;flex-direction:column;gap:4px"><sc-for list="{{ s.reasons }}" as="r" hint-placeholder-count="3"><div style="display:flex;gap:8px;font-size:.76rem;color:#4b5568;line-height:1.45"><span style="{{ r.dotStyle }}"></span><span>{{ r.text }}</span></div></sc-for></div>
+                          <sc-if value="{{ s.amber }}" hint-placeholder-val="{{ false }}"><div role="checkbox" aria-checked="{{ s.consentOn }}" tabIndex="0" onClick="{{ s.onConsent }}" style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:12px;background:#fff6e6;border:1px solid #f1d9a8;cursor:pointer"><span style="{{ s.consentStyle }}">{{ s.consentTick }}</span><span style="font-size:.76rem;color:#7a4a0c;line-height:1.45">I have written consent from the guardian of every minor moved (or the athlete, if 18+). A coach alone cannot consent.</span></div></sc-if>
+                          <div style="display:flex;justify-content:flex-end"><button type="button" onClick="{{ s.onMerge }}" style="{{ s.btnStyle }}">{{ s.label }}</button></div>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+
+                  <sc-if value="{{ dm.mg.hasAlone }}" hint-placeholder-val="{{ false }}">
+                    <div>
+                      <div style="font-size:.7rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#6b7689;margin-bottom:10px">Alone — no safe merge</div>
+                      <div style="background:#fff;border-radius:14px;border:1px solid #eef1f6;padding:4px 14px">
+                        <sc-for list="{{ dm.mg.alone }}" as="a" hint-placeholder-count="2"><div style="padding:10px 0;border-bottom:1px solid #f1f3f7"><div style="font-size:.82rem;font-weight:700;color:#1e2c4f;overflow-wrap:anywhere">{{ a.name }}</div><div style="font-size:.74rem;color:#b4483c;margin-top:2px">{{ a.why }}</div></div></sc-for>
+                      </div>
+                      <div style="font-size:.72rem;color:#6b7689;margin-top:6px">These follow the event's published lone-athlete rule — a walkover, no medal, or an exhibition bout.</div>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{ dm.mg.hasWide }}" hint-placeholder-val="{{ false }}">
+                    <div>
+                      <div style="font-size:.7rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#6b7689;margin-bottom:10px">Already wider than the safe limit</div>
+                      <div style="background:#fff;border-radius:14px;border:1px solid #eef1f6;padding:4px 14px">
+                        <sc-for list="{{ dm.mg.wide }}" as="w" hint-placeholder-count="2"><div style="display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid #f1f3f7"><span style="font-size:.8rem;font-weight:600;color:#1e2c4f;overflow-wrap:anywhere">{{ w.name }}</span><span style="font-size:.74rem;color:#b45309">{{ w.line }}</span></div></sc-for>
+                      </div>
+                      <div style="font-size:.72rem;color:#6b7689;margin-top:6px">Nothing to merge here — worth a look before the draw.</div>
+                    </div>
+                  </sc-if>
+
+                  <div>
+                    <div style="font-size:.7rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#6b7689;margin-bottom:10px">Pick groups yourself</div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ dm.mg.chips }}" as="c" hint-placeholder-count="6"><button type="button" onClick="{{ c.onClick }}" aria-pressed="{{ c.on }}" style="{{ c.style }}">{{ c.label }}</button></sc-for></div>
+                    <div style="font-size:.72rem;color:#6b7689;margin-top:8px">{{ dm.mg.pickHint }}</div>
+                    <sc-if value="{{ dm.mg.pickedMany }}" hint-placeholder-val="{{ false }}">
+                      <div style="margin-top:12px">
+                        <div style="font-size:.72rem;font-weight:600;color:#6b7689;margin-bottom:6px">Keep the name of</div>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ dm.mg.intoChips }}" as="t" hint-placeholder-count="2"><button type="button" onClick="{{ t.onClick }}" style="{{ t.style }}">{{ t.label }}</button></sc-for></div>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ dm.mg.judging }}" hint-placeholder-val="{{ false }}"><div style="margin-top:12px;font-size:.78rem;color:#6b7689">Checking…</div></sc-if>
+                    <sc-if value="{{ dm.mg.hasJudge }}" hint-placeholder-val="{{ false }}">
+                      <div style="margin-top:12px">
+                        <div style="{{ dm.mg.judge.cardStyle }}">
+                          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="{{ dm.mg.judge.gradeStyle }}">{{ dm.mg.judge.grade }}</span><span style="font-size:.74rem;color:#6b7689">{{ dm.mg.judge.counts }}</span></div>
+                          <div style="font-size:.86rem;color:#1e2c4f;line-height:1.4;overflow-wrap:anywhere"><b>{{ dm.mg.judge.from }}</b> <span style="color:#8a6d20">→ into</span> <b>{{ dm.mg.judge.into }}</b></div>
+                          <div style="display:flex;flex-direction:column;gap:4px"><sc-for list="{{ dm.mg.judge.reasons }}" as="r" hint-placeholder-count="3"><div style="display:flex;gap:8px;font-size:.76rem;color:#4b5568;line-height:1.45"><span style="{{ r.dotStyle }}"></span><span>{{ r.text }}</span></div></sc-for></div>
+                          <sc-if value="{{ dm.mg.judge.amber }}" hint-placeholder-val="{{ false }}"><div role="checkbox" aria-checked="{{ dm.mg.judge.consentOn }}" tabIndex="0" onClick="{{ dm.mg.judge.onConsent }}" style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:12px;background:#fff6e6;border:1px solid #f1d9a8;cursor:pointer"><span style="{{ dm.mg.judge.consentStyle }}">{{ dm.mg.judge.consentTick }}</span><span style="font-size:.76rem;color:#7a4a0c;line-height:1.45">I have written consent from the guardian of every minor moved (or the athlete, if 18+). A coach alone cannot consent.</span></div></sc-if>
+                          <sc-if value="{{ dm.mg.judge.canMerge }}" hint-placeholder-val="{{ false }}"><div style="display:flex;justify-content:flex-end"><button type="button" onClick="{{ dm.mg.judge.onMerge }}" style="{{ dm.mg.judge.btnStyle }}">{{ dm.mg.judge.label }}</button></div></sc-if>
+                        </div>
+                      </div>
+                    </sc-if>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ dm.hasToast }}" hint-placeholder-val="{{ false }}"><div role="status" aria-live="polite" style="{{ dm.toastStyle }}">{{ dm.toast }}</div></sc-if>
+        </sc-if>
+
+        <sc-if value="{{ dm.off }}" hint-placeholder-val="{{ true }}">
         <sc-if value="{{ divsEmpty }}" hint-placeholder-val="{{ false }}">
           <div style="background:#fff;border-radius:16px;border-top:3px solid #d8b25f;padding:32px;box-shadow:0 10px 30px rgba(30,44,79,.08);font-size:.86rem;color:#6b7689">No divisions yet — they appear automatically as athletes register through the club invitation link.</div>
         </sc-if>
@@ -13,8 +556,12 @@
           </div>
         </sc-if>
         <sc-if value="{{ dv.cards }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-direction:column;gap:22px">
+        <sc-for list="{{ dv.sections }}" as="sec" hint-placeholder-count="2">
+        <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="{{ sec.dotStyle }}"></span><span style="{{ sec.titleStyle }}">{{ sec.title }}</span><span style="font-size:.72rem;font-weight:600;color:#97a1b4">{{ sec.count }}</span><span style="flex:1;height:1px;background:#e3e7ee"></span></div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px">
-          <sc-for list="{{ dv.rows }}" as="d" hint-placeholder-count="6">
+          <sc-for list="{{ sec.rows }}" as="d" hint-placeholder-count="6">
             <div onClick="{{ d.onOpen }}" style="{{ d.cardStyle }}" style-hover="transform:translateY(-2px);box-shadow:0 16px 40px rgba(30,44,79,.14)">
               <div style="font-size:.9rem;font-weight:700;margin-bottom:2px">{{ d.lA }}<span style="{{ d.lInk }}">{{ d.lG }}</span>{{ d.lB }}</div>
               <div style="font-size:.72rem;color:#6b7689;margin-bottom:12px">{{ d.detail }}</div>
@@ -26,6 +573,9 @@
               </div>
             </div>
           </sc-for>
+        </div>
+        </div>
+        </sc-for>
         </div>
         </sc-if>
         <sc-if value="{{ dv.table }}" hint-placeholder-val="{{ false }}">
@@ -41,7 +591,9 @@
               <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4">Bracket</div>
               <div></div>
             </div>
-            <sc-for list="{{ dv.rows }}" as="d" hint-placeholder-count="6">
+            <sc-for list="{{ dv.sections }}" as="sec" hint-placeholder-count="2">
+            <div style="display:flex;align-items:center;gap:8px;min-width:900px;padding:16px 0 4px"><span style="{{ sec.dotStyle }}"></span><span style="{{ sec.titleStyle }}">{{ sec.title }}</span><span style="font-size:.72rem;font-weight:600;color:#97a1b4">{{ sec.count }}</span></div>
+            <sc-for list="{{ sec.rows }}" as="d" hint-placeholder-count="6">
               <div onClick="{{ d.onOpen }}" title="Open this division's draw" style="display:grid;grid-template-columns:28px 90px 150px minmax(180px,1fr) 70px 160px 130px 16px;gap:14px;align-items:center;min-width:900px;padding:12px 0;border-bottom:1px solid #eef1f6;cursor:pointer;border-radius:8px" style-hover="background:#f7f8fb">
                 <div style="font-size:.76rem;font-weight:600;color:#8a6d20;font-variant-numeric:tabular-nums">{{ d.rank }}</div>
                 <div style="{{ d.genderStyle }}">{{ d.gender }}</div>
@@ -53,7 +605,9 @@
                 <div aria-hidden="true" style="color:#caa14f;font-size:1rem;line-height:1">›</div>
               </div>
             </sc-for>
+            </sc-for>
           </div>
         </div>
+        </sc-if>
         </sc-if>
       </sc-if>

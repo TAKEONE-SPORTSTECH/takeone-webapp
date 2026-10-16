@@ -2,7 +2,7 @@
 // Loaded into the database on first run; staff edit and add the rest in Settings → Translations.
 window.TAKEONE_STRINGS_SEED = {
   "Events": ["البطولات", "Événements"], "Statistics": ["الإحصائيات", "Statistiques"], "Calendar": ["التقويم", "Calendrier"],
-  "Athletes": ["اللاعبون", "Athlètes"], "Officials": ["الحكام", "Arbitres"], "Financials": ["المالية", "Finances"], "Reports": ["التقارير", "Rapports"],
+  "Athletes": ["اللاعبون", "Athlètes"], "Participants": ["المشاركون", "Participants"], "Officials": ["الحكام", "Arbitres"], "Financials": ["المالية", "Finances"], "Reports": ["التقارير", "Rapports"],
   "Settings": ["الإعدادات", "Paramètres"], "Dashboard": ["لوحة التحكم", "Tableau de bord"], "Event details": ["تفاصيل البطولة", "Détails de l’événement"],
   "Overview": ["نظرة عامة", "Aperçu"], "Registrations": ["التسجيلات", "Inscriptions"], "Divisions": ["الفئات", "Catégories"], "Draw": ["القرعة", "Tirage"],
   "Schedule": ["الجدول", "Programme"], "Notifications": ["الإشعارات", "Notifications"], "Messages": ["الرسائل", "Messages"],

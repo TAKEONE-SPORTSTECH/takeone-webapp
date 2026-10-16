@@ -57,17 +57,27 @@ class FederationEventOfficials
          */
         $manage = $viewer !== null && app(\App\Events\Support\EventAccess::class)->canManage($ev, $viewer);
 
+        // The jobs' own names (the sport's: "Tatami Manager", "Judge 1 (Fukushin)").
+        $roleNames = rescue(fn () => app(\App\Events\Support\OfficialRoles::class)->labels($ev), [], false);
+
         $people = EventOfficial::where('event_id', $ev->id)
-            ->with('user:id,full_name,name,gender,profile_picture,profile_picture_is_public,updated_at')
+            ->with('user:id,full_name,name,gender,nationality,profile_picture,profile_picture_is_public,updated_at')
             ->orderBy('id')->get()
             ->filter(fn (EventOfficial $o) => $o->user !== null)
-            ->map(function (EventOfficial $o) use ($manage) {
+            ->map(function (EventOfficial $o) use ($manage, $roleNames) {
                 $name = (string) ($o->user->full_name ?: $o->user->name);
                 $club = $o->club();
 
+                $named = $o->role_label ?: ($roleNames[$o->role] ?? null);
+                $job = FederationEventFigures::jobOf($o->role, $o->role_label);
+
                 return [
-                    'job' => FederationEventFigures::jobOf($o->role, $o->role_label),
-                    'role' => (string) ($o->role_label ?: FederationEventFigures::jobOf($o->role, null)),
+                    // A job from the list (not typed by a club) is grouped under its own name, not "Other".
+                    // Who the person is, so the tab draws one row per person
+                    // however many jobs they hold — a hash, never the account id.
+                    'person' => substr(hash('sha256', $o->user_id.'|'.$o->event_id.'|'.config('app.key')), 0, 16),
+                    'job' => $job === 'Other' && $named ? (string) $named : $job,
+                    'role' => (string) ($named ?: $job),
                     'name' => $name,
                     'initials' => mb_strtoupper(collect(preg_split('/\s+/u', trim($name)) ?: [])->filter()->take(2)->map(fn ($w) => mb_substr($w, 0, 1))->implode('')),
                     'gender' => $o->user->gender === 'Female' ? 'F' : 'M',
@@ -78,6 +88,9 @@ class FederationEventOfficials
                             : null),
                     'club' => $club['name'] ?? null,
                     'clubLogo' => $club['logo'] ?? null,
+                    // Where they are from, as every officiating sheet prints it.
+                    'natName' => $o->user->nationality ? (\App\Support\Countries::name($o->user->nationality) ?: $o->user->nationality) : null,
+                    'natFlag' => $o->user->nationality && \App\Support\Flag::exists($o->user->nationality) ? \App\Support\Flag::url($o->user->nationality) : null,
                 ] + ($manage ? [
                     'id' => $o->id,
                     'roleKey' => (string) $o->role,
@@ -104,10 +117,19 @@ class FederationEventOfficials
             // EventAccess::canManage and validates exactly as the sheet's own
             // form does; `{id}` is the appointment, scoped to this event there.
             'manage' => $manage ? [
+                // The platform event — the officials editor frame opens on it.
+                'event' => $ev->uuid,
                 'list' => route('me.events.officials', $ev->uuid),
                 'store' => route('me.events.officials.store', $ev->uuid),
                 'person' => route('me.events.officials.person', $ev->uuid),
                 'one' => route('me.events.officials.update', [$ev->uuid, '__ID__']),
+                // The platform's design room for this event: the participants'
+                // certificates and the officials' badges (App\Certificates).
+                'designCertificates' => config('certificates.enabled') ? route('me.certificates.design', ['club_event', $ev->uuid]) : null,
+                'designBadges' => config('certificates.enabled') ? route('me.certificates.design', ['event_badges', $ev->uuid]) : null,
+                // The officials, printed (OfficialsPdf) — the Officials tab's "Download".
+                'pdf' => \App\Events\Support\OfficialsPdf::available() ? route('me.events.officials.pdf', $ev->uuid) : null,
+                'designParticipantBadges' => config('certificates.enabled') ? route('me.certificates.design', ['event_participant_badges', $ev->uuid]) : null,
             ] : null,
         ];
     }

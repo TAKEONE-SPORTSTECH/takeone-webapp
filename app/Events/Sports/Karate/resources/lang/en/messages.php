@@ -51,4 +51,11 @@ return [
     'style_wado_ryu' => 'Wado-ryu',
     'grade_ungraded' => 'Ungraded (beginner)',
     'grade_mukyu' => 'Mukyu (beginner)',
+
+    // The two things a karateka enters — the registration form's tick boxes
+    // (Karate::entryDisciplines()).
+    'discipline_kata' => 'Kata',
+    'discipline_kata_sub' => 'Forms · individual',
+    'discipline_kumite' => 'Kumite',
+    'discipline_kumite_sub' => 'Sparring · by weight',
 ];

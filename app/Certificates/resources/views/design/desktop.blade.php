@@ -121,7 +121,7 @@
                 <div x-show="isCert">
                     <p class="text-xs text-muted-foreground mb-2">{{ __('cert::messages.tokens_hint') }}</p>
                     <div class="flex flex-wrap gap-1.5">
-                        <template x-for="tk in state.placeholders" :key="tk">
+                        <template x-for="tk in ((t && t.placeholders) || state.placeholders)" :key="tk">
                             <button type="button" @click="insert(tk)"
                                     class="px-2.5 py-1 rounded-full border border-purple-200 bg-purple-50 text-purple-700 text-xs font-semibold font-mono hover:border-primary transition-colors"
                                     x-text="'{' + tk + '}'"></button>

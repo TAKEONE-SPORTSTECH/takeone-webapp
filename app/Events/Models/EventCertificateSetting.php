@@ -10,11 +10,11 @@ class EventCertificateSetting extends Model
 {
     public const TRIGGERS = ['division', 'event', 'manual'];
 
-    protected $fillable = ['event_id', 'participation', 'podium', 'trigger'];
+    protected $fillable = ['event_id', 'participation', 'podium', 'officials', 'trigger'];
 
-    protected $attributes = ['participation' => true, 'podium' => true, 'trigger' => 'division'];
+    protected $attributes = ['participation' => true, 'podium' => true, 'officials' => false, 'trigger' => 'division'];
 
-    protected $casts = ['participation' => 'boolean', 'podium' => 'boolean'];
+    protected $casts = ['participation' => 'boolean', 'podium' => 'boolean', 'officials' => 'boolean'];
 
     public static function for(ClubEvent $event): self
     {

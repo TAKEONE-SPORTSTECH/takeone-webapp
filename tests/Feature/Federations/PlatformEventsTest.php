@@ -90,6 +90,38 @@ class PlatformEventsTest extends TestCase
         $this->actingAs($this->owner->fresh())->get('/me/events/'.$ev->uuid.'/manage')->assertOk();
     }
 
+    public function test_the_schedule_tab_gets_the_running_order_doors_and_only_an_organiser_may_write(): void
+    {
+        $fe = $this->fedEvent();
+        $ev = app(FederationPlatformEvent::class)->sync($fe);
+
+        $ctl = app(\App\Federations\Controllers\FederationAppController::class);
+        $doorsFor = new \ReflectionMethod($ctl, 'platformDoors');
+        $access = app(\App\Federations\Services\FederationDirectory::class)->access($this->owner->fresh());
+        $doors = (array) $doorsFor->invoke($ctl, $access, $this->owner->fresh())['runOrder'];
+
+        $mine = $doors[$fe->uuid] ?? null;
+        $this->assertNotNull($mine, 'the organiser gets the running order');
+        $this->assertSame($ev->uuid, $mine['event']);
+        $this->assertTrue($mine['manage']);
+        foreach (['mats', 'day', 'reorder', 'boutMove', 'renumber'] as $k) {
+            $this->assertNotEmpty($mine[$k], "organiser door: {$k}");
+        }
+
+        // …and the Divisions tab's editor doors, the platform's own endpoints.
+        $div = ((array) $doorsFor->invoke($ctl, $access, $this->owner->fresh())['divisions'])[$fe->uuid] ?? null;
+        $this->assertNotNull($div, 'the organiser gets the divisions editor');
+        $this->assertSame(route('me.events.divisions.data', $ev->uuid), $div['data']);
+        $this->assertSame(route('me.events.divisions.store', $ev->uuid), $div['base']);
+
+        // Somebody who may only read gets no write door at all.
+        $readOnly = (new \ReflectionMethod($ctl, 'runOrderDoors'))->invoke($ctl, $ev, false);
+        $this->assertArrayHasKey('mats', $readOnly);
+        foreach (['day', 'reorder', 'move', 'boutMove', 'renumber'] as $k) {
+            $this->assertArrayNotHasKey($k, $readOnly, "no write door for a reader: {$k}");
+        }
+    }
+
     public function test_switched_off_nothing_is_created(): void
     {
         config(['federations.platform_events' => false]);

@@ -158,7 +158,7 @@
                     <p x-show="! isCert" class="text-[12px] text-muted-foreground leading-relaxed">{{ __('cert::messages.badge_tokens_hint') }}</p>
                     <p x-show="isCert" class="text-[12px] text-muted-foreground">{{ __('cert::messages.tokens_hint') }}</p>
                     <div x-show="isCert" class="flex flex-wrap gap-1.5">
-                        <template x-for="tk in state.placeholders" :key="tk">
+                        <template x-for="tk in ((t && t.placeholders) || state.placeholders)" :key="tk">
                             <button type="button" @click="insert(tk)" class="m-press px-3 py-1.5 rounded-full border border-purple-200 bg-purple-50 text-purple-700 text-xs font-semibold font-mono" x-text="'{' + tk + '}'"></button>
                         </template>
                     </div>

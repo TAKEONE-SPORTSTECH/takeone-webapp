@@ -104,6 +104,11 @@
                 Cancel
             </button>
             @endif
+            @if(! empty($replaceable))
+            <button type="button" class="flex-shrink-0 btn btn-outline-secondary py-2.5 px-4 font-bold inline-flex items-center gap-1.5" id="replace_{{ $id }}">
+                <i class="bi bi-image"></i>{{ __('New photo') }}
+            </button>
+            @endif
             @if($uploadAsIs)
             <button type="button" class="flex-1 btn btn-outline-secondary py-2.5 font-bold" id="saveAsIs_{{ $id }}">
                 {{ $uploadAsIsText }}

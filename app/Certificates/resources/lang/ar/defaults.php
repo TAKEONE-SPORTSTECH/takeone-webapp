@@ -10,6 +10,14 @@ return [
         'title' => 'مسؤول',
         'body' => ' ',
     ],
+    'participant_badge' => [
+        'title' => 'لاعب',
+        'body' => ' ',
+    ],
+    'official_thanks' => [
+        'title' => 'شهادة شكر وتقدير',
+        'body' => 'شكرًا وتقديرًا لعمله {role} في {event} بتاريخ {date}، وإسهامه في إنجاحها.',
+    ],
     'participation' => [
         'title' => 'شهادة مشاركة',
         'body' => 'تقديرًا للمشاركة في فئة {division} ضمن {event} بتاريخ {date}{representing}.',

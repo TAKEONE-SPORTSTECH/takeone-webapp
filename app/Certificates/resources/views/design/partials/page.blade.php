@@ -6,6 +6,34 @@
     turning it back loses nothing.
 --}}
 @php $compact = $compact ?? false; @endphp
+{{-- The page's size (1.4): a standard size, or any width and height in mm, cm or inches.
+     Changing it carries the arrangement along in proportion (certDesign.setPageSize). --}}
+<div class="mb-4">
+    <span class="block text-sm font-bold text-foreground mb-1.5">{{ __('cert::messages.page_size') }}</span>
+    <x-fields.select model="sizePick" options-expr="sizeOptions" placeholder="{{ __('cert::messages.size_custom') }}" />
+    <div class="mt-2.5 flex items-end gap-2 flex-wrap" x-show="sizePick === 'custom'" x-cloak>
+        <label class="flex-1 min-w-[90px]">
+            <span class="block text-[12px] font-semibold text-muted-foreground mb-1">{{ __('cert::messages.size_width') }}</span>
+            <input type="text" inputmode="decimal" :value="sizeW" x-ref="sizeW" @change="typeSize($refs.sizeW.value, $refs.sizeH.value)" @keydown.enter.prevent="typeSize($refs.sizeW.value, $refs.sizeH.value)"
+                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent" aria-label="{{ __('cert::messages.size_width') }}">
+        </label>
+        <span class="pb-2.5 text-muted-foreground">×</span>
+        <label class="flex-1 min-w-[90px]">
+            <span class="block text-[12px] font-semibold text-muted-foreground mb-1">{{ __('cert::messages.size_height') }}</span>
+            <input type="text" inputmode="decimal" :value="sizeH" x-ref="sizeH" @change="typeSize($refs.sizeW.value, $refs.sizeH.value)" @keydown.enter.prevent="typeSize($refs.sizeW.value, $refs.sizeH.value)"
+                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent" aria-label="{{ __('cert::messages.size_height') }}">
+        </label>
+    </div>
+    <div class="mt-2.5 inline-flex p-0.5 rounded-full bg-gray-100" role="group" aria-label="{{ __('cert::messages.size_unit') }}">
+        @foreach(['mm' => 'mm', 'cm' => 'cm', 'in' => 'in'] as $u => $l)
+            <button type="button" class="px-3 py-1 rounded-full text-xs font-semibold transition-colors"
+                    :class="sizeUnit === '{{ $u }}' ? 'bg-white shadow-sm text-foreground' : 'text-gray-500'" :aria-pressed="sizeUnit === '{{ $u }}'"
+                    @click="sizeUnit = '{{ $u }}'">{{ $l }}</button>
+        @endforeach
+    </div>
+    <p class="mt-1.5 text-[12px] text-muted-foreground" x-text="@js(__('cert::messages.size_now')).replace(':w', sizeW).replace(':h', sizeH).replace(':unit', sizeUnit)"></p>
+</div>
+
 <div class="grid {{ $compact ? 'grid-cols-1' : 'grid-cols-2' }} gap-2" role="radiogroup" aria-label="{{ __('cert::messages.page') }}">
     @foreach(['landscape' => [30, 21], 'portrait' => [21, 30]] as $o => [$w, $h])
         <button type="button" @click="setOrientation('{{ $o }}')" role="radio"

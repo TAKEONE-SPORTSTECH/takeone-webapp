@@ -71,6 +71,12 @@ Route::prefix('federation')->name('federations.')->middleware(SealFederation::cl
             ->defaults('file', 'Karate Statistics.dc.html')
             ->name('app.statistics');
         Route::get('/draw-board', [FederationAppController::class, 'drawBoard'])->name('draw-board');
+        // The Participants tab's athlete editor, in a same-origin frame (FederationAthleteEditor).
+        Route::get('/athlete-edit', [FederationAppController::class, 'athleteEdit'])->name('athlete-edit');
+        // The Officials tab's editor, in the same kind of frame (FederationOfficialEditor).
+        Route::get('/official-edit', [FederationAppController::class, 'officialEdit'])->name('official-edit');
+        // The event's Clubs tab: a club's editor, in the same kind of frame (FederationClubManager).
+        Route::get('/club-edit', [FederationAppController::class, 'clubEdit'])->name('club-edit');
     });
 
     // Public: the invitation a club opens from a link, and the static files
@@ -109,8 +115,11 @@ Route::prefix('federation')->name('federations.')->middleware(SealFederation::cl
             Route::post('/transfers/reply', [FederationApiController::class, 'transferReply'])->middleware(RecordFederationTest::class)->name('transfers.reply');
             Route::post('/transfers/decide', [FederationApiController::class, 'transferDecide'])->middleware(RecordFederationTest::class)->name('transfers.decide');
             Route::post('/regs/withdraw', [FederationApiController::class, 'regsWithdraw'])->middleware([RecordFederationTest::class, \App\Federations\Middleware\SyncPlatformEntries::class])->name('regs.withdraw');
+            Route::post('/regs/withdraw-club', [FederationApiController::class, 'regsWithdrawClub'])->middleware([RecordFederationTest::class, \App\Federations\Middleware\SyncPlatformEntries::class])->name('regs.withdraw-club');
             Route::post('/regs/approve', [FederationApiController::class, 'regsApprove'])->middleware([RecordFederationTest::class, \App\Federations\Middleware\SyncPlatformEntries::class])->name('regs.approve');
             Route::post('/regs/athlete', [FederationApiController::class, 'regsAthleteUpdate'])->middleware(['throttle:uploads', RecordFederationTest::class, \App\Federations\Middleware\SyncPlatformEntries::class])->name('regs.athlete.update');
+            // Officials tab → the person behind an appointment (FederationOfficialEditor).
+            Route::post('/officials/person', [FederationApiController::class, 'officialPersonUpdate'])->middleware(['throttle:uploads', RecordFederationTest::class])->name('officials.person');
             Route::post('/regs/enrol', [FederationApiController::class, 'regsEnrol'])->middleware([RecordFederationTest::class, \App\Federations\Middleware\SyncPlatformEntries::class])->name('regs.enrol');
             Route::post('/regs/import', [FederationApiController::class, 'regsImport'])->middleware([RecordFederationTest::class, \App\Federations\Middleware\SyncPlatformEntries::class])->name('regs.import');
             Route::post('/regs/import/preview', [FederationApiController::class, 'regsImportPreview'])->middleware('throttle:uploads')->name('regs.import.preview');
@@ -120,6 +129,8 @@ Route::prefix('federation')->name('federations.')->middleware(SealFederation::cl
             Route::post('/messages', [FederationApiController::class, 'messages'])->name('messages');
             Route::post('/clubs', [FederationApiController::class, 'clubAdd'])->name('clubs.add');
             Route::post('/clubs/update', [FederationApiController::class, 'clubUpdate'])->middleware(RecordFederationTest::class)->name('clubs.update');
+            // The club editor window → a new logo (FederationClubManager::replaceLogo).
+            Route::post('/clubs/logo', [FederationApiController::class, 'clubLogo'])->middleware(['throttle:uploads', RecordFederationTest::class])->name('clubs.logo');
             Route::post('/clubs/unlink', [FederationApiController::class, 'clubUnlink'])->name('clubs.unlink');
             Route::post('/clubs/decide', [FederationApiController::class, 'clubDecide'])->middleware(RecordFederationTest::class)->name('clubs.decide');
             Route::post('/clubs/delete', [FederationApiController::class, 'clubDelete'])->middleware(RecordFederationTest::class)->name('clubs.delete');
@@ -148,6 +159,8 @@ Route::prefix('federation')->name('federations.')->middleware(SealFederation::cl
         ->get('/api/regs/template', [FederationApiController::class, 'regsTemplate'])->name('api.regs.template');
     Route::middleware(['auth', 'verified', 'two-factor', 'throttle:federation-lookup'])
         ->get('/api/regs/athlete', [FederationApiController::class, 'regsAthlete'])->name('api.regs.athlete');
+    Route::middleware(['auth', 'verified', 'two-factor', 'throttle:federation-lookup'])
+        ->get('/api/officials/one', [FederationApiController::class, 'officialOne'])->name('api.officials.one');
     Route::middleware(['auth', 'verified', 'two-factor', 'throttle:federation-lookup'])
         ->get('/api/athletes/export', [FederationApiController::class, 'athletesExport'])->name('api.athletes.export');
     Route::middleware(['auth', 'verified', 'two-factor', 'throttle:federation-lookup'])

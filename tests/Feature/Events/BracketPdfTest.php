@@ -197,7 +197,12 @@ class BracketPdfTest extends ContractTestCase
         $this->assertStringNotContainsString('class="band page-band"', $html);
     }
 
-    public function test_the_controller_adds_the_cover_only_to_the_whole_draw(): void
+    /**
+     * The draw is the brackets and nothing else (owner, 2026-10-16) — no cover
+     * for the whole draw either — and every sheet is titled with its name,
+     * ages and weights.
+     */
+    public function test_the_draw_is_only_brackets_titled_with_name_ages_and_weights(): void
     {
         $this->enable();
 
@@ -218,7 +223,12 @@ class BracketPdfTest extends ContractTestCase
         $this->actingAs($organiser->fresh())->getJson("/me/events/{$event->uuid}/brackets/pdf")->assertOk();
         $this->actingAs($organiser->fresh())->getJson("/me/events/{$event->uuid}/brackets/pdf?division={$division->id}")->assertOk();
 
-        $this->assertSame([true, false], $seen);
+        $this->assertSame([false, false], $seen);
+
+        $division->update(['name' => 'Group A', 'min_age' => 5, 'max_age' => 6, 'min_weight' => 17, 'max_weight' => 23.5]);
+        $pdf = app(\App\Events\Support\BracketPdf::class);
+        $html = $pdf->html($event, $organiser->fresh(), $pdf->divisions($event, $organiser->fresh()), 'linear', 'match');
+        $this->assertStringContainsString('Group A · 5–6 yrs · 17–23.5 kg', $html);
     }
 
     public function test_appointed_people_get_their_own_page_of_cards(): void

@@ -126,8 +126,13 @@ class BracketPdf
             'pages' => array_map(fn (array $d) => [
                 'id' => (int) $d['id'],
                 'name' => (string) $d['name'],
+                // The sheet's title: the name, then its ages and weights from the
+                // division's own columns (owner, 2026-10-16) — a group called
+                // "Group A" says nothing about who is in it on its own.
+                'title' => collect([(string) $d['name'], $this->rangeLine((array) ($d['range'] ?? []))])->filter()->implode(' · '),
                 'entrants' => (int) ($d['entrants'] ?? 0),
-                'gender' => $this->genderOf((string) $d['name']),
+                // The division's own gender first; the name only for one that has none.
+                'gender' => ($d['range']['gender'] ?? null) ?: $this->genderOf((string) $d['name']),
                 'landscape' => $this->landscape($d),
                 'podium' => $podium = $this->finishedPodium($d),
                 // The gold "not yet confirmed" dot (unpaid / not weighed in) only
@@ -142,6 +147,34 @@ class BracketPdf
             'cover' => $withCover ? $this->cover($event, $divisions, $viewer) : null,
             'flagCss' => 'file://'.public_path('images/flags/flag-icons.css'),
         ])->render();
+    }
+
+    /** "5–6 yrs · 17–23 kg" from a division's range; '' when it narrows neither. */
+    private function rangeLine(array $r): string
+    {
+        $kg = fn ($v) => rtrim(rtrim(number_format((float) $v, 2, '.', ''), '0'), '.');
+        $a1 = $r['min_age'] ?? null;
+        $a2 = $r['max_age'] ?? null;
+        $w1 = isset($r['min_weight']) && (float) $r['min_weight'] > 0 ? $r['min_weight'] : null;
+        $w2 = isset($r['max_weight']) && (float) $r['max_weight'] > 0 && (float) $r['max_weight'] < 200 ? $r['max_weight'] : null;
+
+        $bits = [];
+        if ($a1 !== null || $a2 !== null) {
+            $bits[] = match (true) {
+                $a1 !== null && $a2 !== null => ($a1 === $a2 ? $a1 : $a1.'–'.$a2).' yrs',
+                $a1 !== null => $a1.'+ yrs',
+                default => 'up to '.$a2.' yrs',
+            };
+        }
+        if ($w1 !== null || $w2 !== null) {
+            $bits[] = match (true) {
+                $w1 !== null && $w2 !== null => $kg($w1).'–'.$kg($w2).' kg',
+                $w1 !== null => '+'.$kg($w1).' kg',
+                default => '−'.$kg($w2).' kg',
+            };
+        }
+
+        return implode(' · ', $bits);
     }
 
     /**

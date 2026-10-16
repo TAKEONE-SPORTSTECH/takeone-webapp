@@ -70,7 +70,7 @@ class DesignController extends Controller
         abort_unless(in_array($type, $provider->types(), true), 404);
 
         $data = $request->validate($this->fieldRules(true));
-        $format = Formats::forType($type);
+        $format = $this->sized(Formats::forType($type), $data, $service->templateFor($type, $model));
         $fields = $this->fields($data, $format);
         // A certificate says what it is and why; another format (a badge) may carry no wording at all.
         if ($format->key === Formats::CERTIFICATE && (! array_filter($fields['title']) || ! array_filter($fields['body']))) {
@@ -103,7 +103,7 @@ class DesignController extends Controller
             $data = $request->validate($this->fieldRules(false));
             $template = $template->replicate();
             $template->uuid = $service->templateFor($type, $model)->uuid;
-            $template->fill($this->fields($data, $template->format()));
+            $template->fill($this->fields($data, $this->sized(Formats::forType($type), $data, $template)));
         }
 
         // The same number of pixels across whatever the page's size: a small badge is drawn
@@ -230,6 +230,10 @@ class DesignController extends Controller
             'elements' => ['nullable', 'array', 'max:'.(Layout::MAX_CUSTOM + Layout::MAX_ERASE)],
             'artwork_fit' => ['nullable', Rule::in(CertificateTemplate::ARTWORK_FITS)],
             'print_bare' => ['nullable', 'boolean'],
+            // The page's own size in mm, long side first (1.4); null = the format's own (A4 / A6).
+            'page_size' => ['nullable', 'array'],
+            'page_size.long' => ['required_with:page_size', 'numeric', 'between:'.CertificateTemplate::PAGE_MIN_MM.','.CertificateTemplate::PAGE_MAX_MM],
+            'page_size.short' => ['required_with:page_size', 'numeric', 'between:'.CertificateTemplate::PAGE_MIN_MM.','.CertificateTemplate::PAGE_MAX_MM],
         ];
     }
 
@@ -249,6 +253,13 @@ class DesignController extends Controller
         }
         if (array_key_exists('elements', $data)) {
             $page['elements'] = ($e = Layout::customs($data['elements'] ?? [], Engine::locales())) === [] ? null : $e;
+        }
+        if (array_key_exists('page_size', $data)) {
+            // Stored only when it differs from the format's own page.
+            $own = Formats::get($format->key);
+            $size = CertificateTemplate::sizeOf($data['page_size'] ?? null);
+            $page['page_size'] = $size && (abs($size[0] - $own->long) >= 0.05 || abs($size[1] - $own->short) >= 0.05)
+                ? ['long' => round($size[0], 1), 'short' => round($size[1], 1)] : null;
         }
         if (array_key_exists('print_bare', $data)) {
             $page['print_bare'] = (bool) $data['print_bare'];
@@ -318,6 +329,7 @@ class DesignController extends Controller
             'layout' => $current->layout,
             'orientation' => $current->orientation, 'layout_portrait' => $current->layout_portrait,
             'elements' => $current->elements, 'artwork_fit' => $current->artwork_fit, 'print_bare' => $current->print_bare,
+            'page_size' => $current->page_size,
         ])->save();
         foreach (['signature_1', 'signature_2', CertificateTemplate::BACKGROUND_SLOT, CertificateTemplate::BACKGROUND_SOURCE_SLOT] as $slot) {
             if ($file = $files->get($current, $slot)) {
@@ -380,6 +392,12 @@ class DesignController extends Controller
                 'has_artwork' => $files->exists($t, CertificateTemplate::BACKGROUND_SLOT),
                 'version' => optional($t->updated_at)->timestamp,
                 'format' => $t->format()->key,
+                // The {tokens} this design can use: the provider's own for this type when it says, else every one.
+                'placeholders' => method_exists($provider, 'typePlaceholders') ? $provider->typePlaceholders($type)
+                    : ($provider instanceof \App\Events\Support\EventBadges ? $provider->placeholderKeys() : $service->placeholderKeys()),
+                // The page's own size (1.4): null = the format's own, `base_page` the format's own in mm.
+                'page_size' => ($sz = CertificateTemplate::sizeOf($t->page_size)) ? ['long' => $sz[0], 'short' => $sz[1]] : null,
+                'base_page' => ['long' => Formats::forType($type)->long, 'short' => Formats::forType($type)->short],
                 'editable' => $provider->canManageOwner($model, $owner, auth()->user()),
             ];
         })->values();
@@ -407,6 +425,19 @@ class DesignController extends Controller
                 ->mapWithKeys(fn ($f) => [$f => $this->formatState(Formats::get($f))])->all() ?: (object) [],
             'accent' => $provider->brand($model)['accent'] ?? '#6d5bd0',
         ];
+    }
+
+    /**
+     * The format a request's layout is measured against: the page size the form sends
+     * (1.4) when it sends one — null meaning the format's own — else the template's.
+     */
+    private function sized(Format $format, array $data, ?CertificateTemplate $template): Format
+    {
+        $size = array_key_exists('page_size', $data)
+            ? CertificateTemplate::sizeOf($data['page_size'] ?? null)
+            : CertificateTemplate::sizeOf($template?->page_size);
+
+        return $size ? $format->resized($size[0], $size[1]) : $format;
     }
 
     /** What the editor needs to draw a page of another format. */

@@ -226,6 +226,32 @@ return [
     'draw_transfer' => (bool) env('EVENT_DRAW_TRANSFER', false),
 
     /*
+     | Merging small divisions (App\Events\Support\DivisionMerge). Finds the
+     | groups too small to be a fair competition, suggests the merge that is
+     | SAFE for each — same gender, close in weight, close in age — with the
+     | reason in words, and merges two or more groups in one action. Safety
+     | before fairness: a merge that fails a hard limit is never offered, and
+     | one that needs a coach's / guardian's say-so is only done when the
+     | organiser confirms that consent. The limits and where each came from:
+     | Documentation/DIVISION-MERGING.md. OFF by default (RULE #1).
+     | EVENT_DIVISION_MERGE=true, then config:cache.
+     */
+    'division_merge' => [
+        'enabled' => (bool) env('EVENT_DIVISION_MERGE', false),
+        // A division with FEWER entrants than this is a merge candidate (WUKF: 3).
+        'below' => (int) env('EVENT_DIVISION_MERGE_BELOW', 3),
+        // Weight gap (heavier over lighter, %) above which consent is needed —
+        // the youth-wrestling 12% pairing line.
+        'consent_gap' => (float) env('EVENT_DIVISION_MERGE_CONSENT_GAP', 12),
+        // Weight gap above which a merge is never offered — the Ontario Judo
+        // maximum for a combined division (15% of the lightest).
+        'max_gap' => (float) env('EVENT_DIVISION_MERGE_MAX_GAP', 15),
+        // Most months apart two athletes may be when a merge crosses an age
+        // group (Boxing Ontario: 24 months across adjacent groups).
+        'max_age_months' => (int) env('EVENT_DIVISION_MERGE_MAX_MONTHS', 24),
+    ],
+
+    /*
      | A division of ONE competitor gets a board: a final with them in one
      | corner and the other empty (champion by walkover until somebody is put
      | in it). And dropping a competitor from the basket onto a division with
@@ -233,6 +259,15 @@ return [
      | OFF by default (RULE #1). EVENT_LONE_ENTRANT_FINAL=true, then config:cache.
      */
     'lone_entrant_final' => (bool) env('EVENT_LONE_ENTRANT_FINAL', false),
+
+    /*
+     | Each SESSION of a running order (the stretch between breaks) picks how
+     | its bouts are called and numbered: one class at a time, round by round
+     | (World Taekwondo), or manual (the bout-order board's own order).
+     | App\Events\Support\RunSessions. OFF by default (RULE #1): every session
+     | is one class at a time, exactly as before. EVENT_SESSION_MODES=true.
+     */
+    'session_modes' => (bool) env('EVENT_SESSION_MODES', false),
 
     /*
      | The entry list as an A4 PDF — the participants page's organiser download,
@@ -244,6 +279,15 @@ return [
      */
     'participants_pdf' => [
         'enabled' => (bool) env('EVENT_PARTICIPANTS_PDF', false),
+    ],
+
+    /*
+     * The event's blank registration form, English + Arabic side by side
+     * (App\Events\Support\RegistrationFormPdf) — a row in the event page's ⋯
+     * menu for the organiser and officials. Rides on the draw PDF's Chromium.
+     */
+    'registration_form_pdf' => [
+        'enabled' => (bool) env('EVENT_REGISTRATION_FORM_PDF', false),
     ],
 
     /*

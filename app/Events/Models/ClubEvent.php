@@ -297,6 +297,9 @@ class ClubEvent extends Model implements LimitsOfferedLocales, TranslatableConte
         'courts' => 'integer',
         'break_minutes' => 'integer',
         'day_courts' => 'array',
+        // How each day's FIRST running-order session calls its bouts, {"day": mode}
+        // (App\Events\Support\RunSessions). Not fillable: written by RunSessions only.
+        'run_modes' => 'array',
         'offered_locales' => 'array',
         'scoreboard_settings' => 'array',
         'is_archived' => 'boolean',

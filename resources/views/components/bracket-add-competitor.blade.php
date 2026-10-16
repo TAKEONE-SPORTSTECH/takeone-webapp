@@ -108,6 +108,12 @@
     .bkadd-flag{width:18px;height:13px;flex:none;border-radius:2px;overflow:hidden;box-shadow:0 0 0 1px #d5dae3;}
     .bkadd-flag .fi{display:block;width:100%;height:100%;background-size:cover;background-position:50%;}
     .bkadd-where{flex:none;font-size:.62rem;color:#97a1b4;}
+    .bkadd-filter{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:10px;}
+    .bkadd-range{display:inline-flex;align-items:center;gap:5px;font-size:.7rem;font-weight:600;color:#5d6880;}
+    .bkadd-num{width:64px;padding:6px 8px;font-size:.76rem;}
+    .bkadd-clear{border:0;background:transparent;font:inherit;font-size:.7rem;font-weight:700;color:#8a6d20;cursor:pointer;padding:4px 2px;}
+    .bkadd-clear:hover{text-decoration:underline;}
+    .bkadd-facts{display:block;font-size:.64rem;font-weight:700;margin-top:1px;}
 
     .bkadd-go{flex:none;padding:7px 12px;border:none;border-radius:7px;cursor:pointer;
         font-family:inherit;font-size:.72rem;font-weight:600;
@@ -173,6 +179,11 @@
         open: false, tab: 'known', busy: false,
         division: @js($division ? (int) $division : null),
         q: '', rows: [], loading: false, seq: 0,
+        /* The filter beside the search (owner, 2026-10-15). Applied by the
+           server, before its 40-row cap, so nobody in range is cut off. */
+        fGender: '', fMinAge: '', fMaxAge: '', fMinW: '', fMaxW: '',
+        get filtering() { return !! (this.fGender || this.fMinAge !== '' || this.fMaxAge !== '' || this.fMinW !== '' || this.fMaxW !== ''); },
+        clearFilter() { this.fGender = ''; this.fMinAge = ''; this.fMaxAge = ''; this.fMinW = ''; this.fMaxW = ''; this.search(); },
         name: '', club: '', clubs: [], clubsLoaded: false, clubOpen: false,
         /* What the desk knows about a walk-in — all optional but the name. */
         gender: '', birthMode: 'dob', dob: '', age: '', weight: '', nationality: '',
@@ -233,6 +244,10 @@
                 const url = new URL(@js($candidatesUrl ?: route('me.events.bracket.candidates', $event)), window.location.origin);
                 url.searchParams.set('category_id', this.division);
                 if (this.q.trim()) url.searchParams.set('q', this.q.trim());
+                if (this.fGender) url.searchParams.set('gender', this.fGender);
+                const num = (k, v) => { const s = String(v ?? '').replace(',', '.').trim(); if (s !== '' && ! isNaN(Number(s))) url.searchParams.set(k, s); };
+                num('min_age', this.fMinAge); num('max_age', this.fMaxAge);
+                num('min_weight', this.fMinW); num('max_weight', this.fMaxW);
                 const res = await fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
                 const data = await res.json().catch(() => ({}));
                 if (mine !== this.seq) return;
@@ -380,9 +395,35 @@
 
             {{-- ===== Somebody already entered in this championship ===== --}}
             <div x-show="tab === 'known'">
-                <input type="text" class="bkadd-in" x-model="q" @input="search()"
+                <input type="text" class="bkadd-in" x-model="q" @input="search()" autocomplete="off" spellcheck="false"
                        placeholder="{{ __('events::events.bracket_add_search') }}"
                        aria-label="{{ __('events::events.bracket_add_search') }}">
+
+                {{-- The filter: gender, age range, weight range. --}}
+                <div class="bkadd-filter">
+                    <div class="bkadd-seg" role="group" aria-label="{{ __('events::events.bracket_add_gender') }}">
+                        <button type="button" :class="fGender === '' && 'is-on'" @click="fGender = ''; search()">{{ __('events::events.bracket_filter_any') }}</button>
+                        <button type="button" :class="fGender === 'Male' && 'is-on'" @click="fGender = 'Male'; search()">{{ __('events::events.bracket_filter_male') }}</button>
+                        <button type="button" :class="fGender === 'Female' && 'is-on'" @click="fGender = 'Female'; search()">{{ __('events::events.bracket_filter_female') }}</button>
+                    </div>
+                    <div class="bkadd-range">
+                        <span>{{ __('events::events.bracket_filter_age') }}</span>
+                        <input type="number" class="bkadd-in bkadd-num" x-model="fMinAge" @input="search()" min="0" max="120" inputmode="numeric"
+                               placeholder="{{ __('events::events.bracket_filter_min') }}" aria-label="{{ __('events::events.bracket_filter_min_age') }}">
+                        <span>–</span>
+                        <input type="number" class="bkadd-in bkadd-num" x-model="fMaxAge" @input="search()" min="0" max="120" inputmode="numeric"
+                               placeholder="{{ __('events::events.bracket_filter_max') }}" aria-label="{{ __('events::events.bracket_filter_max_age') }}">
+                    </div>
+                    <div class="bkadd-range">
+                        <span>kg</span>
+                        <input type="number" class="bkadd-in bkadd-num" x-model="fMinW" @input="search()" min="0" max="400" step="0.1" inputmode="decimal"
+                               placeholder="{{ __('events::events.bracket_filter_min') }}" aria-label="{{ __('events::events.bracket_filter_min_weight') }}">
+                        <span>–</span>
+                        <input type="number" class="bkadd-in bkadd-num" x-model="fMaxW" @input="search()" min="0" max="400" step="0.1" inputmode="decimal"
+                               placeholder="{{ __('events::events.bracket_filter_max') }}" aria-label="{{ __('events::events.bracket_filter_max_weight') }}">
+                    </div>
+                    <button type="button" class="bkadd-clear" x-show="filtering" x-cloak @click="clearFilter()">{{ __('events::events.bracket_filter_clear') }}</button>
+                </div>
 
                 <div class="bkadd-list">
                     <template x-for="r in rows" :key="r.id">
@@ -402,6 +443,11 @@
                                     <span class="bkadd-ab" x-text="r.club_ab"></span>
                                     <span class="bkadd-club" x-text="r.club"></span>
                                 </span>
+                                {{-- What the filter filters on, so the desk can see why somebody is listed. --}}
+                                <span class="bkadd-facts" x-show="r.age !== null || r.weight !== null"
+                                      :style="'color:' + (r.gender === 'Female' ? '#be185d' : r.gender === 'Male' ? '#1d4ed8' : '#5d6880')"
+                                      x-text="[r.age !== null && r.age !== undefined ? r.age + ' {{ __('events::events.bracket_filter_yrs') }}' : null,
+                                               r.weight !== null && r.weight !== undefined ? (+Number(r.weight).toFixed(2)) + ' kg' : null].filter(Boolean).join(' · ')"></span>
                             </span>
                             {{-- Where they stand today. A competitor sitting in
                                  no division at all is the case worth seeing. --}}
@@ -448,7 +494,7 @@
                         <div class="min-w-0 flex-1 space-y-3">
                             <div>
                                 <label class="{{ $lbl }}" for="{{ $id }}Name">{{ __('events::events.bracket_add_name') }} <span class="text-red-500">*</span></label>
-                                <input id="{{ $id }}Name" type="text" class="{{ $fld }}" x-model="name" maxlength="120"
+                                <input id="{{ $id }}Name" type="text" class="{{ $fld }}" x-model="name" maxlength="120" autocomplete="off" spellcheck="false"
                                        @keydown.enter.prevent="create()">
                             </div>
                             <div>
@@ -474,7 +520,7 @@
                             <x-fields.date-of-birth model="dob" name="{{ $id }}_dob" id="{{ $id }}Dob" label="" :minAge="3" :maxAge="99" />
                         </div>
                         <div x-show="birthMode === 'age'" x-cloak class="flex items-center gap-2">
-                            <input type="number" class="{{ $fld }}" style="max-width:120px" x-model="age" min="3" max="99" inputmode="numeric"
+                            <input type="number" class="{{ $fld }}" style="max-width:120px" autocomplete="off" x-model="age" min="3" max="99" inputmode="numeric"
                                    aria-label="{{ __('events::events.bracket_add_age') }}">
                             <span class="text-sm text-gray-500">{{ __('events::events.bracket_add_years') }}</span>
                         </div>
@@ -506,7 +552,7 @@
                                 <template x-if="clubLogo"><img :src="clubLogo" alt=""></template>
                                 <template x-if="! clubLogo"><span class="flex flex-col items-center"><i class="bi bi-image"></i><span class="text-[9px] font-semibold">{{ __('events::events.bracket_add_logo_short') }}</span></span></template>
                             </button>
-                            <input type="text" class="{{ $fld }}" x-ref="clubName" x-model="clubName" maxlength="120"
+                            <input type="text" class="{{ $fld }}" x-ref="clubName" x-model="clubName" maxlength="120" autocomplete="off"
                                    placeholder="{{ __('events::events.bracket_add_club_name') }}" aria-label="{{ __('events::events.bracket_add_club_name') }}">
                         </div>
                     </div>
@@ -519,7 +565,7 @@
                         <div>
                             <label class="{{ $lbl }}" for="{{ $id }}Weight">{{ __('events::events.bracket_add_weight') }}</label>
                             <div class="relative">
-                                <input id="{{ $id }}Weight" type="number" class="{{ $fld }}" style="padding-right:2.5rem" x-model="weight" min="10" max="300" step="0.1" inputmode="decimal">
+                                <input id="{{ $id }}Weight" type="number" autocomplete="off" class="{{ $fld }}" style="padding-right:2.5rem" x-model="weight" min="10" max="300" step="0.1" inputmode="decimal">
                                 <span class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 pointer-events-none">kg</span>
                             </div>
                         </div>

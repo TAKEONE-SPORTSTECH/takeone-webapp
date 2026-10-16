@@ -431,6 +431,8 @@ Route::where(['token' => '[A-Za-z0-9]{40}'])->prefix('/tablet/{token}/draw')->na
     Route::post('/lock', [App\Events\Controllers\TabletDrawController::class, 'lock'])->name('.lock')->middleware('throttle:30,1');
     Route::put('/arrange', [App\Events\Controllers\TabletDrawController::class, 'arrange'])->name('.arrange')->middleware('throttle:bracket-arrange');
     Route::put('/transfer', [App\Events\Controllers\TabletDrawController::class, 'transfer'])->name('.transfer')->middleware('throttle:bracket-arrange');
+    Route::post('/shuffle', [App\Events\Controllers\TabletDrawController::class, 'shuffle'])->name('.shuffle')->middleware('throttle:bracket-arrange');
+    Route::post('/renumber-all', [App\Events\Controllers\TabletDrawController::class, 'renumberAll'])->name('.renumber-all')->middleware('throttle:admin-write');
     Route::put('/admit', [App\Events\Controllers\TabletDrawController::class, 'admit'])->name('.admit')->middleware('throttle:member-write');
     Route::get('/candidates', [App\Events\Controllers\TabletDrawController::class, 'candidates'])->name('.candidates')->middleware('throttle:event-desk');
     Route::post('/unnamed', [App\Events\Controllers\TabletDrawController::class, 'unnamed'])->name('.unnamed')->middleware('throttle:admin-write');
@@ -532,6 +534,7 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
     Route::get('/events/{event:uuid}/order', [App\Events\Controllers\PersonalEventController::class, 'runningOrderPage'])->name('events.order.page');
     Route::get('/events/{event:uuid}/running-order', [App\Events\Controllers\PersonalEventController::class, 'runningOrder'])->name('events.order')->middleware('throttle:120,1');
     Route::put('/events/{event:uuid}/running-order', [App\Events\Controllers\PersonalEventController::class, 'moveInRunningOrder'])->name('events.order.move')->middleware('throttle:admin-write');
+    Route::post('/events/{event:uuid}/running-order/renumber', [App\Events\Controllers\PersonalEventController::class, 'renumberBouts'])->name('events.order.renumber')->middleware('throttle:admin-write');
     Route::post('/events/{event:uuid}/running-order/auto', [App\Events\Controllers\PersonalEventController::class, 'autoRunningOrder'])->name('events.order.auto')->middleware('throttle:member-write');
 
     /*
@@ -730,11 +733,27 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
        (App\Events\Support\ParticipantsPdf). Organiser and officials only, on
        the draw PDF's limiter: it is the same browser. 404 while the flag is off. */
     Route::get('/events/{event:uuid}/participants/pdf', [App\Events\Controllers\ParticipantsPdfController::class, 'show'])->name('events.participants.pdf')->middleware('throttle:bracket-pdf');
+    // The officials, printed (App\Events\Support\OfficialsPdf): same people, same throttle.
+    Route::get('/events/{event:uuid}/officials/pdf', [App\Events\Controllers\OfficialsPdfController::class, 'show'])->name('events.officials.pdf')->middleware('throttle:bracket-pdf');
+    /* The event's blank registration form, English + Arabic, as an A4 PDF
+       (App\Events\Support\RegistrationFormPdf). Organiser and officials only,
+       on the same limiter — the same browser. 404 while the flag is off. */
+    Route::get('/events/{event:uuid}/registration-form/pdf', [App\Events\Controllers\RegistrationFormPdfController::class, 'show'])->name('events.registration-form.pdf')->middleware('throttle:bracket-pdf');
+    // The same form filled in for one entrant — organiser only (the entry editor's rule).
+    Route::get('/events/{event:uuid}/entrants/{registration}/registration-form/pdf', [App\Events\Controllers\RegistrationFormPdfController::class, 'entrant'])->name('events.entrant.registration-form')->whereNumber('registration')->middleware('throttle:bracket-pdf');
     /* The tablet PIN — lends a scoring tablet the organiser's authority to edit
        the draw in an emergency (App\Events\Support\TabletDraw). Organiser only. */
     Route::get('/events/{event:uuid}/draw-pin', [App\Events\Controllers\DrawPinController::class, 'show'])->name('events.draw-pin')->middleware('throttle:60,1');
     Route::put('/events/{event:uuid}/draw-pin', [App\Events\Controllers\DrawPinController::class, 'update'])->name('events.draw-pin.update')->middleware('throttle:member-write');
     Route::delete('/events/{event:uuid}/draw-pin', [App\Events\Controllers\DrawPinController::class, 'destroy'])->name('events.draw-pin.destroy')->middleware('throttle:member-write');
+    /* The tablet's draw screen for the organiser at a desk — same page, same
+       tools, signed in as themselves, no PIN (DrawDeskController). Every edit
+       goes to the organiser's own endpoints above; only the bout-number doors
+       are its own, and they call App\Events\Support\BoutNumbers. */
+    Route::get('/events/{event:uuid}/draw-desk', [App\Events\Controllers\DrawDeskController::class, 'show'])->name('events.draw-desk')->whereUuid('event')->middleware('throttle:60,1');
+    Route::get('/events/{event:uuid}/draw-desk/numbers/{match}', [App\Events\Controllers\DrawDeskController::class, 'numberPlace'])->name('events.draw-desk.number')->whereNumber('match')->middleware('throttle:event-desk');
+    Route::put('/events/{event:uuid}/draw-desk/numbers', [App\Events\Controllers\DrawDeskController::class, 'renumber'])->name('events.draw-desk.renumber')->middleware('throttle:admin-write');
+    Route::delete('/events/{event:uuid}/draw-desk/numbers/{match}', [App\Events\Controllers\DrawDeskController::class, 'releaseNumber'])->name('events.draw-desk.number.release')->whereNumber('match')->middleware('throttle:admin-write');
     Route::put('/events/{event:uuid}/brackets/arrange', [App\Events\Controllers\PersonalEventController::class, 'arrangeBracket'])->name('events.bracket.arrange')->middleware('throttle:bracket-arrange');
     Route::put('/events/{event:uuid}/brackets/transfer', [App\Events\Controllers\PersonalEventController::class, 'transferBracket'])->name('events.bracket.transfer')->middleware('throttle:bracket-arrange');
     Route::put('/events/{event:uuid}/brackets/clear', [App\Events\Controllers\PersonalEventController::class, 'clearBracket'])->name('events.bracket.clear')->middleware('throttle:member-write');
@@ -770,14 +789,35 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
     // the list and the thing that adds to it are one resource.
     Route::get('/events/{event:uuid}/divisions', [App\Events\Controllers\PersonalEventController::class, 'divisions'])->name('events.divisions')->middleware(['throttle:60,1', 'source-text']);
     Route::post('/events/{event:uuid}/divisions', [App\Events\Controllers\PersonalEventController::class, 'storeDivision'])->name('events.divisions.store')->middleware(['throttle:admin-write', 'source-text']);
+    // Divisions from a spreadsheet (DivisionImport): the template, a preview that writes nothing, the import.
+    Route::get('/events/{event:uuid}/divisions/import/template', [App\Events\Controllers\PersonalEventController::class, 'divisionsImportTemplate'])->name('events.divisions.import.template')->middleware('throttle:30,1');
+    Route::post('/events/{event:uuid}/divisions/import/preview', [App\Events\Controllers\PersonalEventController::class, 'divisionsImportPreview'])->name('events.divisions.import.preview')->middleware('throttle:uploads');
+    Route::post('/events/{event:uuid}/divisions/import', [App\Events\Controllers\PersonalEventController::class, 'divisionsImport'])->name('events.divisions.import')->middleware(['throttle:admin-write', 'source-text']);
     // The ORDER of the list. Declared before the {division} routes for
     // readability only — `order` is not a number, so it could never have
     // matched them. Organiser-only: this is arranging the event's own
     // structure, not arranging a draw.
     // Who a proposed division would hold. A READ that writes nothing, but
     // throttled like a lookup: it walks the whole entry list per call.
+    // The editor's data as JSON, for an editor that is not this Blade page (the
+    // federation dashboard's Divisions tab). Organiser only, like the page.
+    Route::get('/events/{event:uuid}/divisions/data', [App\Events\Controllers\PersonalEventController::class, 'divisionsData'])->name('events.divisions.data')->middleware('throttle:60,1');
     Route::post('/events/{event:uuid}/divisions/preview', [App\Events\Controllers\PersonalEventController::class, 'previewDivision'])->name('events.divisions.preview')->middleware('throttle:120,1');
     Route::put('/events/{event:uuid}/divisions/order', [App\Events\Controllers\PersonalEventController::class, 'reorderDivisions'])->name('events.divisions.order')->middleware('throttle:admin-write');
+    // Merging small divisions (DivisionMerge, behind EVENT_DIVISION_MERGE):
+    // the suggestions, a judgement of groups the organiser picked, the merge.
+    Route::get('/events/{event:uuid}/divisions/merge', [App\Events\Controllers\DivisionMergeController::class, 'suggest'])->name('events.divisions.merge.suggest')->middleware('throttle:60,1');
+    Route::post('/events/{event:uuid}/divisions/merge/check', [App\Events\Controllers\DivisionMergeController::class, 'check'])->name('events.divisions.merge.check')->middleware('throttle:120,1');
+    Route::post('/events/{event:uuid}/divisions/merge', [App\Events\Controllers\DivisionMergeController::class, 'merge'])->name('events.divisions.merge')->middleware('throttle:admin-write');
+    // Start the divisions again: delete them all, and auto-place entrants into the rule book's (DivisionReset).
+    Route::post('/events/{event:uuid}/divisions/delete-all', [App\Events\Controllers\DivisionResetController::class, 'deleteAll'])->name('events.divisions.delete-all')->middleware('throttle:admin-write');
+    Route::post('/events/{event:uuid}/divisions/auto-place', [App\Events\Controllers\DivisionResetController::class, 'autoPlace'])->name('events.divisions.auto-place')->middleware('throttle:admin-write');
+    // The weight tables auto-place can follow (WKF, Shotokan, the host's own…), for its picker.
+    Route::get('/events/{event:uuid}/divisions/auto-place', [App\Events\Controllers\DivisionResetController::class, 'systems'])->name('events.divisions.auto-place.systems')->middleware('throttle:60,1');
+    // Who is in NO division, and where each could go (UnplacedEntrants). Placing is divisions.members.
+    Route::get('/events/{event:uuid}/divisions/unplaced', [App\Events\Controllers\DivisionPlacementController::class, 'unplaced'])->name('events.divisions.unplaced')->middleware('throttle:60,1');
+    // The officials' handbook on merging, as a PDF with this event's own chapter.
+    Route::get('/events/{event:uuid}/divisions/merge/handbook', [App\Events\Controllers\DivisionMergeController::class, 'handbook'])->name('events.divisions.merge.handbook')->middleware('throttle:bracket-pdf');
     Route::patch('/events/{event:uuid}/divisions/{division}', [App\Events\Controllers\PersonalEventController::class, 'updateDivision'])->name('events.divisions.update')->whereNumber('division')->middleware(['throttle:admin-write', 'source-text']);
     Route::delete('/events/{event:uuid}/divisions/{division}', [App\Events\Controllers\PersonalEventController::class, 'destroyDivision'])->name('events.divisions.destroy')->whereNumber('division')->middleware('throttle:admin-write');
     Route::post('/events/{event:uuid}/divisions/{division}/duplicate', [App\Events\Controllers\PersonalEventController::class, 'duplicateDivision'])->name('events.divisions.duplicate')->whereNumber('division')->middleware('throttle:admin-write');
@@ -946,8 +986,13 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
     Route::get('/events/{event:uuid}/day-order', [App\Events\Controllers\PersonalEventController::class, 'runOrder'])->name('events.run-order')->middleware('throttle:60,1');
     Route::get('/events/{event:uuid}/day-order/data', [App\Events\Controllers\PersonalEventController::class, 'runOrderData'])->name('events.run-order.data')->middleware('throttle:120,1');
     Route::post('/events/{event:uuid}/day-order', [App\Events\Controllers\PersonalEventController::class, 'storeRunSlot'])->name('events.run-order.store')->middleware('throttle:admin-write');
+    // Auto-schedule: every division not on the day yet, in age → weight → gender order (autoRunOrder).
+    Route::post('/events/{event:uuid}/day-order/auto', [App\Events\Controllers\PersonalEventController::class, 'autoRunOrder'])->name('events.run-order.auto')->middleware('throttle:admin-write');
     // The break set on the event, edited from the running order (2026-10-07).
-    Route::put('/events/{event:uuid}/day-order-break', [App\Events\Controllers\PersonalEventController::class, 'updateEventBreak'])->name('events.run-order.break')->middleware('throttle:admin-write');
+    Route::put('/events/{event:uuid}/day-order-start', [App\Events\Controllers\PersonalEventController::class, 'updateDayStart'])->name('events.run-order.start')->middleware('throttle:admin-write');
+    Route::put('/events/{event:uuid}/day-order-break',[App\Events\Controllers\PersonalEventController::class, 'updateEventBreak'])->name('events.run-order.break')->middleware('throttle:admin-write');
+    Route::put('/events/{event:uuid}/day-order-move', [App\Events\Controllers\PersonalEventController::class, 'moveRunSlot'])->name('events.run-order.move')->middleware('throttle:admin-write');
+    Route::put('/events/{event:uuid}/day-order-session', [App\Events\Controllers\PersonalEventController::class, 'updateRunSession'])->name('events.run-order.session')->middleware('throttle:admin-write');
     Route::put('/events/{event:uuid}/day-order', [App\Events\Controllers\PersonalEventController::class, 'reorderRunOrder'])->name('events.run-order.reorder')->middleware('throttle:admin-write');
     Route::put('/events/{event:uuid}/day-order/{slot}', [App\Events\Controllers\PersonalEventController::class, 'updateRunSlot'])->name('events.run-order.update')->whereUuid('slot')->middleware('throttle:admin-write');
     Route::delete('/events/{event:uuid}/day-order/{slot}', [App\Events\Controllers\PersonalEventController::class, 'destroyRunSlot'])->name('events.run-order.destroy')->whereUuid('slot')->middleware('throttle:admin-write');

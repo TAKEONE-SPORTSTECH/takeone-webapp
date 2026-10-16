@@ -283,8 +283,31 @@ class RouteIntegrityTest extends TestCase
      * (me.events.participants.pdf, ParticipantsPdfController).
      * 1050 on 2026-10-14: +2 — dragging a competitor into another division's draw
      *   (me.events.bracket.transfer, tablet.draw.transfer; Transfer)
+     * 1051 on 2026-10-14: +1 — a running-order group's method (me.events.run-order.session)
+     * 1052 on 2026-10-14: +1 — dragging an item into or out of a group (me.events.run-order.move)
+     * 1056 on 2026-10-14: +4 — the tablet's draw screen at the organiser's desk
+     *   (me.events.draw-desk, .number, .renumber, .number.release; DrawDeskController)
+     * 1057 on 2026-10-14: +1 — Shuffle on a scoring tablet (tablet.draw.shuffle; FairDraw)
+     * 1058 on 2026-10-14: +1 — "Renumber bouts" (me.events.order.renumber; BoutNumbering)
+     * 1059 on 2026-10-14: +1 — "Renumber bouts" on a scoring tablet (tablet.draw.renumber-all)
+     * 1060 on 2026-10-14: +1 — the divisions editor's data as JSON (me.events.divisions.data; the federation Divisions tab)
+     * 1061 on 2026-10-14: +1 — the event's blank bilingual registration form PDF (me.events.registration-form.pdf)
+     * 1062 on 2026-10-14: +1 — the same form filled in for one entrant (me.events.entrant.registration-form)
+     * 1065 on 2026-10-15: +3 — merging small divisions (me.events.divisions.merge{,.suggest,.check}; DivisionMerge)
+     * 1066 on 2026-10-15: +1 — the merging handbook PDF (me.events.divisions.merge.handbook)
+     * 1067 on 2026-10-15: +1 — entrants in no division, with where each fits (me.events.divisions.unplaced)
+     * 1069 on 2026-10-15: +2 — delete every division / auto-place (me.events.divisions.delete-all, .auto-place; DivisionReset)
+     * 1070 on 2026-10-15: +1 — the weight tables auto-place can follow (me.events.divisions.auto-place.systems)
+     * 1071 on 2026-10-15: +1 — the Participants tab's athlete editor frame (federations.athlete-edit)
+     * 1074 on 2026-10-15: +3 — the Officials tab's editor (federations.official-edit, api.officials.one, api.officials.person)
+     * 1075 on 2026-10-15: +1 — take a whole club off an event (federations.api.regs.withdraw-club)
+     * 1076 on 2026-10-15: +1 — the officials as a PDF (me.events.officials.pdf)
+     * 1078 on 2026-10-15: +2 — the Clubs tab's club editor (federations.club-edit, federations.api.clubs.logo)
+     * 1081 on 2026-10-15: +3 — divisions from a spreadsheet (me.events.divisions.import{,.preview,.template}; DivisionImport)
+     * 1082 on 2026-10-16: +1 — auto-schedule the day (me.events.run-order.auto)
+     * 1083 on 2026-10-16: +1 — when the day starts (me.events.run-order.start)
      */
-    private const EXPECTED_ROUTE_COUNT = 1050;
+    private const EXPECTED_ROUTE_COUNT = 1083;
 
     /** Routes handled by a Closure rather than a controller action. */
     private const EXPECTED_CLOSURE_COUNT = 22;
@@ -543,6 +566,28 @@ class RouteIntegrityTest extends TestCase
         // 1033 on 2026-10-13: +2, the advisor's memory.
         // 1035 on 2026-10-13: +2, the federation's athlete edit (regs.athlete / .athlete.update).
         // 1037 on 2026-10-14: +2, the split view's transfer doors (member + tablet).
-        $this->assertCount(1037, $named, 'Named-route count changed — tripwire, see class docblock.');
+        // 1038 on 2026-10-14: +1, me.events.run-order.session.
+        // 1039 on 2026-10-14: +1, me.events.run-order.move.
+        // 1043 on 2026-10-14: +4, me.events.draw-desk (page + three bout-number doors).
+        // 1044 on 2026-10-14: +1, tablet.draw.shuffle.
+        // 1045 on 2026-10-14: +1, me.events.order.renumber.
+        // 1046 on 2026-10-14: +1, tablet.draw.renumber-all.
+        // 1047 on 2026-10-14: +1, me.events.divisions.data.
+        // 1048 on 2026-10-14: +1, me.events.registration-form.pdf.
+        // 1049 on 2026-10-14: +1, me.events.entrant.registration-form.
+        // 1052 on 2026-10-15: +3, me.events.divisions.merge{,.suggest,.check}.
+        // 1053 on 2026-10-15: +1, me.events.divisions.merge.handbook.
+        // 1054 on 2026-10-15: +1, me.events.divisions.unplaced.
+        // 1056 on 2026-10-15: +2, me.events.divisions.delete-all / auto-place.
+        // 1057 on 2026-10-15: +1, me.events.divisions.auto-place.systems.
+        // 1058 on 2026-10-15: +1, federations.athlete-edit.
+        // 1061 on 2026-10-15: +3, federations.official-edit / api.officials.one / api.officials.person.
+        // 1062 on 2026-10-15: +1, federations.api.regs.withdraw-club.
+        // 1063 on 2026-10-15: +1, me.events.officials.pdf.
+        // 1065 on 2026-10-15: +2, federations.club-edit / federations.api.clubs.logo.
+        // 1068 on 2026-10-15: +3, me.events.divisions.import / .import.preview / .import.template.
+        // 1069 on 2026-10-16: +1, me.events.run-order.auto.
+        // 1070 on 2026-10-16: +1, me.events.run-order.start.
+        $this->assertCount(1070, $named, 'Named-route count changed — tripwire, see class docblock.');
     }
 }

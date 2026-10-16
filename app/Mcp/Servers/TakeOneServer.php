@@ -35,7 +35,10 @@ use App\Mcp\Tools\ListMyCertificatesTool;
 use App\Mcp\Tools\ListEventFeatureRequestsTool;
 use App\Mcp\Tools\AddWorkHistoryTool;
 use App\Mcp\Tools\ArrangeEventBracketTool;
+use App\Mcp\Tools\ShuffleEventDivisionTool;
+use App\Mcp\Tools\RenumberEventBoutsTool;
 use App\Mcp\Tools\TransferEventCompetitorTool;
+use App\Mcp\Tools\SetRunningOrderGroupTool;
 use App\Mcp\Tools\ClubFinancialsTool;
 use App\Mcp\Tools\ListClubOwnersTool;
 use App\Mcp\Tools\ProposeClubOwnershipTool;
@@ -141,7 +144,10 @@ class TakeOneServer extends Server
         ListBjjMatchEventsTool::class,
         ListCourtScreensTool::class,
         ArrangeEventBracketTool::class,
+        ShuffleEventDivisionTool::class,
+        RenumberEventBoutsTool::class,
         TransferEventCompetitorTool::class,
+        SetRunningOrderGroupTool::class,
         GetEventTranslationTool::class,
         TranslateEventTool::class,
         SetEventTranslationTool::class,

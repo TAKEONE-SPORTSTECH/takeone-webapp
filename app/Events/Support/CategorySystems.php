@@ -233,22 +233,42 @@ class CategorySystems
      * has always been sorted automatically. A club's event keeps its rule
      * that only the organiser creates divisions (Enrolment::resolveDivision).
      */
-    public function placeCreating(ClubEvent $event, \App\Events\Models\ClubEventRegistration $reg): ?\App\Events\Models\EventCategory
+    public function placeCreating(ClubEvent $event, \App\Events\Models\ClubEventRegistration $reg, bool $ruleBook = false): ?\App\Events\Models\EventCategory
     {
         if ($reg->category_id) {
             return $reg->category;
         }
+        // An event with the organiser's own divisions is filled into THOSE and
+        // nothing is created (OwnDivisions). Only an explicit choice of a
+        // weight table (auto-place with a table picked) passes $ruleBook.
+        if (! $ruleBook && OwnDivisions::uses($event)) {
+            return OwnDivisions::place($event, $reg);
+        }
         $u = $reg->user;
         $base = rescue(fn () => app(SportRegistry::class)->get((string) $event->sport), null, report: false);
-        if (! $base || ! $u || ! $u->gender || ! $u->birthdate || ! $reg->weight) {
+        // A stated age (club_event_registrations.declared_age) stands in for a
+        // date of birth nobody has — never an invented birthdate (2026-10-15).
+        $stated = ! $u?->birthdate && $reg->declared_age !== null ? (int) $reg->declared_age : null;
+        if (! $base || ! $u || ! $u->gender || (! $u->birthdate && $stated === null) || ! $reg->weight) {
             return null;
         }
         $sport = $this->sportFor($base, $event);
-        $class = $sport->classify(strtolower((string) $u->gender), \Illuminate\Support\Carbon::parse($u->birthdate)->age, (float) $reg->weight);
+        $age = $stated ?? \Illuminate\Support\Carbon::parse($u->birthdate)->age;
+        $class = $sport->classify(strtolower((string) $u->gender), $age, (float) $reg->weight);
         if (! $class) {
             return null;
         }
         $this->ensureDivision($event, $sport, $class, strtolower((string) $u->gender));
+        if ($stated !== null) {
+            // The packages' own classifier reads a birthdate only, so the
+            // division the rule book names is found here, the same way.
+            $placed = DivisionNames::find($event->id, DivisionNames::candidates($sport, $class['age_group'], (string) $u->gender, $class['category']));
+            if ($placed) {
+                $reg->forceFill(['category_id' => $placed->id, 'category_source' => \App\Events\Models\ClubEventRegistration::PLACED_AUTO])->save();
+            }
+
+            return $placed;
+        }
         $placed = app(\App\Events\EventTypeRegistry::class)->for($event)->classifyEntry($event, $reg->fresh('user'));
         if ($placed) {
             $reg->forceFill(['category_source' => \App\Events\Models\ClubEventRegistration::PLACED_AUTO])->save();

@@ -237,8 +237,13 @@ class DrawEngine
      */
     /**
      * @param  bool  $paidOnly  the FINAL draw: only officially verified entries.
+     * @param  list<?int>|null  $order  entry id per first-round slot (null = bye), as
+     *                                  App\Events\Support\Tournament\FairDraw lays it. Used only
+     *                                  when it names exactly this draw's entrants on a
+     *                                  board of the right size; otherwise ignored, and
+     *                                  the division is cut the usual way.
      */
-    public function build(ClubEvent $event, EventCategory $cat, bool $paidOnly): void
+    public function build(ClubEvent $event, EventCategory $cat, bool $paidOnly, ?array $order = null): void
     {
         /*
          * ⚠️ THE DOOR, NOT THE DOORMEN: A FOUGHT DIVISION IS NEVER RE-CUT.
@@ -358,9 +363,16 @@ class DrawEngine
 
         // Standard bracket-seed slots so byes are spread out.
         $slots = array_fill(0, $size, null);
-        foreach ($this->seedOrder($size) as $slotIndex => $seedNum) {
-            if ($seedNum <= $n) {
-                $slots[$slotIndex] = $competitors[$seedNum - 1];
+        if ($this->orderFits($order, $competitors, $size)) {
+            $byId = $competitors->keyBy('id');
+            foreach ($order as $slotIndex => $id) {
+                $slots[$slotIndex] = $id === null ? null : $byId[$id];
+            }
+        } else {
+            foreach ($this->seedOrder($size) as $slotIndex => $seedNum) {
+                if ($seedNum <= $n) {
+                    $slots[$slotIndex] = $competitors[$seedNum - 1];
+                }
             }
         }
 
@@ -580,6 +592,33 @@ class DrawEngine
     {
         return in_array('Semifinal', $rounds, true)
             && \App\Events\Support\BronzeRule::playsOff($event);
+    }
+
+    /**
+     * Does a caller's slot order describe THIS draw — the board's size, every
+     * entrant exactly once, nobody else, and no bout with two empty corners?
+     */
+    private function orderFits(?array $order, \Illuminate\Support\Collection $competitors, int $size): bool
+    {
+        if ($order === null || count($order) !== $size || ! array_is_list($order)) {
+            return false;
+        }
+
+        $ids = array_values(array_filter($order, fn ($id) => $id !== null));
+        $want = $competitors->pluck('id')->all();
+        sort($ids);
+        sort($want);
+        if ($ids !== $want) {
+            return false;
+        }
+
+        for ($i = 0; $i < $size; $i += 2) {
+            if ($order[$i] === null && $order[$i + 1] === null) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /** Standard single-elimination seed positions (index = slot, value = seed #). */

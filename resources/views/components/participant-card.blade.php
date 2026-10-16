@@ -598,6 +598,20 @@
             ],
         ];
 
+        /* Their registration form, already filled in from what the platform
+           holds — printed, it only needs signing
+           (App\Events\Support\RegistrationFormPdf::fill). The route is the
+           organiser's alone and re-checks; this only decides what is offered. */
+        $regForm = $event && \App\Events\Support\RegistrationFormPdf::available();
+        if ($regForm) {
+            $cardActions[] = [
+                'icon' => 'bi-file-earmark-person',
+                'label' => __('events::events.registration_form_entrant'),
+                'hint' => __('events::events.registration_form_entrant_hint'),
+                'onclick' => 'onRegForm()',
+            ];
+        }
+
         /* A way back in for an athlete who forgot their password: six digits the
            desk reads out (App\Events\Support\DeskSignInCode). Only with
            one-athlete-one-profile on; the endpoint decides who may, for whom. */
@@ -622,6 +636,13 @@
             ];
         }
     @endphp
+
+    {{-- The PDF fetcher the registration-form row calls — the card owns it
+         rather than relying on the host page to have drawn one (it is guarded,
+         so a page that already has it keeps the one copy). --}}
+    @if($regForm)
+        @include('events::partials.pdf-download-script')
+    @endif
 
     <x-action-sheet id="participant" :color="$sheetColor"
                     icon="bi-person-arms-up"
@@ -852,6 +873,7 @@
        and it is a KEY rather than a URL because a destination taken from the
        query string is an open redirect with extra steps. */
     var PROFILE_URL = @js($event ? route('sealed.people.show', ['event' => $event, 'uuid' => '__UUID__']).'?from=participants' : '');
+    var REG_FORM = @js($manage && $event && \App\Events\Support\RegistrationFormPdf::available() ? route('me.events.entrant.registration-form', ['event' => $event, 'registration' => 0]) : '');
     var SIGN_IN_CODE = @js($event && \App\Events\Support\KnownPerson::enabled() && \Illuminate\Support\Facades\Route::has('me.events.entries.sign-in-code') ? route('me.events.entries.sign-in-code', ['event' => $event, 'entry' => 0]) : '');
 
     var csrf = function () { return document.querySelector('meta[name=csrf-token]')?.content || ''; };
@@ -987,6 +1009,22 @@
         }); })
         .catch(function (e) { st.textContent = e.message; });
     };
+
+    @if($manage)
+    /* THIS PERSON's registration form, filled in — a download, not a page:
+       the shared PDF fetcher toasts while the server prints it and if it fails. */
+    window.onRegForm = function () {
+        var entry = currentCard.dataset.entry;
+
+        if (! entry || ! REG_FORM || ! window.participantsPdf) {
+            window.showToast('error', @js(__('personal.event_card_verify_missing')));
+            return;
+        }
+
+        closeSheet();
+        window.participantsPdf(REG_FORM.replace('/entrants/0/', '/entrants/' + Number(entry) + '/'));
+    };
+    @endif
 
     window.onProfile = function () {
         var uuid = currentCard.dataset.memberId;

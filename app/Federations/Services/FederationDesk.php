@@ -654,6 +654,40 @@ class FederationDesk
      *
      * @param  array<int, array{entry?: string, athlete?: string}>  $rows
      */
+    /**
+     * Take a whole club off one event (the event's Clubs tab, owner
+     * 2026-10-15): every athlete still Active on that club's entry becomes
+     * Withdrawn, exactly as withdrawRegs() does one by one, and the route's
+     * SyncPlatformEntries then takes them out of the platform event. The
+     * entry itself, its payments and the officials it names are left alone.
+     *
+     * @return int|null how many athletes were withdrawn; null when not allowed or not found
+     */
+    public function withdrawClub(array $access, string $eventUuid, string $clubKey): ?int
+    {
+        if (! $access['manager'] || ! preg_match('/^(fc|fa)-([0-9a-f-]{36})$/', $clubKey, $m)) {
+            return null;
+        }
+        $event = $this->eventsOf($access)->firstWhere('uuid', $eventUuid);
+        if (! $event) {
+            return null;
+        }
+        $club = $m[1] === 'fc'
+            ? FederationClub::where('uuid', $m[2])->first()
+            : \App\Federations\Models\FederationClubApplication::where('uuid', $m[2])->first();
+        if (! $club) {
+            return null;
+        }
+        $entries = FederationEntry::where('federation_event_id', $event->id)
+            ->where($m[1] === 'fc' ? 'federation_club_id' : 'club_application_id', $club->id)->pluck('id');
+        if ($entries->isEmpty()) {
+            return null;
+        }
+
+        return FederationEntryAthlete::whereIn('federation_entry_id', $entries)->where('status', 'Active')
+            ->update(['status' => 'Withdrawn', 'withdrawn_at' => now()]);
+    }
+
     public function withdrawRegs(array $access, array $rows): bool
     {
         if (! $access['manager']) {

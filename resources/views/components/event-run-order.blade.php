@@ -50,7 +50,9 @@
     // the same guard <x-event-section-band> uses.
     $rc = preg_match('/^#[0-9a-fA-F]{3,8}$/', (string) $color) ? $color : '#7c3aed';
 
-    $rows = array_values(array_filter((array) $rows, 'is_array'));
+    // A GROUP row organises the organiser's board (RunSessions); nothing
+    // happens in the hall at it, so the public running order leaves it out.
+    $rows = array_values(array_filter((array) $rows, fn ($r) => is_array($r) && ($r['kind'] ?? null) !== 'group'));
 
     $doneCount = 0;
     foreach ($rows as $r) {

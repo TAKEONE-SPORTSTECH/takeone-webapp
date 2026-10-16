@@ -50,6 +50,7 @@ class CertificateTemplate extends Model
             'layout_portrait' => 'array',
             'elements' => 'array',
             'print_bare' => 'boolean',
+            'page_size' => 'array',
         ];
     }
 
@@ -159,7 +160,37 @@ class CertificateTemplate extends Model
     /** The page format this template is drawn in (Support\Formats): a certificate unless its type names another. */
     public function format(): \Ahl\Certificates\Support\Format
     {
-        return \Ahl\Certificates\Support\Formats::forType($this->type);
+        $format = \Ahl\Certificates\Support\Formats::forType($this->type);
+        $size = self::sizeOf($this->page_size);
+
+        return $size ? $format->resized($size[0], $size[1]) : $format;
+    }
+
+    /** The smallest and largest page the design room accepts, in mm (a business card … A2). */
+    public const PAGE_MIN_MM = 40;
+
+    public const PAGE_MAX_MM = 600;
+
+    /**
+     * A stored page size as [long, short] in mm, or null for the format's own.
+     * Anything out of range or malformed reads as "the format's own".
+     *
+     * @return array{0: float, 1: float}|null
+     */
+    public static function sizeOf(mixed $size): ?array
+    {
+        if (! is_array($size) || ! is_numeric($size['long'] ?? null) || ! is_numeric($size['short'] ?? null)) {
+            return null;
+        }
+        $l = (float) $size['long'];
+        $s = (float) $size['short'];
+        foreach ([$l, $s] as $v) {
+            if ($v < self::PAGE_MIN_MM || $v > self::PAGE_MAX_MM) {
+                return null;
+            }
+        }
+
+        return [max($l, $s), min($l, $s)];
     }
 
     /** Which way up the page is: the format's own way (landscape for a certificate) unless the organiser turned it. */

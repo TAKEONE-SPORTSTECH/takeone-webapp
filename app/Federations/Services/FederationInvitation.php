@@ -1057,6 +1057,66 @@ class FederationInvitation
         return FederationAthlete::issueTakeoneId($iso3, $name);
     }
 
+    /**
+     * Staff move one entered athlete onto another club's entry of the same
+     * event (the Participants tab's edit window, owner 2026-10-15). The fee
+     * follows the athlete: each club's invoice is worked out from who is on
+     * its entry, so the old club's total drops and the new club's rises —
+     * the new club is asked for the difference exactly as enterByStaff() asks.
+     * Payments already made stay with whichever club made them.
+     *
+     * @return FederationEntryAthlete the athlete's row, now on the new entry
+     */
+    public function moveAthlete(FederationEntryAthlete $row, FederationClub|FederationClubApplication $club, User $by): FederationEntryAthlete
+    {
+        $from = $row->entry;
+        $e = $from->event;
+        $ids = $this->federationIds($e);
+        $ev = $this->registry->eventForInvite($e);
+
+        return DB::transaction(function () use ($row, $club, $from, $e, $ids, $ev, $by) {
+            $now = now();
+            $entry = $this->entryOf($e, $club) ?? FederationEntry::create([
+                'federation_event_id' => $e->id,
+                'federation_club_id' => $club instanceof FederationClub ? $club->id : null,
+                'club_application_id' => $club instanceof FederationClubApplication ? $club->id : null,
+                'ref' => $this->nextRef($e, $ev, $club),
+                'teams' => [], 'payments' => [], 'log' => [['ts' => $now->getTimestampMs(), 'key' => 'logCreated']],
+                'officials' => $club->officials,
+            ]);
+            if ((int) $entry->id === (int) $from->id) {
+                return $row;
+            }
+            $name = $row->athlete?->user?->full_name;
+
+            // An old, withdrawn row of the same athlete on that entry is taken over.
+            $moved = $entry->athletes()->updateOrCreate(['federation_athlete_id' => $row->federation_athlete_id], [
+                'weight' => $row->weight, 'types' => $row->types, 'status' => 'Active', 'approval' => $row->approval,
+                'late' => $row->late, 'chargeable' => $row->chargeable, 'withdrawn_at' => null,
+            ]);
+            $row->delete();
+
+            $from->log = array_merge($from->log ?: [], [['ts' => $now->getTimestampMs(), 'key' => 'logWithdrawn', 'n' => $name, 'by' => 'federation']]);
+            $from->save();
+            $entry->log = array_merge($entry->log ?: [], [['ts' => $now->getTimestampMs(), 'key' => 'logAdded', 'n' => $name, 'by' => 'federation']]);
+            $entry->save();
+
+            $inv = $this->registry->invoice($this->registry->entry($entry->fresh(), $ids), $ev);
+            if ($inv['balance'] > 0.0005) {
+                $entry->payments = array_merge($entry->payments ?: [], [[
+                    'amount' => $inv['balance'], 'method' => 'Bank transfer', 'status' => 'Awaiting transfer', 'ts' => $now->getTimestampMs(),
+                ]]);
+                $entry->save();
+            }
+
+            activity()->causedBy($by)->performedOn($e)->withProperties([
+                'takeone_id' => $row->athlete?->takeone_id, 'from' => $from->uuid, 'to' => $entry->uuid,
+            ])->log('federation.athlete_moved_club');
+
+            return $moved->fresh(['athlete.user', 'entry.event']);
+        });
+    }
+
     private function nextRef(FederationEvent $e, array $ev, FederationClub|FederationClubApplication $club): string
     {
         $row = $this->registry->club($club);

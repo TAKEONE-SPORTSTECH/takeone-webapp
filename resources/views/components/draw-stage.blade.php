@@ -213,6 +213,69 @@
             return this.genderOf(name) === 'f' ? 'text-pink-500' : 'text-blue-500';
         },
 
+        /* The division menu, per row (owner, 2026-10-15): the group's name, its
+           ages and weights, and the gender's colour — blue, pink, or white for
+           a mixed group. Read off the division's own range (BracketView), with
+           the name as the fallback for a board that predates it. */
+        divGender(d) {
+            if (! d || d.is_heading) return 'mixed';
+            const g = d.range ? d.range.gender : null;
+            if (g === 'male' || g === 'female') return g;
+            if (d?.range) return 'mixed';
+            return this.genderOf(d?.name) === 'f' ? 'female' : 'male';
+        },
+        divLine(d) {
+            const r = d?.range || {}, n = v => (v === null || v === undefined) ? null : Number(v);
+            const kg = v => { const x = n(v); return x === null ? '' : String(+x.toFixed(2)); };
+            const a1 = n(r.min_age), a2 = n(r.max_age), w1 = n(r.min_weight), w2 = n(r.max_weight);
+            const bits = [];
+            if (a1 !== null && a2 !== null) bits.push(a1 === a2 ? a1 + ' yrs' : a1 + '–' + a2 + ' yrs');
+            else if (a1 !== null) bits.push(a1 + '+ yrs');
+            else if (a2 !== null) bits.push('up to ' + a2 + ' yrs');
+            const lo = w1 !== null && w1 > 0, hi = w2 !== null && w2 > 0 && w2 < 200;
+            if (lo && hi) bits.push(kg(w1) + '–' + kg(w2) + ' kg');
+            else if (lo) bits.push('+' + kg(w1) + ' kg');
+            else if (hi) bits.push('−' + kg(w2) + ' kg');
+            return bits.join(' · ');
+        },
+        /* A light card with the gender on its leading edge: blue, pink, or a
+           neutral slate for mixed. Navy text throughout so every row reads the
+           same; the selected one takes a deeper tint and a ring. */
+        divStyle(d, on) {
+            const g = this.divGender(d);
+            const c = g === 'male' ? { edge: '#3b82f6', tint: '#eff6ff', on: '#dbeafe', ring: '#2563eb' }
+                : g === 'female' ? { edge: '#ec4899', tint: '#fdf2f8', on: '#fce7f3', ring: '#db2777' }
+                : { edge: '#cbd5e1', tint: '#ffffff', on: '#f1f5f9', ring: '#64748b' };
+            return 'background:' + (on ? c.on : c.tint) + ';color:#1e2c4f;border:1px solid ' + (on ? c.ring : '#e5e7eb')
+                + ';border-inline-start:4px solid ' + c.edge + ';' + (on ? 'box-shadow:0 0 0 1px ' + c.ring + ';' : '');
+        },
+        divInk(d) {
+            const g = this.divGender(d);
+            // Blue male, pink female, black for a mixed group (owner, 2026-10-15).
+            return 'color:' + (g === 'male' ? '#1d4ed8' : g === 'female' ? '#be185d' : '#111827') + ';';
+        },
+        /* The menu's order (owner, 2026-10-15): age, then weight, then gender —
+           youngest, lightest, male first; open-topped classes (+70 kg) last.
+           Headings are titles in the event's own list, not groups to open, so
+           a sorted menu leaves them out. The board's own order is unchanged. */
+        get sortedDivisions() {
+            const n = (v, d) => (v === null || v === undefined || v === '' || isNaN(Number(v))) ? d : Number(v);
+            const key = d => {
+                const r = d.range || {}, top = n(r.max_weight, 999);
+                return [n(r.min_age, 0), n(r.max_age, 999), top <= 0 || top >= 200 ? 999 : top, n(r.min_weight, 0),
+                    ({male: 0, female: 1, mixed: 2})[this.divGender(d)]];
+            };
+            return this.divisions.filter(d => ! d.is_heading).slice().sort((a, b) => {
+                const ka = key(a), kb = key(b);
+                for (let i = 0; i < ka.length; i++) if (ka[i] !== kb[i]) return ka[i] - kb[i];
+                return String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' });
+            });
+        },
+        divIcon(d) {
+            const g = this.divGender(d);
+            return g === 'female' ? 'bi-gender-female' : g === 'male' ? 'bi-gender-male' : 'bi-gender-ambiguous';
+        },
+
         onLoaded(d) {
             this.settings(d);
             this.divisions = d.divisions; this.division = d.division;
@@ -654,7 +717,9 @@
              `end-3` rather than right-3 so it mirrors to the left in Arabic,
              like the rest of this page — and it keeps the trailing edge clear of
              the component's "Draw final" badge, which pins to the leading one. --}}
-        <div x-show="divisions.length > 1" x-cloak
+        {{-- Shown with ONE division too (owner, 2026-10-15): the menu is also
+             where a group's ages, weights and head-count are read. --}}
+        <div x-show="sortedDivisions.length > 0" x-cloak
              class="absolute end-3 z-40 transition-all"
              :class="arrange ? 'top-16' : 'top-3'"
              :style="split && ! splitTall ? 'inset-inline-end: calc(50% + .75rem)' : ''"
@@ -663,12 +728,19 @@
 
             <button type="button" @click="open = !open"
                     :aria-expanded="open" aria-haspopup="listbox"
-                    class="flex items-center gap-2 ps-2.5 pe-2 py-1.5 rounded-xl border border-gray-200 bg-white
-                           text-xs font-bold text-foreground shadow-sm hover:shadow-md hover:bg-muted/60
-                           transition-all max-w-[16rem]">
-                <i class="bi shrink-0" :class="genderIcon(selected?.name) + ' ' + genderColor(selected?.name)"></i>
-                <span class="truncate" x-text="selected?.name ?? ''"></span>
-                <span class="px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground text-[0.6rem] font-extrabold shrink-0"
+                    class="flex items-center gap-2 ps-2.5 pe-2 py-1.5 rounded-xl
+                           text-xs font-bold shadow-sm hover:shadow-md
+                           transition-all"
+                    style="max-width: min(26rem, calc(100vw - 6rem)); background:#fff; border:1px solid #e5e7eb;"
+                    :style="'max-width: min(26rem, calc(100vw - 6rem));' + divStyle(selected, false)">
+                <i class="bi shrink-0" :class="divIcon(selected)" :style="divInk(selected)"></i>
+                {{-- Names are never cut short: a long one wraps. --}}
+                {{-- One line: the name, then its ages and weights beside it. --}}
+                <span class="min-w-0 text-start break-words leading-snug" :style="divInk(selected)">
+                    <span x-text="selected?.name ?? ''"></span><span
+                          x-show="divLine(selected)" x-text="' · ' + divLine(selected)"></span>
+                </span>
+                <span class="px-1.5 py-0.5 rounded-full text-[0.6rem] font-extrabold shrink-0" style="background:rgba(255,255,255,.75)"
                       x-text="selected?.entrants ?? 0"></span>
                 <i class="bi bi-chevron-down text-muted-foreground transition-transform shrink-0"
                    :class="open && 'rotate-180'"></i>
@@ -676,16 +748,27 @@
 
             <div x-show="open" x-cloak x-transition.opacity.duration.120ms
                  role="listbox"
-                 class="absolute end-0 mt-2 w-72 max-h-[60vh] overflow-y-auto rounded-xl border border-gray-200
-                        bg-white shadow-xl z-50 py-1">
-                <template x-for="d in divisions" :key="d.id">
+                 class="absolute end-0 mt-2 overflow-y-auto overscroll-contain rounded-xl border border-gray-200
+                        bg-white shadow-xl z-50 py-1"
+                 {{-- Wide enough to read a long division name, and never taller
+                      than the room under the bar and the trigger — past that
+                      the stage clips it, which read as "it won't scroll". --}}
+                 style="width: min(26rem, calc(100vw - 1.5rem)); max-height: calc(100vh - 9.5rem); max-height: calc(100dvh - 9.5rem); -webkit-overflow-scrolling: touch; touch-action: pan-y;"
+                 @wheel.stop @touchmove.stop>
+                <template x-for="d in sortedDivisions" :key="d.id">
+                    {{-- One tinted row per group: blue male, pink female, white
+                         mixed — its name, then its ages and weights. --}}
                     <button type="button" role="option" :aria-selected="d.id === division"
                             @click="window.BracketBoard.show(d.id); open = false"
-                            :class="d.id === division ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted/60'"
-                            class="w-full flex items-center gap-2.5 px-3 py-2 text-start text-xs font-bold transition-colors">
-                        <i class="bi shrink-0" :class="genderIcon(d.name) + ' ' + genderColor(d.name)"></i>
-                        <span class="flex-1 truncate" x-text="d.name"></span>
-                        <span class="px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground text-[0.6rem] font-extrabold shrink-0"
+                            class="flex items-start gap-2.5 px-3 py-2 text-start text-xs font-bold transition-shadow hover:shadow-md"
+                            style="display:flex; width:calc(100% - .75rem); margin:.25rem .375rem; border-radius:.6rem;"
+                            :style="'display:flex; width:calc(100% - .75rem); margin:.25rem .375rem; border-radius:.6rem;' + divStyle(d, d.id === division)">
+                        <i class="bi shrink-0" style="margin-top:.1rem" :class="divIcon(d)" :style="'margin-top:.1rem;' + divInk(d)"></i>
+                        <span class="flex-1 min-w-0 break-words leading-snug" :style="divInk(d)">
+                            <span x-text="d.name"></span><span
+                                  x-show="divLine(d)" x-text="' · ' + divLine(d)"></span>
+                        </span>
+                        <span class="px-1.5 py-0.5 rounded-full text-[0.6rem] font-extrabold shrink-0" style="background:rgba(255,255,255,.75)"
                               x-text="d.entrants"></span>
                         <i class="bi bi-check-lg shrink-0" x-show="d.id === division"></i>
                     </button>

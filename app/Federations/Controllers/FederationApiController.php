@@ -217,7 +217,12 @@ class FederationApiController extends Controller
             'name' => ['sometimes', 'required', 'string', 'min:2', 'max:150'],
             'gender' => ['sometimes', 'nullable', 'in:Male,Female'],
             'dob' => ['sometimes', 'nullable', 'date_format:Y-m-d', 'before:today', 'after:1900-01-01'],
-            'nat' => ['sometimes', 'nullable', 'string', 'size:3', 'alpha'],
+            // Date of birth OR a stated age, never both (FederationAthleteEditor).
+            'ageMode' => ['sometimes', 'nullable', 'in:dob,age'],
+            'age' => ['sometimes', 'nullable', 'integer', 'min:3', 'max:99'],
+            'club' => ['sometimes', 'nullable', 'string', 'regex:/^(fc|fa)-[0-9a-f-]{36}$/'],
+            // ISO-3 from the dashboard, ISO-2 from the platform's country picker.
+            'nat' => ['sometimes', 'nullable', 'string', 'between:2,3', 'alpha'],
             'natId' => ['sometimes', 'nullable', 'string', 'max:40'],
             'weight' => ['sometimes', 'nullable', 'numeric', 'min:10', 'max:250'],
             // Already cropped to 3:4 in the browser; the bytes are checked
@@ -226,7 +231,37 @@ class FederationApiController extends Controller
         ]);
         $r = $editor->update($request->user(), $access, $data['entry'], $data['athlete'], $data);
 
-        return response()->json(['success' => $r['ok'], 'message' => $r['message'], 'athlete' => $r['athlete'] ?? null] + ($r['ok'] ? ['regs' => $desk->regs($access)] : []), $r['ok'] ? 200 : 422);
+        return response()->json(['success' => $r['ok'], 'message' => $r['message'], 'athlete' => $r['athlete'] ?? null, 'entry' => $r['entry'] ?? null] + ($r['ok'] ? ['regs' => $desk->regs($access)] : []), $r['ok'] ? 200 : 422);
+    }
+
+    /** Officials tab → the person behind one appointment, for the edit window. */
+    public function officialOne(Request $request, \App\Federations\Services\FederationOfficialEditor $editor): JsonResponse
+    {
+        $access = $this->access($request);
+        $data = $request->validate(['event' => ['required', 'uuid'], 'official' => ['required', 'integer', 'min:1']]);
+        $shown = $editor->show($access, $request->user(), $data['event'], (int) $data['official']);
+        // One answer for "not yours" and "not there" (anti-enumeration).
+        abort_unless($shown, 404);
+
+        return response()->json(['success' => true, 'official' => $shown], 200, ['Cache-Control' => 'no-store, private']);
+    }
+
+    /** Officials tab → save the person behind an appointment: name, gender, nationality, photo. */
+    public function officialPersonUpdate(Request $request, \App\Federations\Services\FederationOfficialEditor $editor): JsonResponse
+    {
+        $access = $this->access($request);
+        $data = $request->validate([
+            'event' => ['required', 'uuid'],
+            'official' => ['required', 'integer', 'min:1'],
+            'name' => ['sometimes', 'required', 'string', 'min:2', 'max:150'],
+            'gender' => ['sometimes', 'nullable', 'in:Male,Female'],
+            'nat' => ['sometimes', 'nullable', 'string', 'between:2,3', 'alpha'],
+            // Cropped to 3:4 in the browser; the bytes are checked by ProfilePhoto.
+            'photo' => ['sometimes', 'nullable', 'string', 'starts_with:data:image/', 'max:8000000'],
+        ]);
+        $r = $editor->update($access, $request->user(), $data['event'], (int) $data['official'], $data);
+
+        return response()->json(['success' => $r['ok'], 'message' => $r['message'], 'official' => $r['official'] ?? null], $r['ok'] ? 200 : 422);
     }
 
     /** Registrations → "Enroll athlete": one person entered by hand. Answers with the registrations again. */
@@ -328,6 +363,23 @@ class FederationApiController extends Controller
         $ok = $desk->withdrawRegs($access, $data['athletes']);
 
         return response()->json(['success' => $ok, 'regs' => $desk->regs($access)], $ok ? 200 : 403);
+    }
+
+    /** Event → Clubs tab: take a whole club's athletes off the event. Answers with the registrations again. */
+    public function regsWithdrawClub(Request $request, FederationDesk $desk): JsonResponse
+    {
+        $access = $this->access($request);
+        $data = $request->validate([
+            'event' => ['required', 'uuid'],
+            'club' => ['required', 'string', 'regex:/^(fc|fa)-[0-9a-f-]{36}$/'],
+        ]);
+        $n = $desk->withdrawClub($access, $data['event'], $data['club']);
+        // One answer for "not yours" and "not there" (anti-enumeration).
+        abort_if($n === null, 404);
+
+        return response()->json(['success' => true, 'withdrawn' => $n,
+            'message' => $n === 1 ? '1 athlete was removed from the event.' : $n.' athletes were removed from the event.',
+            'regs' => $desk->regs($access)]);
     }
 
     /** The chat dock: every thread in scope (read), or write to one club (send). */
@@ -604,6 +656,20 @@ class FederationApiController extends Controller
         $error = $manager->update($request->user(), $access, $data['club'], $data);
 
         return $this->clubAnswer($error, 'Club saved.', $access, $picker);
+    }
+
+    /** A new logo for a club the federation may edit. Answers with the refreshed club list. */
+    public function clubLogo(Request $request, \App\Federations\Services\FederationClubManager $manager, \App\Federations\Services\FederationClubPicker $picker): JsonResponse
+    {
+        $access = $this->access($request);
+        abort_unless($manager->mayManage($access), 404);
+        $data = $request->validate([
+            'club' => ['required', 'string', 'regex:/^(fc|fa)-[0-9a-f-]{36}$/'],
+            'logo' => ['required', 'string', 'starts_with:data:image/', 'max:8000000'],
+        ]);
+        $error = $manager->replaceLogo($request->user(), $access, $data['club'], $data['logo']);
+
+        return $this->clubAnswer($error, 'Logo saved.', $access, $picker);
     }
 
     /** End a registered club's affiliation. The club itself and its history stay. */

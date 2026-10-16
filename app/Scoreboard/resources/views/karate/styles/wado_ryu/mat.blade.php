@@ -774,8 +774,10 @@
   function chip(host, value, gold) {
     if (!value) return;   // an absent fact is hidden, never invented
     var d = document.createElement('div');
-    d.style.cssText = 'font-weight:700; font-size:23.8px; letter-spacing:0.12em; text-transform:uppercase; padding:5.4px 14px;' +
-      'background:rgba(10,10,14,0.62); border:1px solid ' + (gold ? 'rgba(253,196,54,0.6)' : 'rgba(255,255,255,0.25)') + ';' +
+    // Big enough to read from the far side of the hall (owner, 2026-10-16):
+    // the age · weight line under the club was barely visible at 23.8px.
+    d.style.cssText = 'font-weight:800; font-size:34px; letter-spacing:0.1em; text-transform:uppercase; padding:9px 20px; line-height:1.15;' +
+      'background:rgba(10,10,14,0.82); border:2px solid ' + (gold ? 'rgba(253,196,54,0.85)' : 'rgba(255,255,255,0.55)') + ';' +
       'color:' + (gold ? '#e8c96a' : '#fff') + ';';
     d.textContent = value;
     host.appendChild(d);
