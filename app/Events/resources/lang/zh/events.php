@@ -1259,4 +1259,7 @@ return [
     'club_entry_cta' => '注册您的俱乐部',
     'club_entry_cta_hint' => '查找或注册您的俱乐部，然后添加运动员',
 
+    // The event budget's division count (owner's locales, 2026-10-16).
+    'budget_div_running' => ':n 个组别',
+    'autoplace_event_own_note' => ':n 个组别',
 ];

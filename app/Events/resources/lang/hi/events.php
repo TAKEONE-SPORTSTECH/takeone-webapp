@@ -1259,4 +1259,7 @@ return [
     'club_entry_cta' => 'अपना क्लब पंजीकृत करें',
     'club_entry_cta_hint' => 'अपना क्लब खोजें या पंजीकृत करें, फिर अपने खिलाड़ी जोड़ें',
 
+    // The event budget's division count (owner's locales, 2026-10-16).
+    'budget_div_running' => ':n डिवीज़न',
+    'autoplace_event_own_note' => ':n डिवीज़न',
 ];

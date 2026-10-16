@@ -1258,4 +1258,7 @@ return [
     'club_entry_cta' => 'クラブを登録する',
     'club_entry_cta_hint' => 'クラブを検索または登録し、次に選手を追加してください',
 
+    // The event budget's division count (owner's locales, 2026-10-16).
+    'budget_div_running' => ':n 部門',
+    'autoplace_event_own_note' => ':n 部門',
 ];

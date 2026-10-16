@@ -1259,4 +1259,7 @@ return [
     'club_entry_cta' => 'Inscrire votre club',
     'club_entry_cta_hint' => 'Trouvez ou inscrivez votre club, puis ajoutez vos sportifs',
 
+    // The event budget's division count (owner's locales, 2026-10-16).
+    'budget_div_running' => ':n catégories',
+    'autoplace_event_own_note' => ':n catégories',
 ];
