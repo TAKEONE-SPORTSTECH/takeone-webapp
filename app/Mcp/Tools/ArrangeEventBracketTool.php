@@ -93,6 +93,14 @@ class ArrangeEventBracketTool extends BaseTool
             return Response::error('This event\'s draw cannot be arranged right now.');
         }
 
+        // One division per person — the same refusal the web door gives.
+        if ($from['type'] === 'bench' && $to['type'] === 'slot') {
+            $entry = $event->registrations()->where('id', (int) ($from['competitor_id'] ?? 0))->first();
+            if ($refused = \App\Events\Support\OneDivisionRule::refusal($event, $entry, $category->id)) {
+                return Response::error($refused);
+            }
+        }
+
         $result = $type->performAction($event, 'arrange_draw', [
             'category_id' => $category->id,
             'from' => $from,

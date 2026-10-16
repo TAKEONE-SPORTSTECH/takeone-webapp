@@ -312,6 +312,8 @@
                         'heading' => null,
                         'groups' => [],
                     ]];
+                    // A long list folds after its first groups — see DivisionSections::fold().
+                    $divFold = \App\Events\Support\DivisionSections::fold($divSections);
                 @endphp
                 <x-event-section-band :color="$e['color']" icon="bi-diagram-3-fill"
                                       :title="__('personal.event_show_divisions')"
@@ -321,15 +323,16 @@
                          plain grey and only the gender glyph is tinted, so a long
                          list of divisions reads as one table rather than as
                          alternating pink and blue bands. --}}
-                    <div class="flex flex-col" style="padding:16px 20px 22px; gap:16px;">
-                        @foreach($divSections as $sec)
+                    <div class="flex flex-col" style="padding:16px 20px 22px; gap:16px;" x-data="{ divAll: false }">
+                        @foreach($divSections as $si => $sec)
                             @if($sec['heading'])
-                                <p class="flex items-center" style="margin:0; font-size:12px; font-weight:800; gap:6px; color:#1e2c4f; text-transform:uppercase; letter-spacing:0.08em;">
+                                <p @if((($divFold['show'][$si.'.0'] ?? null) === 0)) x-show="divAll" x-cloak @endif class="flex items-center" style="margin:0; font-size:12px; font-weight:800; gap:6px; color:#1e2c4f; text-transform:uppercase; letter-spacing:0.08em;">
                                     <i class="bi bi-bookmark-fill" style="color:#6b7689;"></i>{{ $sec['heading'] }}
                                 </p>
                             @endif
-                            @foreach($sec['groups'] as $g)
-                                <div @if($sec['heading']) style="padding-inline-start:10px;" @endif>
+                            @foreach($sec['groups'] as $gi => $g)
+                                <div @if($sec['heading']) style="padding-inline-start:10px;" @endif
+                                     @if((($divFold['show'][$si.'.'.$gi] ?? null) === 0)) x-show="divAll" x-cloak x-transition.opacity @endif>
                                     {{-- Under a heading the fallback caption is the
                                          word "Divisions" — the section's own title —
                                          so it is not drawn twice. --}}
@@ -340,30 +343,34 @@
                                     @endif
                                     <div class="flex flex-wrap" style="gap:6px;">
                                         @foreach($g['items'] as $w)
-                                            <span style="padding:5px 12px; border-radius:10px; font-size:11.5px; font-weight:600; background:#eef1f6; color:#1e2c4f;">{{ $w }}</span>
+                                            @php $chipFold = $loop->index >= ($divFold['show'][$si.'.'.$gi] ?? PHP_INT_MAX) ? 'x-show="divAll" x-cloak' : ''; @endphp
+                                            <span {!! $chipFold !!} style="padding:5px 12px; border-radius:10px; font-size:11.5px; font-weight:600; background:#eef1f6; color:#1e2c4f;">{{ $w }}</span>
                                         @endforeach
                                     </div>
                                 </div>
                             @endforeach
                         @endforeach
+                        @include('events::partials.division-fold-toggle', ['hidden' => $divFold['hidden'], 'color' => $e['color']])
                     </div>
                 @else
-                <div class="p-5">
+                <div class="p-5" x-data="{ divAll: false }">
                     <div class="space-y-3.5">
-                        @foreach($divSections as $sec)
+                        @foreach($divSections as $si => $sec)
                             @if($sec['heading'])
                                 {{-- The organiser's own caption over the divisions
                                      that follow it. Blue, like the group captions,
                                      because it is the same kind of thing — a label
                                      over chips — one step stronger. --}}
                                 <p class="flex items-center gap-1.5 text-[12px] font-black uppercase tracking-[0.1em]"
+                                   @if((($divFold['show'][$si.'.0'] ?? null) === 0)) x-show="divAll" x-cloak @endif
                                    style="color: #3b82f6;">
                                     <i class="bi bi-bookmark-fill"></i>{{ $sec['heading'] }}
                                 </p>
                             @endif
-                            @foreach($sec['groups'] as $g)
+                            @foreach($sec['groups'] as $gi => $g)
                                 @php $tint = $g['female'] ? '#ec4899' : '#3b82f6'; @endphp
-                                <div @class(['ps-3' => (bool) $sec['heading']])>
+                                <div @class(['ps-3' => (bool) $sec['heading']])
+                                     @if((($divFold['show'][$si.'.'.$gi] ?? null) === 0)) x-show="divAll" x-cloak x-transition.opacity @endif>
                                     @if(! ($sec['heading'] && $g['fallback']))
                                         <p class="flex items-center gap-1.5 text-[12px] font-black mb-2" style="color: {{ $tint }};">
                                             <i class="bi {{ $g['female'] ? 'bi-gender-female' : 'bi-gender-male' }}"></i>{{ $g['label'] }}
@@ -373,16 +380,17 @@
                                          see the desktop twin for the whole note. --}}
                                     <div class="flex flex-wrap gap-1.5">
                                         @foreach(($g['entries'] ?? []) as $chip)
+                                            @php $chipFold = $loop->index >= ($divFold['show'][$si.'.'.$gi] ?? PHP_INT_MAX) ? 'x-show="divAll" x-cloak' : ''; @endphp
                                             @if(($divisionLink ?? null) && $chip['id'])
-                                                <a href="{{ $divisionLink.$chip['id'] }}"
+                                                <a href="{{ $divisionLink.$chip['id'] }}" {!! $chipFold !!}
                                                    class="m-press px-2.5 py-1 rounded-lg text-[12px] font-bold text-foreground no-underline inline-flex items-center gap-1.5"
                                                    style="background: {{ $tint }}14;">{{ $chip['name'] }}<i class="bi bi-diagram-3 bracket-icon text-[10px] opacity-50"></i></a>
                                             @elseif($divisionNote ?? null)
-                                                <button type="button" onclick="{{ $noteTap ?? '' }}"
+                                                <button type="button" onclick="{{ $noteTap ?? '' }}" {!! $chipFold !!}
                                                         class="m-press px-2.5 py-1 rounded-lg text-[12px] font-bold text-foreground inline-flex items-center gap-1.5"
                                                         style="background: {{ $tint }}14;">{{ $chip['name'] }}<i class="bi bi-lock-fill text-[10px] opacity-40"></i></button>
                                             @else
-                                                <span class="px-2.5 py-1 rounded-lg text-[12px] font-bold text-foreground"
+                                                <span {!! $chipFold !!} class="px-2.5 py-1 rounded-lg text-[12px] font-bold text-foreground"
                                                       style="background: {{ $tint }}14;">{{ $chip['name'] }}</span>
                                             @endif
                                         @endforeach
@@ -391,6 +399,7 @@
                             @endforeach
                         @endforeach
                     </div>
+                    @include('events::partials.division-fold-toggle', ['hidden' => $divFold['hidden'], 'color' => $e['color']])
                 </div>
                 @endif
             @endif

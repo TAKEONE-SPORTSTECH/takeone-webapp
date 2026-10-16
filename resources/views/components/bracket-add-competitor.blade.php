@@ -416,10 +416,10 @@
                     </div>
                     <div class="bkadd-range">
                         <span>kg</span>
-                        <input type="number" class="bkadd-in bkadd-num" x-model="fMinW" @input="search()" min="0" max="400" step="0.1" inputmode="decimal"
+                        <input type="number" class="bkadd-in bkadd-num" x-model="fMinW" @input="search()" min="0" max="400" step="any" inputmode="decimal"
                                placeholder="{{ __('events::events.bracket_filter_min') }}" aria-label="{{ __('events::events.bracket_filter_min_weight') }}">
                         <span>–</span>
-                        <input type="number" class="bkadd-in bkadd-num" x-model="fMaxW" @input="search()" min="0" max="400" step="0.1" inputmode="decimal"
+                        <input type="number" class="bkadd-in bkadd-num" x-model="fMaxW" @input="search()" min="0" max="400" step="any" inputmode="decimal"
                                placeholder="{{ __('events::events.bracket_filter_max') }}" aria-label="{{ __('events::events.bracket_filter_max_weight') }}">
                     </div>
                     <button type="button" class="bkadd-clear" x-show="filtering" x-cloak @click="clearFilter()">{{ __('events::events.bracket_filter_clear') }}</button>
@@ -565,7 +565,7 @@
                         <div>
                             <label class="{{ $lbl }}" for="{{ $id }}Weight">{{ __('events::events.bracket_add_weight') }}</label>
                             <div class="relative">
-                                <input id="{{ $id }}Weight" type="number" autocomplete="off" class="{{ $fld }}" style="padding-right:2.5rem" x-model="weight" min="10" max="300" step="0.1" inputmode="decimal">
+                                <input id="{{ $id }}Weight" type="number" autocomplete="off" class="{{ $fld }}" style="padding-right:2.5rem" x-model="weight" min="10" max="300" step="any" inputmode="decimal">
                                 <span class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 pointer-events-none">kg</span>
                             </div>
                         </div>

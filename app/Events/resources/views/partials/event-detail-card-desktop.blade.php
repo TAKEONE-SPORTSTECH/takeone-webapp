@@ -284,12 +284,14 @@
                          * translation, which is what mobile already did.
                          */
                         $divSections = $e['division_sections'] ?? [['heading' => null, 'groups' => []]];
+                        // A long list folds after its first groups — see DivisionSections::fold().
+                        $divFold = \App\Events\Support\DivisionSections::fold($divSections);
                     @endphp
                     <x-event-section-band :color="$e['color']" icon="bi-diagram-3-fill"
                                           :title="__('personal.event_show_divisions')" />
-                    <div class="p-6 space-y-5">
-                        @foreach($divSections as $sec)
-                            <div>
+                    <div class="p-6 space-y-5" x-data="{ divAll: false }">
+                        @foreach($divSections as $si => $sec)
+                            <div @if((($divFold['show'][$si.'.0'] ?? null) === 0)) x-show="divAll" x-cloak x-transition.opacity @endif>
                                 @if($sec['heading'])
                                     {{-- The organiser's caption over the divisions that
                                          follow it — spanning the columns, because it
@@ -304,9 +306,9 @@
                                      gender/age groups two-up instead of stacking them. --}}
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4"
                                      @class(['ps-3' => (bool) $sec['heading']])>
-                                    @foreach($sec['groups'] as $g)
+                                    @foreach($sec['groups'] as $gi => $g)
                                         @php $tint = $g['female'] ? '#ec4899' : '#3b82f6'; @endphp
-                                        <div>
+                                        <div @if((($divFold['show'][$si.'.'.$gi] ?? null) === 0)) x-show="divAll" x-cloak x-transition.opacity @endif>
                                             {{-- Under a heading the fallback caption is the
                                                  word "Divisions" — the section's own title —
                                                  so it is not drawn twice. --}}
@@ -324,19 +326,20 @@
                                                  what an event with no draw to show wants. --}}
                                             <div class="flex flex-wrap gap-1.5">
                                                 @foreach(($g['entries'] ?? []) as $chip)
+                                            @php $chipFold = $loop->index >= ($divFold['show'][$si.'.'.$gi] ?? PHP_INT_MAX) ? 'x-show="divAll" x-cloak' : ''; @endphp
                                                     @if(($divisionLink ?? null) && $chip['id'])
-                                                        <a href="{{ $divisionLink.$chip['id'] }}"
+                                                        <a href="{{ $divisionLink.$chip['id'] }}" {!! $chipFold !!}
                                                            class="px-2.5 py-1 rounded-lg text-[12px] font-bold text-foreground no-underline inline-flex items-center gap-1.5 transition-colors hover:brightness-95"
                                                            style="background: {{ $tint }}14;">{{ $chip['name'] }}<i class="bi bi-diagram-3 bracket-icon text-[10px] opacity-50"></i></a>
                                                     @elseif($divisionNote ?? null)
                                                         {{-- Withheld, not missing: the chip still
                                                              answers, in the organiser's own
                                                              sentence, rather than doing nothing. --}}
-                                                        <button type="button" onclick="{{ $noteTap ?? '' }}"
+                                                        <button type="button" onclick="{{ $noteTap ?? '' }}" {!! $chipFold !!}
                                                                 class="px-2.5 py-1 rounded-lg text-[12px] font-bold text-foreground inline-flex items-center gap-1.5 transition-colors hover:brightness-95"
                                                                 style="background: {{ $tint }}14;">{{ $chip['name'] }}<i class="bi bi-lock-fill text-[10px] opacity-40"></i></button>
                                                     @else
-                                                        <span class="px-2.5 py-1 rounded-lg text-[12px] font-bold text-foreground"
+                                                        <span {!! $chipFold !!} class="px-2.5 py-1 rounded-lg text-[12px] font-bold text-foreground"
                                                               style="background: {{ $tint }}14;">{{ $chip['name'] }}</span>
                                                     @endif
                                                 @endforeach
@@ -346,6 +349,7 @@
                                 </div>
                             </div>
                         @endforeach
+                        @include('events::partials.division-fold-toggle', ['hidden' => $divFold['hidden'], 'color' => $e['color']])
                     </div>
                 @endif
 

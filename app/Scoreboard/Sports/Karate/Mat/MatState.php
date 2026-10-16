@@ -269,7 +269,7 @@ class MatState
         // Each mat's corner side (MatCorners) lives beside the rules but is not
         // one of them — carried over untouched, or saving a rule would wipe it.
         // The same for the corners' names and colours (CornerLook).
-        foreach ([MatCorners::KEY, CornerLook::KEY] as $own) {
+        foreach ([MatCorners::KEY, \App\Scoreboard\Corners\MatSides::KEY_BY, CornerLook::KEY] as $own) {
             $kept = ((array) $event->scoreboard_settings)[$own] ?? null;
             if ($kept) {
                 $settings[$own] = $kept;
@@ -408,6 +408,9 @@ class MatState
     {
         if (($corner['country'] ?? '') !== '') {
             $corner['country'] = \App\Support\Countries::label($corner['country']);
+        }
+        if (($corner['nationality'] ?? '') !== '') {
+            $corner['nationalityName'] = \App\Support\Countries::label($corner['nationality']);
         }
 
         return $corner;

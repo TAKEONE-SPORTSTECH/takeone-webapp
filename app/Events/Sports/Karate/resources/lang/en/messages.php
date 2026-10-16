@@ -46,6 +46,7 @@ return [
     'grade_dan' => '{1} 1st dan|{2} 2nd dan|{3} 3rd dan|[4,*] :nth dan',
     'style_kyokushin' => 'Kyokushin',
     'style_shotokan' => 'Shotokan',
+    'style_combat' => 'Combat',
     'style_goju_ryu' => 'Goju-ryu',
     'style_shito_ryu' => 'Shito-ryu',
     'style_wado_ryu' => 'Wado-ryu',

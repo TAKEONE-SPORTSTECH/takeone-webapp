@@ -80,6 +80,11 @@
        the scoring tablet passes its own door. Only used while the
        events.draw_transfer flag is on. */
     'transferUrl' => null,
+    /* PUT → pull a candidate from the basket onto a board, which grows to
+       take them; and with it, desk moves that empty half a board shrink it
+       (owner, 2026-10-16). Only the draw desk passes one; null = the board
+       behaves exactly as before. */
+    'pullUrl' => null,
     /* Whether the BOARD offers the organiser's bout tools (decide a winner,
        a score, correct a name) — separately from the stage's own editing menu,
        which `canManage` draws. Null follows `canManage`, as before; the scoring
@@ -169,6 +174,8 @@
      reach (reported 2026-09-06). `100dvh` is the viewport as it actually is
      right now; the `100vh` line before it is the fallback for a browser that
      does not know `dvh`, and CSS drops the declaration it cannot parse. --}}
+{{-- The division menu's rows — one copy, shared with x-draw-split. --}}
+@include('components.bracket.division-look')
 <div id="{{ $sid }}-stage" class="ev-app-fixed fixed inset-0 z-[60] bg-background flex flex-col"
      style="height: 100vh; height: 100dvh;"
      x-data="{
@@ -217,64 +224,12 @@
            ages and weights, and the gender's colour — blue, pink, or white for
            a mixed group. Read off the division's own range (BracketView), with
            the name as the fallback for a board that predates it. */
-        divGender(d) {
-            if (! d || d.is_heading) return 'mixed';
-            const g = d.range ? d.range.gender : null;
-            if (g === 'male' || g === 'female') return g;
-            if (d?.range) return 'mixed';
-            return this.genderOf(d?.name) === 'f' ? 'female' : 'male';
-        },
-        divLine(d) {
-            const r = d?.range || {}, n = v => (v === null || v === undefined) ? null : Number(v);
-            const kg = v => { const x = n(v); return x === null ? '' : String(+x.toFixed(2)); };
-            const a1 = n(r.min_age), a2 = n(r.max_age), w1 = n(r.min_weight), w2 = n(r.max_weight);
-            const bits = [];
-            if (a1 !== null && a2 !== null) bits.push(a1 === a2 ? a1 + ' yrs' : a1 + '–' + a2 + ' yrs');
-            else if (a1 !== null) bits.push(a1 + '+ yrs');
-            else if (a2 !== null) bits.push('up to ' + a2 + ' yrs');
-            const lo = w1 !== null && w1 > 0, hi = w2 !== null && w2 > 0 && w2 < 200;
-            if (lo && hi) bits.push(kg(w1) + '–' + kg(w2) + ' kg');
-            else if (lo) bits.push('+' + kg(w1) + ' kg');
-            else if (hi) bits.push('−' + kg(w2) + ' kg');
-            return bits.join(' · ');
-        },
-        /* A light card with the gender on its leading edge: blue, pink, or a
-           neutral slate for mixed. Navy text throughout so every row reads the
-           same; the selected one takes a deeper tint and a ring. */
-        divStyle(d, on) {
-            const g = this.divGender(d);
-            const c = g === 'male' ? { edge: '#3b82f6', tint: '#eff6ff', on: '#dbeafe', ring: '#2563eb' }
-                : g === 'female' ? { edge: '#ec4899', tint: '#fdf2f8', on: '#fce7f3', ring: '#db2777' }
-                : { edge: '#cbd5e1', tint: '#ffffff', on: '#f1f5f9', ring: '#64748b' };
-            return 'background:' + (on ? c.on : c.tint) + ';color:#1e2c4f;border:1px solid ' + (on ? c.ring : '#e5e7eb')
-                + ';border-inline-start:4px solid ' + c.edge + ';' + (on ? 'box-shadow:0 0 0 1px ' + c.ring + ';' : '');
-        },
-        divInk(d) {
-            const g = this.divGender(d);
-            // Blue male, pink female, black for a mixed group (owner, 2026-10-15).
-            return 'color:' + (g === 'male' ? '#1d4ed8' : g === 'female' ? '#be185d' : '#111827') + ';';
-        },
-        /* The menu's order (owner, 2026-10-15): age, then weight, then gender —
-           youngest, lightest, male first; open-topped classes (+70 kg) last.
-           Headings are titles in the event's own list, not groups to open, so
-           a sorted menu leaves them out. The board's own order is unchanged. */
-        get sortedDivisions() {
-            const n = (v, d) => (v === null || v === undefined || v === '' || isNaN(Number(v))) ? d : Number(v);
-            const key = d => {
-                const r = d.range || {}, top = n(r.max_weight, 999);
-                return [n(r.min_age, 0), n(r.max_age, 999), top <= 0 || top >= 200 ? 999 : top, n(r.min_weight, 0),
-                    ({male: 0, female: 1, mixed: 2})[this.divGender(d)]];
-            };
-            return this.divisions.filter(d => ! d.is_heading).slice().sort((a, b) => {
-                const ka = key(a), kb = key(b);
-                for (let i = 0; i < ka.length; i++) if (ka[i] !== kb[i]) return ka[i] - kb[i];
-                return String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' });
-            });
-        },
-        divIcon(d) {
-            const g = this.divGender(d);
-            return g === 'female' ? 'bi-gender-female' : g === 'male' ? 'bi-gender-male' : 'bi-gender-ambiguous';
-        },
+        divGender(d) { return window.DrawDivisionLook.gender(d); },
+        divLine(d) { return window.DrawDivisionLook.line(d); },
+        divStyle(d, on) { return window.DrawDivisionLook.style(d, on); },
+        divInk(d) { return window.DrawDivisionLook.ink(d); },
+        get sortedDivisions() { return window.DrawDivisionLook.sort(this.divisions); },
+        divIcon(d) { return window.DrawDivisionLook.icon(d); },
 
         onLoaded(d) {
             this.settings(d);
@@ -611,6 +566,7 @@
             :arrange-url="($canManage || $canArrange) ? ($arrangeUrl ?: route('me.events.bracket.arrange', $ev)) : null"
             :clear-url="($canManage || $canArrange) && $clearUrl !== false ? ($clearUrl ?: route('me.events.bracket.clear', $ev)) : null"
             :admit-url="$admitUrl"
+            :pull-url="$pullUrl"
             :event-uuid="$ev"
             :can-arrange="$canArrange"
             {{-- Deciding a bout, typing a score and correcting a name on the
@@ -838,7 +794,12 @@
 
     let busy = false;
 
-    window.drawStagePdf = async function (url, oneDivision) {
+    /* `share` (optional, added 2026-10-16): hand the PDF to the device's own
+       share sheet instead of saving it. Where the browser cannot share a file
+       (the Android app's WebView, most desktops) — or the few seconds the
+       print took used up the tap's permission — it is downloaded instead and
+       a toast says so. Callers that pass two arguments are unchanged. */
+    window.drawStagePdf = async function (url, oneDivision, share) {
         if (busy) return;
         busy = true;
 
@@ -865,8 +826,24 @@
             }
 
             const name = ((res.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/) || [])[1] || 'draw.pdf';
+            const blob = await res.blob();
+
+            if (share) {
+                let file = null;
+                try { file = new File([blob], name, { type: 'application/pdf' }); } catch (e) { /* old engine */ }
+                if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+                    try {
+                        await navigator.share({ files: [file], title: name.replace(/\.pdf$/i, '') });
+                        return;
+                    } catch (e) {
+                        if (e && e.name === 'AbortError') return; // the person closed the sheet
+                    }
+                }
+                window.showToast && window.showToast('info', @js(__('events::events.bracket_pdf_share_fallback')));
+            }
+
             const link = document.createElement('a');
-            link.href = URL.createObjectURL(await res.blob());
+            link.href = URL.createObjectURL(blob);
             link.download = name;
             document.body.appendChild(link);
             link.click();

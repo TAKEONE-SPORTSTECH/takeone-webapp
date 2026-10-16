@@ -913,6 +913,10 @@ HTML, 1],
                 // narrow by gender / status with chips. Blanks always sort last.
                 'regsort-filter' => ["    const filteredRegs = s.regs.filter(r => !rq || [r.name, r.mobile, r.email, r.club, r.natId, r.nat, r.takeoneId].some(v => v.toLowerCase().includes(rq)));", <<<'JS'
     const rfG = s.regFGender || 'all', rfS = s.regFStatus || 'all', rsBy = s.regSort || '', rsDir = s.regSortDir || 1;
+    // Club filter (owner, 2026-10-16): one dropdown, "All" first and chosen by default.
+    const rfC = s.regFClub || 'all';
+    // "No picture" (owner, 2026-10-16): only the athletes with no photo on file.
+    const rfP = !!s.regFNoPhoto;
     // Age / weight ranges: typed text, read as numbers; an empty box is no limit.
     const rfR = {ageMin: s.regFAgeMin || '', ageMax: s.regFAgeMax || '', wMin: s.regFWMin || '', wMax: s.regFWMax || ''};
     const rfNum = v => { const n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? null : n; };
@@ -930,6 +934,8 @@ HTML, 1],
       .filter(r => rfG === 'all' || (rfG === 'F' ? rIsF(r) : rIsM(r)))
       .filter(r => rfS === 'all' || (rfS === 'Approved' ? r.status === 'Approved' : r.status !== 'Approved'))
       .filter(r => rfIn(r.age, rfR.ageMin, rfR.ageMax) && rfIn(r.weight, rfR.wMin, rfR.wMax))
+      .filter(r => rfC === 'all' || String(r.club || '') === rfC)
+      .filter(r => !rfP || !r.photo)
       .sort((a, b) => {
         if (!rKey) return 0;
         const x = rKey(a), y = rKey(b), bx = rBlank(x), by = rBlank(y);
@@ -958,8 +964,37 @@ HTML, 1],
         const f = (k, key) => ({value: rfR[k], style: box(rfR[k]), onChange: e => this.setState({[key]: clean(e.target.value)})});
         return {ageMin: f('ageMin', 'regFAgeMin'), ageMax: f('ageMax', 'regFAgeMax'), wMin: f('wMin', 'regFWMin'), wMax: f('wMax', 'regFWMax')};
       })(),
-      any: rfG !== 'all' || rfS !== 'all' || !!rsBy || Object.values(rfR).some(v => v !== ''),
-      onClear: () => this.setState({regFGender: 'all', regFStatus: 'all', regSort: '', regSortDir: 1, regFAgeMin: '', regFAgeMax: '', regFWMin: '', regFWMax: ''}),
+      ...(() => {
+        // Every club with an athlete on this event, A–Z, each with its own logo.
+        const seen = {};
+        s.regs.forEach(r => { const n = String(r.club || ''); if (n && n !== '\u2014' && !seen[n]) seen[n] = r.logo || null; });
+        const names = Object.keys(seen).sort((a, b) => a.localeCompare(b, undefined, {sensitivity: 'base'}));
+        const logo = url => url ? Object.assign(this.cssToObj('width:22px;height:22px;flex:none;background-size:contain;background-repeat:no-repeat;background-position:center'), {backgroundImage: 'url(' + JSON.stringify(url) + ')'}) : {};
+        const mark = this.cssToObj('width:22px;height:22px;flex:none;border-radius:50%;background:#eef1f6;color:#8a93a6;display:grid;place-items:center;font-size:.62rem;font-weight:800');
+        const item = (key, label, url, all) => ({key, label, on: rfC === key, check: rfC === key ? '\u2713' : '',
+          hasLogo: !!url, noLogo: !url && !all, isAll: all, logoStyle: logo(url), markStyle: mark, initial: String(label).trim().charAt(0).toUpperCase(),
+          style: this.cssToObj('width:100%;display:flex;align-items:center;gap:10px;padding:8px 10px;border:0;border-radius:10px;font-family:inherit;font-size:.78rem;cursor:pointer;text-align:start;'
+            + (rfC === key ? 'background:#fdf6e6;color:#8a6d20;font-weight:700' : 'background:transparent;color:#1e2c4f;font-weight:600')),
+          onClick: () => this.setState({regFClub: key, regFClubOpen: false})});
+        const open = !!s.regFClubOpen, cur = rfC === 'all' ? null : rfC;
+        return {club: {
+          open, caret: open ? '\u25B4' : '\u25BE', label: cur || 'All', hasLogo: !!(cur && seen[cur]), logoStyle: logo(cur ? seen[cur] : null),
+          style: this.cssToObj('display:inline-flex;align-items:center;gap:8px;height:32px;max-width:240px;padding:0 12px;border-radius:999px;font-family:inherit;font-size:.74rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s;'
+            + (cur ? 'background:#fdf6e6;border:1px solid #caa14f;box-shadow:0 2px 8px rgba(202,161,79,.22);color:#8a6d20' : 'background:#fff;border:1px solid #d5dae3;color:#5d6880')),
+          items: [item('all', 'All', null, true)].concat(names.map(n => item(n, n, seen[n], false))),
+          onToggle: e => { if (e && e.stopPropagation) e.stopPropagation(); this.setState({regFClubOpen: !open}); },
+          onClose: () => this.setState({regFClubOpen: false}),
+          stop: e => { if (e && e.stopPropagation) e.stopPropagation(); }
+        }};
+      })(),
+      noPhoto: {on: rfP, checked: String(rfP), tick: rfP ? '\u2713' : '',
+        style: this.cssToObj('display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 14px 0 10px;border-radius:999px;font-family:inherit;font-size:.74rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s;'
+          + (rfP ? 'background:#fdf6e6;border:1px solid #caa14f;box-shadow:0 2px 8px rgba(202,161,79,.22);color:#8a6d20' : 'background:#fff;border:1px solid #d5dae3;color:#5d6880')),
+        boxStyle: this.cssToObj('width:18px;height:18px;flex:none;box-sizing:border-box;border-radius:5px;display:grid;place-items:center;font-size:.7rem;font-weight:800;line-height:1;'
+          + (rfP ? 'background:#caa14f;border:1px solid #caa14f;color:#fff' : 'background:#fff;border:1.5px solid #c3cad6;color:transparent')),
+        onClick: () => this.setState({regFNoPhoto: !rfP})},
+      any: rfP || rfG !== 'all' || rfS !== 'all' || rfC !== 'all' || !!rsBy || Object.values(rfR).some(v => v !== ''),
+      onClear: () => this.setState({regFGender: 'all', regFStatus: 'all', regFClub: 'all', regFClubOpen: false, regFNoPhoto: false, regSort: '', regSortDir: 1, regFAgeMin: '', regFAgeMax: '', regFWMin: '', regFWMax: ''}),
       count: filteredRegs.length + ' of ' + s.regs.length
     };
 JS, 1],
@@ -1011,6 +1046,19 @@ HTML, 1],
             <input inputmode="decimal" aria-label="Maximum weight in kg" placeholder="Max" value="{{ rf.wMax.value }}" onChange="{{ rf.wMax.onChange }}" style="{{ rf.wMax.style }}">
             <span style="font-size:.7rem;color:#97a1b4">kg</span>
             </span>
+            <span aria-hidden="true" style="width:1px;height:22px;background:#d5dae3;margin:0 6px"></span>
+            <span style="font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#8a93a6;margin-inline-end:2px">Club</span>
+            <div style="position:relative">
+              <button type="button" onClick="{{ rf.club.onToggle }}" aria-haspopup="menu" aria-expanded="{{ rf.club.open }}" aria-label="Filter by club" style="{{ rf.club.style }}"><sc-if value="{{ rf.club.hasLogo }}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="{{ rf.club.logoStyle }}"></span></sc-if><span style="overflow:hidden;text-overflow:ellipsis">{{ rf.club.label }}</span><span aria-hidden="true" style="font-size:.7rem">{{ rf.club.caret }}</span></button>
+              <sc-if value="{{ rf.club.open }}" hint-placeholder-val="{{ false }}">
+                <div onClick="{{ rf.club.onClose }}" style="position:fixed;inset:0;z-index:45"></div>
+                <div role="menu" onClick="{{ rf.club.stop }}" style="position:absolute;top:38px;left:0;z-index:46;min-width:240px;max-width:min(320px,calc(100vw - 2rem));max-height:340px;overflow-y:auto;padding:6px;background:#fff;border:1px solid #eef1f6;border-radius:14px;box-shadow:0 18px 40px rgba(30,44,79,.16);animation:rise .18s cubic-bezier(.22,.68,.35,1) both">
+                  <sc-for list="{{ rf.club.items }}" as="c" hint-placeholder-count="4"><button type="button" role="menuitemradio" aria-checked="{{ c.on }}" onClick="{{ c.onClick }}" style="{{ c.style }}" style-hover="background:#fdf6e6"><sc-if value="{{ c.hasLogo }}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="{{ c.logoStyle }}"></span></sc-if><sc-if value="{{ c.noLogo }}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="{{ c.markStyle }}">{{ c.initial }}</span></sc-if><span style="flex:1;min-width:0;overflow-wrap:anywhere">{{ c.label }}</span><span aria-hidden="true">{{ c.check }}</span></button></sc-for>
+                </div>
+              </sc-if>
+            </div>
+            <span aria-hidden="true" style="width:1px;height:22px;background:#d5dae3;margin:0 6px"></span>
+            <button type="button" role="checkbox" aria-checked="{{ rf.noPhoto.checked }}" onClick="{{ rf.noPhoto.onClick }}" style="{{ rf.noPhoto.style }}"><span aria-hidden="true" style="{{ rf.noPhoto.boxStyle }}">{{ rf.noPhoto.tick }}</span>No picture</button>
             <span style="margin-inline-start:auto;display:inline-flex;align-items:center;gap:10px">
               <span style="font-size:.74rem;color:#6b7689;font-variant-numeric:tabular-nums">{{ rf.count }}</span>
               <sc-if value="{{ rf.any }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ rf.onClear }}" style="height:32px;padding:0 12px;border:0;border-radius:999px;background:none;font-family:inherit;font-size:.74rem;font-weight:700;color:#8a6d20;cursor:pointer;text-decoration:underline;text-underline-offset:3px">Reset</button></sc-if>

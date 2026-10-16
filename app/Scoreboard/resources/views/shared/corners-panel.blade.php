@@ -16,10 +16,14 @@
       $cornersUrl     POST {mat, red_right}  (null = no side switch)
       $cornerLookUrl  POST {<key>: {label, colour}, …}  (null = no names/colours)
       $redRight       this mat's side now;  $sportRedRight  the sport's own
+      $perScreen      (optional) true: swap screen by screen — Combat's console
+      $cornerScreens  with it: screen => red on the right (MatSides::screens)
 --}}
 @php $cornerKeys = array_keys($look ?? []); @endphp
 <div style="display:flex;flex-direction:column;gap:12px;">
-  @if (! empty($cornersUrl))
+  @php $sidesPerScreen = ! empty($perScreen) && ! empty($cornerScreens); @endphp
+
+  @if (! empty($cornersUrl) && ! $sidesPerScreen)
     <button id="cornerSwap" type="button" style="display:flex;align-items:center;gap:14px;background:var(--inset,#0e1017);border:1px solid var(--line,#1f2230);border-radius:12px;padding:12px 16px;cursor:pointer;text-align:left;">
       <span class="rbox" style="width:30px;height:30px;flex:0 0 auto;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#000;"></span>
       <span style="flex:1;display:flex;flex-direction:column;gap:2px;">
@@ -27,6 +31,36 @@
         <span style="font-size:15px;color:var(--faint,#5c6175);letter-spacing:.02em;">{{ __('scoreboard::corners.swap_hint') }}</span>
       </span>
     </button>
+  @endif
+
+  {{-- Screen by screen (owner, 2026-10-16) — Combat's console asks for it
+       ($perScreen): each screen of this mat shows where red stands NOW and is
+       set Left or Right on its own; "Save sides" (or "Save corners") applies
+       only what changed. Every other console keeps the one swap above. --}}
+  @if (! empty($cornersUrl) && $sidesPerScreen)
+    <div id="cornerScreens" style="display:flex;flex-direction:column;gap:12px;background:var(--inset,#0e1017);border:1px solid var(--line,#1f2230);border-radius:12px;padding:14px 16px;">
+      <div style="display:flex;flex-direction:column;gap:2px;">
+        <span style="font-size:20px;font-weight:600;color:var(--text,#e8eaf2);letter-spacing:.04em;">{{ __('scoreboard::corners.sides_title') }}</span>
+        <span style="font-size:15px;color:var(--faint,#5c6175);letter-spacing:.02em;">{{ __('scoreboard::corners.sides_hint') }}</span>
+      </div>
+      @foreach (\App\Scoreboard\Corners\MatSides::SCREENS as $scr)
+        <div class="sideRow" data-screen="{{ $scr }}" data-now="{{ ($cornerScreens[$scr] ?? false) ? 'right' : 'left' }}"
+             style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--line,#1f2230);">
+          <span style="flex:1 1 180px;display:flex;flex-direction:column;gap:2px;min-width:0;">
+            <span style="font-size:20px;font-weight:600;color:var(--text,#e8eaf2);letter-spacing:.03em;">{{ __('scoreboard::corners.screen_'.$scr) }}</span>
+            <span class="sideChanged" hidden style="font-size:14px;font-weight:700;color:#ffb84d;letter-spacing:.06em;">{{ __('scoreboard::corners.sides_changed') }}</span>
+          </span>
+          <span role="group" aria-label="{{ __('scoreboard::corners.screen_'.$scr) }}" style="display:inline-flex;background:var(--fill,#1f2230);border:1px solid var(--line,#2a2e40);border-radius:12px;padding:4px;gap:4px;">
+            @foreach (['left', 'right'] as $sd)
+              <button type="button" class="sideBtn" data-side="{{ $sd }}"
+                      style="min-width:96px;height:44px;border:0;border-radius:9px;font-size:18px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;">{{ __('scoreboard::corners.side_'.$sd) }}</button>
+            @endforeach
+          </span>
+        </div>
+      @endforeach
+      <button id="sidesSave" type="button"
+              style="align-self:flex-end;font-size:20px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:var(--gold,#ffe135);color:#000;border:none;border-radius:12px;padding:12px 26px;cursor:pointer;">{{ __('scoreboard::corners.sides_save') }}</button>
+    </div>
   @endif
 
   @if (! empty($cornerLookUrl) && count($cornerKeys) === 2)

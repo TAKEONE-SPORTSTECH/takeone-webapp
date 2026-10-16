@@ -59,6 +59,27 @@
         if (($r['status'] ?? 'upcoming') === 'done') { $doneCount++; }
     }
 
+    /* ===== WHAT IS FOLDED AWAY =====
+       A long day (thirty divisions on one mat) is a wall nobody reads to the
+       end. Of the parts still to come, only the one ON NOW and the next two
+       stay out — "where are we, what is next" is what somebody in the hall
+       opened the page for — and the rest of the day sits behind one line that
+       opens it. Before the day starts the first three upcoming are shown.
+       A fold that would hide a single row is not worth the extra tap. */
+    $aheadKeep = 3;
+    $ahead = [];
+    foreach ($rows as $i => $r) {
+        if (($r['status'] ?? 'upcoming') !== 'done') { $ahead[] = $i; }
+    }
+    $anchor = 0;
+    foreach ($ahead as $pos => $i) {
+        if (($rows[$i]['status'] ?? null) === 'now') { $anchor = $pos; break; }
+    }
+    $foldedIdx = array_slice($ahead, $anchor + $aheadKeep);
+    if (count($foldedIdx) < 2) { $foldedIdx = []; }
+    $folded = array_flip($foldedIdx);
+    $foldedCount = count($foldedIdx);
+
     $clock = function (int $minutes) {
         $m = (($minutes % 1440) + 1440) % 1440;
         return \App\Support\Cldr::time(\Carbon\Carbon::today()->setTime(intdiv($m, 60), $m % 60));
@@ -75,7 +96,7 @@
 @include('events::partials.event-now-glow')
 
 @if(! empty($rows))
-    <div class="mt-3" x-data="{ showDone: false }" style="--ro: {{ $rc }}; --ev-now: {{ $rc }};">
+    <div class="mt-3" x-data="{ showDone: false, showAll: false }" style="--ro: {{ $rc }}; --ev-now: {{ $rc }};">
 
         @if($doneCount > 0)
             {{-- The finished half of a day is a record, not clutter — but it is
@@ -89,8 +110,9 @@
             </button>
         @endif
 
-        @foreach($rows as $row)
+        @foreach($rows as $ri => $row)
             @php
+                $isFolded = isset($folded[$ri]);
                 $status = $row['status'] ?? 'upcoming';
                 $isNow = $status === 'now';
                 $isDone = $status === 'done';
@@ -119,6 +141,7 @@
                  second, and the row loses its whole layout. --}}
             <{{ $rowTag }} @if($rowHref) href="{{ $rowHref }}" @endif
                  @if($isDone) x-show="showDone" x-cloak x-transition.opacity @endif
+                 @if($isFolded) x-show="showAll" x-cloak x-transition.opacity @endif
                  @class([
                      'flex items-start gap-2',
                      'py-1.5' => ! $isNow,
@@ -179,5 +202,16 @@
                 @endif
             </{{ $rowTag }}>
         @endforeach
+
+        @if($foldedCount > 0)
+            {{-- The rest of the day, one tap away — and folded back the same way. --}}
+            <button type="button" @click="showAll = !showAll"
+                    class="m-press w-full mt-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12px] font-bold"
+                    style="background: {{ $rc }}0f; color: {{ $rc }};">
+                <span x-show="!showAll">{{ trans_choice('events::events.run_order_more', $foldedCount, ['count' => $foldedCount]) }}</span>
+                <span x-show="showAll" x-cloak>{{ __('events::events.run_order_less') }}</span>
+                <i class="bi bi-chevron-down text-[10px] transition-transform" :class="showAll && 'rotate-180'"></i>
+            </button>
+        @endif
     </div>
 @endif

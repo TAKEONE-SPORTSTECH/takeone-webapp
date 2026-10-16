@@ -51,6 +51,7 @@ return [
     'grade_dan' => 'دان :n',
     'style_kyokushin' => 'كيوكوشين',
     'style_shotokan' => 'شوتوكان',
+    'style_combat' => 'كومبات',
     'style_goju_ryu' => 'غوجو-ريو',
     'style_shito_ryu' => 'شيتو-ريو',
     'style_wado_ryu' => 'وادو-ريو',

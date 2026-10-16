@@ -61,7 +61,7 @@ class DivisionImportTest extends ContractTestCase
             ->assertOk()->assertJsonCount(2, 'divisions');
 
         $made = EventCategory::where('event_id', $event->id)->orderBy('sort_order')->get();
-        $this->assertSame(['Group A', 'My Own'], $made->pluck('name')->all(), 'no age word, no weight in a generated name');
+        $this->assertSame(['Group A : 5-6y, 17-23kg', 'My Own'], $made->pluck('name')->all(), 'the letter and its own ages and weights — never an age word');
         $this->assertSame([5, 6, 17.0, 23.0], [$made[0]->min_age, $made[0]->max_age, (float) $made[0]->min_weight, (float) $made[0]->max_weight]);
         $this->assertNull($made[1]->gender);
 

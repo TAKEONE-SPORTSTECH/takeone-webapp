@@ -1262,4 +1262,20 @@ return [
     // The event budget's division count (owner's locales, 2026-10-16).
     'budget_div_running' => ':n catégories',
     'autoplace_event_own_note' => ':n catégories',
+
+    // Long lists fold on the event page (run order + divisions).
+    'run_order_more' => '{1} Afficher :count partie de plus|[2,*] Afficher :count parties de plus',
+    'run_order_less' => 'Afficher moins',
+    'divisions_more' => '{1} Afficher :count catégorie de plus|[2,*] Afficher toutes les catégories (:count de plus)',
+    'divisions_less' => 'Afficher moins',
+    // The draw desk's Arrange menu (Shuffle · Renumber bouts).
+    'tablet_arrange_menu' => 'Organiser',
+    // Draw PDF shared through the device's share sheet.
+    'bracket_pdf_share_head' => 'Partager le PDF',
+    'bracket_pdf_share_fallback' => 'Le partage n\'est pas disponible ici : le PDF a été téléchargé à la place.',
+    'bracket_pdf_head' => 'Télécharger le PDF',
+    'bracket_pdf_this' => 'Cette catégorie',
+    'bracket_pdf_all' => 'Toutes les catégories',
+    'tablet_download' => 'Télécharger',
+    'tablet_mode_head' => 'Ce que fait un appui',
 ];

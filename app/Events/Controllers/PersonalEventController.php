@@ -2921,9 +2921,50 @@ class PersonalEventController extends Controller
             'to.type' => ['required', Rule::in(['slot', 'bench'])],
             'to.match_id' => ['nullable', 'integer'],
             'to.side' => ['nullable', Rule::in(['a', 'b'])],
+            // The draw desk's board (owner, 2026-10-16): a board left with half
+            // its people is laid again at the smaller size (BracketFit).
+            'fit' => ['nullable', 'boolean'],
         ]);
+        $fit = (bool) ($data['fit'] ?? false);
+        unset($data['fit']);
 
-        return $this->dispatchAction($event, 'arrange_draw', $data);
+        // One division per person: a basket → corner move puts somebody on a board.
+        if ($data['from']['type'] === 'bench' && $data['to']['type'] === 'slot') {
+            $entry = $event->registrations()->where('id', (int) ($data['from']['competitor_id'] ?? 0))->first();
+            if ($refused = \App\Events\Support\OneDivisionRule::refusal($event, $entry, (int) $data['category_id'])) {
+                return response()->json(['success' => false, 'message' => $refused], 422);
+            }
+        }
+
+        $response = $this->dispatchAction($event, 'arrange_draw', $data);
+
+        if ($fit && $data['to']['type'] === 'bench' && $response->getStatusCode() === 200) {
+            $response = $this->fitted($event, (int) $data['category_id'], $response);
+        }
+
+        return $response;
+    }
+
+    /**
+     * After a desk move: lay the board again smaller when its people fit half
+     * of it (App\Events\Support\Tournament\BracketFit). The answer then
+     * carries no division, so the board re-reads the whole draw.
+     */
+    private function fitted(ClubEvent $event, int $categoryId, JsonResponse $response): JsonResponse
+    {
+        $category = $event->categories()->find($categoryId);
+
+        if (! $category || ! app(\App\Events\Support\Tournament\BracketFit::class)->shrink($event, $category)) {
+            return $response;
+        }
+
+        $this->redrawDivision($event, $category->fresh());
+
+        $payload = $response->getData(true);
+        $payload['data']['division'] = null;
+        $payload['resized'] = true;
+
+        return response()->json($payload);
     }
 
     /**
@@ -2959,6 +3000,14 @@ class PersonalEventController extends Controller
 
         $data['charge'] = (bool) ($data['charge'] ?? false);
 
+        // One division per person: a COPY onto another board is a second bracket.
+        if ($data['to']['type'] === 'slot') {
+            $entry = $event->registrations()->where('id', (int) $data['competitor_id'])->first();
+            if ($refused = \App\Events\Support\OneDivisionRule::refusal($event, $entry, (int) $data['to_category_id'], moving: $data['mode'] === 'move')) {
+                return response()->json(['success' => false, 'message' => $refused], 422);
+            }
+        }
+
         return $this->dispatchAction($event, 'transfer_draw', $data);
     }
 
@@ -2981,7 +3030,12 @@ class PersonalEventController extends Controller
         $this->assertCanArrange($event, $me);
 
         $data = $request->validate([
-            'category_id' => ['required', 'integer'],
+            // Optional for the desk's division editor, which lists who FITS a
+            // range before the division exists (owner, 2026-10-16).
+            'category_id' => [$request->boolean('basket') ? 'nullable' : 'required', 'integer'],
+            // `basket`: the holding basket's list — longer, and every row says
+            // which bracket the person already stands in (OneDivisionRule).
+            'basket' => ['nullable', 'boolean'],
             'q' => ['nullable', 'string', 'max:60'],
             // The desk's filter (owner, 2026-10-15): narrow by who the person
             // IS, not only by name. Each bound is optional; set, it excludes
@@ -2993,14 +3047,18 @@ class PersonalEventController extends Controller
             'max_weight' => ['nullable', 'numeric', 'min:0', 'max:400'],
         ]);
 
-        $category = $event->categories()->find($data['category_id']);
+        $basket = (bool) ($data['basket'] ?? false);
+        $category = isset($data['category_id']) ? $event->categories()->find($data['category_id']) : null;
 
-        if (! $category) {
+        if (! $category && ! ($basket && ! isset($data['category_id']))) {
             return response()->json(['success' => false, 'message' => __('events::events.division_not_found')], 422);
         }
 
+        // A division not made yet: the range alone decides, against the event's dates.
+        $category ??= new \App\Events\Models\EventCategory(['event_id' => $event->id]);
+
         // Everybody already on this division's board is not a candidate for it.
-        $drawn = $category->matches()->get()
+        $drawn = ! $category->exists ? [] : $category->matches()->get()
             ->flatMap(fn ($m) => $m->competitorIds())->unique()->all();
 
         /*
@@ -3079,11 +3137,16 @@ class PersonalEventController extends Controller
             // Nobody-yet first, then alphabetically — the order the desk reads in.
             ->sortBy(fn ($r) => [$r->category_id === null ? 0 : 1, mb_strtolower((string) ($r->user?->full_name ?: $r->user?->name))])
             ->values()
-            ->take(40);
+            ->take($basket ? 150 : 40);
 
         // The written-down clubs for everybody on the list, in one query rather
         // than one per row (App\Events\Support\EntryClub).
         $written = \App\Events\Support\EntryClub::forMany($event->id, $rows->pluck('id'));
+
+        // Which bracket each person already stands in — the basket greys them
+        // out when the event allows one division per person.
+        $placed = $basket ? \App\Events\Support\OneDivisionRule::placements($event) : [];
+        $oneOnly = \App\Events\Support\OneDivisionRule::on($event);
 
         return response()->json([
             'success' => true,
@@ -3092,7 +3155,11 @@ class PersonalEventController extends Controller
                 'name' => $r->user?->full_name ?: $r->user?->name ?: __('events::events.athlete'),
                 // Where they stand today. Null is the case worth seeing.
                 'division' => $r->category?->name,
-                'in_this_division' => $r->category_id === $category->id,
+                'in_this_division' => $category->exists && $r->category_id === $category->id,
+                'placed_in' => $basket ? collect($placed[$r->user_id] ?? [])
+                    ->reject(fn ($d) => $category->exists && $d['id'] === $category->id)->pluck('name')->values()->all() : [],
+                'blocked' => $basket && $oneOnly && collect($placed[$r->user_id] ?? [])
+                    ->contains(fn ($d) => ! $category->exists || $d['id'] !== $category->id),
                 'belt' => $r->belt_colour,
                 'weight' => $r->weight,
                 'age' => $ages->ageOf($r),
@@ -3135,7 +3202,150 @@ class PersonalEventController extends Controller
             'competitor_id' => ['required', 'integer'],
         ]);
 
+        // One division per person. The picked entry is MOVED here unless the
+        // person already holds one in this division, so it never counts itself.
+        $entry = $event->registrations()->where('id', (int) $data['competitor_id'])->first();
+        $holds = $entry && $entry->user_id && $event->registrations()
+            ->where('user_id', $entry->user_id)->where('category_id', (int) $data['category_id'])->exists();
+        if ($refused = \App\Events\Support\OneDivisionRule::refusal($event, $entry, (int) $data['category_id'], moving: ! $holds)) {
+            return response()->json(['success' => false, 'message' => $refused], 422);
+        }
+
         return $this->dispatchAction($event, 'admit_late_entry', $data);
+    }
+
+    /**
+     * Pull a candidate from the draw desk's basket onto a division's board
+     * (owner, 2026-10-16: "as I drag them out to the brackets screen, create
+     * brackets for them if it is not enough").
+     *
+     * Three steps, one transaction, each through a door that already exists:
+     *  1. the person gets an entry IN this division — their own if they hold
+     *     one; the picked one moved here if it is in no division (or the
+     *     event allows one division per person); otherwise a second entry,
+     *     recorded as free (the package's own transfer_draw COPY);
+     *  2. onto the board: an empty board lays its final around them
+     *     (LoneFinal), a named corner is an ordinary arrange, and anywhere
+     *     else is a late entry — an open corner, or the ladder grows a round;
+     *  3. a refusal at any step undoes the lot.
+     *
+     * Organiser only: a second entry is money (the same line transferBracket
+     * draws for a copy). One division per person is checked first.
+     */
+    public function pullIntoBracket(Request $request, ClubEvent $event): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertCanManage($event, $me);
+
+        $data = $request->validate([
+            'category_id' => ['required', 'integer'],
+            'competitor_id' => ['required', 'integer'],
+            'to.type' => ['required', Rule::in(['slot', 'board'])],
+            'to.match_id' => ['nullable', 'integer'],
+            'to.side' => ['nullable', Rule::in(['a', 'b'])],
+        ]);
+
+        $category = $event->categories()->find($data['category_id']);
+        if (! $category || $category->isHeading()) {
+            return response()->json(['success' => false, 'message' => __('events::events.division_not_found')], 422);
+        }
+
+        $entry = $event->registrations()->where('role', 'participant')
+            ->where('id', (int) $data['competitor_id'])->with('user:id,full_name,name')->first();
+        if (! $entry) {
+            return response()->json(['success' => false, 'message' => __('events::events.late_entry_not_an_entrant')], 422);
+        }
+
+        $own = $entry->category_id === $category->id ? $entry : ($entry->user_id ? $event->registrations()
+            ->where('role', 'participant')->where('user_id', $entry->user_id)
+            ->where('category_id', $category->id)->first() : null);
+
+        if ($own && $category->matches()->get()->flatMap(fn ($m) => $m->competitorIds())->contains($own->id)) {
+            return response()->json(['success' => false, 'message' => __('events::events.late_entry_already_drawn')], 422);
+        }
+
+        // Standing in ANOTHER bracket already — never pulled out of it silently.
+        if ($refused = \App\Events\Support\OneDivisionRule::refusal($event, $own ?? $entry, $category->id)) {
+            return response()->json(['success' => false, 'message' => $refused], 422);
+        }
+
+        try {
+            return DB::transaction(function () use ($event, $category, $entry, $own, $data) {
+                $target = $own;
+
+                if (! $target && ($entry->category_id === null || \App\Events\Support\OneDivisionRule::on($event))) {
+                    $from = $entry->category;
+                    $entry->update([
+                        'category_id' => $category->id,
+                        'category_source' => \App\Events\Models\ClubEventRegistration::PLACED_MANUAL,
+                    ]);
+                    if ($from) {
+                        $this->redrawDivision($event, $from->fresh());
+                    }
+                    $target = $entry->fresh();
+                } elseif (! $target) {
+                    $copied = $this->dispatchAction($event, 'transfer_draw', [
+                        'from_category_id' => $entry->category_id, 'competitor_id' => $entry->id,
+                        'to_category_id' => $category->id, 'to' => ['type' => 'bench'],
+                        'mode' => 'copy', 'charge' => false,
+                    ]);
+                    if ($copied->getStatusCode() !== 200) {
+                        throw new \App\Events\Support\Tournament\TransferRefused($copied->getData(true)['message'] ?? __('events::events.bracket_move_failed'));
+                    }
+                    $target = $event->registrations()->where('role', 'participant')
+                        ->where('category_id', $category->id)
+                        ->when($entry->user_id, fn ($q) => $q->where('user_id', $entry->user_id), fn ($q) => $q->latest('id'))
+                        ->firstOrFail();
+                }
+
+                $to = $data['to'];
+                $placed = match (true) {
+                    ! $category->matches()->exists() => $this->dispatchAction($event, 'arrange_draw', [
+                        'category_id' => $category->id,
+                        'from' => ['type' => 'bench', 'competitor_id' => $target->id],
+                        'to' => ['type' => 'slot', 'match_id' => null, 'side' => 'a'],
+                    ]),
+                    $to['type'] === 'slot' && ! empty($to['match_id']) => $this->dispatchAction($event, 'arrange_draw', [
+                        'category_id' => $category->id,
+                        'from' => ['type' => 'bench', 'competitor_id' => $target->id],
+                        'to' => ['type' => 'slot', 'match_id' => (int) $to['match_id'], 'side' => $to['side'] ?? 'a'],
+                    ]),
+                    default => $this->dispatchAction($event, 'admit_late_entry', [
+                        'category_id' => $category->id, 'competitor_id' => $target->id,
+                    ]),
+                };
+
+                if ($placed->getStatusCode() !== 200) {
+                    throw new \App\Events\Support\Tournament\TransferRefused($placed->getData(true)['message'] ?? __('events::events.bracket_move_failed'));
+                }
+
+                return $placed;
+            });
+        } catch (\App\Events\Support\Tournament\TransferRefused $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+    }
+
+    /**
+     * One division per person — on or off (App\Events\Support\OneDivisionRule).
+     * Organiser only; the federation Draw tab and the draw desk both call it.
+     */
+    public function setOneDivision(Request $request, ClubEvent $event): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertCanManage($event, $me);
+
+        $data = $request->validate(['on' => ['required', 'boolean']]);
+        $event->update(['one_division_per_person' => (bool) $data['on']]);
+
+        \Illuminate\Support\Facades\Log::info('One division per person set', ['event' => $event->uuid, 'on' => (bool) $data['on'], 'by' => $me->id]);
+        $this->pushDivisionsChanged($event);
+
+        return response()->json([
+            'success' => true,
+            'one_division' => (bool) $data['on'],
+            'message' => __($data['on'] ? 'events::events.one_division_on' : 'events::events.one_division_off'),
+        ]);
     }
 
     /** Empty a division's draw onto the bench, to rebuild it by hand. */
@@ -6236,6 +6446,8 @@ class PersonalEventController extends Controller
                 'rank' => ! $sport || in_array($sport, $criteria['rank'], true),
             ],
             'streams' => array_values(array_filter(EventStreams::of($event), fn ($r) => is_array($r) && ($r['key'] ?? '') !== '')),
+            // One bracket per person (OneDivisionRule) — the tab's switch.
+            'one_division' => (bool) $event->one_division_per_person,
         ]);
     }
 
@@ -6260,6 +6472,20 @@ class PersonalEventController extends Controller
         $me = Auth::user();
         $this->assertCanManage($event, $me);
 
+        // No name typed, and the caller asks for one (the draw desk's "Add
+        // division", 2026-10-16): the next group letter and its own ages and
+        // weights — App\Events\Support\GroupName, as the editors name it.
+        if ($request->boolean('auto_name') && trim((string) $request->input('name')) === ''
+            && ($letter = $this->nextGroupLetter($event)) !== null) {
+            $request->merge(['name' => \App\Events\Support\GroupName::make($letter,
+                $request->input('min_age'), $request->input('max_age'), $request->input('min_weight'), $request->input('max_weight'))]);
+        }
+        // Past Z there is no letter left: a plain numbered name the organiser
+        // can rename, rather than refusing to add the division at all.
+        if ($request->boolean('auto_name') && trim((string) $request->input('name')) === '') {
+            $request->merge(['name' => __('events::events.tablet_div_new_title').' '.($event->categories()->count() + 1)]);
+        }
+
         $data = $this->headingSafe($this->validateDivision($request, $event));
 
         $division = EventCategory::create($data + [
@@ -6276,6 +6502,17 @@ class PersonalEventController extends Controller
             'message' => __('events::events.division_created'),
             'division' => $this->divisionPayload($division),
         ]);
+    }
+
+    /** The letter the next division at the end of the list takes (A, B… after the last heading), or null past Z. */
+    private function nextGroupLetter(ClubEvent $event): ?string
+    {
+        $n = 0;
+        foreach ($event->categories()->orderBy('sort_order')->orderBy('id')->get() as $c) {
+            $n = $c->isHeading() ? 0 : $n + 1;
+        }
+
+        return $n < 26 ? chr(65 + $n) : null;
     }
 
     /**
@@ -6415,7 +6652,9 @@ class PersonalEventController extends Controller
 
             $name = trim((string) ($r['name'] ?? ''));
             if ($name === '' && $r['errors'] === []) {
-                $name = $letter < 26 ? 'Group '.chr(65 + $letter) : '';
+                // The letter and its own ages and weights (App\Events\Support\GroupName).
+                $name = $letter < 26 ? \App\Events\Support\GroupName::make(chr(65 + $letter),
+                    $r['min_age'] ?? null, $r['max_age'] ?? null, $r['min_weight'] ?? null, $r['max_weight'] ?? null) : '';
             }
 
             if ($r['errors'] === []) {

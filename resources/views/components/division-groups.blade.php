@@ -340,12 +340,12 @@
                                 <span class="text-muted-foreground font-normal" x-text="'(' + words.kg + ')'"></span>
                             </label>
                             <div class="flex items-center gap-2">
-                                <input type="number" min="10" max="300" step="0.1" x-model.number="groupForm.min_weight"
+                                <input type="number" min="10" max="300" step="any" x-model.number="groupForm.min_weight"
                                        :placeholder="words.from"
                                        class="w-full px-3 py-2.5 border border-gray-200 rounded-lg
                                               focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                                 <span class="text-muted-foreground text-xs">–</span>
-                                <input type="number" min="10" max="300" step="0.1" x-model.number="groupForm.max_weight"
+                                <input type="number" min="10" max="300" step="any" x-model.number="groupForm.max_weight"
                                        :placeholder="words.to"
                                        class="w-full px-3 py-2.5 border border-gray-200 rounded-lg
                                               focus:ring-2 focus:ring-purple-500 focus:border-transparent">

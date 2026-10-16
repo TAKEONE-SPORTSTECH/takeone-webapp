@@ -127,10 +127,14 @@ class FederationApiController extends Controller
             'event' => ['required', 'uuid'],
             'category' => ['nullable', 'string', 'max:64'],
             'belt' => ['nullable', 'string', 'max:64'],
+            // The organiser's answer when the weight classes change (2026-10-16):
+            // keep every division as it is, or re-sort everyone.
+            'mode' => ['nullable', 'in:keep,resort'],
         ]);
-        $r = $events->setRuleBook($request->user(), $access, $data['event'], $data['category'] ?? null, $data['belt'] ?? null);
+        $r = $events->setRuleBook($request->user(), $access, $data['event'], $data['category'] ?? null, $data['belt'] ?? null, $data['mode'] ?? null);
 
-        return response()->json(['success' => $r['ok'], 'message' => $r['message'], 'event' => ['id' => $data['event']], 'rulebook' => $r['rulebook'] ?? null], $r['ok'] ? 200 : 422);
+        return response()->json(['success' => $r['ok'], 'message' => $r['message'], 'event' => ['id' => $data['event']], 'rulebook' => $r['rulebook'] ?? null,
+            'can_keep' => (bool) ($r['can_keep'] ?? false)], $r['ok'] ? 200 : 422);
     }
 
     /** Paid featuring on the members' Events page: send the proof of payment for one event. */

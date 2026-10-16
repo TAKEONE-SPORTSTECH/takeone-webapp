@@ -983,6 +983,23 @@ class McpServerTest extends TestCase
         $this->assertGreaterThan(0, $result['numbered']);
     }
 
+    public function test_set_event_one_division_switches_the_rule_and_denies_a_non_organiser(): void
+    {
+        [$event, $organiser] = $this->drawnChampionship();
+
+        $watcher = $this->createUser();
+        $watcher->memberClubs()->syncWithoutDetaching([$event->tenant_id => ['status' => 'active']]);
+        $this->actingAs($watcher->fresh());
+        $denied = $this->callTool(\App\Mcp\Tools\SetEventOneDivisionTool::class, ['event' => $event->uuid, 'on' => true]);
+        $this->assertStringContainsString('organiser', $denied['error']);
+        $this->assertFalse((bool) $event->fresh()->one_division_per_person);
+
+        $this->actingAs($organiser);
+        $result = $this->callTool(\App\Mcp\Tools\SetEventOneDivisionTool::class, ['event' => $event->uuid, 'on' => true]);
+        $this->assertTrue($result['one_division_per_person']);
+        $this->assertTrue((bool) $event->fresh()->one_division_per_person);
+    }
+
     public function test_transfer_event_competitor_moves_them_into_another_division(): void
     {
         config(['events.draw_transfer' => true]);

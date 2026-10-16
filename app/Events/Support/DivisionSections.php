@@ -118,6 +118,40 @@ class DivisionSections
      * asks the model rather than the attribute — EventCategory::isHeading() is
      * the one definition of what a heading is.
      */
+    /**
+     * How much of a long divisions list stays out before "Show all".
+     *
+     * A championship with forty weight classes is a wall of chips nobody
+     * reads to the end. The first `$budget` chips stay on screen, in reading
+     * order; everything after them folds. Returns, per group that is cut
+     * ("sectionIndex.groupIndex"), how many of its chips stay visible — 0 means
+     * the whole group (and, for a section's first group, its heading) folds —
+     * plus how many divisions are behind the fold. Empty when the list is short
+     * enough to show whole, or when folding would hide fewer than `$minHidden`.
+     *
+     * @param  array<int, array{heading: ?string, groups: array}>  $sections
+     * @return array{show: array<string, int>, hidden: int}
+     */
+    public static function fold(array $sections, int $budget = 12, int $minHidden = 4): array
+    {
+        $left = $budget;
+        $show = [];
+        $hidden = 0;
+        foreach ($sections as $si => $sec) {
+            foreach (($sec['groups'] ?? []) as $gi => $g) {
+                $n = count($g['entries'] ?? $g['items'] ?? []);
+                $visible = min($n, $left);
+                $left -= $visible;
+                if ($visible < $n) {
+                    $show[$si.'.'.$gi] = $visible;
+                    $hidden += $n - $visible;
+                }
+            }
+        }
+
+        return $hidden >= $minHidden ? ['show' => $show, 'hidden' => $hidden] : ['show' => [], 'hidden' => 0];
+    }
+
     private function isHeading(EventCategory $c): bool
     {
         return $c->isHeading();

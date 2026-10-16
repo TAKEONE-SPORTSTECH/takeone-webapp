@@ -111,6 +111,73 @@ class KarateMatCornersTest extends TestCase
         $this->assertFalse(MatCorners::redRight($event->fresh(), 'Mat 1'));
     }
 
+    /**
+     * Screen by screen (owner, 2026-10-16): the score control, the scoreboard
+     * & VS, and the upcoming board each face their own way when asked to.
+     */
+    public function test_one_screen_swaps_alone_and_the_mat_folds_back_when_they_agree(): void
+    {
+        [$owner, $event] = $this->scenario();
+        $default = CornerSide::redRight('karate');
+
+        $this->actingAs($owner)
+            ->postJson("/karate/control/{$event->uuid}/corners", ['mat' => 'Mat 1', 'screens' => ['control']])
+            ->assertOk()->assertJsonPath('screens.control', ! $default)->assertJsonPath('screens.board', $default);
+
+        $event->refresh();
+        $this->assertSame(! $default, MatCorners::redRight($event, 'Mat 1', 'control'));
+        $this->assertSame($default, MatCorners::redRight($event, 'Mat 1', 'board'));
+        $this->assertSame($default, MatCorners::redRight($event, 'Mat 1', 'upcoming'));
+        $this->assertSame($default, MatCorners::redRight($event, 'Mat 2', 'control'), 'another mat untouched');
+
+        // The console draws its own side.
+        $this->actingAs($owner)->get("/karate/control/{$event->uuid}?mat=".urlencode('Mat 1'))
+            ->assertOk()->assertViewHas('redRight', ! $default);
+
+        // Saving the rules keeps every screen's side.
+        $state = MatState::load($event, 'Mat 1');
+        $state->gap = 4;
+        $state->persistSettings($event);
+        $this->assertSame(! $default, MatCorners::redRight($event->fresh(), 'Mat 1', 'control'));
+
+        // The other two follow: all agree again, so it is one mat side once more.
+        $this->actingAs($owner)
+            ->postJson("/karate/control/{$event->uuid}/corners", ['mat' => 'Mat 1', 'screens' => ['board', 'upcoming']])
+            ->assertOk();
+        $settings = (array) $event->fresh()->scoreboard_settings;
+        $this->assertArrayNotHasKey(\App\Scoreboard\Corners\MatSides::KEY_BY, $settings);
+        $this->assertSame(! $default, MatCorners::redRight($event->fresh(), 'Mat 1'));
+
+        // Nonsense screens are refused, and so is a stranger.
+        $this->actingAs($owner)->postJson("/karate/control/{$event->uuid}/corners", ['mat' => 'Mat 1', 'screens' => ['tv']])->assertStatus(422);
+        $this->actingAs($this->createUser())->postJson("/karate/control/{$event->uuid}/corners", ['mat' => 'Mat 1', 'screens' => ['control']])->assertForbidden();
+    }
+
+    public function test_only_the_combat_console_offers_the_screen_checkboxes(): void
+    {
+        config(['features.karate_style_boards' => true]);
+        [$owner, $event] = $this->scenario();
+
+        $event->forceFill(['belt_system' => 'combat'])->save();
+        $this->actingAs($owner)->get("/karate/control/{$event->uuid}?mat=".urlencode('Mat 1'))
+            ->assertOk()->assertSee('id="cornerScreens"', false);
+
+        $event->forceFill(['belt_system' => 'shotokan'])->save();
+        $this->actingAs($owner)->get("/karate/control/{$event->uuid}?mat=".urlencode('Mat 1'))
+            ->assertOk()->assertDontSee('id="cornerScreens"', false);
+    }
+
+    public function test_the_mcp_tool_sets_one_screen(): void
+    {
+        [$owner, $event] = $this->scenario();
+        $this->actingAs($owner);
+        $other = CornerSide::redRight('karate') ? 'left' : 'right';
+
+        $set = $this->callMcp(['event' => $event->uuid, 'mat' => 'Mat 1', 'red_side' => $other, 'screen' => 'upcoming']);
+        $this->assertSame($other, $set['screens']['upcoming']);
+        $this->assertNotSame($other, $set['screens']['board']);
+    }
+
     private function callMcp(array $args): array
     {
         $text = (string) (new SetMatCornerSideTool)->handle(new \Laravel\Mcp\Request($args))->content();

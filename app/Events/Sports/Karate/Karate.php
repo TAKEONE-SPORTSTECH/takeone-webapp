@@ -130,6 +130,18 @@ class Karate extends AbstractCombatSport
                 $rank('brown', $kyu([3, 2, 1])),
                 $black,
             ],
+            // Combat — started 2026-10-16 as an exact copy of Shotokan's ladder
+            // (the owner), its own entry so it can change without touching Shotokan.
+            'combat' => [
+                $rank('white', $kyu([10])),
+                $rank('orange', $kyu([9])),
+                $rank('red', $kyu([8])),
+                $rank('yellow', $kyu([7])),
+                $rank('green', $kyu([6])),
+                $rank('purple', $kyu([5, 4])),
+                $rank('brown', $kyu([3, 2, 1])),
+                $black,
+            ],
         ];
     }
 
@@ -193,6 +205,18 @@ class Karate extends AbstractCombatSport
         $shotokan = \App\Support\KarateShotukanWeightclasses::categorySystem();
         if ($shotokan) {
             $systems[$shotokan->key] = $shotokan;
+
+            // Combat — its own rule book entry (owner, 2026-10-16), started as
+            // an exact copy of Shotokan's table. Choosing it is what gives an
+            // event the Combat score control, scoreboard and VS screen
+            // (KarateStyles). Shotokan's own entry above is unchanged.
+            $systems['combat'] = new \App\Sports\Combat\CategorySystem(
+                key: 'combat',
+                label: __('sport-karate::messages.style_combat'),
+                ageGroups: $shotokan->ageGroups,
+                classes: $shotokan->classes,
+                note: $shotokan->note,
+            );
         }
 
         return $systems;

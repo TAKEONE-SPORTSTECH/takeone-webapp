@@ -204,7 +204,7 @@ class CourtDisplayController extends Controller
                 'court' => $device->court,
                 'state' => $state->toArray(),
                 // This mat's own corner layout (Mat\MatCorners).
-                'redRight' => \App\Scoreboard\Sports\Karate\Mat\MatCorners::redRight($device->event, $device->court),
+                'redRight' => \App\Scoreboard\Sports\Karate\Mat\MatCorners::redRight($device->event, $device->court, 'board'),
                 // The corners' names and colours for this event (Mat\CornerLook).
                 'look' => \App\Scoreboard\Sports\Karate\Mat\CornerLook::for($device->event),
                 'screenLink' => $screenLink,
@@ -243,7 +243,7 @@ class CourtDisplayController extends Controller
             // Kyokushin's second corner is SHIRO — white, not blue.
             'secondTone' => \App\Scoreboard\Sports\Karate\Styles\KarateStyles::of($device->event) === 'kyokushin' ? 'white' : 'blue',
             'look' => \App\Scoreboard\Sports\Karate\Mat\CornerLook::for($device->event),
-            'redRight' => \App\Scoreboard\Sports\Karate\Mat\MatCorners::redRight($device->event, $device->court),
+            'redRight' => \App\Scoreboard\Sports\Karate\Mat\MatCorners::redRight($device->event, $device->court, 'upcoming'),
             // Only a real device gets a heartbeat — the organiser's preview has
             // no token and must not mark any screen as alive.
             // The pin lives in this page's own URL, and reload() keeps it, so

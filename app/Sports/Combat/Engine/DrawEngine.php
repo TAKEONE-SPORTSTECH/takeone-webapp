@@ -243,7 +243,13 @@ class DrawEngine
      *                                  board of the right size; otherwise ignored, and
      *                                  the division is cut the usual way.
      */
-    public function build(ClubEvent $event, EventCategory $cat, bool $paidOnly, ?array $order = null): void
+    /**
+     * @param  list<int>|null  $only  draw ONLY these entries (the division's other
+     *                                entrants stay in its basket) — App\Events\Support\
+     *                                Tournament\BracketFit's shrink. Null = everybody,
+     *                                as it always was.
+     */
+    public function build(ClubEvent $event, EventCategory $cat, bool $paidOnly, ?array $order = null, ?array $only = null): void
     {
         /*
          * ⚠️ THE DOOR, NOT THE DOORMEN: A FOUGHT DIVISION IS NEVER RE-CUT.
@@ -319,6 +325,7 @@ class DrawEngine
             ->when($paidOnly, fn ($q) => $q
                 ->when($charges, fn ($q) => $q->where('paid', true)->whereNotNull('paid_by'))
                 ->whereNotNull('weight')->whereNotNull('weighed_in_by'))
+            ->when($only !== null, fn ($q) => $q->whereIn('id', $only))
             ->with('user:id,full_name,name')
             ->get();
 

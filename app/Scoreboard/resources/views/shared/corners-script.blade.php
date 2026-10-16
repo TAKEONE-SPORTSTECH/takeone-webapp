@@ -48,6 +48,48 @@
     };
   }
 
+  /* ── Red's side, screen by screen (corners-panel $perScreen) ──────────── */
+  // Each row starts at the side saved for that screen; a tap only drafts it.
+  // saveSides() sends just the screens whose draft differs — as a flip, which
+  // is what the endpoint takes — and resolves with nothing to do otherwise.
+  var sides = $('cornerScreens');
+  var saveSides = function () { return Promise.resolve(null); };
+  if (sides) {
+    var rows = Array.prototype.slice.call(sides.querySelectorAll('.sideRow'));
+    var draft = {};
+    rows.forEach(function (row) { draft[row.getAttribute('data-screen')] = row.getAttribute('data-now'); });
+    var paintSides = function () {
+      rows.forEach(function (row) {
+        var scr = row.getAttribute('data-screen'), now = row.getAttribute('data-now');
+        Array.prototype.forEach.call(row.querySelectorAll('.sideBtn'), function (b) {
+          var on = b.getAttribute('data-side') === draft[scr];
+          b.style.background = on ? '#ffe135' : 'transparent';
+          b.style.color = on ? '#000' : '#a7abbe';
+          b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        row.querySelector('.sideChanged').hidden = draft[scr] === now;
+      });
+    };
+    rows.forEach(function (row) {
+      Array.prototype.forEach.call(row.querySelectorAll('.sideBtn'), function (b) {
+        b.onclick = function () { draft[row.getAttribute('data-screen')] = b.getAttribute('data-side'); paintSides(); };
+      });
+    });
+    paintSides();
+    saveSides = function () {
+      var changed = rows.filter(function (row) { var s = row.getAttribute('data-screen'); return draft[s] !== row.getAttribute('data-now'); })
+        .map(function (row) { return row.getAttribute('data-screen'); });
+      return changed.length ? post(@json($cornersUrl ?? null), { mat: @json($court ?? null), screens: changed }) : Promise.resolve(null);
+    };
+    var sideSave = $('sidesSave');
+    sideSave.onclick = function () {
+      if (sideSave.disabled) return;
+      sideSave.disabled = true;
+      saveSides().then(function () { window.location.reload(); })
+        .catch(function (e) { sideSave.disabled = false; fail(e.message); });
+    };
+  }
+
   /* ── Names and colours, for the event ─────────────────────────────────── */
   var host = $('cornerLook');
   if (!host) return;
@@ -100,7 +142,7 @@
     });
     if (bad) { fail(@json(__('scoreboard::corners.look_bad_hex'))); return; }
     save.disabled = true;
-    post(@json($cornerLookUrl ?? null), body)
+    saveSides().then(function () { return post(@json($cornerLookUrl ?? null), body); })
       .then(function () { window.location.reload(); })
       .catch(function (e) { save.disabled = false; fail(e.message); });
   };

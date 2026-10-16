@@ -1261,4 +1261,20 @@ return [
     // The event budget's division count (owner's locales, 2026-10-16).
     'budget_div_running' => ':n 部門',
     'autoplace_event_own_note' => ':n 部門',
+
+    // Long lists fold on the event page (run order + divisions).
+    'run_order_more' => '残り :count 件を表示',
+    'run_order_less' => '閉じる',
+    'divisions_more' => 'すべての階級を表示（あと :count 件）',
+    'divisions_less' => '閉じる',
+    // The draw desk's Arrange menu (Shuffle · Renumber bouts).
+    'tablet_arrange_menu' => '並べ替え',
+    // Draw PDF shared through the device's share sheet.
+    'bracket_pdf_share_head' => 'PDFを共有',
+    'bracket_pdf_share_fallback' => 'ここでは共有できないため、PDFをダウンロードしました。',
+    'bracket_pdf_head' => 'PDFをダウンロード',
+    'bracket_pdf_this' => 'この階級',
+    'bracket_pdf_all' => 'すべての階級',
+    'tablet_download' => 'ダウンロード',
+    'tablet_mode_head' => 'タップの動作',
 ];

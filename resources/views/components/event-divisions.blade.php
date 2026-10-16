@@ -820,10 +820,10 @@
                             <div x-show="asksWeight">
                             <label class="block text-[11px] font-semibold text-gray-500 mb-1 mt-2">{{ __('events::events.divisions_weight') }}</label>
                             <div class="grid grid-cols-2 gap-2 mb-1">
-                                <input x-model="form.min_weight" @input="settingsChanged()" type="number" min="10" max="300" step="0.1" inputmode="decimal"
+                                <input x-model="form.min_weight" @input="settingsChanged()" type="number" min="10" max="300" step="any" inputmode="decimal"
                                        placeholder="{{ __('events::events.divisions_from') }}"
                                        class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                                <input x-model="form.max_weight" @input="settingsChanged()" type="number" min="10" max="300" step="0.1" inputmode="decimal"
+                                <input x-model="form.max_weight" @input="settingsChanged()" type="number" min="10" max="300" step="any" inputmode="decimal"
                                        placeholder="{{ __('events::events.divisions_to') }}"
                                        class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                             </div>
@@ -2210,8 +2210,26 @@
            from any table. Ages and weights live in the division's own columns
            and are shown beside the name; the organiser names the division. */
         generatedName(index) {
+            // The letter, then the division's OWN ages and weights (owner,
+            // 2026-10-16): "Group A : 5-6y, 17-23kg". Same format as
+            // App\Events\Support\GroupName and div-manage.js — keep in step.
             const letter = this.groupLetter(index);
-            return letter ? ((this.words.group || 'Group') + ' ' + letter) : '';
+            if (! letter) return '';
+            const range = this.groupRange(this.form || {});
+            return (this.words.group || 'Group') + ' ' + letter + (range ? ' : ' + range : '');
+        },
+
+        groupRange(f) {
+            const n = (v) => (v === '' || v == null || isNaN(Number(v))) ? null : Number(v);
+            const num = (v) => String(+v.toFixed(2));
+            const a1 = n(f.min_age), a2 = n(f.max_age);
+            let w1 = n(f.min_weight), w2 = n(f.max_weight);
+            w1 = w1 !== null && w1 > 0 ? w1 : null;
+            w2 = w2 !== null && w2 > 0 && w2 < 200 ? w2 : null;
+            const bits = [];
+            if (a1 !== null || a2 !== null) bits.push(a1 !== null && a2 !== null ? (a1 === a2 ? num(a1) : num(a1) + '-' + num(a2)) + 'y' : a1 !== null ? num(a1) + 'y+' : '≤' + num(a2) + 'y');
+            if (w1 !== null || w2 !== null) bits.push(w1 !== null && w2 !== null ? (w1 === w2 ? num(w1) : num(w1) + '-' + num(w2)) + 'kg' : w1 !== null ? '+' + num(w1) + 'kg' : '-' + num(w2) + 'kg');
+            return bits.join(', ');
         },
 
         /** The generated name WITHOUT its positional letter. */
@@ -2251,12 +2269,12 @@
            this it would look hand-typed the moment it moved, which is to say
            it would never be corrected at all. */
         looksGenerated(d, index) {
-            // Only a bare "Group X" counts as ours — every other name was typed
-            // (or is an older generated one) and is never rewritten.
+            // Only "Group X" or "Group X : …" counts as ours — every other name
+            // was typed and is never rewritten.
             const name = String((d && d.name) || '').trim();
             const word = (this.words.group || 'Group').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-            return new RegExp('^' + word + '\\s+[A-Z]$').test(name);
+            return new RegExp('^' + word + ' [A-Z]( : .+)?$').test(name);
         },
 
         /** A, B, C… among the divisions under the same heading. */

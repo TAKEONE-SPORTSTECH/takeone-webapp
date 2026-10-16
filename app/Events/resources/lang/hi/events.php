@@ -1262,4 +1262,20 @@ return [
     // The event budget's division count (owner's locales, 2026-10-16).
     'budget_div_running' => ':n डिवीज़न',
     'autoplace_event_own_note' => ':n डिवीज़न',
+
+    // Long lists fold on the event page (run order + divisions).
+    'run_order_more' => 'शेष :count भाग दिखाएँ',
+    'run_order_less' => 'कम दिखाएँ',
+    'divisions_more' => 'सभी वर्ग दिखाएँ (:count और)',
+    'divisions_less' => 'कम दिखाएँ',
+    // The draw desk's Arrange menu (Shuffle · Renumber bouts).
+    'tablet_arrange_menu' => 'व्यवस्थित करें',
+    // Draw PDF shared through the device's share sheet.
+    'bracket_pdf_share_head' => 'PDF साझा करें',
+    'bracket_pdf_share_fallback' => 'यहाँ साझा करना उपलब्ध नहीं है, इसलिए PDF डाउनलोड कर दिया गया।',
+    'bracket_pdf_head' => 'PDF डाउनलोड करें',
+    'bracket_pdf_this' => 'यह वर्ग',
+    'bracket_pdf_all' => 'सभी वर्ग',
+    'tablet_download' => 'डाउनलोड',
+    'tablet_mode_head' => 'टैप क्या करता है',
 ];

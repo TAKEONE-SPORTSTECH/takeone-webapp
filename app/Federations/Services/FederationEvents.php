@@ -406,7 +406,7 @@ class FederationEvents
      *
      * @return array{ok: bool, message: string, rulebook?: array}
      */
-    public function setRuleBook(User $user, array $access, string $uuid, ?string $category, ?string $belt): array
+    public function setRuleBook(User $user, array $access, string $uuid, ?string $category, ?string $belt, ?string $mode = null): array
     {
         if (! ($access['manager'] ?? false)) {
             return ['ok' => false, 'message' => 'Only a manager can change the rule book.'];
@@ -426,11 +426,12 @@ class FederationEvents
 
         $moved = 0;
         if ($ev = app(FederationPlatformEvent::class)->of($event)) {
-            $r = app(\App\Events\Support\CategorySystems::class)->change($ev, $category, $belt);
+            $r = app(\App\Events\Support\CategorySystems::class)->change($ev, $category, $belt, $mode);
             if (! $r['ok']) {
-                return ['ok' => false, 'message' => $r['message'] ?? __('events::events.rulebook_invalid')];
+                return ['ok' => false, 'message' => $r['message'] ?? __('events::events.rulebook_invalid'), 'can_keep' => (bool) ($r['can_keep'] ?? false)];
             }
             $moved = (int) ($r['moved'] ?? 0);
+            $kept = (bool) ($r['kept'] ?? false);
         }
 
         $d = (array) $event->details;
@@ -441,7 +442,8 @@ class FederationEvents
         activity()->causedBy($user)->withProperties(['event' => $event->uuid, 'category' => $category, 'belt' => $belt])
             ->log('federation.event_rulebook');
 
-        return ['ok' => true, 'message' => $moved ? __('events::events.rulebook_changed', ['moved' => $moved, 'created' => 0]) : 'Rule book saved.',
+        return ['ok' => true, 'message' => $moved ? __('events::events.rulebook_changed', ['moved' => $moved, 'created' => 0])
+                : (($kept ?? false) ? 'Rule book saved — your divisions and the draw are unchanged.' : 'Rule book saved.'),
             'rulebook' => ['category' => $category, 'belt' => $belt]];
     }
 

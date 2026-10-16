@@ -61,12 +61,21 @@ class DrawDeskController extends Controller
             'hasPin' => false,
             'pinRequired' => false,
             'division' => $division ?: null,
+            'oneDivisionOn' => (bool) $event->one_division_per_person,
             'urls' => [
                 'data' => route('me.events.bracket.data', ['event' => $event->uuid]),
                 // The bracket on show as a PDF (BracketPdf) — the desk's Download
                 // button. The route re-authorises (canArrange, which every viewer
                 // of this desk has); absent while printing is switched off.
                 'pdf' => \App\Events\Support\BracketPdf::available() ? route('me.events.bracket.pdf', ['event' => $event->uuid]) : null,
+                // Add / delete a division from the desk (organisers only; the
+                // endpoints re-check). Delete is base + '/{id}' with `release`.
+                'divisions' => $manages ? route('me.events.divisions.store', ['event' => $event->uuid]) : null,
+                // The division editor's drag onto a board (it grows to fit, and a
+                // desk move that empties half a board shrinks it), and the
+                // event's one-division-per-person switch. Organisers only.
+                'pull' => $manages ? route('me.events.bracket.pull', ['event' => $event->uuid]) : null,
+                'oneDivision' => $manages ? route('me.events.bracket.one-division', ['event' => $event->uuid]) : null,
                 'arrange' => route('me.events.bracket.arrange', ['event' => $event->uuid]),
                 'admit' => route('me.events.bracket.admit', ['event' => $event->uuid]),
                 'transfer' => route('me.events.bracket.transfer', ['event' => $event->uuid]),

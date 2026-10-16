@@ -37,6 +37,7 @@ use App\Mcp\Tools\AddWorkHistoryTool;
 use App\Mcp\Tools\ArrangeEventBracketTool;
 use App\Mcp\Tools\ShuffleEventDivisionTool;
 use App\Mcp\Tools\RenumberEventBoutsTool;
+use App\Mcp\Tools\SetEventOneDivisionTool;
 use App\Mcp\Tools\TransferEventCompetitorTool;
 use App\Mcp\Tools\SetRunningOrderGroupTool;
 use App\Mcp\Tools\ClubFinancialsTool;
@@ -146,6 +147,7 @@ class TakeOneServer extends Server
         ArrangeEventBracketTool::class,
         ShuffleEventDivisionTool::class,
         RenumberEventBoutsTool::class,
+        SetEventOneDivisionTool::class,
         TransferEventCompetitorTool::class,
         SetRunningOrderGroupTool::class,
         GetEventTranslationTool::class,

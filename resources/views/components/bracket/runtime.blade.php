@@ -256,6 +256,15 @@
     .bk-bench-foot{flex:0 0 auto;padding:0 14px 10px;font-size:.62rem;color:#97a1b4;}
     .bk-bench-empty{padding:4px 2px 10px;font-size:.7rem;color:#97a1b4;}
     .bk-bench.is-target{border-style:solid;box-shadow:0 0 0 3px rgba(46,204,113,.55),0 16px 40px rgba(0,0,0,.45);}
+    /* The draw desk's division editor: who FITS the range being typed, under
+       the basket's own entrants (owner, 2026-10-16). */
+    .bk-bench-sec{flex:0 0 100%;display:flex;align-items:center;gap:8px;margin-top:4px;
+        font-size:.6rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#7dd3a8;}
+    .bk-bench-sec::after{content:'';flex:1 1 auto;height:1px;background:rgba(125,211,168,.35);}
+    .bk-bench-item.is-cand{border-inline-start:3px solid #2ecc71;}
+    .bk-bench-item.is-blocked{opacity:.45;cursor:not-allowed;border-inline-start-color:#94a3b8;}
+    .bk-cand-note{font-size:.6rem;color:#64748b;margin-top:1px;}
+    .bk-bench-item.is-blocked .bk-cand-note{color:#b4483c;font-weight:600;}
 
     /* ── Arrange mode ──────────────────────────────────────────────────── */
     .is-arranging .bk-slot[data-arrangeable="1"]{cursor:grab;}
@@ -588,6 +597,7 @@ window.BracketBoard = window.BracketBoard || (function () {
             pick: null,              // { from, name } — tap-to-place selection
             drag: null,              // active pointer drag
             bench: null, benchMin: false,
+            cand: null,              // the desk's candidates: null = off, {list} = on (setCandidates)
             hot: null,               // competitor being followed across the draw
             currentNo: null,         // the bout that is next up
             canManage: false,        // server truth: may this reader decide a bout?
@@ -1931,6 +1941,7 @@ window.BracketBoard = window.BracketBoard || (function () {
                     list.appendChild(item);
                 });
             }
+            if (S.cand) renderCandidates(list);
             bench.appendChild(list);
 
             if (div.bench.length) {
@@ -1943,6 +1954,63 @@ window.BracketBoard = window.BracketBoard || (function () {
         S.vp.appendChild(bench);
         S.bench = bench;
         positionBench();
+    }
+
+    /* Who FITS the range the desk is typing — a second section of the basket.
+       Each card says where the person stands today; one the event will not let
+       into a second bracket (OneDivisionRule) is greyed and cannot be picked. */
+    function renderCandidates(list) {
+        const rows = S.cand.list;
+        const sec = el('div', 'bk-bench-sec');
+        sec.textContent = S.cfg.text.fits + (Array.isArray(rows) ? ' (' + rows.length + ')' : '');
+        list.appendChild(sec);
+        if (!Array.isArray(rows) || !rows.length) {
+            const empty = el('div', 'bk-bench-empty');
+            empty.style.flex = '0 0 100%';
+            empty.textContent = Array.isArray(rows) ? S.cfg.text.fitsNone : S.cfg.text.fitsRange;
+            list.appendChild(empty);
+            return;
+        }
+        S.widestName = Math.max(S.widestName || 0, widest(rows.map(p => p.name || ''), 'bk-name'));
+        rows.forEach(p => {
+            const item = el('div', 'bk-bench-item is-cand' + (p.blocked ? ' is-blocked' : ''));
+            item.dataset.competitorId = p.id;
+            item.dataset.candidate = '1';
+            item.tabIndex = p.blocked ? -1 : 0;
+
+            const av = el('div', 'bk-av');
+            if (media(p.photo)) { const img = el('img'); img.src = media(p.photo); img.alt = ''; img.loading = 'lazy'; av.appendChild(img); }
+            else av.textContent = initials(p.name);
+            item.appendChild(av);
+
+            const who = el('div', 'bk-who');
+            const top = el('div', 'bk-who-top');
+            const name = el('div', 'bk-name'); name.textContent = p.name; top.appendChild(name);
+            if (p.country) top.appendChild(flag(p.country));
+            who.appendChild(top);
+
+            const facts = [];
+            if (p.age !== null && p.age !== undefined) facts.push(p.age + 'y');
+            if (p.weight !== null && p.weight !== undefined && p.weight !== '') facts.push(String(+Number(p.weight).toFixed(2)) + 'kg');
+            if (p.club) facts.push(p.club);
+            if (facts.length) { const sub = el('div', 'bk-who-sub'); const c = el('span', 'bk-club'); c.textContent = facts.join(' · '); sub.appendChild(c); who.appendChild(sub); }
+
+            const where = (p.placed_in && p.placed_in.length) ? p.placed_in.join(', ') : (p.division || '');
+            const note = el('div', 'bk-cand-note');
+            note.textContent = p.blocked ? S.cfg.text.blocked.replace(':d', where)
+                : (where ? S.cfg.text.inDivision.replace(':d', where) : S.cfg.text.noDivision);
+            who.appendChild(note);
+            item.title = note.textContent;
+            item.appendChild(who);
+            list.appendChild(item);
+        });
+    }
+
+    /** The desk hands the basket its candidates (null turns the section off). */
+    function setCandidates(rows) {
+        S.cand = rows === null ? null : { list: Array.isArray(rows) ? rows : null };
+        renderBench(current());
+        applyArrangeClasses();
     }
 
     /**
@@ -2063,7 +2131,7 @@ window.BracketBoard = window.BracketBoard || (function () {
 
     /** In arrange mode a press on a competitor drags them, not the canvas. */
     const grabbable = target => S.arrange && arrangeable() && !!(
-        target.closest('.bk-bench-item') ||
+        target.closest('.bk-bench-item:not(.is-blocked)') ||
         target.closest('.bk-slot[data-arrangeable="1"]')
     );
 
@@ -2166,14 +2234,14 @@ window.BracketBoard = window.BracketBoard || (function () {
             // Holding somebody and tapping a division with no board: lay its
             // final around them (the tap twin of dropping on it).
             if (S.pick && boardless() && !(e.target.closest && e.target.closest('.bk-bench'))) {
-                commit(S.pick.from, { type: 'slot', match_id: null, side: 'a' });
+                place(S.pick.from, { type: 'slot', match_id: null, side: 'a' });
                 return;
             }
             if (!grabbable(e.target)) return;
             const origin = endpointOf(e.target);
             if (!origin || !origin.name) {
                 // Tapping an empty slot while holding someone = place them.
-                if (S.pick && origin) commit(S.pick.from, origin.to);
+                if (S.pick && origin) place(S.pick.from, origin.to);
                 return;
             }
 
@@ -2200,7 +2268,7 @@ window.BracketBoard = window.BracketBoard || (function () {
 
             S.drag.ghost.style.left = e.clientX + 'px';
             S.drag.ghost.style.top = e.clientY + 'px';
-            highlight(dropTargetAt(e.clientX, e.clientY));
+            highlight(dropTargetAt(e.clientX, e.clientY, S.drag.from));
         });
 
         const finish = e => {
@@ -2213,7 +2281,8 @@ window.BracketBoard = window.BracketBoard || (function () {
 
             if (!drag.moved) { pickUp(drag.from, drag.name, drag.sourceEl); return; }
 
-            const target = dropTargetAt(e.clientX, e.clientY);
+            const target = dropTargetAt(e.clientX, e.clientY, drag.from);
+            if (target && target.foreign && drag.from.type === 'candidate') return;
             if (target && target.foreign) {
                 // Hand the host everything it needs; it asks move-or-copy and
                 // writes. A hand-typed name has no entry to transfer.
@@ -2228,7 +2297,7 @@ window.BracketBoard = window.BracketBoard || (function () {
                 }
                 return;
             }
-            if (target) commit(drag.from, target.to);
+            if (target) place(drag.from, target.to);
         };
         vp.addEventListener('pointerup', finish);
         vp.addEventListener('pointercancel', e => {
@@ -2246,7 +2315,7 @@ window.BracketBoard = window.BracketBoard || (function () {
             e.preventDefault();
             const point = endpointOf(e.target);
             if (!point) return;
-            if (S.pick) commit(S.pick.from, point.to);
+            if (S.pick) place(S.pick.from, point.to);
             else if (point.name) pickUp(point.to, point.name, point.el);
         });
 
@@ -2259,6 +2328,14 @@ window.BracketBoard = window.BracketBoard || (function () {
     /** Describe whatever is under an element: which end of a move it is. */
     function endpointOf(node) {
         const item = node.closest ? node.closest('.bk-bench-item') : null;
+        if (item && item.dataset.candidate === '1') {
+            if (item.classList.contains('is-blocked')) return null;
+            return {
+                el: item,
+                name: item.querySelector('.bk-name')?.textContent || '',
+                to: { type: 'candidate', competitor_id: Number(item.dataset.competitorId) },
+            };
+        }
         if (item) {
             return {
                 el: item,
@@ -2308,7 +2385,7 @@ window.BracketBoard = window.BracketBoard || (function () {
         return g;
     }
 
-    function dropTargetAt(x, y) {
+    function dropTargetAt(x, y, from) {
         const node = document.elementFromPoint(x, y);
         if (!node) return null;
         /* Over ANOTHER board (the split view's second one)? That is not a move
@@ -2325,6 +2402,17 @@ window.BracketBoard = window.BracketBoard || (function () {
         }
         if (!S.vp.contains(node)) return null;
         const point = endpointOf(node);
+
+        /* The draw desk (cfg.pullUrl): a CANDIDATE goes onto an empty corner
+           or anywhere on the board — which grows to take them — and so does a
+           basket entrant dropped on the board rather than on a corner. */
+        if (S.cfg.pullUrl && from && (from.type === 'candidate' || from.type === 'bench')) {
+            const overBasket = node.closest && node.closest('.bk-bench');
+            if (point && point.to.type === 'slot' && (from.type === 'bench' || !point.name)) return point;
+            if (overBasket || (point && point.to.type === 'candidate')) return null;
+            return { el: S.vp, lone: true, to: { type: 'board' } };
+        }
+
         if (!point) {
             /* A division with NO board: the whole empty view is the target,
                and the server lays its final around the drop (LoneFinal). */
@@ -2361,8 +2449,8 @@ window.BracketBoard = window.BracketBoard || (function () {
 
         // Re-find the picked element by identity — the DOM may have been
         // re-rendered since it was picked up.
-        const sel = S.pick.from.type === 'bench'
-            ? '.bk-bench-item[data-competitor-id="' + S.pick.from.competitor_id + '"]'
+        const sel = (S.pick.from.type === 'bench' || S.pick.from.type === 'candidate')
+            ? '.bk-bench-item[data-competitor-id="' + S.pick.from.competitor_id + '"]' + (S.pick.from.type === 'candidate' ? '[data-candidate="1"]' : ':not([data-candidate])')
             : '.bk-slot[data-match-id="' + S.pick.from.match_id + '"][data-side="' + S.pick.from.side + '"]';
         S.vp.querySelector(sel)?.classList.add('is-picked');
     }
@@ -2370,6 +2458,49 @@ window.BracketBoard = window.BracketBoard || (function () {
     // -----------------------------------------------------------------
     // Saving a move
     // -----------------------------------------------------------------
+    /** A candidate, or anybody dropped on the board itself, is PULLED in;
+        everything else is the ordinary arrange. */
+    function place(from, to) {
+        if (from.type === 'candidate' || to.type === 'board') return pull(from.competitor_id, to);
+        if (from.type === 'bench' && to.type === 'slot' && !to.match_id && S.cfg.pullUrl) return pull(from.competitor_id, to);
+        return commit(from, to);
+    }
+
+    /* Onto the board through the desk's door (me.events.bracket.pull): an empty
+       corner, or the board lays a final / finds a corner / grows a round. */
+    async function pull(id, to) {
+        S.pick = null;
+        if (!S.cfg.pullUrl || !id) { applyArrangeClasses(); return; }
+        const where = to && to.type === 'slot' && to.match_id
+            ? { type: 'slot', match_id: to.match_id, side: to.side }
+            : { type: 'board' };
+        let ok = false;
+        try {
+            const res = await fetch(S.cfg.pullUrl, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json', 'Accept': 'application/json',
+                    'X-CSRF-TOKEN': S.cfg.csrf, 'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ category_id: S.division, competitor_id: Number(id), to: where }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success) {
+                notice(data.message || S.cfg.text.moveFailed);
+                await load(true);
+            } else {
+                ok = true;
+                patchDivision(data.data?.division);
+                notice(data.message);
+            }
+        } catch (e) {
+            notice(S.cfg.text.moveFailed);
+            await load(true);
+        }
+        emit('bracket:pulled', { ok, competitorId: Number(id), division: S.division });
+    }
+
     async function commit(from, to) {
         S.pick = null;
         if (sameEnd(from, to)) { applyArrangeClasses(); emitState(); return; }
@@ -2385,7 +2516,7 @@ window.BracketBoard = window.BracketBoard || (function () {
                     'X-CSRF-TOKEN': S.cfg.csrf, 'X-Requested-With': 'XMLHttpRequest',
                 },
                 credentials: 'same-origin',
-                body: JSON.stringify({ category_id: S.division, from, to }),
+                body: JSON.stringify(Object.assign({ category_id: S.division, from, to }, S.cfg.fit ? { fit: true } : {})),
             });
             const data = await res.json().catch(() => ({}));
 
@@ -2396,7 +2527,8 @@ window.BracketBoard = window.BracketBoard || (function () {
             }
 
             patchDivision(data.data?.division);
-            notice(data.message);
+            notice(data.resized ? S.cfg.text.resized : data.message);
+            if (S.cfg.fit) emit('bracket:pulled', { ok: true, division: S.division });
         } catch (e) {
             notice(S.cfg.text.moveFailed);
             await load(true);
@@ -2597,6 +2729,7 @@ window.BracketBoard = window.BracketBoard || (function () {
         // The config this board was mounted with — the split view mounts its
         // second board from it, so the two can never be fed differently.
         cfg: () => S && S.cfg,
+        setCandidates,
         admit: id => write(S.cfg.admitUrl,
             { category_id: S.division, competitor_id: Number(id) }, S.cfg.text.moveFailed, 'PUT'),
         state: () => ({

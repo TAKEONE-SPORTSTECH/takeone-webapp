@@ -1262,4 +1262,20 @@ return [
     // The event budget's division count (owner's locales, 2026-10-16).
     'budget_div_running' => ':n 个组别',
     'autoplace_event_own_note' => ':n 个组别',
+
+    // Long lists fold on the event page (run order + divisions).
+    'run_order_more' => '显示其余 :count 个环节',
+    'run_order_less' => '收起',
+    'divisions_more' => '显示全部级别（另有 :count 个）',
+    'divisions_less' => '收起',
+    // The draw desk's Arrange menu (Shuffle · Renumber bouts).
+    'tablet_arrange_menu' => '编排',
+    // Draw PDF shared through the device's share sheet.
+    'bracket_pdf_share_head' => '分享 PDF',
+    'bracket_pdf_share_fallback' => '此处无法分享，已改为下载 PDF。',
+    'bracket_pdf_head' => '下载 PDF',
+    'bracket_pdf_this' => '本级别',
+    'bracket_pdf_all' => '所有级别',
+    'tablet_download' => '下载',
+    'tablet_mode_head' => '点按的作用',
 ];

@@ -83,6 +83,14 @@ class TransferEventCompetitorTool extends BaseTool
             return Response::error('This event\'s draw cannot be changed right now.');
         }
 
+        // One division per person — the same refusal the web door gives.
+        if (! empty($validated['to_match_id'])) {
+            $entry = $event->registrations()->where('id', (int) $validated['competitor_id'])->first();
+            if ($refused = \App\Events\Support\OneDivisionRule::refusal($event, $entry, $to->id, moving: $validated['mode'] === 'move')) {
+                return Response::error($refused);
+            }
+        }
+
         $result = $type->performAction($event, 'transfer_draw', [
             'from_category_id' => $from->id,
             'competitor_id' => $validated['competitor_id'],

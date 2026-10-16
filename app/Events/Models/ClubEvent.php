@@ -244,6 +244,8 @@ class ClubEvent extends Model implements LimitsOfferedLocales, TranslatableConte
         // Whether this championship plays third place off; NULL defers to the
         // sport's own rule (App\Events\Support\BronzeRule).
         'third_place_match',
+        // One bracket per person (App\Events\Support\OneDivisionRule). Default off.
+        'one_division_per_person',
         'league',
         'icon',
         // `*_fee` is the DISPLAY line; `*_fee_amount` + `fee_currency` are the
@@ -282,6 +284,7 @@ class ClubEvent extends Model implements LimitsOfferedLocales, TranslatableConte
         'date' => 'date',
         // Nullable on purpose: NULL means "whatever the sport says".
         'third_place_match' => 'boolean',
+        'one_division_per_person' => 'boolean',
         'end_date' => 'date',
         'weigh_in_at' => 'datetime',
         'entry_deadline_enforced' => 'boolean',

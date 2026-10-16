@@ -306,8 +306,9 @@ class RouteIntegrityTest extends TestCase
      * 1081 on 2026-10-15: +3 — divisions from a spreadsheet (me.events.divisions.import{,.preview,.template}; DivisionImport)
      * 1082 on 2026-10-16: +1 — auto-schedule the day (me.events.run-order.auto)
      * 1083 on 2026-10-16: +1 — when the day starts (me.events.run-order.start)
+     * 1085 on 2026-10-16: +2 — the desk's division editor: a candidate onto a board, and one division per person (me.events.bracket.pull, me.events.bracket.one-division)
      */
-    private const EXPECTED_ROUTE_COUNT = 1083;
+    private const EXPECTED_ROUTE_COUNT = 1085;
 
     /** Routes handled by a Closure rather than a controller action. */
     private const EXPECTED_CLOSURE_COUNT = 22;
@@ -588,6 +589,7 @@ class RouteIntegrityTest extends TestCase
         // 1068 on 2026-10-15: +3, me.events.divisions.import / .import.preview / .import.template.
         // 1069 on 2026-10-16: +1, me.events.run-order.auto.
         // 1070 on 2026-10-16: +1, me.events.run-order.start.
-        $this->assertCount(1070, $named, 'Named-route count changed — tripwire, see class docblock.');
+        // 1072 on 2026-10-16: +2, me.events.bracket.pull / me.events.bracket.one-division.
+        $this->assertCount(1072, $named, 'Named-route count changed — tripwire, see class docblock.');
     }
 }

@@ -129,7 +129,9 @@ class BracketPdf
                 // The sheet's title: the name, then its ages and weights from the
                 // division's own columns (owner, 2026-10-16) — a group called
                 // "Group A" says nothing about who is in it on its own.
-                'title' => collect([(string) $d['name'], $this->rangeLine((array) ($d['range'] ?? []))])->filter()->implode(' · '),
+                'title' => GroupName::isGenerated((string) $d['name']) && str_contains((string) $d['name'], ' : ')
+                    ? (string) $d['name']   // "Group A : 5-6y, 17-23kg" already says it
+                    : collect([(string) $d['name'], $this->rangeLine((array) ($d['range'] ?? []))])->filter()->implode(' · '),
                 'entrants' => (int) ($d['entrants'] ?? 0),
                 // The division's own gender first; the name only for one that has none.
                 'gender' => ($d['range']['gender'] ?? null) ?: $this->genderOf((string) $d['name']),

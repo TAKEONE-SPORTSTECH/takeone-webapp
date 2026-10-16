@@ -552,6 +552,8 @@ class FederationAppController extends Controller
                     'draw' => \Illuminate\Support\Facades\Route::has('me.events.draw-desk') ? route('me.events.draw-desk', $k) : null,
                     // Every division's bracket as one PDF (BracketPdf) — the draw desk's own "whole draw".
                     'drawPdf' => \App\Events\Support\BracketPdf::available() && \Illuminate\Support\Facades\Route::has('me.events.bracket.pdf') ? route('me.events.bracket.pdf', $k) : null,
+                    // One division per person — the event's switch (OneDivisionRule).
+                    'oneDivision' => \Illuminate\Support\Facades\Route::has('me.events.bracket.one-division') ? route('me.events.bracket.one-division', $k) : null,
                     // Merging small divisions — only while the feature is on, so
                     // the tab never draws a control that would answer 404.
                     'merge' => \App\Events\Support\DivisionMerge::enabled() && \Illuminate\Support\Facades\Route::has('me.events.divisions.merge')

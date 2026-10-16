@@ -12,6 +12,10 @@
                                     // before; a host on ANOTHER door (the scoring
                                     // tablet, App\Events\Support\TabletDraw)
                                     // passes its own.
+    'pullUrl' => null,              // PUT → a basket CANDIDATE onto the board
+                                    // (me.events.bracket.pull). Set only by the
+                                    // draw desk: it also turns on `fit` (a move
+                                    // that empties half a board shrinks it).
     'eventUuid' => null,            // scopes realtime nudges to this event
     'canArrange' => false,          // SERVER truth; the runtime re-reads it on every load
     'canManage' => false,           // may this viewer DECIDE a bout, score it,
@@ -285,6 +289,8 @@
             outcomeUrl: @json($outcomeTemplate),
             entrantUrl: @json($entrantTemplate),
             admitUrl: @json($admitEndpoint),
+            pullUrl: @json($pullUrl),
+            fit: {{ $pullUrl ? 'true' : 'false' }},
             myCompetitorIds: @json(array_values((array) $myCompetitorIds)),
             transfer: {{ $transfer ? 'true' : 'false' }},
             // A drop on a division with no board lays its final (LoneFinal).
@@ -322,6 +328,13 @@
                 toBeDecided: @json(__('events::events.bracket_to_be_decided')),
                 basket: @json(__('events::events.bracket_basket')),
                 basketHint: @json(__('events::events.bracket_basket_hint')),
+                fits: @json(__('events::events.tablet_div_fits')),
+                fitsNone: @json(__('events::events.tablet_div_fits_none')),
+                fitsRange: @json(__('events::events.tablet_div_fits_range')),
+                inDivision: @json(__('events::events.tablet_div_in', ['division' => ':d'])),
+                noDivision: @json(__('events::events.tablet_div_no_division')),
+                blocked: @json(__('events::events.tablet_div_blocked', ['division' => ':d'])),
+                resized: @json(__('events::events.tablet_div_resized')),
                 semifinalLoser: @json(__('events::events.bracket_semifinal_loser')),
                 score: @json(__('events::events.bracket_score')),
                 removeToBye: @json(__('events::events.bracket_remove_to_bye')),

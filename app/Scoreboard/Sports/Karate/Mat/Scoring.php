@@ -546,6 +546,11 @@ class Scoring
             // as their club, and that is what the hall is told.
             'country' => ($club?->country ?: ($other['country'] ?? null)) ?: ($match->{$side.'_country'} ?: ''),
             'flag' => strtolower((string) ($match->{$side.'_country'} ?: $club?->country ?: ($other['country'] ?? ''))) ?: null,
+            // The person's own nationality, as an alpha-2 flag code. Read by
+            // the Combat style's VS arena only (the owner's call, 2026-10-16):
+            // the intro presents the athlete, the scoreboard still presents
+            // the club. Null when unknown — the VS falls back to the club.
+            'nationality' => \App\Support\Countries::iso2($user?->nationality),
             'logo' => $club?->logo ? file_url($club->logo) : ($other['logo'] ?? null),
             // The event's OWN photo wins, then the member's profile picture if
             // they published it. The first was uploaded by an organiser FOR this

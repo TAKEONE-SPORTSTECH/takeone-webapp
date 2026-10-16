@@ -202,7 +202,9 @@ class TabletDrawTest extends ContractTestCase
         // No pad, no lock: the board opens ready to edit.
         $this->get("/tablet/{$token}/draw")->assertOk()
             ->assertDontSee(__('events::events.tablet_unlock'))
-            ->assertSee($organiser->full_name)
+            // The "Editing as <name>" chip was removed (owner, 2026-10-16);
+            // the tools now sit in one menu.
+            ->assertSee('openModeMenu()', false)
             // Done closes the board to edits; Edit opens it again.
             ->assertSee(__('events::events.tablet_done'))
             ->assertSee('resume()', false)

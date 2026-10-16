@@ -33,6 +33,8 @@ final class KarateStyles
         'goju_ryu' => GojuRyu\Scoring::class,
         'shito_ryu' => ShitoRyu\Scoring::class,
         'wado_ryu' => WadoRyu\Scoring::class,
+        // Combat — its own copy of Shotokan (owner, 2026-10-16), changed from there.
+        'combat' => Combat\Scoring::class,
     ];
 
     /** The style this event's mats run, or null for the shared board. */

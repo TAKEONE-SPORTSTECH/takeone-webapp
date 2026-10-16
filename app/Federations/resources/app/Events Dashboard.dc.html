@@ -293,7 +293,7 @@
 
       <sc-if value="{{ inviteOpen }}" hint-placeholder-val="{{ false }}">
         <div onClick="{{ closeInvite }}" style="position:fixed;inset:0;background:rgba(30,44,79,.5);z-index:60;display:grid;place-items:center;padding:20px">
-          <div onClick="{{ stopEvt }}" style="background:#fff;border-radius:20px;border-top:4px solid #d8b25f;max-width:520px;width:100%;padding:28px;box-shadow:0 30px 80px rgba(30,44,79,.35);animation:rise .25s cubic-bezier(.22,.68,.35,1) both;box-sizing:border-box">
+          <div onClick="{{ stopEvt }}" style="background:#fff;border-radius:20px;border-top:4px solid #d8b25f;max-width:520px;width:100%;max-height:calc(100vh - 40px);max-height:calc(100dvh - 40px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:28px;box-shadow:0 30px 80px rgba(30,44,79,.35);animation:rise .25s cubic-bezier(.22,.68,.35,1) both;box-sizing:border-box">
             <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:6px">
               <h2 style="margin:0;font-size:1.2rem;font-weight:700;letter-spacing:-.01em">Invite clubs to {{ sel.name }}</h2>
               <button onClick="{{ closeInvite }}" style="margin-left:auto;width:34px;height:34px;border:1px solid #d5dae3;border-radius:9px;background:#fff;font-size:.9rem;color:#6b7689;cursor:pointer;flex:none" style-hover="border-color:#caa14f;color:#1e2c4f">&#10005;</button>

@@ -48,6 +48,9 @@
     $dpId = preg_match('/^[A-Za-z][A-Za-z0-9_-]*$/', (string) $id) ? $id : 'draw';
 @endphp
 
+{{-- The picker's rows — one copy, shared with x-draw-stage's division menu. --}}
+@include('components.bracket.division-look')
+
 @once
 @push('scripts')
 <script>
@@ -102,9 +105,17 @@
                     window.addEventListener('resize', this._onResize);
                 },
 
-                get choices() { return this.divisions.filter(d => d.id !== this.mainDivision); },
+                // Same order and rows as the main board's division menu
+                // (components/bracket/division-look), minus the division the
+                // main board already shows.
+                get choices() { return window.DrawDivisionLook.sort(this.divisions).filter(d => d.id !== this.mainDivision); },
                 nameOf(id) { const d = this.divisions.find(x => x.id === id); return d ? d.name : ''; },
                 get otherName() { return this.nameOf(this.other); },
+                get otherDiv() { return this.divisions.find(x => x.id === this.other) || null; },
+                divLine(d) { return window.DrawDivisionLook.line(d); },
+                divStyle(d, on) { return window.DrawDivisionLook.style(d, on); },
+                divInk(d) { return window.DrawDivisionLook.ink(d); },
+                divIcon(d) { return window.DrawDivisionLook.icon(d); },
 
                 measure() {
                     const tall = window.innerHeight > window.innerWidth;
@@ -284,23 +295,41 @@
 
         {{-- Which division this half shows. A list, not a native select
              (Design Rule #4), and never the one already on the other half. --}}
-        <div class="h-12 shrink-0 flex items-center gap-2 px-3 relative z-40">
+        {{-- The same trigger and rows as the main board's division menu
+             (x-draw-stage, via components/bracket/division-look): gender colour
+             and icon, the name, then its ages and weights, the head-count.
+             Names wrap, never cut — so the strip grows rather than clipping. --}}
+        <div class="shrink-0 flex items-center gap-2 px-3 py-1.5 relative z-40" style="min-height:3rem">
             <div class="relative min-w-0 flex-1" @click.outside="pickerOpen = false" @keydown.escape.window="pickerOpen = false">
-                <button type="button" @click="pickerOpen = ! pickerOpen" :aria-expanded="pickerOpen"
-                        class="w-full max-w-[20rem] flex items-center gap-2 ps-2.5 pe-2 py-1.5 rounded-xl border border-gray-200 bg-white
-                               text-xs font-bold text-foreground shadow-sm hover:bg-muted/60 transition-all">
-                    <i class="bi bi-arrow-left-right text-primary shrink-0"></i>
-                    <span class="truncate flex-1 text-start" x-text="otherName || @js(__('events::events.transfer_pick_division'))"></span>
+                <button type="button" @click="pickerOpen = ! pickerOpen" :aria-expanded="pickerOpen" aria-haspopup="listbox"
+                        class="flex items-center gap-2 ps-2.5 pe-2 py-1.5 rounded-xl text-xs font-bold shadow-sm hover:shadow-md transition-all"
+                        style="max-width: min(26rem, 100%); background:#fff; border:1px solid #e5e7eb;"
+                        :style="'max-width: min(26rem, 100%);' + (otherDiv ? divStyle(otherDiv, false) : 'background:#fff;border:1px solid #e5e7eb;')">
+                    <i class="bi shrink-0" x-show="otherDiv" :class="otherDiv ? divIcon(otherDiv) : ''" :style="otherDiv ? divInk(otherDiv) : ''"></i>
+                    <span class="min-w-0 text-start break-words leading-snug" :style="otherDiv ? divInk(otherDiv) : ''">
+                        <span x-text="otherName || @js(__('events::events.transfer_pick_division'))"></span><span
+                              x-show="otherDiv && divLine(otherDiv)" x-text="otherDiv ? ' · ' + divLine(otherDiv) : ''"></span>
+                    </span>
+                    <span x-show="otherDiv" class="px-1.5 py-0.5 rounded-full text-[0.6rem] font-extrabold shrink-0" style="background:rgba(255,255,255,.75)"
+                          x-text="otherDiv ? otherDiv.entrants : 0"></span>
                     <i class="bi bi-chevron-down text-muted-foreground transition-transform shrink-0" :class="pickerOpen && 'rotate-180'"></i>
                 </button>
                 <div x-show="pickerOpen" x-cloak x-transition.opacity.duration.120ms role="listbox"
-                     class="absolute start-0 mt-2 w-72 max-w-[calc(100vw-2rem)] max-h-[50vh] overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-xl z-50 py-1">
+                     class="absolute start-0 mt-2 overflow-y-auto overscroll-contain rounded-xl border border-gray-200 bg-white shadow-xl z-50 py-1"
+                     style="width: min(26rem, calc(100vw - 1.5rem)); max-height: 60vh; -webkit-overflow-scrolling: touch; touch-action: pan-y;"
+                     @wheel.stop @touchmove.stop>
                     <template x-for="d in choices" :key="d.id">
                         <button type="button" role="option" :aria-selected="d.id === other" @click="choose(d.id)"
-                                :class="d.id === other ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted/60'"
-                                class="w-full flex items-center gap-2.5 px-3 py-2 text-start text-xs font-bold transition-colors">
-                            <span class="flex-1 truncate" x-text="d.name"></span>
-                            <span class="px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground text-[0.6rem] font-extrabold shrink-0" x-text="d.entrants"></span>
+                                class="flex items-start gap-2.5 px-3 py-2 text-start text-xs font-bold transition-shadow hover:shadow-md"
+                                style="display:flex; width:calc(100% - .75rem); margin:.25rem .375rem; border-radius:.6rem;"
+                                :style="'display:flex; width:calc(100% - .75rem); margin:.25rem .375rem; border-radius:.6rem;' + divStyle(d, d.id === other)">
+                            <i class="bi shrink-0" style="margin-top:.1rem" :class="divIcon(d)" :style="'margin-top:.1rem;' + divInk(d)"></i>
+                            <span class="flex-1 min-w-0 break-words leading-snug" :style="divInk(d)">
+                                <span x-text="d.name"></span><span
+                                      x-show="divLine(d)" x-text="' · ' + divLine(d)"></span>
+                            </span>
+                            <span class="px-1.5 py-0.5 rounded-full text-[0.6rem] font-extrabold shrink-0" style="background:rgba(255,255,255,.75)"
+                                  x-text="d.entrants"></span>
                             <i class="bi bi-check-lg shrink-0" x-show="d.id === other"></i>
                         </button>
                     </template>

@@ -168,7 +168,10 @@ class ScoreboardController extends Controller
             'matPanel' => $matPanel,
             // Which side this mat's red corner physically stands on
             // (Mat\MatCorners) — the console faces the mat the same way.
-            'redRight' => \App\Scoreboard\Sports\Karate\Mat\MatCorners::redRight($event, $court),
+            'redRight' => \App\Scoreboard\Sports\Karate\Mat\MatCorners::redRight($event, $court, 'control'),
+            // Where red stands on each screen of this mat — the per-screen
+            // swap's labels (Combat's console; MatSides::flip).
+            'cornerScreens' => \App\Scoreboard\Sports\Karate\Mat\MatCorners::screens($event, $court),
             // What each corner is called and its colour, for this event
             // (Mat\CornerLook) — the style's own when nobody set them.
             'look' => \App\Scoreboard\Sports\Karate\Mat\CornerLook::for($event),
@@ -727,32 +730,44 @@ class ScoreboardController extends Controller
 
         $data = $request->validate([
             'mat' => ['required', 'string', 'max:40'],
-            'red_right' => ['required', 'boolean'],
+            'red_right' => ['required_without:screens', 'boolean'],
+            // Swap only these screens (Combat's console, 2026-10-16).
+            'screens' => ['sometimes', 'array', 'min:1', 'max:3'],
+            'screens.*' => ['string', 'in:'.implode(',', \App\Scoreboard\Corners\MatSides::SCREENS)],
         ]);
 
         abort_unless($this->matExists($event, $data['mat']), 404);
 
-        return $this->applyCorners($event, $data['mat'], (bool) $data['red_right']);
+        return $this->applyCorners($event, $data['mat'], (bool) ($data['red_right'] ?? false), $data['screens'] ?? null);
     }
 
     public function tokenCorners(Request $request, string $token): JsonResponse
     {
         [$device, $event] = $this->controlDevice($token);
 
-        $data = $request->validate(['red_right' => ['required', 'boolean']]);
+        $data = $request->validate([
+            'red_right' => ['required_without:screens', 'boolean'],
+            'screens' => ['sometimes', 'array', 'min:1', 'max:3'],
+            'screens.*' => ['string', 'in:'.implode(',', \App\Scoreboard\Corners\MatSides::SCREENS)],
+        ]);
 
-        return $this->applyCorners($event, $device->court, (bool) $data['red_right']);
+        return $this->applyCorners($event, $device->court, (bool) ($data['red_right'] ?? false), $data['screens'] ?? null);
     }
 
-    private function applyCorners(ClubEvent $event, string $court, bool $redRight): JsonResponse
+    private function applyCorners(ClubEvent $event, string $court, bool $redRight, ?array $screens = null): JsonResponse
     {
-        \App\Scoreboard\Sports\Karate\Mat\MatCorners::set($event, $court, $redRight);
+        // Some screens only (MatSides::flip), or the whole mat as before.
+        if ($screens) {
+            \App\Scoreboard\Sports\Karate\Mat\MatCorners::flip($event, $court, array_values($screens));
+        } else {
+            \App\Scoreboard\Sports\Karate\Mat\MatCorners::set($event, $court, $redRight);
+        }
 
         // Recorded like any other change at the table: a mat that suddenly
         // shows its corners the other way round is something somebody asks about.
         \Illuminate\Support\Facades\Log::info('karate.corners', [
-            'event' => $event->uuid, 'mat' => $court, 'red' => $redRight ? 'right' : 'left',
-            'by' => ($this->actor ?: Auth::user())?->id,
+            'event' => $event->uuid, 'mat' => $court, 'red' => $screens ? 'flip' : ($redRight ? 'right' : 'left'),
+            'screens' => $screens, 'by' => ($this->actor ?: Auth::user())?->id,
         ]);
 
         \App\Scoreboard\Sports\Karate\HallScreen\ScreenChannel::notifyCourt($event, $court, ['action' => 'corners']);
@@ -761,6 +776,7 @@ class ScoreboardController extends Controller
             'success' => true,
             'message' => __('scoreboard::karate_messages.ctl_corners_saved'),
             'red_right' => \App\Scoreboard\Sports\Karate\Mat\MatCorners::redRight($event->fresh(), $court),
+            'screens' => \App\Scoreboard\Sports\Karate\Mat\MatCorners::screens($event->fresh(), $court),
         ]);
     }
 

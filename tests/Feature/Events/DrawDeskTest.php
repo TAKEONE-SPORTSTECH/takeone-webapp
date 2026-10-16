@@ -61,4 +61,53 @@ class DrawDeskTest extends ContractTestCase
                 ->assertSee(route('me.events.show', ['event' => $event->uuid]), false);
         }
     }
+
+    /**
+     * Add and delete a division from the desk (owner, 2026-10-16): offered to
+     * the organiser in edit mode; a new one with no name is named by its group
+     * letter and range; deleting releases its athletes and is refused once a
+     * bout has been fought; nobody else may do either.
+     */
+    public function test_the_organiser_adds_and_deletes_divisions_from_the_desk(): void
+    {
+        $organiser = $this->createUser();
+        $club = $this->clubFor($organiser);
+        $event = $this->championship($club, $organiser);
+        [$division] = $this->drawnDivision($event, $club);
+
+        $this->actingAs($organiser)->get("/me/events/{$event->uuid}/draw-desk?division={$division->id}")
+            ->assertOk()->assertSee('openDivMenu()', false)->assertSee('openDelDiv()', false);
+
+        $made = $this->actingAs($organiser)->postJson(route('me.events.divisions.store', $event->uuid), [
+            'name' => '', 'auto_name' => true, 'is_heading' => false, 'format' => 'knockout',
+            'gender' => 'Male', 'min_age' => 5, 'max_age' => 6, 'min_weight' => 17, 'max_weight' => 23,
+        ])->assertOk()->json('division');
+        $this->assertSame('Group B : 5-6y, 17-23kg', $made['name']);
+
+        // The drawn one: its athletes are released, not lost.
+        $entrants = \App\Events\Models\ClubEventRegistration::where('category_id', $division->id)->pluck('id');
+        $this->assertNotEmpty($entrants);
+        $this->actingAs($organiser)->deleteJson(route('me.events.divisions.destroy', [$event->uuid, $division->id]), ['release' => true])->assertOk();
+        $this->assertNull(\App\Events\Models\EventCategory::find($division->id));
+        $this->assertSame(0, \App\Events\Models\ClubEventRegistration::whereIn('id', $entrants)->whereNotNull('category_id')->count(), 'athletes stay, in no division');
+        $this->assertSame($entrants->count(), \App\Events\Models\ClubEventRegistration::whereIn('id', $entrants)->count());
+
+        $stranger = $this->createUser();
+        $this->actingAs($stranger)->postJson(route('me.events.divisions.store', $event->uuid), ['name' => 'X', 'auto_name' => true])->assertForbidden();
+        $this->actingAs($stranger)->deleteJson(route('me.events.divisions.destroy', [$event->uuid, $made['id']]), ['release' => true])->assertForbidden();
+        $this->assertNotNull(\App\Events\Models\EventCategory::find($made['id']));
+    }
+
+    public function test_a_division_with_a_fought_bout_cannot_be_deleted(): void
+    {
+        $organiser = $this->createUser();
+        $club = $this->clubFor($organiser);
+        $event = $this->championship($club, $organiser);
+        [$division] = $this->drawnDivision($event, $club);
+        $bout = $division->matches()->whereNotNull('a_name')->whereNotNull('b_name')->first();
+        $bout->forceFill(['winner' => 'a', 'status' => 'done'])->save();
+
+        $this->actingAs($organiser)->deleteJson(route('me.events.divisions.destroy', [$event->uuid, $division->id]), ['release' => true])->assertStatus(422);
+        $this->assertNotNull(\App\Events\Models\EventCategory::find($division->id));
+    }
 }

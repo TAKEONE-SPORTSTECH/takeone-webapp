@@ -111,6 +111,33 @@ class CategorySystemsTest extends TestCase
         $this->assertNull($event->fresh()->category_system);
     }
 
+    /**
+     * "Keep my divisions" (owner, 2026-10-16): the weight classes switch, even
+     * after the draw, and nothing is moved — divisions, entries and bouts stay.
+     */
+    public function test_keeping_divisions_switches_even_after_the_draw_and_moves_nobody(): void
+    {
+        $owner = $this->createUser();
+        $event = $this->karateEvent($this->club($owner), $owner);
+        $cat = EventCategory::create(['event_id' => $event->id, 'name' => 'Cadet Men -52 kg', 'sort_order' => 1]);
+        $reg = ClubEventRegistration::create(['event_id' => $event->id, 'user_id' => $this->athlete(13)->id, 'role' => 'participant', 'status' => 'joined',
+            'weight' => 80, 'category_id' => $cat->id, 'category_source' => ClubEventRegistration::PLACED_AUTO]);
+        \App\Events\Models\EventMatch::forceCreate(['event_id' => $event->id, 'category_id' => $cat->id, 'round' => 1, 'match_no' => 1]);
+
+        $refused = app(CategorySystems::class)->change($event, 'combat', null, 'resort');
+        $this->assertFalse($refused['ok']);
+        $this->assertTrue($refused['can_keep']);
+
+        $r = app(CategorySystems::class)->change($event->fresh(), 'combat', null, 'keep');
+
+        $this->assertTrue($r['ok']);
+        $this->assertTrue($r['kept']);
+        $this->assertSame('combat', $event->fresh()->category_system);
+        $this->assertSame($cat->id, $reg->fresh()->category_id, 'nobody re-sorted, even an automatic placement');
+        $this->assertSame(1, EventCategory::where('event_id', $event->id)->count(), 'no division created');
+        $this->assertSame(1, \App\Events\Models\EventMatch::where('event_id', $event->id)->count(), 'the draw untouched');
+    }
+
     public function test_only_the_host_s_people_save_systems_or_change_an_event_s(): void
     {
         $owner = $this->createUser();

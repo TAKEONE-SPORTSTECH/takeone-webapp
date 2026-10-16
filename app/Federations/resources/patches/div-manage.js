@@ -38,9 +38,23 @@
         err: d.__ok ? '' : (d.message || 'The divisions could not be loaded. Try again.'),
         rows: d.__ok ? (d.rows || []) : [], phases: d.phases || [], days: Math.max(1, parseInt(d.days, 10) || 1),
         presets: d.presets || [], belts: d.belts || [], asks: d.asks || {weight: true, rank: true}, streams: d.streams || [],
+        oneDiv: !!d.one_division,
         loaded: !!d.__ok,
       }}));
       if (d.__ok) this.dmSgLoad(doors);
+    });
+  }
+
+  // One division per person (owner, 2026-10-16) — the same switch as the draw
+  // desk's Division menu; the server (OneDivisionRule) is what enforces it.
+  dmOneDiv(doors) {
+    const T = window.TakeOneFed || {};
+    const dm = this.state.dm || {};
+    if (!doors || !doors.oneDivision || !T.roFetch || dm.oneDivBusy) return;
+    this.dmSet({oneDivBusy: true});
+    T.roFetch('PUT', doors.oneDivision, {on: !dm.oneDiv}).then(d => {
+      this.dmSet({oneDivBusy: false, ...(d.__ok ? {oneDiv: !!d.one_division} : {})});
+      this.dmToast(d.message || (d.__ok ? 'Saved.' : 'That did not save. Try again.'), !!d.__ok);
     });
   }
 
@@ -186,19 +200,35 @@
     return parts.join(' · ');
   }
 
-  // The suggested name is the group's letter and nothing else (owner,
-  // 2026-10-15): never an age word ("Kids"), a weight or a gender taken from
-  // any table. Ages and weights live in the division's own columns and are
-  // shown beside the name; the organiser names the division.
+  // The suggested name (owner, 2026-10-16): the group's letter, then its OWN
+  // ages and weights — "Group A : 5-6y, 17-23kg". Never an age word ("Kids")
+  // or a gender taken from any table. Same format as App\Events\Support\
+  // GroupName on the server — keep the two in step.
   dmGenerated(form, rows, index, belts) {
     const letter = this.dmLetter(rows, index);
-    return letter ? 'Group ' + letter : '';
+    if (!letter) return '';
+    const range = this.dmGroupRange(form);
+    return 'Group ' + letter + (range ? ' : ' + range : '');
   }
 
-  // Only a bare "Group X" counts as ours — every other name was typed (or is
-  // an older generated one) and is never rewritten.
+  // "5-6y, 17-23kg" from the division's own fields; '' when it narrows neither.
+  dmGroupRange(f) {
+    const n = v => (v === '' || v == null || isNaN(Number(v))) ? null : Number(v);
+    const num = v => String(+v.toFixed(2));
+    const a1 = n(f.min_age), a2 = n(f.max_age);
+    let w1 = n(f.min_weight), w2 = n(f.max_weight);
+    w1 = w1 !== null && w1 > 0 ? w1 : null;
+    w2 = w2 !== null && w2 > 0 && w2 < 200 ? w2 : null;
+    const bits = [];
+    if (a1 !== null || a2 !== null) bits.push(a1 !== null && a2 !== null ? (a1 === a2 ? num(a1) : num(a1) + '-' + num(a2)) + 'y' : a1 !== null ? num(a1) + 'y+' : '≤' + num(a2) + 'y');
+    if (w1 !== null || w2 !== null) bits.push(w1 !== null && w2 !== null ? (w1 === w2 ? num(w1) : num(w1) + '-' + num(w2)) + 'kg' : w1 !== null ? '+' + num(w1) + 'kg' : '-' + num(w2) + 'kg');
+    return bits.join(', ');
+  }
+
+  // Only "Group X" or "Group X : …" counts as ours — every other name was
+  // typed and is never rewritten.
   dmLooksGenerated(d, rows, index, dm) {
-    return /^Group\s+[A-Z]$/.test(String((d && d.name) || '').trim());
+    return /^Group [A-Z]( : .+)?$/.test(String((d && d.name) || '').trim());
   }
 
   dmSummary(d, dm) {
@@ -966,7 +996,18 @@
       genders: [['all', 'All', ''], ['Male', 'Male', '#2563eb'], ['Female', 'Female', '#db2777']].concat(hasMixed ? [['Mixed', 'Mixed', '#7c6bf5']] : [])
         .map(([k, l, c]) => ({key: k, label: l, pressed: String(flt.g === k), style: fChip(flt.g === k, c), onClick: () => setFlt({g: k})})),
       statuses: [['all', 'All'], ['ready', 'Ready to draw'], ['few', 'Needs 2+'], ['drawn', 'Drawn'], ['running', 'Running']]
-        .map(([k, l]) => ({key: k, label: l, pressed: String(flt.st === k), style: fChip(flt.st === k), onClick: () => setFlt({st: k})})),
+        .map(([k, l]) => ({key: k, label: l, pressed: String(flt.st === k), checked: flt.st === k ? '\u2713' : '',
+          style: css('width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 12px;border:0;border-radius:10px;font-family:inherit;font-size:.78rem;cursor:pointer;text-align:start;'
+            + (flt.st === k ? 'background:#fdf6e6;color:#8a6d20;font-weight:700' : 'background:transparent;color:#1e2c4f;font-weight:600')),
+          onClick: () => this.dmSet({flt: {...flt, st: k}, stOpen: false})})),
+      // Status is one dropdown, not five chips (owner, 2026-10-16), to save room.
+      stOpen: !!(dm && dm.stOpen), stCaret: (dm && dm.stOpen) ? '\u25B4' : '\u25BE',
+      stLabel: ({all: 'All', ready: 'Ready to draw', few: 'Needs 2+', drawn: 'Drawn', running: 'Running'})[flt.st] || 'All',
+      stStyle: css('display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px 0 14px;border-radius:999px;font-family:inherit;font-size:.74rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s;'
+        + (flt.st !== 'all' ? 'background:#fdf6e6;border:1px solid #caa14f;box-shadow:0 2px 8px rgba(202,161,79,.22);color:#8a6d20' : 'background:#fff;border:1px solid #d5dae3;color:#5d6880')),
+      onStToggle: e => { if (e && e.stopPropagation) e.stopPropagation(); this.dmSet({stOpen: !(dm && dm.stOpen)}); },
+      onStClose: () => this.dmSet({stOpen: false}),
+      stStop: e => { if (e && e.stopPropagation) e.stopPropagation(); },
       aMin: flt.aMin, aMax: flt.aMax, wMin: flt.wMin, wMax: flt.wMax,
       aMinStyle: fBox(flt.aMin), aMaxStyle: fBox(flt.aMax), wMinStyle: fBox(flt.wMin), wMaxStyle: fBox(flt.wMax),
       onAMin: e => setFlt({aMin: e.target.value}), onAMax: e => setFlt({aMax: e.target.value}),
@@ -1111,6 +1152,12 @@
       hasPresets: presets.length > 0, onAddPresets: openPresets,
       canImport: !!(doors.importPreview && doors.import), onAddImport: () => this.dmImOpen(), im: this.dmImVals(dm, css),
       canPdf: !!doors.drawPdf && divs.length > 0, onPdf: () => this.dmDrawPdf(), pdfLabel: (dm && dm.pdfBusy) ? 'Preparing…' : '⤓ Draw PDF',
+      canOneDiv: !!doors.oneDivision, onOneDiv: () => this.dmOneDiv(doors),
+      oneDivLabel: (dm && dm.oneDiv) ? 'One division per person: On' : 'One division per person: Off',
+      oneDivPressed: (dm && dm.oneDiv) ? 'true' : 'false',
+      oneDivStyle: css('height:40px;padding:0 14px;border-radius:11px;font-family:inherit;font-size:.8rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;'
+        + ((dm && dm.oneDiv) ? 'border:1px solid #1e2c4f;color:#fff;background:#1e2c4f' : 'border:1px solid #d5dae3;color:#1e2c4f;background:#fff')),
+      oneDivDot: css('width:10px;height:10px;border-radius:50%;' + ((dm && dm.oneDiv) ? 'background:#edcd85' : 'background:#c9d0db')),
 
       ed: {
         open: !!ed.open, isHeading, isDivision: !isHeading, title: edTitle,

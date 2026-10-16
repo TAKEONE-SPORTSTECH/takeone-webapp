@@ -766,6 +766,11 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
     // in bursts on a competition morning, not a member write.
     Route::get('/events/{event:uuid}/brackets/admit-candidates', [App\Events\Controllers\PersonalEventController::class, 'lateEntryCandidates'])->name('events.bracket.candidates')->middleware('throttle:event-desk');
     Route::put('/events/{event:uuid}/brackets/admit', [App\Events\Controllers\PersonalEventController::class, 'admitLateEntry'])->name('events.bracket.admit')->middleware('throttle:bracket-arrange');
+    // The draw desk's division editor (owner, 2026-10-16): a candidate from the
+    // basket onto a board, which grows to take them; and the event's
+    // one-division-per-person switch (App\Events\Support\OneDivisionRule).
+    Route::put('/events/{event:uuid}/brackets/pull', [App\Events\Controllers\PersonalEventController::class, 'pullIntoBracket'])->name('events.bracket.pull')->middleware('throttle:bracket-arrange');
+    Route::put('/events/{event:uuid}/brackets/one-division', [App\Events\Controllers\PersonalEventController::class, 'setOneDivision'])->name('events.bracket.one-division')->middleware('throttle:member-write');
 
     /*
      | Groups — building a bracket BY HAND.

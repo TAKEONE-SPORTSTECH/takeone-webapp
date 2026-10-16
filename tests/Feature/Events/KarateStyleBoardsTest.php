@@ -86,6 +86,127 @@ class KarateStyleBoardsTest extends TestCase
             ->assertOk();
     }
 
+    /**
+     * Combat (owner, 2026-10-16): its own copy of Shotokan — own engine, own
+     * screens — chosen in the rule book like Shotokan, by its weight table or
+     * its belt ladder. Shotokan keeps its own.
+     */
+    public function test_a_combat_event_gets_its_own_console_board_and_engine_and_shotokan_keeps_its_own(): void
+    {
+        config(['features.karate_style_boards' => true]);
+
+        foreach (['belt' => fn ($e) => $e, 'weights' => fn ($e) => tap($e, fn ($x) => $x->forceFill(['belt_system' => null, 'category_system' => 'combat'])->save())] as $via => $pick) {
+            [$owner, $event] = $this->scenario('combat');
+            $event = $pick($event)->fresh();
+
+            $this->assertSame('combat', KarateStyles::of($event), "chosen by its {$via}");
+            $this->assertInstanceOf(\App\Scoreboard\Sports\Karate\Styles\Combat\Scoring::class, KarateStyles::scoring($event));
+            $this->assertNotInstanceOf(\App\Scoreboard\Sports\Karate\Styles\Shotokan\Scoring::class, KarateStyles::scoring($event));
+            foreach (['control', 'mat'] as $screen) {
+                $this->assertSame("scoreboard::karate.styles.combat.{$screen}", KarateStyles::view($event, $screen));
+            }
+
+            $this->actingAs($owner)->get("/karate/control/{$event->uuid}?mat=".urlencode(self::MAT))
+                ->assertOk()->assertViewIs('scoreboard::karate.styles.combat.control');
+            $this->actingAs($owner)->postJson("/karate/control/{$event->uuid}", ['mat' => self::MAT, 'command' => 'rules', 'gap' => 6])
+                ->assertOk();
+        }
+
+        [, $shotokan] = $this->scenario('shotokan');
+        $this->assertSame('shotokan', KarateStyles::of($shotokan));
+        $this->assertInstanceOf(\App\Scoreboard\Sports\Karate\Styles\Shotokan\Scoring::class, KarateStyles::scoring($shotokan));
+        $this->assertSame('scoreboard::karate.styles.shotokan.mat', KarateStyles::view($shotokan, 'mat'));
+    }
+
+    private function liveCombatMat(string $style = 'combat'): array
+    {
+        config(['features.karate_style_boards' => true]);
+        [$owner, $event] = $this->scenario($style);
+        $match = EventMatch::where('event_id', $event->id)->first();
+        $this->actingAs($owner)->postJson("/karate/control/{$event->uuid}", ['mat' => self::MAT, 'command' => 'load', 'match_id' => $match->id])->assertOk();
+
+        return [$owner, $event];
+    }
+
+    /**
+     * Combat's Points and Fouls (owner, 2026-10-16): until designed, the mat
+     * scores exactly as before — Yuko 1, Waza-ari 2, Ippon 3, H disqualifies,
+     * the point gap still ends a bout.
+     */
+    public function test_combat_scores_as_before_until_its_points_and_fouls_are_designed(): void
+    {
+        [, $event] = $this->liveCombatMat();
+
+        $s = $this->cmd($event, ['command' => 'button', 'side' => 'aka', 'button' => 'wazaari'])->assertOk()->json('state');
+        $this->assertSame(2, $s['akaScore']);
+        $this->assertNull($s['buttons'], 'no designed buttons yet — Combat\'s own');
+        $s = $this->cmd($event, ['command' => 'point', 'side' => 'aka', 'n' => 3])->assertOk()->json('state');
+        $this->assertSame(5, $s['akaScore'], 'the built-in buttons still score');
+
+        $s = $this->cmd($event, ['command' => 'penalty', 'side' => 'ao', 'level' => 5])->json('state');
+        $this->assertSame('aka', $s['winner']);
+        $this->assertSame('hansoku', $s['winReason']);
+    }
+
+    public function test_combat_points_are_designed_pressed_corrected_and_reset(): void
+    {
+        [, $event] = $this->liveCombatMat();
+
+        $ids = collect($this->cmd($event, ['command' => 'buttons', 'buttons' => [
+            ['label' => 'Body', 'value' => 1, 'effect' => 'add'],
+            ['label' => 'Head', 'value' => 2, 'effect' => 'win_after', 'times' => 3],
+            ['label' => 'Knockdown', 'value' => 0, 'effect' => 'win'],
+        ]])->assertOk()->json('state.buttons'))->pluck('id');
+        $this->assertCount(3, $ids);
+
+        $s = $this->cmd($event, ['command' => 'button', 'side' => 'ao', 'button' => $ids[0]])->json('state');
+        $this->assertSame(1, $s['aoScore']);
+        $s = $this->cmd($event, ['command' => 'button_undo', 'side' => 'ao'])->json('state');
+        $this->assertSame(0, $s['aoScore']);
+
+        $this->cmd($event, ['command' => 'button', 'side' => 'ao', 'button' => $ids[1]]);
+        $this->cmd($event, ['command' => 'button', 'side' => 'ao', 'button' => $ids[1]]);
+        $s = $this->cmd($event, ['command' => 'button', 'side' => 'ao', 'button' => $ids[1]])->json('state');
+        $this->assertSame('ao', $s['winner'], 'head × 3 wins');
+        $this->assertSame('Head × 3', $s['winNote']);
+
+        $this->assertNull($this->cmd($event, ['command' => 'buttons', 'buttons_default' => true])->json('state.buttons'));
+    }
+
+    public function test_combat_fouls_take_and_give_points_and_can_end_the_bout(): void
+    {
+        [, $event] = $this->liveCombatMat();
+
+        $this->cmd($event, ['command' => 'penalties', 'penalties' => [
+            ['label' => 'Warn', 'effect' => 'none'],
+            ['label' => '-1', 'effect' => 'deduct', 'value' => 1],
+            ['label' => '+1 opp', 'effect' => 'award', 'value' => 1],
+            ['label' => 'DQ', 'effect' => 'none', 'ends' => true],
+        ]])->assertOk();
+
+        $s = $this->cmd($event, ['command' => 'penalty', 'side' => 'aka', 'level' => 3])->json('state');
+        $this->assertEquals(-1, $s['akaScore']);
+        $this->assertEquals(1, $s['aoScore']);
+        $s = $this->cmd($event, ['command' => 'penalty', 'side' => 'aka', 'level' => 0])->json('state');
+        $this->assertSame(0, $s['akaScore']);
+        $this->assertSame(0, $s['aoScore']);
+
+        $s = $this->cmd($event, ['command' => 'penalty', 'side' => 'aka', 'level' => 4])->json('state');
+        $this->assertSame('ao', $s['winner']);
+    }
+
+    public function test_only_combat_offers_points_and_fouls_and_shotokan_refuses_them(): void
+    {
+        [$owner, $combat] = $this->liveCombatMat();
+        $this->actingAs($owner)->get("/karate/control/{$combat->uuid}?mat=".urlencode(self::MAT))
+            ->assertOk()->assertSee('data-panel="buttons"', false)->assertSee(__('scoreboard::karate_messages.ctl_tab_fouls'));
+
+        [$owner2, $shotokan] = $this->liveCombatMat('shotokan');
+        $this->actingAs($owner2)->get("/karate/control/{$shotokan->uuid}?mat=".urlencode(self::MAT))
+            ->assertOk()->assertDontSee('data-panel="buttons"', false);
+        $this->cmd($shotokan, ['command' => 'buttons', 'buttons_default' => true])->assertStatus(422);
+    }
+
     public function test_every_style_has_its_screens(): void
     {
         foreach (array_keys(KarateStyles::STYLES) as $style) {

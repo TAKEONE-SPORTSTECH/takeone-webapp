@@ -45,7 +45,7 @@
     var book = books[id];
     // An event saved after the page opened: its choices arrive with the next visit.
     if (!book || (!book.categories.length && !book.belts.length)) return;
-    var ui = {busy: false, note: '', error: false, category: book.category || null, belt: book.belt || null};
+    var ui = {busy: false, note: '', error: false, ask: null, category: book.category || null, belt: book.belt || null};
 
     var card = el('div', 'margin-top:16px;padding:14px;border-radius:14px;background:#f5f7fb;border:1px solid #dfe5ef');
     var head = el('div', 'display:flex;align-items:flex-start;gap:12px');
@@ -59,7 +59,7 @@
     var txt = el('div', 'min-width:0;flex:1');
     txt.appendChild(el('div', 'font-size:.7rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#3b4f7e;margin-bottom:4px', 'Rule book'));
     txt.appendChild(el('div', 'font-size:.74rem;line-height:1.5;color:#6b7689',
-      'The weight classes and the belt ranking this event is run under. Changing it re-sorts every athlete already entered — until the draw is made.'));
+      'The weight classes and the belt ranking this event is run under. Changing the weight classes asks you first: keep your divisions exactly as they are, or re-sort everyone (only until the draw is made).'));
     head.appendChild(tile); head.appendChild(txt);
     card.appendChild(head);
 
@@ -78,6 +78,15 @@
         b.__alt = opt.key;
         b.addEventListener('click', function () {
           if (ui.busy) return;
+          // Weight classes move people, so they ASK first (owner, 2026-10-16):
+          // keep every division as it is, or re-sort everyone. A belt system
+          // moves nobody and is saved at once.
+          if (keyName === 'category') {
+            if (b.__key === ui.category) { ui.ask = null; paint(); return; }
+            ui.ask = {key: b.__key, label: opt.label}; ui.note = ''; paint();
+            try { askBox.scrollIntoView({block: 'nearest', behavior: 'smooth'}); } catch (e) {}
+            return;
+          }
           save(keyName, b.__key);
         });
         buttons.push(b); row.appendChild(b);
@@ -98,6 +107,24 @@
       return wrap;
     }
     var cats = group('Category system', book.categories, 'category');
+
+    // The question, asked inside the card before anything is sent.
+    var askBox = el('div', 'display:none;margin-top:10px;padding:12px;border-radius:12px;background:#fff;border:1px solid #e4d3a8');
+    var askText = el('div', 'font-size:.78rem;font-weight:700;color:#1e2c4f');
+    var askSub = el('div', 'font-size:.7rem;line-height:1.5;color:#6b7689;margin-top:4px',
+      'Keep: every division, athlete and the draw stay exactly as they are — you decide any changes. Re-sort: every athlete is placed again by the new table (only before the draw is made).');
+    var askRow = el('div', 'display:flex;flex-wrap:wrap;gap:6px;margin-top:10px');
+    var BTN = 'height:34px;padding:0 12px;border-radius:10px;font-family:inherit;font-size:.72rem;font-weight:700;cursor:pointer;';
+    var keepBtn = el('button', BTN + 'border:0;color:#1e2c4f;background:linear-gradient(100deg,#edcd85,#d0a854)', 'Switch — keep my divisions');
+    var sortBtn = el('button', BTN + 'border:1px solid #d5dae3;color:#1e2c4f;background:#fff', 'Switch and re-sort athletes');
+    var noBtn = el('button', BTN + 'border:1px solid #d5dae3;color:#6b7689;background:#fff', 'Cancel');
+    [keepBtn, sortBtn, noBtn].forEach(function (x) { x.type = 'button'; askRow.appendChild(x); });
+    keepBtn.addEventListener('click', function () { if (!ui.busy && ui.ask) save('category', ui.ask.key, 'keep'); });
+    sortBtn.addEventListener('click', function () { if (!ui.busy && ui.ask) save('category', ui.ask.key, 'resort'); });
+    noBtn.addEventListener('click', function () { if (!ui.busy) { ui.ask = null; ui.note = ''; paint(); } });
+    askBox.appendChild(askText); askBox.appendChild(askSub); askBox.appendChild(askRow);
+    card.appendChild(askBox);
+
     var belts = group('Belt system', book.belts, 'belt');
 
     var note = el('div', 'display:none;margin-top:10px;font-size:.74rem;font-weight:600');
@@ -107,12 +134,15 @@
     function paint() {
       if (cats) cats.__paint();
       if (belts) belts.__paint();
+      askBox.style.display = ui.ask ? 'block' : 'none';
+      if (ui.ask) askText.textContent = 'Switch the weight classes to ' + ui.ask.label + '?';
+      [keepBtn, sortBtn, noBtn].forEach(function (x) { x.disabled = ui.busy; x.style.opacity = ui.busy ? '.6' : '1'; });
       note.style.display = ui.note ? 'block' : 'none';
       note.textContent = ui.note;
       note.style.color = ui.error ? '#b4483c' : '#2f7a4f';
     }
 
-    function save(which, value) {
+    function save(which, value, mode) {
       var next = {category: ui.category, belt: ui.belt};
       next[which] = value;
       if (next.category === ui.category && next.belt === ui.belt) return;
@@ -120,7 +150,7 @@
       fetch(urls.ruleBook, {
         method: 'POST', credentials: 'same-origin',
         headers: {'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf(), 'X-Requested-With': 'XMLHttpRequest'},
-        body: JSON.stringify({event: id, category: next.category, belt: next.belt})
+        body: JSON.stringify({event: id, category: next.category, belt: next.belt, mode: mode || null})
       }).then(function (r) { return r.json().catch(function () { return {}; }); })
         .then(function (j) {
           ui.busy = false;
@@ -129,8 +159,16 @@
           if (j.success && j.rulebook) {
             ui.category = j.rulebook.category; ui.belt = j.rulebook.belt;
             book.category = ui.category; book.belt = ui.belt;
+            ui.ask = null;
+          }
+          // Re-sorting refused after the draw: say why, and leave "keep" offered.
+          if (!j.success && j.can_keep && ui.ask) {
+            ui.note = 'The draw has been made, so athletes cannot be re-sorted. Choose "Switch — keep my divisions" to switch without moving anyone.';
           }
           paint();
+          // The answer is said where it can be seen — saved, or why not — even
+          // when the card sits below the fold of a long window (2026-10-16).
+          try { note.scrollIntoView({block: 'nearest', behavior: 'smooth'}); } catch (e) {}
         })
         .catch(function () { ui.busy = false; ui.error = true; ui.note = 'No connection. Nothing was changed.'; paint(); });
     }

@@ -199,7 +199,7 @@ class CategorySystems
      *
      * @return array{ok: bool, message?: string, moved?: int, unplaced?: int, created?: int}
      */
-    public function change(ClubEvent $event, ?string $category, ?string $belt): array
+    public function change(ClubEvent $event, ?string $category, ?string $belt, ?string $mode = null): array
     {
         $category = $category ?: null;
         $belt = $belt ?: null;
@@ -210,14 +210,26 @@ class CategorySystems
         if (! $changed && $belt === $event->belt_system) {
             return ['ok' => true, 'moved' => 0, 'unplaced' => 0, 'created' => 0];
         }
-        if ($changed && \App\Events\Models\EventMatch::where('event_id', $event->id)->exists()) {
-            return ['ok' => false, 'message' => __('events::events.rulebook_locked')];
+
+        /*
+         * `keep` (the owner, 2026-10-16: "it must ask me to switch regardless …
+         * don't change the weight categories created, let the user decide"):
+         * the new rule book is recorded and NOTHING is re-sorted — every
+         * division, entrant and bout stays exactly where it is. So it is
+         * allowed after the draw too: it moves nobody out of a bracket.
+         * `resort` and no mode are the original behaviour, kept for every
+         * caller that has not been asked to choose.
+         */
+        $keep = $mode === 'keep';
+        $drawn = $changed && \App\Events\Models\EventMatch::where('event_id', $event->id)->exists();
+        if ($drawn && ! $keep) {
+            return ['ok' => false, 'message' => __('events::events.rulebook_locked'), 'can_keep' => true];
         }
 
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($event, $category, $belt, $changed) {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($event, $category, $belt, $changed, $keep) {
             $event->forceFill(['category_system' => $category, 'belt_system' => $belt])->save();
-            if (! $changed) {
-                return ['ok' => true, 'moved' => 0, 'unplaced' => 0, 'created' => 0];
+            if (! $changed || $keep) {
+                return ['ok' => true, 'moved' => 0, 'unplaced' => 0, 'created' => 0, 'kept' => $changed && $keep];
             }
 
             return ['ok' => true] + $this->resort($event->fresh());
