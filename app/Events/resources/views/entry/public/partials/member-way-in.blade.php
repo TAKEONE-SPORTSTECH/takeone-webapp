@@ -71,13 +71,19 @@
                 <div class="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10"></div>
                 <div class="relative flex items-center gap-3">
                     <div class="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
-                        <i class="bi {{ $hostDoorEnters ? 'bi-people-fill' : 'bi-shield-check' }} text-2xl"></i>
+                        <i class="bi {{ ($hostEntry['closed'] ?? false) ? 'bi-lock-fill' : ($hostDoorEnters ? 'bi-people-fill' : 'bi-shield-check') }} text-2xl"></i>
                     </div>
                     <div class="min-w-0 flex-1">
+                        @if($hostEntry['closed'] ?? false)
+                            {{-- Past the closing date: no door, and the reason. --}}
+                            <h3 class="font-black text-base leading-tight">{{ __('events::events.host_entry_title') }}</h3>
+                            <p class="text-xs text-white/85 mt-0.5 leading-snug">{{ $hostEntry['note'] }}</p>
+                        @else
                         <h3 class="font-black text-base leading-tight">{{ $hostDoorEnters ? __('events::events.host_entry_manager') : __('events::events.host_entry_title') }}</h3>
                         <p class="text-xs text-white/85 mt-0.5 leading-snug">{{ $hostDoorEnters
                             ? __('events::events.host_entry_manager_body', ['host' => $hostEntry['host']])
                             : __('events::events.host_entry_body', ['host' => $hostEntry['host']]) }}</p>
+                        @endif
                     </div>
                     @if($hostDoorEnters)
                         <i class="bi bi-chevron-right rtl:rotate-180 text-white/80 flex-shrink-0"></i>

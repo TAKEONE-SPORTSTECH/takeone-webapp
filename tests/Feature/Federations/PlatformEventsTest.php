@@ -312,6 +312,12 @@ class PlatformEventsTest extends TestCase
         $this->actingAs(\App\Members\Models\User::find($club->owner_user_id))->get(route('me.events.show', $ev->uuid))
             ->assertOk()->assertSee(__('events::events.host_entry_manager'))->assertSee($fe->uuid);
 
+        // Past the closing date the door is gone, and the card says why.
+        $ev->forceFill(['enrollment_ends_at' => now()->subDays(2)])->save();
+        $this->actingAs(\App\Members\Models\User::find($club->owner_user_id))->get(route('me.events.show', $ev->uuid))
+            ->assertOk()->assertDontSee(__('events::events.host_entry_manager'))->assertSee(__('events::events.host_entry_title'))
+            ->assertSee(__('events::events.entry_closed', ['date' => \App\Support\Cldr::shortDate($ev->fresh()->enrollment_ends_at)]), false);
+
         // A club's own event is untouched: nobody is sent anywhere.
         $clubEvent = ClubEvent::create(['tenant_id' => $club->id, 'created_by' => $club->owner_user_id, 'title' => 'Club Open',
             'event_type' => 'championship', 'sport' => 'karate', 'scope' => 'internal', 'status' => 'active', 'date' => now()->addWeek()->toDateString(), 'start_time' => '09:00']);

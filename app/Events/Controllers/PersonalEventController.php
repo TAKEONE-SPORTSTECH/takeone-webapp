@@ -407,6 +407,19 @@ class PersonalEventController extends Controller
         $hostEntry = $event->host()->entryDoor($event, $me);
         if ($hostEntry) {
             $hostEntry['host'] = $event->host()->name;
+            /*
+             * The club door shuts with the entry window (2026-10-16: it was
+             * still offered after the closing date). The window as the CLUBS
+             * see it — EntryService::entriesState with no actor — even for an
+             * organiser who also runs a club: their late walk-ins go through
+             * the console, not this door. The card says WHY instead.
+             */
+            $hostState = app(EntryService::class)->entriesState($event);
+            $hostEntry['closed'] = ! $hostState['open'];
+            $hostEntry['note'] = $hostState['note'];
+            if ($hostEntry['closed']) {
+                $hostEntry['enters'] = false;
+            }
         }
 
         // The organiser's channels (EntryChannels): with individual entry off,
