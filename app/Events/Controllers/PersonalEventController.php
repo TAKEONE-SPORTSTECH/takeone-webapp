@@ -3349,7 +3349,7 @@ class PersonalEventController extends Controller
         // Free edit, event under way: the old steps below answer "that action
         // isn't available right now" (arrange/transfer are withdrawn at the
         // start). Do what Add athlete does instead (FreeEdit::place).
-        if ($this->freeMoves($event, true)) {
+        if ($this->freeMoves($event, app(EventAccess::class)->canManage($event, $me))) {
             $slot = ($data['to']['type'] ?? null) === 'slot' && ! empty($data['to']['match_id']) ? $data['to'] : null;
             $placed = app(\App\Events\Support\Tournament\FreeEdit::class)
                 ->place($event, $entry->id, $category->id, $slot, false, $me);
