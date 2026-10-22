@@ -80,6 +80,11 @@
                 if (config('federations.enabled') && \Illuminate\Support\Facades\Route::has('admin.federations.index')) {
                     $sections[] = ['admin.federations.index', 'bi-bank2', __('federations::messages.admin_nav'), __('federations::messages.admin_subtitle'), null];
                 }
+                // The duplicate watch (app/Duplicates) — only while that module is installed.
+                if (\Illuminate\Support\Facades\Route::has('admin.duplicates.index')) {
+                    $sections[] = ['admin.duplicates.index', 'bi-intersect', __('duplicates::messages.title'), __('duplicates::messages.eyebrow'),
+                        rescue(fn () => \App\Duplicates\Models\DuplicateFinding::where('status', 'open')->where('strength', 'likely')->count(), 0, report: false) ?: null];
+                }
                 $sections = [...$sections,
                     ['admin.ai.index',           'bi-robot',        __('platform.section_ai_title'),         __('platform.section_ai_desc'), null],
                     ['admin.platform.audit-log', 'bi-journal-text', __('platform.section_audit_title'),      __('platform.section_audit_desc'), null],

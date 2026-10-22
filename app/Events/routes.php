@@ -719,6 +719,8 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
     // through, stored against the APPOINTMENT.
     Route::post('/events/{event:uuid}/officials/{official}/photo', [App\Events\Controllers\PersonalEventController::class, 'officialPhoto'])->name('events.officials.photo')->whereNumber('official')->middleware('throttle:uploads');
     Route::post('/events/{event:uuid}/officials/person', [App\Events\Controllers\PersonalEventController::class, 'storeOfficialPerson'])->name('events.officials.person')->middleware('throttle:member-write');
+    // A designation added to the host's officials' list (OfficialDesignation).
+    Route::post('/events/{event:uuid}/officials/designations', [App\Events\Controllers\PersonalEventController::class, 'storeOfficialDesignation'])->name('events.officials.designations.store')->middleware('throttle:member-write');
     Route::put('/events/{event:uuid}/officials/{official}', [App\Events\Controllers\PersonalEventController::class, 'updateOfficial'])->name('events.officials.update')->whereNumber('official')->middleware('throttle:member-write');
     Route::delete('/events/{event:uuid}/officials/{official}', [App\Events\Controllers\PersonalEventController::class, 'destroyOfficial'])->name('events.officials.destroy')->middleware('throttle:member-write');
     // Bracket screen data + hand-arranging the draw. Generic to every bracketed
@@ -754,6 +756,10 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
     Route::get('/events/{event:uuid}/draw-desk/numbers/{match}', [App\Events\Controllers\DrawDeskController::class, 'numberPlace'])->name('events.draw-desk.number')->whereNumber('match')->middleware('throttle:event-desk');
     Route::put('/events/{event:uuid}/draw-desk/numbers', [App\Events\Controllers\DrawDeskController::class, 'renumber'])->name('events.draw-desk.renumber')->middleware('throttle:admin-write');
     Route::delete('/events/{event:uuid}/draw-desk/numbers/{match}', [App\Events\Controllers\DrawDeskController::class, 'releaseNumber'])->name('events.draw-desk.number.release')->whereNumber('match')->middleware('throttle:admin-write');
+    /* Free edit (App\Events\Support\Tournament\FreeEdit, EVENT_FREE_EDIT): the
+       organiser writes one bout exactly as it happened, even after the event. */
+    Route::get('/events/{event:uuid}/brackets/free-edit/{match}', [App\Events\Controllers\FreeEditController::class, 'show'])->name('events.bracket.free-edit')->whereNumber('match')->middleware('throttle:event-desk');
+    Route::put('/events/{event:uuid}/brackets/free-edit/{match}', [App\Events\Controllers\FreeEditController::class, 'save'])->name('events.bracket.free-edit.save')->whereNumber('match')->middleware('throttle:admin-write');
     Route::put('/events/{event:uuid}/brackets/arrange', [App\Events\Controllers\PersonalEventController::class, 'arrangeBracket'])->name('events.bracket.arrange')->middleware('throttle:bracket-arrange');
     Route::put('/events/{event:uuid}/brackets/transfer', [App\Events\Controllers\PersonalEventController::class, 'transferBracket'])->name('events.bracket.transfer')->middleware('throttle:bracket-arrange');
     Route::put('/events/{event:uuid}/brackets/clear', [App\Events\Controllers\PersonalEventController::class, 'clearBracket'])->name('events.bracket.clear')->middleware('throttle:member-write');
@@ -764,6 +770,9 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
     // Admitting an athlete to a division that is already being fought. Throttled
     // with arranging rather than with ordinary writes: it is a desk action taken
     // in bursts on a competition morning, not a member write.
+    // The draw menu's person search: which division is this entrant in, by
+    // name, phone, email or CPR. Organiser only; the keys are never returned.
+    Route::get('/events/{event:uuid}/brackets/find-person', [App\Events\Controllers\DrawPersonController::class, 'find'])->name('events.bracket.find-person')->middleware('throttle:30,1');
     Route::get('/events/{event:uuid}/brackets/admit-candidates', [App\Events\Controllers\PersonalEventController::class, 'lateEntryCandidates'])->name('events.bracket.candidates')->middleware('throttle:event-desk');
     Route::put('/events/{event:uuid}/brackets/admit', [App\Events\Controllers\PersonalEventController::class, 'admitLateEntry'])->name('events.bracket.admit')->middleware('throttle:bracket-arrange');
     // The draw desk's division editor (owner, 2026-10-16): a candidate from the
@@ -771,6 +780,9 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
     // one-division-per-person switch (App\Events\Support\OneDivisionRule).
     Route::put('/events/{event:uuid}/brackets/pull', [App\Events\Controllers\PersonalEventController::class, 'pullIntoBracket'])->name('events.bracket.pull')->middleware('throttle:bracket-arrange');
     Route::put('/events/{event:uuid}/brackets/one-division', [App\Events\Controllers\PersonalEventController::class, 'setOneDivision'])->name('events.bracket.one-division')->middleware('throttle:member-write');
+    Route::get('/events/{event:uuid}/brackets/one-division/conflicts', [App\Events\Controllers\PersonalEventController::class, 'oneDivisionConflicts'])->name('events.bracket.one-division.conflicts')->middleware('throttle:60,1');
+    // Which flag a competitor flies here — club country or nationality (App\Events\Support\FlagSource).
+    Route::put('/events/{event:uuid}/flag-source', [App\Events\Controllers\PersonalEventController::class, 'setFlagSource'])->name('events.flag-source')->middleware('throttle:member-write');
 
     /*
      | Groups — building a bracket BY HAND.
@@ -841,6 +853,11 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
      * addressed, never why it is allowed.
      */
     Route::get('/events/{event:uuid}/people/{uuid}/divisions', [App\Events\Controllers\PersonalEventController::class, 'personDivisions'])->name('events.person.divisions')->whereUuid('uuid')->middleware('throttle:60,1');
+    // Move an athlete to the division they belong in while the event runs (LiveMove, EVENT_LIVE_MOVE).
+    Route::post('/events/{event:uuid}/divisions/live-move', [App\Events\Controllers\LiveMoveController::class, 'move'])->name('events.divisions.live-move')->middleware('throttle:admin-write');
+    // Swap two people's places in the draw (LiveMove::swap), and who could be swapped in.
+    Route::get('/events/{event:uuid}/divisions/live-swap', [App\Events\Controllers\LiveMoveController::class, 'candidates'])->name('events.divisions.live-swap.candidates')->middleware('throttle:60,1');
+    Route::post('/events/{event:uuid}/divisions/live-swap', [App\Events\Controllers\LiveMoveController::class, 'swap'])->name('events.divisions.live-swap')->middleware('throttle:admin-write');
     // Manager actions + outcome recording are owned by the event's TYPE PACKAGE
     // (CLAUDE.md → "Events Are Self-Contained Packages"): one route each, the
     // package decides which actions exist and what they do. Adding an event type

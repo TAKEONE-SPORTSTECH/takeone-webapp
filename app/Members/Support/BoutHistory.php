@@ -149,6 +149,21 @@ class BoutHistory
             return null;
         }
 
+        return $this->forEntry($event, $reg, $viewer);
+    }
+
+    /**
+     * The same, for ONE entry. A person (or one account entering several people)
+     * can hold more than one entry in an event — two divisions, siblings on a
+     * guardian's account — and "their first entry" is then somebody else's bouts.
+     * The certificate check asks for exactly the entry it was issued for.
+     *
+     * @return array{entry: array<string, mixed>, bouts: array<int, array<string, mixed>>}
+     */
+    public function forEntry(ClubEvent $event, ClubEventRegistration $reg, ?User $viewer = null): array
+    {
+        $reg->loadMissing('category:id,name,weight_class');
+
         /*
          * ⚠️ BYES ARE KEPT HERE, unlike in the history above.
          *
@@ -241,6 +256,8 @@ class BoutHistory
         return [
             'opponent' => $b->{$their.'_name'} ?: __('events::events.bout_tbd'),
             'opponent_photo' => $faces[$b->{$their.'_competitor_id'}] ?? null,
+            // Additive (2026-10-19): the certificate check names the opponent's club.
+            'opponent_entry' => $b->{$their.'_competitor_id'} ? (int) $b->{$their.'_competitor_id'} : null,
             'decided' => $b->winner !== null,
             'won' => $b->winner === $mine,
             'my_score' => $b->{$mine.'_score'},

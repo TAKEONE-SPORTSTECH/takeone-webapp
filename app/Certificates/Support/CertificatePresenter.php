@@ -32,7 +32,8 @@ class CertificatePresenter
         $recipient = $c->recipient;
 
         return $this->base($c, $locale) + [
-            'holder' => $recipient instanceof User ? $recipient->certificateName() : null,
+            // A person, or a club for its thank-you certificate.
+            'holder' => $recipient instanceof \Ahl\Certificates\Contracts\Recipient ? $recipient->certificateName() : null,
             'revoke_reason' => $c->isRevoked() ? $c->revoke_reason : null,
             'print_url' => route('me.certificates.print', $c->uuid),
             'verify_url' => $c->isDraft() ? null : route('certificates.verify', ['token' => $c->verify_token]),

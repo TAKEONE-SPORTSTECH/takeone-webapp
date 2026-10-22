@@ -37,9 +37,13 @@ Route::middleware(EnsureCertificatesEnabled::class)->group(function () {
         Route::put('/settings', [ManageController::class, 'settings'])->name('certificates.settings')->middleware('throttle:member-write');
         Route::post('/generate', [ManageController::class, 'generate'])->name('certificates.generate')->middleware('throttle:10,1');
         Route::post('/approve', [ManageController::class, 'approve'])->name('certificates.approve')->middleware('throttle:10,1');
+        // Chosen people only: issue to them, and a print file of chosen certificates.
+        Route::post('/issue-selected', [ManageController::class, 'issueSelected'])->name('certificates.issue-selected')->middleware('throttle:10,1');
+        Route::post('/selection', [ManageController::class, 'selection'])->name('certificates.selection')->middleware('throttle:30,1');
         Route::delete('/drafts', [ManageController::class, 'destroyDrafts'])->name('certificates.drafts.destroy')->middleware('throttle:10,1');
-        Route::match(['get', 'post'], '/bundle/{type}', [ManageController::class, 'bundle'])->where('type', '[a-z_]{2,32}')->name('certificates.bundle')->middleware('throttle:30,1');
-        Route::get('/bundle/{type}/download', [ManageController::class, 'bundleDownload'])->where('type', '[a-z_]{2,32}')->name('certificates.bundle.download')->middleware('throttle:20,1');
+        Route::delete('/all', [ManageController::class, 'destroyAll'])->name('certificates.destroy-all')->middleware('throttle:10,1');
+        Route::match(['get', 'post'], '/bundle/{type}', [ManageController::class, 'bundle'])->where('type', '[a-z_]{2,32}(\.[a-z0-9_-]{1,60})?')->name('certificates.bundle')->middleware('throttle:30,1');
+        Route::get('/bundle/{type}/download', [ManageController::class, 'bundleDownload'])->where('type', '[a-z_]{2,32}(\.[a-z0-9_-]{1,60})?')->name('certificates.bundle.download')->middleware('throttle:20,1');
     });
 
     Route::prefix('/certificates/design/{context}/{key}')->where(['context' => $alias, 'key' => $uuid])->group(function () {

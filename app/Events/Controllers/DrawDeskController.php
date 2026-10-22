@@ -89,6 +89,10 @@ class DrawDeskController extends Controller
                 'renumber' => route('me.events.draw-desk.renumber', ['event' => $event->uuid]),
                 'shuffle' => route('me.events.action', ['event' => $event->uuid, 'action' => 'shuffle_draw']),
                 'renumberAll' => route('me.events.order.renumber', ['event' => $event->uuid]),
+                // Free edit (FreeEdit): write any bout as it happened, even after
+                // the event. Organisers only, behind EVENT_FREE_EDIT.
+                'freeEdit' => $manages && \App\Events\Support\Tournament\FreeEdit::enabled()
+                    ? route('me.events.bracket.free-edit', ['event' => $event->uuid, 'match' => $id]) : null,
                 // No PIN on a desk: the viewer IS the organiser.
                 'unlock' => null,
                 'lock' => null,

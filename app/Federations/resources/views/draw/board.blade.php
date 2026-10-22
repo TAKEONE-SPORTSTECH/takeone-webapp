@@ -20,6 +20,9 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    {{-- Dark by design (a wall screen): say so, so no browser re-darkens it. --}}
+    <meta name="color-scheme" content="dark">
+    <meta name="darkreader-lock">
     <meta name="robots" content="noindex">
     <title>{{ __('Draw') }}</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">

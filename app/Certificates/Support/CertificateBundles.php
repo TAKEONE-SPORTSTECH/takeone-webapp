@@ -81,6 +81,9 @@ class CertificateBundles
         $tick = fn (int $done, int $total) => $done % 5 === 0 ? $this->mark($provider, $context, $type, $done, $total) : null;
         $list = $provider instanceof PrintsPages ? [] : $this->issued($context, $type)->with(['recipient', 'context', 'template'])->get()->all();
         if (! $path || ($list === [] && ! ($provider instanceof PrintsPages && $provider->printCount($context, $type) > 0))) {
+            // Nothing to draw: say so at once, rather than leaving "building" up for half an hour.
+            Cache::forget($this->markKey($provider, $context, $type));
+
             return null;
         }
         try {
@@ -104,7 +107,8 @@ class CertificateBundles
 
     public function path(CertificateContext $provider, Model $context, string $type): ?string
     {
-        if (! preg_match('/^[a-z_]{2,32}$/', $type)) {
+        // A type, or a type for one job (`official_thanks.referee`) — the route's own pattern.
+        if (! preg_match('/^[a-z_]{2,32}(\.[a-z0-9_-]{1,48})?$/', $type)) {
             return null;
         }
 
@@ -119,15 +123,94 @@ class CertificateBundles
     /** What the file holds: these certificates, as they and their designs stand now. */
     private function signature(Model $context, string $type): string
     {
-        $rows = $this->issued($context, $type)->get(['id', 'updated_at', 'template_id']);
+        $rows = $this->issued($context, $type)->with('recipient')->get(['id', 'updated_at', 'template_id', 'recipient_type', 'recipient_id']);
         $templates = Engine::templateModel()::query()->whereIn('id', $rows->pluck('template_id')->filter()->unique())->pluck('updated_at', 'id');
+        // Drawn from the new designer: the file is stale the moment the design changes
+        // (and a bundle built before the designer printed — 'pd1' — is never reused).
+        $base = explode('.', $type, 2)[0];
+        $design = \App\Printables\Designer::enabled() ? \App\Printables\Designer::find($context, 'certificate', $base) : null;
+        $designed = \App\Printables\Designer::enabled() ? 'pd1:'.($design ? $design->uuid.'@'.$design->revision : 'starter') : '';
+        // A job's own design of this type (`official_thanks.referee`) is part of the file too.
+        if (\App\Printables\Designer::enabled()) {
+            $designed .= '|'.\App\Printables\Models\PrintableDesign::query()->where('kind', 'certificate')
+                ->where('owner_type', $context->getMorphClass())->where('owner_id', $context->getKey())
+                ->where('slot', 'like', $base.'.%')->orderBy('id')->get(['uuid', 'revision'])
+                ->map(fn ($d) => $d->uuid.'@'.$d->revision)->implode(',');
+        }
 
-        return substr(sha1($rows->map(fn ($r) => $r->id.'@'.$r->updated_at)->implode(',').'|'.$templates->map(fn ($t, $id) => $id.'@'.$t)->implode(',')), 0, 16);
+        // A club holder's crest and name are part of the page too (ClubRecipient::certificateStamp).
+        // A person's are not counted here, as before: a member's row changes far too often.
+        $stamp = fn ($r) => $r->recipient && method_exists($r->recipient, 'certificateStamp') ? '@'.$r->recipient->certificateStamp() : '';
+
+        return substr(sha1($rows->map(fn ($r) => $r->id.'@'.$r->updated_at.$stamp($r))->implode(',').'|'.$templates->map(fn ($t, $id) => $id.'@'.$t)->implode(',').'|'.$designed), 0, 16);
+    }
+
+    /**
+     * May this be bundled here? A type the provider issues — or one of its
+     * types for ONE JOB (`official_thanks.referee`), where the provider can say
+     * who holds that job (bundleRecipients).
+     */
+    public function accepts(CertificateContext $provider, Model $context, string $type): bool
+    {
+        [$base, $job] = array_pad(explode('.', $type, 2), 2, null);
+        if (! in_array($base, $provider->types(), true)) {
+            return false;
+        }
+        if ($job !== null && str_starts_with($job, 'sel-')) {
+            return $this->remembered($provider, $context, substr($job, 4)) !== null;
+        }
+
+        return $job === null || (method_exists($provider, 'bundleRecipients') && $provider->bundleRecipients($context, $base, $job) !== null);
+    }
+
+    /**
+     * Remember a chosen set of certificates for two days and name it: the
+     * bundle type that prints exactly them (`<type>.sel-<token>`). The same
+     * set always gets the same name, so asking twice reuses one file.
+     *
+     * @param  list<int>  $ids  certificate ids, already checked to be this context's
+     */
+    public function remember(CertificateContext $provider, Model $context, string $type, array $ids): string
+    {
+        sort($ids);
+        $token = substr(sha1($type.'|'.implode(',', $ids)), 0, 16);
+        Cache::put($this->selectionKey($provider, $context, $token), $ids, now()->addDays(2));
+
+        return $type.'.sel-'.$token;
+    }
+
+    /** @return list<int>|null */
+    private function remembered(CertificateContext $provider, Model $context, string $token): ?array
+    {
+        if (! preg_match('/^[a-f0-9]{16}$/', $token)) {
+            return null;
+        }
+        $ids = Cache::get($this->selectionKey($provider, $context, $token));
+
+        return is_array($ids) && $ids !== [] ? $ids : null;
+    }
+
+    private function selectionKey(CertificateContext $provider, Model $context, string $token): string
+    {
+        return 'cert-sel:'.$provider->alias().':'.$provider->key($context).':'.$token;
     }
 
     private function issued(Model $context, string $type)
     {
-        return Engine::model()::query()->forContext($context)->where('status', 'approved')->where('type', $type)->orderBy('id');
+        [$base, $job] = array_pad(explode('.', $type, 2), 2, null);
+        $query = Engine::model()::query()->forContext($context)->where('status', 'approved')->where('type', $base)->orderBy('id');
+        if ($job !== null && str_starts_with($job, 'sel-')) {
+            // A chosen set (remember()): exactly those certificates, still issued.
+            $provider = app(Contexts::class)->forModel($context);
+            $query->whereIn('id', ($provider ? $this->remembered($provider, $context, substr($job, 4)) : null) ?: [0]);
+        } elseif ($job !== null) {
+            // One job's certificates only: whoever holds that job (an unknown job matches nobody).
+            $provider = app(Contexts::class)->forModel($context);
+            $ids = $provider && method_exists($provider, 'bundleRecipients') ? ($provider->bundleRecipients($context, $base, $job) ?? []) : [];
+            $query->where('recipient_type', (new \App\Members\Models\User)->getMorphClass())->whereIn('recipient_id', $ids ?: [0]);
+        }
+
+        return $query;
     }
 
     private function mark(CertificateContext $provider, Model $context, string $type, int $done, int $total, bool $failed = false): void

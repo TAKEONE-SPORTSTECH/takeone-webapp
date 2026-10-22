@@ -1,0 +1,50 @@
+        <!-- The cockpit (event-cockpit.js): lifecycle, next step, needs attention, at a glance. -->
+        <sc-if value="{{ ck.has }}" hint-placeholder-val="{{ false }}">
+          <section aria-label="Event progress" style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:22px 24px;box-shadow:0 14px 40px rgba(30,44,79,.1);margin-bottom:18px">
+            <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:18px">
+              <div style="min-width:0">
+                <div style="font-size:.7rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Where this event is</div>
+                <div style="font-size:1.05rem;font-weight:700;color:#1e2c4f;margin-top:4px">{{ ck.stage }}</div>
+              </div>
+              <sc-if value="{{ ck.hasNext }}" hint-placeholder-val="{{ true }}">
+                <button type="button" onClick="{{ ck.onNext }}" style="min-height:44px;padding:0 20px;border:0;border-radius:11px;background:linear-gradient(100deg,#edcd85,#d0a854);font-family:inherit;font-size:.84rem;font-weight:700;color:#1e2c4f;cursor:pointer;box-shadow:0 6px 18px rgba(202,161,79,.3)" style-hover="transform:translateY(-1px)">{{ ck.nextLabel }} &#8250;</button>
+              </sc-if>
+            </div>
+            <ol aria-label="Event lifecycle" style="list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px">
+              <sc-for list="{{ ck.steps }}" as="st" hint-placeholder-count="7">
+                <li aria-current="{{ st.current }}" title="{{ st.title }}" style="display:flex;flex-direction:column;gap:7px;min-width:0"><span style="{{ st.barStyle }}"></span><span style="{{ st.labelStyle }}">{{ st.mark }}{{ st.label }}</span></li>
+              </sc-for>
+            </ol>
+          </section>
+
+          <div style="display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start;margin-bottom:18px">
+            <section aria-label="Needs attention" style="flex:999 1 520px;min-width:0;background:#fff;border-radius:18px;padding:20px 24px;box-shadow:0 14px 40px rgba(30,44,79,.08)">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:6px">
+                <h2 style="margin:0;font-size:1rem;font-weight:700;color:#1e2c4f">Needs attention &#183; {{ ck.attCount }}</h2>
+                <span style="font-size:.72rem;color:#6b7689">Most serious first</span>
+              </div>
+              <sc-if value="{{ ck.noAtt }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;align-items:center;gap:10px;padding:14px 0;border-top:1px solid #eef1f6;color:#2f7a4f;font-size:.86rem;font-weight:600"><span aria-hidden="true" style="width:26px;height:26px;border-radius:50%;background:#ecf7f0;display:grid;place-items:center">&#10003;</span>Nothing needs attention right now.</div>
+              </sc-if>
+              <sc-for list="{{ ck.att }}" as="a" hint-placeholder-count="3">
+                <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:14px 0;border-top:1px solid #eef1f6">
+                  <span style="{{ a.sevStyle }}">{{ a.sev }}</span>
+                  <div style="flex:1 1 220px;min-width:0;display:flex;flex-direction:column;gap:3px">
+                    <span style="font-size:.88rem;font-weight:600;color:#1e2c4f;overflow-wrap:anywhere">{{ a.title }}</span>
+                    <span style="font-size:.76rem;color:#5b6476;overflow-wrap:anywhere">{{ a.text }}</span>
+                  </div>
+                  <button type="button" onClick="{{ a.onGo }}" style="{{ a.btnStyle }}">{{ a.action }}</button>
+                </div>
+              </sc-for>
+            </section>
+            <section aria-label="At a glance" style="flex:1 1 280px;min-width:0;background:#fff;border-radius:18px;padding:20px 24px;box-shadow:0 14px 40px rgba(30,44,79,.08)">
+              <h2 style="margin:0 0 14px;font-size:1rem;font-weight:700;color:#1e2c4f">At a glance</h2>
+              <dl style="margin:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px">
+                <sc-for list="{{ ck.glance }}" as="g" hint-placeholder-count="6">
+                  <div><dt style="font-size:.72rem;color:#6b7689">{{ g.label }}</dt><dd style="margin:2px 0 0;font-size:1.4rem;font-weight:700;color:#1e2c4f;font-variant-numeric:tabular-nums">{{ g.value }}</dd></div>
+                </sc-for>
+              </dl>
+            </section>
+          </div>
+
+        </sc-if>

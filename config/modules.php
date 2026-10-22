@@ -62,6 +62,12 @@ return [
         \App\Certificates\Certificates::class,
 
         /*
+         * One designer for everything printed — certificates, badges, posters.
+         * Kinds come from the modules that own them; see app/Printables.
+         */
+        \App\Printables\Printables::class,
+
+        /*
          * Ranks & grading. Not a club feature: it arrives with an ACTIVITY whose
          * sport package has belts, and hangs off that activity — see
          * app/Ranks/Ranks.php. Off unless RANKS_ENABLED.
@@ -88,6 +94,13 @@ return [
          * module calls them. PARTIES_ENABLED / PARTIES_SHADOW, both OFF.
          */
         \App\Parties\Parties::class,
+
+        /*
+         * One person, one record; one club, one record. The duplicate watch
+         * (`duplicates:watch`) and the switches for the guards at every door
+         * that creates a person or a club — see app/Duplicates. All OFF.
+         */
+        \App\Duplicates\Duplicates::class,
 
         /*
          * The operator's own vertical: the super-admin's room, the global

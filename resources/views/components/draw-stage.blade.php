@@ -120,6 +120,10 @@
        offered only to an editor; with the flag off nothing below changes. */
     $dsTransfer = config('events.draw_transfer') && ($canManage || $canArrange);
     $dsTransferUrl = $dsTransfer ? ($transferUrl ?: route('me.events.bracket.transfer', $ev)) : null;
+    /* The menu's person search (name · phone · email · CPR) — the organiser's
+       only, and only with a session: a scoring tablet has none, and the door
+       (DrawPersonController) re-checks for itself. */
+    $dsPersonUrl = ($canManage && auth()->check()) ? route('me.events.bracket.find-person', $ev) : null;
     $dsPrice = null;
     if ($dsTransfer && ($dsEvent = \App\Events\Models\ClubEvent::where('uuid', $ev)->first())) {
         $dsList = \App\Events\Support\EventFee::listPrice($dsEvent);
@@ -177,11 +181,18 @@
 {{-- The division menu's rows — one copy, shared with x-draw-split. --}}
 @include('components.bracket.division-look')
 <div id="{{ $sid }}-stage" class="ev-app-fixed fixed inset-0 z-[60] bg-background flex flex-col"
+     :class="menuGuard && 'ds-menu-guard'"
+     x-effect="if (open) { clearTimeout($el._mg); menuGuard = true; } else { clearTimeout($el._mg); $el._mg = setTimeout(() => menuGuard = false, 700); }"
      style="height: 100vh; height: 100dvh;"
      x-data="{
         divisions: [], division: null, arrange: false, open: false,
+        // The division menu's quick filter (DrawDivisionLook.filter).
+        flt: { q: '', g: 'all', a1: '', a2: '', w1: '', w2: '', mode: 'div', ids: null, people: null, busy: false },
         target: @js($division),
         split: false, splitTall: false,
+        /* The division menu is open, or closed less than a moment ago — see
+           .ds-menu-guard. */
+        menuGuard: false,
 
         /* What the Actions menu ticks. Read off the board's own events rather
            than kept here, so the menu can never disagree with the board about
@@ -229,6 +240,9 @@
         divStyle(d, on) { return window.DrawDivisionLook.style(d, on); },
         divInk(d) { return window.DrawDivisionLook.ink(d); },
         get sortedDivisions() { return window.DrawDivisionLook.sort(this.divisions); },
+        get shownDivisions() { return window.DrawDivisionLook.filter(this.sortedDivisions, this.flt); },
+        get fltOn() { const f = this.flt; return !! (f.q || f.g !== 'all' || f.a1 !== '' || f.a2 !== '' || f.w1 !== '' || f.w2 !== ''); },
+        fltClear() { this.flt = { q: '', g: 'all', a1: '', a2: '', w1: '', w2: '', mode: this.flt.mode, ids: null, people: null, busy: false }; },
         divIcon(d) { return window.DrawDivisionLook.icon(d); },
 
         onLoaded(d) {
@@ -439,17 +453,27 @@
                                      sat below a phone's screen edge. The route
                                      re-authorises; this only decides what is
                                      offered. --}}
+                                <div x-data="{ pdfNumbers: true }">
                                 <p class="bk-menu-head">{{ __('events::events.bracket_pdf_head') }}</p>
+                                {{-- With or without bout numbers (owner, 2026-10-16) — applies to both rows below. --}}
+                                <button type="button" role="switch" class="bk-menu-row" :aria-checked="pdfNumbers ? 'true' : 'false'"
+                                        @click.stop="pdfNumbers = ! pdfNumbers">
+                                    <i class="bi bi-123"></i>
+                                    <span class="flex-1">{{ __('events::events.bracket_pdf_numbers') }}</span>
+                                    <span class="text-[11px] font-bold" :class="pdfNumbers ? 'text-primary' : 'text-muted-foreground'"
+                                          x-text="pdfNumbers ? @js(__('events::events.bracket_pdf_numbers_on')) : @js(__('events::events.bracket_pdf_numbers_off'))"></span>
+                                </button>
                                 <button type="button" role="menuitem" class="bk-menu-row"
-                                        @click="window.drawStagePdf(@js(route('me.events.bracket.pdf', $ev)), true)">
+                                        @click="window.drawStagePdf(@js(route('me.events.bracket.pdf', $ev)), true, false, ! pdfNumbers)">
                                     <i class="bi bi-file-earmark-pdf"></i>
                                     <span>{{ __('events::events.bracket_pdf_this') }}</span>
                                 </button>
                                 <button type="button" role="menuitem" class="bk-menu-row"
-                                        @click="window.drawStagePdf(@js(route('me.events.bracket.pdf', $ev)), false)">
+                                        @click="window.drawStagePdf(@js(route('me.events.bracket.pdf', $ev)), false, false, ! pdfNumbers)">
                                     <i class="bi bi-files"></i>
                                     <span>{{ __('events::events.bracket_pdf_all') }}</span>
                                 </button>
+                                </div>
                             @endif
 
                             <p class="bk-menu-head">{{ __('events::events.bracket_view') }}</p>
@@ -678,21 +702,25 @@
         <div x-show="sortedDivisions.length > 0" x-cloak
              class="absolute end-3 z-40 transition-all"
              :class="arrange ? 'top-16' : 'top-3'"
-             :style="split && ! splitTall ? 'inset-inline-end: calc(50% + .75rem)' : ''"
+             :style="split && ! splitTall ? { 'inset-inline-end': 'calc(50% + .75rem)' } : {}"
              @keydown.escape.window="open = false"
              @click.outside="open = false">
 
-            <button type="button" @click="open = !open"
+            <button type="button" @click="open = !open" data-ds-menu
                     :aria-expanded="open" aria-haspopup="listbox"
                     class="flex items-center gap-2 ps-2.5 pe-2 py-1.5 rounded-xl
                            text-xs font-bold shadow-sm hover:shadow-md
                            transition-all"
-                    style="max-width: min(26rem, calc(100vw - 6rem)); background:#fff; border:1px solid #e5e7eb;"
-                    :style="'max-width: min(26rem, calc(100vw - 6rem));' + divStyle(selected, false)">
+                    style="max-width: min(26rem, calc(100vw - 4.5rem)); background:#fff; border:1px solid #e5e7eb;"
+                    :style="'max-width: min(26rem, calc(100vw - 4.5rem));' + divStyle(selected, false)">
                 <i class="bi shrink-0" :class="divIcon(selected)" :style="divInk(selected)"></i>
                 {{-- Names are never cut short: a long one wraps. --}}
                 {{-- One line: the name, then its ages and weights beside it. --}}
-                <span class="min-w-0 text-start break-words leading-snug" :style="divInk(selected)">
+                {{-- ONE line (owner, 2026-10-18): a long name shrinks its type
+                     to fit rather than wrapping — never cut short. Only at the
+                     floor size does it wrap, so nothing is ever hidden. --}}
+                <span class="min-w-0 text-start break-words leading-snug" :style="divInk(selected)"
+                      data-ds-fit x-effect="selected; $nextTick(() => window.__dsFitLine && window.__dsFitLine($el))">
                     <span x-text="selected?.name ?? ''"></span><span
                           x-show="divLine(selected)" x-text="' · ' + divLine(selected)"></span>
                 </span>
@@ -709,9 +737,11 @@
                  {{-- Wide enough to read a long division name, and never taller
                       than the room under the bar and the trigger — past that
                       the stage clips it, which read as "it won't scroll". --}}
-                 style="width: min(26rem, calc(100vw - 1.5rem)); max-height: calc(100vh - 9.5rem); max-height: calc(100dvh - 9.5rem); -webkit-overflow-scrolling: touch; touch-action: pan-y;"
+                 style="width: min(34rem, calc(100vw - 1.5rem)); max-height: calc(100vh - 9.5rem); max-height: calc(100dvh - 9.5rem); -webkit-overflow-scrolling: touch; touch-action: pan-y;"
                  @wheel.stop @touchmove.stop>
-                <template x-for="d in sortedDivisions" :key="d.id">
+                @include('components.bracket.division-filter', ['count' => "shownDivisions.length + ' / ' + sortedDivisions.length", 'personUrl' => $dsPersonUrl])
+                <p x-show="shownDivisions.length === 0" class="px-4 py-6 text-center text-xs text-gray-500">{{ __('events::events.div_filter_none') }}</p>
+                <template x-for="d in shownDivisions" :key="d.id">
                     {{-- One tinted row per group: blue male, pink female, white
                          mixed — its name, then its ages and weights. --}}
                     <button type="button" role="option" :aria-selected="d.id === division"
@@ -799,7 +829,7 @@
        (the Android app's WebView, most desktops) — or the few seconds the
        print took used up the tap's permission — it is downloaded instead and
        a toast says so. Callers that pass two arguments are unchanged. */
-    window.drawStagePdf = async function (url, oneDivision, share) {
+    window.drawStagePdf = async function (url, oneDivision, share, noNumbers) {
         if (busy) return;
         busy = true;
 
@@ -808,6 +838,7 @@
         if (oneDivision && st.division) q.set('division', st.division);
         if (st.layout) q.set('layout', st.layout);
         if (st.third) q.set('third', st.third);
+        if (noNumbers) q.set('numbers', '0');
 
         window.showToast && window.showToast('info', @js(__('events::events.bracket_pdf_working')));
 
@@ -875,6 +906,94 @@
 
     size();
 
+    /* ── The phone padlock sits level with the division menu ──────────────
+       (owner, 2026-10-18: "same level as the weight class drop down"). The
+       badge lives in the board and the menu beside it, so a CSS top can
+       only guess; measured instead, centred on the menu's trigger whether
+       its name runs to one line or two. Wider screens keep the board's own
+       placement. */
+    /* The closed division button reads on ONE line: its name steps down from
+       the button's own size until it fits, to a floor of 9px. Past the floor
+       it wraps — a name is never cut short. Defined once for the page. */
+    window.__dsFitLine = window.__dsFitLine || function (span) {
+        if (! span || ! span.isConnected) return;
+        span.style.fontSize = '';
+        span.style.whiteSpace = 'nowrap';
+        let size = parseFloat(getComputedStyle(span).fontSize) || 12;
+        while (span.scrollWidth > span.clientWidth + 1 && size > 9) {
+            size -= 0.5;
+            span.style.fontSize = size + 'px';
+        }
+        if (span.scrollWidth > span.clientWidth + 1) span.style.whiteSpace = '';
+    };
+    /* ── A phone always opens one-sided ───────────────────────────────────
+       "Split halves" (the gear menu's layout) is remembered in the browser,
+       so one tap on it once left every draw on that phone folded in two from
+       then on — read as a split screen nobody asked for (owner, 2026-10-18).
+       On a phone the board opens one-sided each time; choosing Split halves
+       still works, for as long as the page is open. Once per stage element,
+       so a choice made on this page is not undone by the board's reloads. */
+    if (! window.__dsOneSided) {
+        window.__dsOneSided = true;
+        document.addEventListener('bracket:loaded', (e) => {
+            const stage = e.target && e.target.closest ? e.target.closest('[id$="-stage"]') : null;
+            if (! stage || stage.dataset.oneSided) return;
+            stage.dataset.oneSided = '1';
+            const d = e.detail || {};
+            if (d.layout === 'split' && window.matchMedia('(max-width: 640px)').matches
+                && e.target.id === (window.BracketBoard.cfg && window.BracketBoard.cfg() || {}).viewportId) {
+                window.BracketBoard.setLayout('linear');
+            }
+        });
+    }
+    window.__drawStageLockAlign = window.__drawStageLockAlign || {};
+    const watched = new WeakSet();
+    const alignLock = () => {
+        const el = document.getElementById(STAGE);
+        if (! el) return;
+        // The stage's OWN division menu — never the split view's picker, which
+        // is also a listbox trigger and sits in the bottom half when open.
+        const trig = el.querySelector('button[data-ds-menu]');
+        // Both padlocks: the reader's "Draw final" badge and the organiser's
+        // Unlock / Lock button. The button's inline style carries its own top,
+        // so it is set with priority.
+        const locks = [el.querySelector('.bk-locked'), el.querySelector('.bk-board-lock')].filter(Boolean);
+        if (window.ResizeObserver) {
+            locks.concat(trig ? [trig] : []).forEach((n) => {
+                if (! watched.has(n)) { watched.add(n); new ResizeObserver(alignLock).observe(n); }
+            });
+        }
+        const board = el.querySelector('.bk-board-lock');
+        el.classList.toggle('has-board-lock', !! (board && board.offsetParent));
+        const phone = window.matchMedia('(max-width: 640px)').matches && trig && trig.offsetParent;
+        locks.forEach((lock) => {
+            const parent = lock.offsetParent;
+            if (! phone || ! parent) {
+                // Only ever undo our own placement — off a phone the button
+                // keeps the top its own markup gives it.
+                if (lock.dataset.aligned) { lock.style.removeProperty('top'); delete lock.dataset.aligned; }
+                return;
+            }
+            const t = trig.getBoundingClientRect(), p = parent.getBoundingClientRect();
+            lock.style.setProperty('top', Math.max(0, Math.round(t.top - p.top + (t.height - lock.offsetHeight) / 2)) + 'px', 'important');
+            lock.dataset.aligned = '1';
+        });
+    };
+    requestAnimationFrame(alignLock);
+    // Its OWN once-per-stage guard, ahead of the sizing guard below: a page
+    // kept open in the app since before this existed has that guard set
+    // already, and would otherwise never align (2026-10-18).
+    if (! window.__drawStageLockAlign[STAGE]) {
+        window.__drawStageLockAlign[STAGE] = true;
+        ['bracket:loaded', 'bracket:state'].forEach((n) => document.addEventListener(n, () => requestAnimationFrame(alignLock)));
+        window.addEventListener('resize', alignLock);
+        window.addEventListener('load', alignLock);
+        window.addEventListener('resize', () => {
+            const el = document.getElementById(STAGE);
+            el && el.querySelectorAll('[data-ds-fit]').forEach(window.__dsFitLine);
+        });
+    }
+
     /* Guarded per stage, and deduped: the shells re-run a page's scripts on
        every in-place navigation, and a stacked resize listener sizes the same
        element three times a frame (CLAUDE.md → dedup listeners). */
@@ -913,6 +1032,7 @@
     // Alpine opens the menu after the click; measure once it has painted.
     document.addEventListener('click', () => requestAnimationFrame(() => requestAnimationFrame(fitMenu)));
     window.addEventListener('resize', fitMenu);
+
 })();
 </script>
 
@@ -962,6 +1082,49 @@
         color:#fff;backdrop-filter:blur(4px);cursor:pointer;letter-spacing:.04em;
     }
     #{{ $sid }}-stage .bk-lock:hover{background:rgba(255,255,255,.25);}
+
+    /* ── The split view never opens by accident ─────────────────────────────
+       Its toggle sits under the division menu. Picking a division with the
+       phone keyboard up dismisses the keyboard first, the screen resizes, and
+       the same tap landed on the toggle beneath — a split screen nobody asked
+       for (owner, 2026-10-18). While the menu is open, and for a moment after
+       it closes, the toggle is out of reach. */
+    #{{ $sid }}-stage.ds-menu-guard .bk-split-toggle{visibility:hidden;pointer-events:none;}
+
+    /* ── "Draw final", on a phone ──────────────────────────────────────────
+       The board pins its badge to the leading top corner, along the same top
+       edge as the division menu — which on a narrow screen is wide enough to
+       cover a worded badge. Here it is just the padlock, a small round icon
+       in that corner, clear of the menu (owner, 2026-10-18). Its words stay
+       in title / aria-label. */
+    @media (max-width: 640px) {
+        #{{ $sid }}-stage .bk-locked{
+            top:.75rem;width:2.25rem;height:2.25rem;padding:0;border-radius:9999px;
+            justify-content:center;font-size:0;gap:0;
+        }
+        #{{ $sid }}-stage .bk-locked .bi{font-size:.85rem;}
+
+        /* The organiser's Unlock / Lock button on the board: the same small
+           round padlock, level with the menu (alignLock below). Its colour
+           still says the state — amber shut, green open. */
+        #{{ $sid }}-stage .bk-board-lock{
+            /* Level with the menu's top edge even before (or without) the
+               script that centres it on the menu — the button's own inline
+               top is lower. */
+            top:.75rem !important;
+            width:2.25rem;height:2.25rem;padding:0 !important;justify-content:center;
+            font-size:0 !important;gap:0;border-width:1.5px !important;
+        }
+        #{{ $sid }}-stage .bk-board-lock .bi{font-size:.95rem;}
+        /* With the organiser's padlock there, the "Draw final" badge would sit
+           in the same corner — the padlock already says it is locked. */
+        /* Unlocked, the split view's toggle appears in that same top-left
+           corner — over the padlock, which turned a tap meant for Lock into
+           a split screen. On a phone it sits below the padlock instead. */
+        #{{ $sid }}-stage .bk-split-toggle{top:3.5rem;}
+        #{{ $sid }}-stage.has-board-lock .bk-locked,
+        #{{ $sid }}-stage:has(.bk-board-lock:not([style*="display: none"])) .bk-locked{visibility:hidden;}
+    }
     #{{ $sid }}-stage .bk-lock.is-open{
         background:linear-gradient(100deg,#edcd85,#d0a854);border-color:#d8b25f;color:#1e2c4f;
         box-shadow:0 10px 30px rgba(216,178,95,.4);

@@ -12,15 +12,15 @@ name: Deploy
 # deploy path (/var/www/takeone) that Apache actually serves from. .env,
 # the sqlite database, and storage/ live only at the deploy path and are
 # never touched by the sync.
+#
+# ⚠️ MANUAL ONLY (2026-10-23, owner's request: "push to production with
+# extreme ease, without losing anything"). A push to main no longer reaches
+# production by itself — production is shipped on purpose:
+#     gh workflow run Deploy        (or Actions → Deploy → Run workflow)
+# and every ship takes a verified backup first (database + uploads), puts the
+# site in maintenance mode while files and migrations change, and checks the
+# live site answers before it reports success.
 on:
-  workflow_run:
-    workflows: ['CI']
-    branches: [main]
-    types: [completed]
-  # Lets this run on demand from the Actions tab / gh CLI — also needed
-  # because a workflow triggered only by workflow_run (no push/dispatch
-  # trigger of its own) can get stuck resolving against a stale cached
-  # copy of this file until the `on:` block itself changes.
   workflow_dispatch: {}
 
 env:
@@ -32,7 +32,7 @@ jobs:
     # scoping to just that would let GitHub route production deploys onto
     # the staging runner — pin to the production label.
     runs-on: [self-hosted, production]
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' }}
 
     steps:
       - name: Checkout main
@@ -47,6 +47,21 @@ jobs:
         run: |
           npm ci
           npm run build
+
+      # RULE #2: a verified backup BEFORE anything changes — the live app's own
+      # `takeone:backup` (SQLite VACUUM INTO after a WAL checkpoint, plus the
+      # upload folders, each read back; non-zero exit on any failure). If it
+      # fails, nothing below runs and production is exactly as it was.
+      - name: Back up production (database + uploads)
+        working-directory: ${{ env.DEPLOY_PATH }}
+        run: php artisan takeone:backup
+
+      # Visitors see the maintenance page (not a half-copied app or a 500)
+      # while files are swapped and migrations run. --retry asks browsers to
+      # come back on their own.
+      - name: Maintenance mode on
+        working-directory: ${{ env.DEPLOY_PATH }}
+        run: php artisan down --retry=30
 
       - name: Sync build to deploy path
         # --delete keeps the deploy path in sync with what's actually in
@@ -73,6 +88,10 @@ jobs:
           php artisan migrate --force
           php artisan config:cache
           php artisan route:cache
+          php artisan event:cache
+          # Copied files keep the SOURCE's mtimes, so Blade can keep a stale
+          # compile: clear before caching (deploy gotcha #4, 2026-08-22).
+          php artisan view:clear
           php artisan view:cache
 
       - name: Fix storage/cache/database permissions for Apache
@@ -101,3 +120,27 @@ jobs:
 
       - name: Reload Apache
         run: sudo systemctl reload apache2
+
+      - name: Maintenance mode off
+        working-directory: ${{ env.DEPLOY_PATH }}
+        run: php artisan up
+
+      # The ship only counts as done when the live site answers.
+      - name: Check the live site answers
+        run: |
+          for path in /login /; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "https://takeone.bh$path")
+            echo "$path -> $code"
+            case "$code" in 200|302) ;; *) echo "::error::takeone.bh$path answered $code after the deploy"; exit 1 ;; esac
+          done
+
+      # Anything above failed: say where the backup is and how to get back.
+      # The site is left in maintenance mode if it got that far — a page that
+      # says "back soon" is better than a half-migrated app serving errors.
+      - name: If anything failed
+        if: failure()
+        working-directory: ${{ env.DEPLOY_PATH }}
+        run: |
+          echo "::error::Deploy failed. The backup taken at the start of this run is the newest file in storage/app/backups/."
+          ls -t storage/app/backups/ | head -3 || true
+          echo "To reopen the site as it is now: php artisan up"

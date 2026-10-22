@@ -63,6 +63,8 @@ class MorphMap
             // ---- Events (stay in the events module) ------------------------
             'club_event' => \App\Events\Models\ClubEvent::class,
             'club_event_registration' => \App\Events\Models\ClubEventRegistration::class,
+            // A club written down for one event holds its thank-you certificate (certificates.recipient_type).
+            'event_club' => \App\Events\Models\EventClub::class,
 
             // ---- Federations ------------------------------------------------
             // A federation's event is translatable (App\Translation), whose

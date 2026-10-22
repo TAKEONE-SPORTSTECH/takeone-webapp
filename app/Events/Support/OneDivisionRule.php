@@ -82,6 +82,74 @@ final class OneDivisionRule
     }
 
     /**
+     * Everybody already in MORE THAN ONE division — the double entries that
+     * existed before the switch was turned on, which `refusal()` (a door for
+     * new placements) never sees.
+     *
+     * Read-only: it reports, it never moves anyone. Resolving a conflict goes
+     * through the ordinary move door (transferBracket), so every rule a move
+     * already obeys still applies.
+     *
+     * Per division: the entry, whether the person stands in its bracket,
+     * whether a bout of theirs there is already decided, and how they sit
+     * against its range (DivisionRange — a guide, never a gate). `suggested`
+     * is the one division they fit, or null when it is not clear-cut.
+     *
+     * @return list<array{user_id:int, name:string, divisions:list<array{id:int, name:string, entry_id:int, in_bracket:bool, fought:bool, fit:string}>, suggested:?int}>
+     */
+    public static function conflicts(ClubEvent $event): array
+    {
+        $regs = ClubEventRegistration::where('event_id', $event->id)
+            ->where('role', 'participant')
+            ->whereNotNull('user_id')
+            ->whereNotNull('category_id')
+            ->with('user:id,full_name,name,gender,birthdate')
+            ->get();
+
+        $byUser = $regs->groupBy('user_id')->filter(fn ($rows) => $rows->pluck('category_id')->unique()->count() > 1);
+        if ($byUser->isEmpty()) {
+            return [];
+        }
+
+        $categories = EventCategory::whereIn('id', $byUser->flatten()->pluck('category_id')->unique()->all())->with('event')->get()->keyBy('id');
+        $entryIds = $byUser->flatten()->pluck('id')->all();
+        $bouts = EventMatch::whereIn('category_id', $categories->keys()->all())
+            ->where(fn ($q) => $q->whereIn('a_competitor_id', $entryIds)->orWhereIn('b_competitor_id', $entryIds))
+            ->get(['category_id', 'a_competitor_id', 'b_competitor_id', 'winner']);
+
+        $out = [];
+        foreach ($byUser as $userId => $rows) {
+            $divisions = $rows->unique('category_id')->map(function (ClubEventRegistration $r) use ($categories, $bouts) {
+                $cat = $categories->get($r->category_id);
+                $mine = $bouts->filter(fn ($b) => (int) $b->category_id === (int) $r->category_id
+                    && in_array((int) $r->id, [(int) $b->a_competitor_id, (int) $b->b_competitor_id], true));
+
+                return [
+                    'id' => (int) $r->category_id,
+                    'name' => (string) ($cat?->name ?? ''),
+                    'entry_id' => (int) $r->id,
+                    'in_bracket' => $mine->isNotEmpty(),
+                    'fought' => $mine->contains(fn ($b) => $b->winner !== null && $b->winner !== ''),
+                    'fit' => $cat ? (new DivisionRange($cat))->judge($r)['fit'] : 'unknown',
+                ];
+            })->values()->all();
+
+            $fits = array_values(array_filter($divisions, fn ($d) => $d['fit'] === 'in'));
+            $user = $rows->first()->user;
+            $out[] = [
+                'user_id' => (int) $userId,
+                'name' => (string) ($user?->full_name ?: $user?->name ?: __('events::events.athlete')),
+                'divisions' => $divisions,
+                'suggested' => count($fits) === 1 ? $fits[0]['id'] : null,
+            ];
+        }
+
+        usort($out, fn ($a, $b) => strcasecmp($a['name'], $b['name']));
+
+        return $out;
+    }
+
+    /**
      * Every person standing in some bracket of this event: user id → the
      * divisions they stand in. For the candidate list, in three queries
      * however long it is.

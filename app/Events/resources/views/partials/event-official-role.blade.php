@@ -53,19 +53,21 @@
               because the Tailwind bundle is prebuilt. --}}
          style="z-index:78"
          class="rounded-xl border border-gray-100 bg-white shadow-lg overflow-hidden">
-        <template x-for="g in @js(array_values($roleGroups))" :key="g">
-            <div x-show="roles.some(r => r.group === g)">
-                {{-- A heading only when there is more than one kind of job to
-                     tell apart: a single-group list headed by its own name is
-                     the label printed twice. --}}
-                @if(count($roleGroups) > 1)
-                    <p class="px-3 pt-2.5 pb-1 text-[9.5px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground/80"
-                       x-text="g === 'platform'
-                            ? @js(__('personal.personal_event_officials_group_platform'))
-                            : @js(__('personal.personal_event_officials_group_mat'))"></p>
-                @endif
+        {{-- Headed by the part of the officials list each job reads under
+             (organising committee · technical delegate & jury · referees &
+             judges · table · team officials), the order a results book prints
+             them in. Which jobs are OFFERED is still `roleGroups`; the shield
+             beside a job still says it grants access. --}}
+        <template x-for="s in ((gs) => { const out = []; roles.filter(r => gs.includes(r.group)).forEach(r => {
+                    const k = r.section || r.group; let x = out.find(o => o.key === k);
+                    if (! x) { x = { key: k, label: r.section_label || '', roles: [] }; out.push(x); }
+                    x.roles.push(r); }); return out; })(@js(array_values($roleGroups)))"
+                  :key="s.key">
+            <div>
+                <p x-show="s.label" class="px-3 pt-2.5 pb-1 text-[9.5px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground/80"
+                   x-text="s.label"></p>
 
-                <template x-for="(r, i) in roles.filter(x => x.group === g)" :key="r.value">
+                <template x-for="(r, i) in s.roles" :key="r.value">
                     <button type="button" @click="setRole(r.value); roleOpen = false"
                             :class="[role === r.value ? 'bg-primary/5' : 'hover:bg-muted/60', i ? 'border-t border-gray-100' : '']"
                             class="w-full flex items-start gap-2.5 px-3 py-2.5 text-start transition-colors">
@@ -80,7 +82,7 @@
                                   :title="r.hint" x-text="r.hint"></span>
                         </span>
                         <i class="bi text-[11px] flex-shrink-0 mt-0.5"
-                           :class="g === 'platform' ? 'bi-shield-lock text-amber-600' : 'bi-person-arms-up text-primary'"></i>
+                           :class="r.group === 'platform' ? 'bi-shield-lock text-amber-600' : 'bi-person-arms-up text-primary'"></i>
                         <i class="bi bi-check-lg flex-shrink-0 text-primary mt-0.5" x-show="role === r.value"></i>
                     </button>
                 </template>

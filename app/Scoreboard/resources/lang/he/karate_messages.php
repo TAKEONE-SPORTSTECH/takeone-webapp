@@ -102,6 +102,8 @@ return [
     'ctl_reset' => 'אפס',
     'ctl_result_pending' => 'זוכה · לא רשומה',
     'ctl_resync' => 'סנכרון מחדש',
+    'ctl_unload' => 'הסר קרב',
+    'ctl_unload_confirm' => 'הקש שוב להסרה',
     'ctl_resync_hint' => 'שינויים מופיעים על הלוח מיידית. אם מסך נראה קפוא, סנכרון מחדש מטעין את כל הלוחות על מגרש זה.',
     'ctl_resynced' => 'מסונכרן מחדש ✓',
     'ctl_round' => 'סיבוב',

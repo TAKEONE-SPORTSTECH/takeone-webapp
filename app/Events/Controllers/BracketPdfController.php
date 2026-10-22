@@ -28,6 +28,7 @@ use Symfony\Component\HttpFoundation\Response;
  * page. `layout` and `third` are the viewer's own board settings (linear/split,
  * play-off/shared bronze), which live in their browser — passed along so the
  * paper matches the screen they just looked at. Both are whitelisted.
+ * `numbers=0` leaves the bout numbers off the sheet (owner, 2026-10-16).
  */
 class BracketPdfController extends Controller
 {
@@ -44,6 +45,8 @@ class BracketPdfController extends Controller
             'division' => ['nullable', 'integer'],
             'layout' => ['nullable', 'in:linear,split'],
             'third' => ['nullable', 'in:match,shared'],
+            // ?numbers=0 prints the draw without bout numbers (owner, 2026-10-16).
+            'numbers' => ['nullable', 'in:0,1'],
         ]);
 
         $divisions = $pdf->divisions($event, $me, isset($data['division']) ? (int) $data['division'] : null);
@@ -56,7 +59,7 @@ class BracketPdfController extends Controller
             // The draw is the brackets and nothing else (owner, 2026-10-16): no
             // cover, contents or club pages before them. The cover is still
             // built by BracketPdf::html() when asked, so it can come back.
-            $bytes = $pdf->render($pdf->html($event, $me, $divisions, $data['layout'] ?? 'linear', $data['third'] ?? 'match', false));
+            $bytes = $pdf->render($pdf->html($event, $me, $divisions, $data['layout'] ?? 'linear', $data['third'] ?? 'match', false, (string) ($data['numbers'] ?? '1') !== '0'));
         } catch (\Throwable $e) {
             Log::error('Bracket PDF failed', ['event' => $event->uuid, 'error' => $e->getMessage()]);
 
@@ -68,6 +71,9 @@ class BracketPdfController extends Controller
         $name = count($divisions) === 1
             ? $slug.'-'.(Str::slug(Str::ascii((string) $divisions[0]['name'])) ?: 'division').'.pdf'
             : $slug.'-draw.pdf';
+        if ((string) ($data['numbers'] ?? '1') === '0') {
+            $name = substr($name, 0, -4).'-no-numbers.pdf';
+        }
 
         return response($bytes, 200, [
             'Content-Type' => 'application/pdf',

@@ -10,7 +10,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Title;
 
 #[Title('Set event certificate settings')]
-#[Description('For an event you manage: whether it issues participation and/or podium certificates, and when drafts are made — "division" (as each division finishes), "event" (when the event is completed) or "manual" (only when asked).')]
+#[Description('For an event you manage: whether it issues participation, podium, officials\' thank-you and/or participating clubs\' thank-you certificates, and when drafts are made — "division" (as each division finishes), "event" (when the event is completed) or "manual" (only when asked).')]
 class SetEventCertificateSettingsTool extends BaseTool
 {
     protected bool $isWrite = true;
@@ -21,6 +21,8 @@ class SetEventCertificateSettingsTool extends BaseTool
             'event' => $schema->string()->required()->description('The event\'s uuid.'),
             'participation' => $schema->boolean(),
             'podium' => $schema->boolean(),
+            'officials' => $schema->boolean()->description('A thank-you to every official, one each.'),
+            'clubs' => $schema->boolean()->description('A thank-you to every club that brought athletes, one per club.'),
             'trigger' => $schema->string()->enum(['division', 'event', 'manual']),
         ];
     }
@@ -39,6 +41,8 @@ class SetEventCertificateSettingsTool extends BaseTool
             'event' => 'required|uuid',
             'participation' => 'sometimes|boolean',
             'podium' => 'sometimes|boolean',
+            'officials' => 'sometimes|boolean',
+            'clubs' => 'sometimes|boolean',
             'trigger' => 'sometimes|in:division,event,manual',
         ]);
         $provider = app(EventCertificates::class);

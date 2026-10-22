@@ -124,6 +124,9 @@ class FederationApp
     {
         $html = (string) file_get_contents($this->root().'/'.$file);
         $html = $this->apply($html, $this->pageRewrites($file), $file);
+        if ($file === 'Events Dashboard.dc.html') {
+            $html = $this->apply($html, $this->uxRewrites(), $file);
+        }
 
         // Served at a clean address (/federation) rather than its file name:
         // the base keeps every relative load and sibling fetch resolving
@@ -151,9 +154,34 @@ class FederationApp
             // The shared karate weight-class library, table embedded (public/libraries/karate-shotukan-weightclasses).
             .\App\Support\KarateShotukanWeightclasses::tags()."\n".$head;
 
-        return $this->apply($html, [
-            'bootstrap' => ['<script src="./support.js"></script>', $inject.'<script src="./support.js"></script>', 1],
-        ], $file);
+        // The runtime that reads the rewritten template must be the one that
+        // knows the rewrites: versioned, so a cached copy is never paired with
+        // a newer page (assets are served with an hour's cache lifetime).
+        $support = './support.js?v='.substr(md5($this->version('support.js').serialize($this->supportRewrites())), 0, 8);
+
+        return $this->holdTemplateLoads($this->apply($html, [
+            'bootstrap' => ['<script src="./support.js"></script>', $inject.'<script src="'.$support.'"></script>', 1],
+        ], $file));
+    }
+
+    /**
+     * The template sits in the page as real markup until the runtime reads it,
+     * so the browser fetches every `src="{{ hole }}"` in it — about fifteen
+     * 404s per page, and an iframe loading a missing page. Inside <x-dc> those
+     * are served as `data-dc-src`, and the runtime turns them back into `src`
+     * as it reads the template (supportRewrites 'dc-src-*').
+     */
+    private function holdTemplateLoads(string $html): string
+    {
+        $open = strpos($html, '<x-dc');
+        $close = strrpos($html, '</x-dc>');
+        if ($open === false || $close === false || $close < $open) {
+            return $html;
+        }
+
+        return substr($html, 0, $open)
+            .str_replace(' src="{{', ' data-dc-src="{{', substr($html, $open, $close - $open))
+            .substr($html, $close);
     }
 
     /**
@@ -193,6 +221,11 @@ class FederationApp
             'react' => ['https://unpkg.com/react@18.3.1/umd/react.production.min.js', './vendor/react.production.min.js', 1],
             'react-dom' => ['https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js', './vendor/react-dom.production.min.js', 1],
             'babel' => ['https://unpkg.com/@babel/standalone@7.29.0/babel.min.js', './vendor/babel.min.js', 1],
+            // Templated sources are held back while the template is raw page
+            // markup (FederationApp::holdTemplateLoads) and restored here.
+            'dc-src-doc' => ['template: dc.innerHTML,', "template: dc.innerHTML.replace(/ data-dc-src=\"/g, ' src=\"'),", 1],
+            'dc-src-text' => ['const template = src.slice(openMatch.index + openMatch[0].length, close);',
+                "const template = src.slice(openMatch.index + openMatch[0].length, close).replace(/ data-dc-src=\"/g, ' src=\"');", 1],
         ];
     }
 
@@ -237,6 +270,13 @@ class FederationApp
             'stats-actions' => ['<div style="display:flex;gap:10px;flex-wrap:wrap">'."\n".'      <button onClick="{{ doRefresh }}"', '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-left:auto">'."\n".'      <button onClick="{{ doRefresh }}"', 1],
             'stats-error' => ['The results service did not respond. You are viewing cached figures from 08:42 today.', '{{ errMsg }}', 1],
             'stats-empty' => ['No statistics match these filters</h2>', '{{ emptyTitle }}</h2>', 1],
+            // PLATFORM: a club with a logo shows it — bare, on no tile (Design
+            // Rule #5); one without keeps the initials badge.
+            'stats-club-logo' => ['<span style="width:32px;height:32px;flex:none;border-radius:10px;display:grid;place-items:center;background:rgba(216,178,95,.12);border:1px solid rgba(216,178,95,.3);font-size:.66rem;font-weight:700;color:#8a6d20">{{ c.initials }}</span>',
+                '<sc-if value="{{ c.hasLogo }}" hint-placeholder-val="{{ false }}"><img src="{{ c.logo }}" alt="" style="width:32px;height:32px;flex:none;object-fit:contain"></sc-if>'
+                .'<sc-if value="{{ c.noLogo }}" hint-placeholder-val="{{ true }}"><span style="width:32px;height:32px;flex:none;border-radius:10px;display:grid;place-items:center;background:rgba(216,178,95,.12);border:1px solid rgba(216,178,95,.3);font-size:.66rem;font-weight:700;color:#8a6d20">{{ c.initials }}</span></sc-if>', 1],
+            'stats-medal-logo' => ['<div style="min-width:0"><div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ m.name }}</div><div style="font-size:.64rem;color:#6b7689">{{ m.athletes }} athletes</div></div>',
+                '<div style="min-width:0;display:flex;align-items:center;gap:8px"><sc-if value="{{ m.hasLogo }}" hint-placeholder-val="{{ false }}"><img src="{{ m.logo }}" alt="" style="width:24px;height:24px;flex:none;object-fit:contain"></sc-if><div style="min-width:0"><div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ m.name }}</div><div style="font-size:.64rem;color:#6b7689">{{ m.athletes }} athletes</div></div></div>', 1],
 
             // PLATFORM: a federation with bodies under it sees one row per sub-federation
             // (its own sub-bodies rolled in), counted from the same filtered records.
@@ -491,6 +531,120 @@ class FederationApp
         ];
     }
 
+    /**
+     * The UX audit's fixes to the dashboard shell (Implementation Brief,
+     * 2026-10-22), kept together so each can be read — and removed — as one.
+     *
+     *  - Navigation is made of LINKS: the sidebar and the phone's bottom bar
+     *    were <div>s with a click handler — no keyboard, no middle-click, no
+     *    "open in new tab", invisible to a screen reader. Each is now an
+     *    <a href> to the screen's own address (takeone-bridge.js routes) that
+     *    still switches in place on an ordinary click, with aria-current.
+     *  - The phone's bottom bar holds FIVE slots — Statistics, Events,
+     *    Athletes, Clubs, More — where nine 52px items overflowed a 390px
+     *    screen and pushed Settings off the edge, unreachable in the app.
+     *    "More" opens a sheet with the rest.
+     */
+    private function uxRewrites(): array
+    {
+        // The Resolve-double-entries dialog, drawn on the Overview and the Draw tab alike.
+        $resolveDialog = '<sc-if value="{{ ck.has }}" hint-placeholder-val="{{ false }}">'."\n".rtrim((string) file_get_contents(dirname(__DIR__).'/resources/patches/resolve-double-entries.html'))."\n".'</sc-if>';
+        $linkGo = "e => { if (e && (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)) return; if (e && e.preventDefault) e.preventDefault(); this.setState({nav: id, view: 'overview', moreOpen: false}); }";
+
+        return [
+            'ux-nav-link-js' => ["      onClick: () => this.setState({nav: id, view: 'overview'}),",
+                "      href: '/federation/' + (id === 'federations' ? 'sub-federations' : id), current: s.nav === id ? 'page' : 'false',\n      onClick: ".$linkGo.',', 1],
+            'ux-nav-link-style' => ["      style: this.cssToObj('padding:clamp(6px,1.4vh,11px) 14px;border-radius:10px;",
+                "      style: this.cssToObj('display:block;text-decoration:none;padding:clamp(6px,1.4vh,11px) 14px;border-radius:10px;", 1],
+            'ux-nav-link-html' => ['<div onClick="{{ n.onClick }}" style="{{ n.style }}" style-hover="color:#fff">{{ n.label }}</div>',
+                '<a href="{{ n.href }}" onClick="{{ n.onClick }}" aria-current="{{ n.current }}" style="{{ n.style }}" style-hover="color:#fff">{{ n.label }}</a>', 1],
+            'ux-mnav-html' => ["      <sc-for list=\"{{ navItems }}\" as=\"n\" hint-placeholder-count=\"5\">\n        <div onClick=\"{{ n.onClick }}\" style=\"{{ n.mStyle }}\"><span style=\"{{ n.dashStyle }}\"></span>{{ n.label }}</div>\n      </sc-for>\n    </nav>\n  </sc-if>",
+                <<<'HTML'
+      <sc-for list="{{ mNavItems }}" as="n" hint-placeholder-count="5">
+        <a href="{{ n.href }}" onClick="{{ n.onClick }}" aria-current="{{ n.current }}" aria-expanded="{{ n.expanded }}" style="{{ n.mStyle }}"><span style="{{ n.dashStyle }}"></span>{{ n.label }}</a>
+      </sc-for>
+    </nav>
+    <sc-if value="{{ moreOpen }}" hint-placeholder-val="{{ false }}">
+      <div onClick="{{ moreClose }}" style="position:fixed;inset:0;z-index:58;background:rgba(11,19,43,.45)"></div>
+      <div role="dialog" aria-modal="true" aria-label="More" style="position:fixed;left:0;right:0;bottom:0;z-index:60;background:#fff;border-radius:22px 22px 0 0;box-shadow:0 -12px 32px rgba(11,19,43,.3);padding:0 0 calc(12px + env(safe-area-inset-bottom));max-height:80vh;overflow-y:auto">
+        <div style="position:relative;overflow:hidden;padding:12px 18px 16px;border-radius:22px 22px 0 0;background:linear-gradient(150deg,#0b132b,#1e2c4f);color:#fff">
+          <div style="margin:0 auto 12px;width:40px;height:4px;border-radius:2px;background:rgba(255,255,255,.35)"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <span style="font-size:1.02rem;font-weight:700">More</span>
+            <button type="button" onClick="{{ moreClose }}" aria-label="Close" style="width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);color:#fff;font-size:1rem;cursor:pointer;font-family:inherit">&#10005;</button>
+          </div>
+        </div>
+        <nav aria-label="More sections" style="display:flex;flex-direction:column;padding:8px 10px">
+          <sc-for list="{{ moreItems }}" as="m" hint-placeholder-count="5">
+            <a href="{{ m.href }}" onClick="{{ m.onClick }}" aria-current="{{ m.current }}" style="{{ m.style }}"><span>{{ m.label }}</span><span aria-hidden="true" style="color:#97a1b4">&#8250;</span></a>
+          </sc-for>
+        </nav>
+      </div>
+    </sc-if>
+  </sc-if>
+HTML, 1],
+            'ux-mnav-js' => ['    const evDates = this.navData();', <<<'JS'
+    // The phone's bottom bar: four sections and More (FederationApp::uxRewrites).
+    const MAIN_NAV = ['statistics', 'events', 'athletes', 'clubs'];
+    const navHref = id => '/federation/' + (id === 'federations' ? 'sub-federations' : id);
+    const goNav = id => e => { if (e && (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)) return; if (e && e.preventDefault) e.preventDefault(); this.setState({nav: id, view: 'overview', moreOpen: false}); };
+    const mStyleOf = on => this.cssToObj('display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;flex:1 1 0;min-width:0;min-height:48px;padding:4px 2px;font-size:.7rem;line-height:1.2;text-align:center;text-decoration:none;cursor:pointer;' + (on ? 'color:#edcd85;font-weight:600' : 'color:#c3cad7;font-weight:500'));
+    const dashOf = on => this.cssToObj('width:26px;height:3px;border-radius:2px;background:' + (on ? '#d8b25f' : 'rgba(255,255,255,.18)'));
+    const moreDefs = navDefs.filter(n => !MAIN_NAV.includes(n[0]));
+    const moreOn = moreDefs.some(n => n[0] === s.nav);
+    const mNavItems = navDefs.filter(n => MAIN_NAV.includes(n[0])).sort((x, y) => MAIN_NAV.indexOf(x[0]) - MAIN_NAV.indexOf(y[0]))
+      .map(([id, label]) => ({label, href: navHref(id), current: s.nav === id ? 'page' : 'false', expanded: undefined, onClick: goNav(id), mStyle: mStyleOf(s.nav === id), dashStyle: dashOf(s.nav === id)}))
+      .concat(moreDefs.length ? [{label: (this.L().more || 'More'), href: navHref(moreOn ? s.nav : moreDefs[0][0]), current: moreOn ? 'page' : 'false', expanded: s.moreOpen ? 'true' : 'false',
+        onClick: e => { if (e && (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)) return; if (e && e.preventDefault) e.preventDefault(); this.setState({moreOpen: !s.moreOpen}); },
+        mStyle: mStyleOf(moreOn || s.moreOpen), dashStyle: dashOf(moreOn)}] : []);
+    const moreItems = moreDefs.map(([id, label]) => ({label, href: navHref(id), current: s.nav === id ? 'page' : 'false', onClick: goNav(id),
+      style: this.cssToObj('display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px;padding:0 12px;border-radius:12px;text-decoration:none;font-size:.92rem;' + (s.nav === id ? 'background:#fdf6e6;color:#8a6d20;font-weight:700' : 'color:#1e2c4f;font-weight:500'))}));
+    const evDates = this.navData();
+JS, 1],
+            // Event tabs: the strip scrolls on a phone (8 tabs, ~350px), so its
+            // trailing edge fades to say there is more, and the open tab is
+            // scrolled into view (takeone-bridge.js) and named aria-current.
+            'ux-evtabs-html' => ["<div style=\"display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:20px\">\n        <sc-for list=\"{{ tabs }}\" as=\"t\" hint-placeholder-count=\"4\">\n          <button onClick=\"{{ t.onClick }}\" style=\"{{ t.style }}\">{{ t.label }}</button>",
+                "<div data-ev-tabs style=\"display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:20px;scrollbar-width:thin;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)\">\n        <sc-for list=\"{{ tabs }}\" as=\"t\" hint-placeholder-count=\"4\">\n          <button onClick=\"{{ t.onClick }}\" aria-current=\"{{ t.current }}\" style=\"{{ t.style }}\">{{ t.label }}</button>", 1],
+            'ux-evtabs-js' => ["      onClick: () => this.setState({tab: id})\n    }));", "      current: s.tab === id ? 'page' : 'false',\n      onClick: () => this.setState({tab: id})\n    }));", 1],
+            // The calendar opens on THIS month, not on the prototype's
+            // November 2026, and rings today.
+            'ux-cal-now' => ["nav: 'statistics', calMonth: 10, calYear: 2026, athQuery: '',", "nav: 'statistics', calMonth: new Date().getMonth(), calYear: new Date().getFullYear(), athQuery: '',", 1],
+            'ux-cal-today' => ['      const has = eventDays.has(d);', "      const has = eventDays.has(d);\n      const isToday = d === new Date().getDate() && s.calMonth === new Date().getMonth() && s.calYear === new Date().getFullYear();", 1],
+            'ux-cal-ring' => ["        style: this.cssToObj('min-height:44px;padding:6px;border-radius:9px;display:flex;", "        style: this.cssToObj((isToday ? 'box-shadow:inset 0 0 0 2px #1e2c4f;font-weight:800;' : '') + 'min-height:44px;padding:6px;border-radius:9px;display:flex;", 1],
+            // The edit form edits the TYPED status; screens show the derived one.
+            'ux-edit-status' => ['eStatus: sel.status,', 'eStatus: sel.statusTyped || sel.status,', 1],
+            // Table and card labels: #97a1b4 on white is 2.6:1 at 9.6px (WCAG
+            // needs 4.5:1). Same look, darker ink (#6b7689, 4.6:1) and ~11px.
+            'ux-label-ink-60' => ['font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4', 'font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:#6b7689', null],
+            'ux-label-ink-66' => ['font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:#97a1b4', 'font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:#6b7689', null],
+            'ux-label-ink-64' => ['font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:#97a1b4', 'font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:#6b7689', null],
+            'ux-label-ink-64b' => ['font-size:.64rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#97a1b4', 'font-size:.68rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#6b7689', null],
+            'ux-label-ink-60b' => ['font-size:.6rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#97a1b4', 'font-size:.68rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#6b7689', null],
+            'ux-nofile-ink' => ['<span style="font-size:.76rem;color:#aab2c0;font-style:italic">', '<span style="font-size:.76rem;color:#6b7689;font-style:italic">', null],
+            // The event Overview's cockpit (resources/patches/event-cockpit.*).
+            'ux-ck-html' => ['<sc-if value="{{ tabOverview }}" hint-placeholder-val="{{ true }}">',
+                '<sc-if value="{{ tabOverview }}" hint-placeholder-val="{{ true }}">'."\n".rtrim((string) file_get_contents(dirname(__DIR__).'/resources/patches/event-cockpit.html'))."\n".$resolveDialog, 1],
+            'ux-ck-vals' => ["tabOverview: s.tab === 'overview',", "ck: (s.tab === 'overview' || s.tab === 'divs') ? this.ckVals(sel) : {has: false}, tabOverview: s.tab === 'overview',", 1],
+            'ux-drawrules-html' => ['<sc-if value="{{ tabDivs }}" hint-placeholder-val="{{ false }}">',
+                '<sc-if value="{{ tabDivs }}" hint-placeholder-val="{{ false }}">'."\n".rtrim((string) file_get_contents(dirname(__DIR__).'/resources/patches/draw-rules.html'))."\n".$resolveDialog, 1],
+            'ux-ck-methods' => ['  cssToObj(css) {', (string) file_get_contents(dirname(__DIR__).'/resources/patches/event-cockpit.js').'  cssToObj(css) {', 1],
+            // Participants (brief §6): gender and age are already on the name's
+            // sub-line, so their own columns go; the national ID column goes
+            // (it is in the athlete's window, masked for children). The grid
+            // drops from 1,210px to ~970px, so weigh-in is no longer clipped at 1440.
+            'ux-regs-grid' => ['grid-template-columns:24px minmax(118px,.9fr) 36px minmax(200px,1.8fr) minmax(140px,1fr) minmax(72px,.55fr) minmax(64px,.5fr) minmax(84px,.6fr) minmax(120px,1.1fr) minmax(118px,.85fr) minmax(136px,.9fr);gap:16px;align-items:center;min-width:1210px;',
+                'grid-template-columns:24px minmax(118px,.9fr) 36px minmax(220px,2fr) minmax(76px,.5fr) minmax(170px,1.4fr) minmax(118px,.85fr) minmax(96px,.7fr);gap:16px;align-items:center;min-width:960px;', 2],
+            'ux-regs-th-natid' => ['<div aria-sort="{{ rs.natId.ariaSort }}"><button type="button" onClick="{{ rs.natId.onClick }}" style="{{ rs.natId.style }}"><span>National ID</span><span>{{ rs.natId.arrow }}</span></button></div>'."\n", '', 1],
+            'ux-regs-th-gender' => ['<div aria-sort="{{ rs.gender.ariaSort }}"><button type="button" onClick="{{ rs.gender.onClick }}" style="{{ rs.gender.style }}"><span>Gender</span><span>{{ rs.gender.arrow }}</span></button></div>'."\n", '', 1],
+            'ux-regs-th-age' => ['<div aria-sort="{{ rs.age.ariaSort }}"><button type="button" onClick="{{ rs.age.onClick }}" style="{{ rs.age.style }}"><span>Age</span><span>{{ rs.age.arrow }}</span></button></div>'."\n", '', 1],
+            'ux-regs-td-natid' => ['<div style="font-size:.76rem;color:#1e2c4f">{{ r.natId }}</div>'."\n", '', 1],
+            'ux-regs-td-gender' => ['<div style="{{ r.genderColStyle }}">{{ r.genderCol }}</div>'."\n", '', 1],
+            'ux-regs-td-age' => ['<div style="font-size:.76rem;color:#1e2c4f;font-variant-numeric:tabular-nums">{{ r.ageCol }}</div>'."\n", '', 1],
+            'ux-mnav-vals' => ['      navItems,', "      navItems, mNavItems, moreItems, moreOpen: !!s.moreOpen, moreClose: () => this.setState({moreOpen: false}),", 1],
+        ];
+    }
+
     private function pageRewrites(string $file): array
     {
         $flags = ['flags' => ['https://flagcdn.com/w40/', '/federation/app/flags/', null]];
@@ -614,7 +768,7 @@ class FederationApp
                 'club-link-copy' => ["onCopy: () => { const u = origin + '?club=' + encodeURIComponent(c.id);", "onCopy: () => { const u = window.TakeOneFed.clubLink(origin, c.id);", 1],
                 // PLATFORM: a submitted athlete carries their real Takeone ID,
                 // national ID and review state, and Approve is saved.
-                'reg-ids' => ["nat: a.nat || '—', natId: '—', takeoneId: 'Pending', dob: a.dob, coach: sub.coach || ''});", "nat: a.nat || '—', natId: a.natId || '—', takeoneId: a.takeoneId || 'Pending', entryId: sub.entryId, dob: a.dob, coach: sub.coach || ''});", 1],
+                'reg-ids' => ["nat: a.nat || '—', natId: '—', takeoneId: 'Pending', dob: a.dob, coach: sub.coach || ''});", "nat: a.nat || '—', natId: a.natId || '—', takeoneId: a.takeoneId || 'Pending', holder: a.holder || '', entryId: sub.entryId, dob: a.dob, coach: sub.coach || ''});", 1],
                 // The division (and its age group) is the one the EVENT placed the
                 // athlete in, sent by the server (FederationRegistry::placements);
                 // the page's own guess — today's age, the generic table — only
@@ -630,6 +784,18 @@ class FederationApp
                 // (FederationEventOfficials → resources/patches/event-officials.*).
                 'offs-tab' => ["['regs','Registrations'],['divs','Divisions']", "['regs','Registrations'],['offs','Officials'],['divs','Divisions']", 1],
                 'offs-vals' => ["tabStats: s.tab === 'stats',", "tabOffs: s.tab === 'offs', eo: s.tab === 'offs' ? this.evOfficialsVals(sel) : {chips: [], groups: [], rows: [], ed: {open: false}}, tabStats: s.tab === 'stats',", 1],
+                // A plain colour or a gradient set with the `background` SHORTHAND
+                // becomes its own longhand. React re-sets only the style keys that
+                // changed: a shorthand coming or going wiped the background-size /
+                // -position set beside it, so a photo or logo saved in an editor
+                // drew unsized until a full reload (owner, 2026-10-20). One helper,
+                // so every tile, avatar and logo on the page is covered.
+                'css-bg-longhand' => ['      o[k] = d.slice(i + 1).trim();', "      const v = d.slice(i + 1).trim();\n"
+                    ."      if (k === 'background' && !/url\\(/i.test(v) && !/^(none|inherit|initial|unset|revert|transparent)$/i.test(v)) {\n"
+                    ."        if (/^(repeating-)?(linear|radial|conic)-gradient\\(/i.test(v)) { o.backgroundImage = v; return; }\n"
+                    ."        if (/^(#[0-9a-f]{3,8}|[a-z]+|(rgb|rgba|hsl|hsla)\\([^)]*\\))$/i.test(v)) { o.backgroundColor = v; return; }\n"
+                    ."      }\n"
+                    ."      o[k] = v;", 1],
                 'offs-methods' => ['  cssToObj(css) {', (string) file_get_contents(dirname(__DIR__).'/resources/patches/event-officials.js').'  cssToObj(css) {', 1],
                 'offs-markup' => ['      <sc-if value="{{ tabFin }}" hint-placeholder-val="{{ false }}">',
                     rtrim((string) file_get_contents(dirname(__DIR__).'/resources/patches/event-officials.html'))."\n".'      <sc-if value="{{ tabFin }}" hint-placeholder-val="{{ false }}">', 1],
@@ -641,8 +807,24 @@ class FederationApp
                 // One tab, called Draw (owner, 2026-10-15): the divisions editor is
                 // the draw — each division's board opens from its card. The
                 // prototype's own Draw tab is not offered; its markup stays, unreached.
-                'draw-tab-off' => ["['divs','Divisions'],['draw','Draw'],", "['divs','Draw'],", 1],
-                'clubs-vals' => ["tabOffs: s.tab === 'offs',", "tabClubs: s.tab === 'clubs', ec: s.tab === 'clubs' ? this.evClubsVals(sel) : {clubs: []}, tabOffs: s.tab === 'offs',", 1],
+                'draw-tab-off' => ["['divs','Divisions'],['draw','Draw'],", "['divs','Draw'],['results','Results'],", 1],
+                'clubs-vals' => ["tabOffs: s.tab === 'offs',", "tabClubs: s.tab === 'clubs', ec: s.tab === 'clubs' ? this.evClubsVals(sel) : {clubs: [], design: {any: false, items: [], toast: {has: false}}}, tabOffs: s.tab === 'offs',", 1],
+                // The event's Results tab (owner, 2026-10-17: "each event has its
+                // own, make a tab in the event itself, just like participants"):
+                // podiums per division and the numbered bouts — event-results.*.
+                // The whole competition report, next to "Invite clubs" in the event's
+                // banner (owner, 2026-10-17) — `crp`, since `rp` is the Participants tab's PDF menu — FederationCompetitionReport; the button
+                // shows only for an event that has a report to make (evReportVals).
+                'report-button' => ['<button onClick="{{ openInvite }}"',
+                    '<sc-if value="{{ crp.can }}" hint-placeholder-val="{{ false }}"><div style="position:relative"><button onClick="{{ crp.onClick }}" title="{{ crp.title }}" style="{{ crp.style }}" style-hover="border-color:#edcd85;background:rgba(216,178,95,.12)">{{ crp.label }}</button>'
+                    .'<sc-if value="{{ crp.hasMsg }}" hint-placeholder-val="{{ false }}"><div role="status" style="{{ crp.msgStyle }}">{{ crp.msg }}</div></sc-if></div></sc-if>'
+                    ."\n            ".'<button onClick="{{ openInvite }}"', 1],
+                'report-vals' => ['openInvite: () => this.setState({inviteOpen: true, copied: false}),',
+                    'crp: this.evReportVals(sel), openInvite: () => this.setState({inviteOpen: true, copied: false}),', 1],
+                'results-markup' => ['      <sc-if value="{{ tabFin }}" hint-placeholder-val="{{ false }}">',
+                    '      <sc-if value="{{ tabResults }}" hint-placeholder-val="{{ false }}">'."\n"
+                    .rtrim((string) file_get_contents(dirname(__DIR__).'/resources/patches/event-results.html'))."\n"
+                    .'      </sc-if>'."\n".'      <sc-if value="{{ tabFin }}" hint-placeholder-val="{{ false }}">', 1],
                 'clubs-methods' => ['  cssToObj(css) {', (string) file_get_contents(dirname(__DIR__).'/resources/patches/event-clubs.js').'  cssToObj(css) {', 1],
                 'clubs-markup' => ['      <sc-if value="{{ tabFin }}" hint-placeholder-val="{{ false }}">',
                     rtrim((string) file_get_contents(dirname(__DIR__).'/resources/patches/event-clubs.html'))."\n".'      <sc-if value="{{ tabFin }}" hint-placeholder-val="{{ false }}">', 1],
@@ -666,8 +848,8 @@ class FederationApp
                 // the weight once signed off. Window: patches/event-athlete-edit.*.
                 // The Weight column (and its sort/filter) reads the scale once weighed.
                 'weigh-row-kg' => ['gender: g, age, ageGroup: a.ageGroup || ag, weight: kg,', 'gender: g, age, ageGroup: a.ageGroup || ag, weight: (a.weighedIn && a.weighedKg) ? +a.weighedKg : kg,', 1],
-                'weigh-row-data' => ['entryId: sub.entryId, dob: a.dob,', 'entryId: sub.entryId, weighUrls: a.weighUrls || [], weighedIn: !!a.weighedIn, weighedKg: a.weighedKg || null, dob: a.dob,', 1],
-                'weigh-row-vals' => ["onEdit: () => this.athEdOpen(r), stop:", "onEdit: () => this.athEdOpen(r), canWeigh: !!(r.weighUrls && r.weighUrls.length), weighLabel: r.weighedIn ? '\\u2713 ' + (r.weighedKg != null ? r.weighedKg + ' kg' : 'Weighed') : 'Weigh in', weighTitle: r.weighedIn ? 'Weighed in \\u2014 tap to weigh again' : 'Record this athlete\\u2019s weigh-in', noWeigh: !(r.weighUrls && r.weighUrls.length), weighStyle: this.cssToObj('width:100%;height:34px;padding:0 10px;font-family:inherit;font-size:.74rem;font-weight:600;border-radius:9px;cursor:pointer;white-space:nowrap;font-variant-numeric:tabular-nums;' + (r.weighedIn ? 'color:#fff;background:#2f7a4f;border:1px solid #2f7a4f;box-shadow:0 4px 12px rgba(47,122,79,.25)' : 'color:#8a6d20;background:#fff;border:1px solid #caa14f')), onWeigh: e => { if (e && e.stopPropagation) e.stopPropagation(); this.weighOpen(r); }, stop:", 1],
+                'weigh-row-data' => ['entryId: sub.entryId, dob: a.dob,', 'entryId: sub.entryId, weighUrls: a.weighUrls || [], weighedIn: !!a.weighedIn, weighedKg: a.weighedKg || null, weighOut: a.weighOut || null, dob: a.dob,', 1],
+                'weigh-row-vals' => ["onEdit: () => this.athEdOpen(r), stop:", "onEdit: () => this.athEdOpen(r), canWeigh: !!(r.weighUrls && r.weighUrls.length), weighLabel: r.weighedIn ? (r.weighOut ? '\\u26a0 ' : '\\u2713 ') + (r.weighedKg != null ? r.weighedKg + ' kg' : 'Weighed') : 'Weigh in', weighTitle: r.weighedIn ? (r.weighOut ? (r.weighOut === 'above' ? 'Above' : 'Below') + ' this division\\u2019s weight range \\u2014 move them, or keep them here on purpose. Tap to weigh again' : 'Weighed in \\u2014 tap to weigh again') : 'Record this athlete\\u2019s weigh-in', noWeigh: !(r.weighUrls && r.weighUrls.length), weighStyle: this.cssToObj('width:100%;height:34px;padding:0 10px;font-family:inherit;font-size:.74rem;font-weight:600;border-radius:9px;cursor:pointer;white-space:nowrap;font-variant-numeric:tabular-nums;' + (r.weighedIn ? (r.weighOut ? 'color:#8a4b00;background:#fff4e5;border:1px solid #e0a54a' : 'color:#fff;background:#2f7a4f;border:1px solid #2f7a4f;box-shadow:0 4px 12px rgba(47,122,79,.25)') : 'color:#8a6d20;background:#fff;border:1px solid #caa14f')), onWeigh: e => { if (e && e.stopPropagation) e.stopPropagation(); this.weighOpen(r); }, stop:", 1],
                 'weigh-list-btn' => ['                <div><span style="{{ r.pillStyle }}">{{ r.status }}</span></div>'."\n",
                     '                <div><span style="{{ r.pillStyle }}">{{ r.status }}</span></div>'."\n"
                     .'                <div onClick="{{ r.stop }}"><sc-if value="{{ r.canWeigh }}" hint-placeholder-val="{{ false }}"><button onClick="{{ r.onWeigh }}" title="{{ r.weighTitle }}" style="{{ r.weighStyle }}">{{ r.weighLabel }}</button></sc-if><sc-if value="{{ r.noWeigh }}" hint-placeholder-val="{{ false }}"><span style="font-size:.76rem;color:#97a1b4">&#8212;</span></sc-if></div>'."\n", 1],
@@ -727,7 +909,7 @@ class FederationApp
                 'nav-no-officials' => ["['athletes','Athletes'],['officials','Officials'],['financials','Financials']", "['athletes','Athletes'],['financials','Financials']", 1],
                 // Participants tab → the design room for certificates and badges
                 // (designVals in resources/patches/event-officials.js).
-                'regs-design-vals' => ["ae: this.evAthleteEditVals(), tabClubs: s.tab === 'clubs',", "ae: this.evAthleteEditVals(), dz: s.tab === 'regs' ? this.designVals(sel, 'participants') : {}, tabClubs: s.tab === 'clubs',", 1],
+                'regs-design-vals' => ["ae: this.evAthleteEditVals(), tabClubs: s.tab === 'clubs',", "ae: this.evAthleteEditVals(), dz: s.tab === 'regs' ? this.designVals(sel, 'participants') : {toast: {has: false}}, tabClubs: s.tab === 'clubs',", 1],
                 'regs-design-btns' => ["            </div>\n            <sc-if value=\"{{ hasSel }}\" hint-placeholder-val=\"{{ false }}\">", <<<'HTML'
             </div>
             <sc-if value="{{ dz.any }}" hint-placeholder-val="{{ false }}">
@@ -735,12 +917,15 @@ class FederationApp
                 <button type="button" onClick="{{ dz.onToggle }}" aria-haspopup="menu" aria-expanded="{{ dz.open }}" title="Design and print badges and certificates" style="{{ dz.style }}" style-hover="border-color:#caa14f;background:#fdf6e6"><span aria-hidden="true" style="color:#8a6d20">&#9113;</span>Printables<span aria-hidden="true" style="font-size:.7rem;color:#8a6d20">{{ dz.caret }}</span></button>
                 <sc-if value="{{ dz.open }}" hint-placeholder-val="{{ false }}">
                   <div onClick="{{ dz.onClose }}" style="position:fixed;inset:0;z-index:45"></div>
-                  <div role="menu" onClick="{{ dz.stop }}" style="position:absolute;top:46px;left:0;z-index:46;min-width:270px;padding:6px;background:#fff;border:1px solid #eef1f6;border-radius:14px;box-shadow:0 18px 40px rgba(30,44,79,.16);animation:rise .18s cubic-bezier(.22,.68,.35,1) both">
+                  <div role="menu" onClick="{{ dz.stop }}" style="position:absolute;top:46px;left:0;z-index:46;min-width:320px;max-width:min(380px,calc(100vw - 2rem));padding:6px;background:#fff;border:1px solid #eef1f6;border-radius:14px;box-shadow:0 18px 40px rgba(30,44,79,.16);animation:rise .18s cubic-bezier(.22,.68,.35,1) both">
                     <sc-for list="{{ dz.items }}" as="i" hint-placeholder-count="2">
-                      <button type="button" role="menuitem" onClick="{{ i.onClick }}" style="{{ i.style }}" style-hover="background:#fdf6e6"><span style="font-size:.82rem;font-weight:700;color:#1e2c4f">{{ i.label }}</span><span style="font-size:.7rem;color:#6b7689">{{ i.hint }}</span></button>
+                      <div role="group" aria-label="{{ i.label }}" style="{{ i.style }}"><span style="font-size:.82rem;font-weight:700;color:#1e2c4f">{{ i.label }}</span><span role="status" style="{{ i.hintStyle }}">{{ i.hint }}</span>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><sc-for list="{{ i.actions }}" as="a" hint-placeholder-count="3"><button type="button" role="menuitem" onClick="{{ a.onClick }}" aria-disabled="{{ a.disabled }}" style="{{ a.style }}">{{ a.label }}</button></sc-for></div>
+                      </div>
                     </sc-for>
                   </div>
                 </sc-if>
+            <sc-if value="{{ dz.toast.has }}" hint-placeholder-val="{{ false }}"><div role="status" aria-live="polite" onClick="{{ dz.toast.onClose }}" title="Close" style="{{ dz.toast.style }}"><span aria-hidden="true" style="font-size:1.1rem;flex:none">{{ dz.toast.icon }}</span><span>{{ dz.toast.text }}</span></div></sc-if>
               </div>
             </sc-if>
             <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ false }}">
@@ -757,10 +942,12 @@ HTML, 1],
                 'en-dir-cat' => ["cat: catR ? catR.ageGroup + ' \\u00b7 ' + catR.label : '',", "cat: catR ? window.KarateShotukanWeightclasses.englishName(catR.ageGroup) + ' \\u00b7 ' + catR.label : '',", 1],
                 // The Draw tab's gender switch reads Male / Female (its state keeps 'Men'/'Women').
                 'en-draw-gender' => ["drawGenderOpts: ['Men', 'Women'].map(label => ({label, style:", "drawGenderOpts: ['Men', 'Women'].map(label => ({label: label === 'Women' ? 'Female' : 'Male', style:", 1],
-                'divs-vals' => ['checklist, divBars, divCards, divsEmpty,', "checklist, divBars, divCards, divsEmpty, divsAny: !divsEmpty, dv: s.tab === 'divs' ? this.evDivViewVals(divCards) : {rows: [], tabs: []}, dm: s.tab === 'divs' ? this.dmVals(sel, divCards) : {on: false, off: true},", 1],
+                'divs-vals' => ['checklist, divBars, divCards, divsEmpty,', "checklist, divBars, divCards, divsEmpty, divsAny: !divsEmpty, dv: s.tab === 'divs' ? this.evDivViewVals(divCards) : {rows: [], tabs: []}, dm: s.tab === 'divs' ? this.dmVals(sel, divCards) : {on: false, off: true}, tabResults: s.tab === 'results', dr: s.tab === 'results' ? this.drVals(sel) : {has: false},", 1],
                 'divs-methods' => ['  cssToObj(css) {', (string) file_get_contents(dirname(__DIR__).'/resources/patches/event-divisions.js')
                     // The division editor (weight classes, categories, headings) — div-manage.js.
-                    ."\n".(string) file_get_contents(dirname(__DIR__).'/resources/patches/div-manage.js').'  cssToObj(css) {', 1],
+                    ."\n".(string) file_get_contents(dirname(__DIR__).'/resources/patches/div-manage.js')
+                    // Results and numbered Bouts at the foot of the tab — event-results.js.
+                    ."\n".(string) file_get_contents(dirname(__DIR__).'/resources/patches/event-results.js').'  cssToObj(css) {', 1],
                 'divs-markup' => [['      <sc-if value="{{ tabDivs }}" hint-placeholder-val="{{ false }}">', '      <sc-if value="{{ tabDraw }}" hint-placeholder-val="{{ false }}">'],
                     rtrim((string) file_get_contents(dirname(__DIR__).'/resources/patches/event-divisions.html'))."\n\n".'      <sc-if value="{{ tabDraw }}" hint-placeholder-val="{{ false }}">', 1],
                 'readiness' => [["    const checklist = [\n      {done: true,  label: 'Venue contract signed'", "    ].map(c => ({...c, mark: c.done"], "    const rowGo = (url) => { if (url) window.location.assign(url); };\n"

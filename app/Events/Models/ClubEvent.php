@@ -43,6 +43,13 @@ class ClubEvent extends Model implements LimitsOfferedLocales, TranslatableConte
                 $event->uuid = (string) \Illuminate\Support\Str::uuid();
             }
 
+            // A new event flies each athlete's nationality unless told
+            // otherwise (owner, 2026-10-16). Events made before keep NULL,
+            // which still means the club's country (App\Events\Support\FlagSource).
+            if (empty($event->flag_source)) {
+                $event->flag_source = \App\Events\Support\FlagSource::NATIONALITY;
+            }
+
             /*
              * The language the organiser was writing in.
              *
@@ -246,6 +253,8 @@ class ClubEvent extends Model implements LimitsOfferedLocales, TranslatableConte
         'third_place_match',
         // One bracket per person (App\Events\Support\OneDivisionRule). Default off.
         'one_division_per_person',
+        // Which flag a competitor flies here (App\Events\Support\FlagSource). NULL = the club's.
+        'flag_source',
         'league',
         'icon',
         // `*_fee` is the DISPLAY line; `*_fee_amount` + `fee_currency` are the

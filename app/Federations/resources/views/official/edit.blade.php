@@ -26,8 +26,12 @@
             roles: [], clubs: [], comps: [], currency: '',
             o: { jobs: [] }, photo: '', photoUrl: '',
             q: '', results: [], searching: false, pick: null, seq: 0,
-            /* `jobs`: the ticked jobs, by key — a role value, or `id:<n>` for a
-               job this person holds that is not on the list ("Referee 1"). */
+            /* Pickers opened with "+ Add designation", one per click, not yet
+               turned into a job: { uid, value, text }. */
+            adding: [], addSeq: 0,
+            /* `jobs`: the chosen jobs, by key — a role value, `id:<n>` for a
+               job this person holds that is not on the list ("Referee 1"), or
+               `other:<wording>` for a designation typed in here. */
             f: { name: '', gender: '', nat: '', jobs: [], club: '', comp: 'volunteer', fee: '' },
 
             get isNew() { return this.mode === 'add' && this.tab === 'new'; },
@@ -39,7 +43,7 @@
                 const held = (this.o.jobs || []).filter(j => ! this.roles.some(r => r.value === j.role && j.role !== 'other'))
                     .map(j => ({ key: 'id:' + j.id, label: j.label, hint: @js(__('As appointed')) }));
                 return held.concat(this.roles.filter(r => ! this.isNew || r.group !== 'platform')
-                    .map(r => ({ key: r.value, label: r.label, hint: r.hint || '', group: r.group })));
+                    .map(r => ({ key: r.value, label: r.label, hint: r.hint || '', group: r.group, section: r.section, sectionLabel: r.section_label || '' })));
             },
             heldKey(j) { return this.roles.some(r => r.value === j.role && j.role !== 'other') ? j.role : 'id:' + j.id; },
             get clubOptions() {
@@ -64,7 +68,88 @@
                 return [list[0]].concat(list.slice(1).sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' })));
             },
             get clubName() { const c = this.clubOptions.find(x => x.value === this.f.club); return c && c.value ? c.label : ''; },
-            get jobsLine() { return this.jobOptions.filter(j => this.f.jobs.includes(j.key)).map(j => j.label).join(' · '); },
+            get jobsLine() { return this.f.jobs.map(k => this.jobLabel(k)).filter(Boolean).join(' · '); },
+            jobLabel(k) {
+                if (k.startsWith('other:')) return k.slice(6);
+                const j = this.jobOptions.find(x => x.key === k);
+                return j ? j.label : '';
+            },
+            jobNote(k) {
+                if (k.startsWith('other:')) return @js(__('Own designation'));
+                const j = this.jobOptions.find(x => x.key === k);
+                return j ? (j.section ? j.sectionLabel : j.hint) : '';
+            },
+            /* A picker's list: every designation not chosen yet, then "Other". */
+            pickOptions() {
+                return this.jobOptions.filter(j => j.section && ! this.f.jobs.includes(j.key))
+                    .map(j => ({ value: j.key, label: j.label }))
+                    .concat([{ value: '__other', label: @js(__('+ New designation…')) }]);
+            },
+            addRow() {
+                this.adding.push({ uid: ++this.addSeq, value: '', text: '', section: '', saving: false });
+            },
+            /* The parts of the officials list a new designation can read under,
+               named as the server names them. */
+            get sections() {
+                const seen = {};
+                this.roles.forEach(r => { if (r.section && ! seen[r.section]) seen[r.section] = r.section_label || r.section; });
+                return ['organising', 'technical', 'referees', 'table', 'team'].filter(k => seen[k]).map(k => ({ key: k, label: seen[k] }));
+            },
+            /* Where a new name most likely belongs — the organiser can change it. */
+            guessSection(text) {
+                const t = String(text || '').toLowerCase(), has = w => w.some(x => t.includes(x));
+                return has(['team', 'coach', 'فريق', 'مدرب']) ? 'team' : has(['delegate', 'supervisor', 'jury', 'مندوب', 'مشرف']) ? 'technical'
+                    : has(['referee', 'judge', 'حكم']) ? 'referees' : has(['timekeeper', 'scorekeeper', 'recorder', 'ميقات', 'مسجل']) ? 'table' : 'organising';
+            },
+            dropRow(d) { this.adding = this.adding.filter(x => x.uid !== d.uid); },
+            /* A listed designation is taken the moment it is picked; "Other"
+               waits for its wording. */
+            pickedJob(d) {
+                if (! d.value || d.value === '__other') {
+                    if (d.value === '__other') this.$nextTick(() => { const el = document.getElementById('ofOther' + d.uid); if (el) el.focus(); });
+                    return;
+                }
+                this.addJob(d.value); this.dropRow(d);
+            },
+            /* Typed wording that matches a listed designation becomes that one,
+               so "referee" is the Referee job and not a second, look-alike one. */
+            otherKey(text) {
+                const t = String(text || '').trim().replace(/\s+/g, ' ');
+                if (t.length < 2) return '';
+                const low = t.toLowerCase();
+                const same = this.jobOptions.find(j => String(j.label).trim().toLowerCase() === low);
+                if (same) return same.key;
+                const held = this.f.jobs.find(k => k.startsWith('other:') && k.slice(6).toLowerCase() === low);
+                return held || 'other:' + t.slice(0, 80);
+            },
+            /* A name the list already has is that designation; a new one is saved to
+               the host's list (offered on all its events from now on) and chosen. */
+            async commitOther(d) {
+                const k = this.otherKey(d.text);
+                if (! k) { this.msg = @js(__('Write what the designation is called.')); return; }
+                this.msg = '';
+                if (! k.startsWith('other:') || ! cfg.urls.designation) { this.addJob(k); this.dropRow(d); return; }
+                if (d.saving) return;
+                d.saving = true;
+                const j = await this.call(cfg.urls.designation, 'POST', { label: k.slice(6), section: d.section || this.guessSection(d.text) });
+                d.saving = false;
+                if (! j.__ok || ! j.role) { this.msg = this.errOf(j); return; }
+                if (! this.roles.some(r => r.value === j.role.value)) this.roles = this.roles.concat([j.role]);
+                this.addJob(j.role.value); this.dropRow(d);
+            },
+            addJob(k) {
+                if (! this.f.jobs.includes(k)) this.f.jobs = this.f.jobs.concat([k]);
+                if (this.isMember && ! this.pick) this.search(this.q, true);
+            },
+            removeJob(k) { this.f.jobs = this.f.jobs.filter(x => x !== k); },
+            /* An "Other" whose wording is written but not yet added counts. */
+            flushAdding() {
+                this.adding.filter(d => d.value === '__other' && this.otherKey(d.text)).forEach(d => this.commitOther(d));
+            },
+            get pendingJobs() { return this.adding.filter(d => d.value === '__other' && this.otherKey(d.text)).length; },
+            jobPayload(k) {
+                return k.startsWith('other:') ? { role: 'other', role_label: k.slice(6) } : { role: k };
+            },
             get title() {
                 if (this.mode === 'edit') return this.f.name || @js(__('Official'));
                 if (this.isNew) return this.f.name || @js(__('Appoint an official'));
@@ -73,7 +158,7 @@
             get ready() {
                 const who = this.mode === 'edit' || (this.isNew ? this.f.name.trim().length >= 2 : !! this.pick);
                 const fee = this.f.comp !== 'paid' || Number(this.f.fee) > 0;
-                return who && this.f.jobs.length > 0 && fee && ! this.busy;
+                return who && (this.f.jobs.length + this.pendingJobs) > 0 && fee && ! this.busy;
             },
 
             post(type, extra) {
@@ -131,24 +216,19 @@
             },
             fill(o) {
                 this.o = Object.assign({ jobs: [] }, o);
+                this.adding = [];
                 this.photo = ''; this.photoUrl = o.photo || '';
                 this.f = { name: o.name || '', gender: o.gender || '', nat: o.nat || '', jobs: (o.jobs || []).map(j => this.heldKey(j)),
                     club: o.club || '', comp: o.compensation || 'volunteer', fee: o.fee != null ? String(o.fee) : '' };
             },
             setTab(t) { this.tab = t; this.f.jobs = this.f.jobs.filter(k => ! this.isNew || ! this.roles.some(r => r.value === k && r.group === 'platform')); this.msg = ''; },
-            toggleJob(k) {
-                this.f.jobs = this.f.jobs.includes(k) ? this.f.jobs.filter(x => x !== k) : this.f.jobs.concat([k]);
-                // The search pool follows the job (a referee is found platform-wide,
-                // an access role only among the host's people), so ask again.
-                if (this.isMember && ! this.pick) this.search(this.q, true);
-            },
             /* Search the pool the ticked jobs open — a job on the mat when one is
                ticked, otherwise the mat pool anyway, so somebody can be found
                before their jobs are chosen (the host club alone was too narrow). */
             searchRole() {
                 const mat = this.roles.filter(r => r.group !== 'platform').map(r => r.value);
                 const ticked = this.f.jobs.find(k => mat.includes(k));
-                const access = this.f.jobs.find(k => ! k.startsWith('id:') && ! mat.includes(k));
+                const access = this.f.jobs.find(k => ! k.startsWith('id:') && ! k.startsWith('other:') && ! mat.includes(k));
                 return ticked || (access ? access : (mat[0] || ''));
             },
             search(q, now) {
@@ -164,12 +244,13 @@
                     this.results = (j.candidates || []).slice(0, 12);
                 }, now ? 0 : 300);
             },
-            choose(c) { this.pick = { id: c.id, name: c.name, avatar: c.avatar || null, nationality: c.nationality || '', roles: c.roles || [] }; },
+            choose(c) { this.pick = { id: c.id, name: c.name, avatar: c.avatar || null, nationality: c.nationality || '', flag: c.flag || null, roles: c.roles || [] }; },
 
             /* The fee is counted once for a person: it rides on their first job;
                any further job is added as volunteer. */
             async save() {
                 if (! this.ready) return;
+                this.flushAdding();
                 const f = this.f;
                 if (this.personEditable && f.name.trim().length < 2) { this.msg = 'Enter the official’s full name.'; return; }
                 const pay = { compensation: f.comp, fee: f.comp === 'paid' ? f.fee : null, club: f.club || '' };
@@ -191,20 +272,37 @@
                     }
                     const held = this.o.jobs || [];
                     const kept = held.filter(h => f.jobs.includes(this.heldKey(h)));
-                    // Jobs ticked that they do not hold yet.
-                    for (const r of roleKeys.filter(k => ! held.some(h => this.heldKey(h) === k))) {
-                        j = await this.call(cfg.urls.store, 'POST', Object.assign({}, kept.length ? extra : pay, { user_id: this.o.userId, role: r }));
+                    /* A typed-in job replaced by another typed-in one is RENAMED, not
+                       removed and re-added: the person keeps one appointment (and its
+                       badge and pay) and the event's one-typed-in-job limit is never hit. */
+                    const spare = held.filter(h => ! kept.includes(h) && h.role === 'other');
+                    const renamed = [];
+                    for (const r of roleKeys.filter(k => k.startsWith('other:') && ! held.some(h => this.heldKey(h) === k))) {
+                        const h = spare.shift();
+                        if (! h) break;
+                        const primary = h.id === cfg.official;
+                        j = await this.call(cfg.urls.one.replace('__ID__', encodeURIComponent(h.id)), 'PUT', Object.assign(
+                            primary ? pay : { compensation: h.compensation, fee: h.compensation === 'paid' ? h.fee : null, club: f.club || '' },
+                            { role: 'other', role_label: r.slice(6) }));
+                        if (! j.__ok) return fail(j);
+                        renamed.push(h, r);
+                    }
+                    // Jobs chosen that they do not hold yet.
+                    for (const r of roleKeys.filter(k => ! held.some(h => this.heldKey(h) === k) && ! renamed.includes(k))) {
+                        j = await this.call(cfg.urls.store, 'POST', Object.assign({}, kept.length || renamed.length ? extra : pay, { user_id: this.o.userId }, this.jobPayload(r)));
                         if (! j.__ok) return fail(j);
                     }
                     // The jobs kept: the one opened carries the pay; the others keep theirs, all take the club.
+                    // The fee is counted once: on the job opened, wherever it went.
+                    const payHolder = kept.find(x => x.id === cfg.official) || (renamed.some(x => x.id === cfg.official) ? null : kept[0]);
                     for (const h of kept) {
-                        const primary = h.id === (kept.find(x => x.id === cfg.official) || kept[0]).id;
+                        const primary = !! payHolder && h.id === payHolder.id;
                         j = await this.call(cfg.urls.one.replace('__ID__', encodeURIComponent(h.id)), 'PUT',
                             primary ? pay : { compensation: h.compensation, fee: h.compensation === 'paid' ? h.fee : null, club: f.club || '' });
                         if (! j.__ok) return fail(j);
                     }
-                    // Jobs unticked.
-                    for (const h of held.filter(x => ! kept.includes(x))) {
+                    // Jobs removed (a renamed one is still theirs).
+                    for (const h of held.filter(x => ! kept.includes(x) && ! renamed.includes(x))) {
                         j = await this.call(cfg.urls.one.replace('__ID__', encodeURIComponent(h.id)), 'DELETE');
                         if (! j.__ok) return fail(j);
                     }
@@ -215,12 +313,12 @@
                     for (const r of roleKeys) {
                         if (this.isNew && ! userId) {
                             j = await this.call(cfg.urls.newPerson, 'POST', Object.assign({}, pay, {
-                                full_name: f.name.trim(), role: r, gender: f.gender || null, nationality: f.nat || null,
-                            }, this.photo ? { photo: this.photo } : {}));
+                                full_name: f.name.trim(), gender: f.gender || null, nationality: f.nat || null,
+                            }, this.jobPayload(r), this.photo ? { photo: this.photo } : {}));
                             if (! j.__ok) return fail(j);
                             userId = j.official && j.official.user_id;
                         } else {
-                            j = await this.call(cfg.urls.store, 'POST', Object.assign({}, first ? pay : extra, { user_id: userId, role: r }));
+                            j = await this.call(cfg.urls.store, 'POST', Object.assign({}, first ? pay : extra, { user_id: userId }, this.jobPayload(r)));
                             if (! j.__ok) return fail(j);
                         }
                         first = false;
@@ -265,6 +363,17 @@
     };
     </script>
     <script defer src="{{ asset('vendor/alpinejs/3.17.4/alpine.min.js') }}"></script>
+    <style>
+        .of-job { cursor: default; align-items: center; }
+        .of-x { width: 32px; height: 32px; flex: none; border-radius: 999px; border: 1px solid #e5e7eb; background: #fff; color: #6b7280; display: grid; place-items: center; cursor: pointer; font-size: .75rem; transition: color .15s, border-color .15s, background .15s; }
+        .of-x:hover { color: #b4483c; border-color: #f0c9c3; background: #fdf3f1; }
+        .of-pick { padding: 10px; border: 1.5px dashed #d5dae3; border-radius: 14px; background: #fafbfc; }
+        .of-add { width: 100%; height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 1.5px dashed #caa14f; border-radius: 14px; background: #fff; color: #8a6a24; font: inherit; font-size: .84rem; font-weight: 700; cursor: pointer; transition: background .15s; }
+        .of-add:hover { background: #fdf6e6; }
+        .ae-ghost:disabled { opacity: .5; cursor: not-allowed; }
+        .of-sec { height: 32px; padding: 0 12px; border: 1.5px solid #e5e7eb; border-radius: 999px; background: #fff; font: inherit; font-size: .75rem; font-weight: 600; color: #5d6880; cursor: pointer; transition: border-color .15s, background .15s; }
+        .of-sec.is-on { border-color: #caa14f; background: #fdf6e6; color: #1e2c4f; }
+    </style>
 </head>
 <body class="antialiased">
 <div x-data="fedOfficialEdit(@js(['event' => $event, 'official' => $official, 'urls' => $urls, 'fedClubs' => $fedClubs]))"
@@ -329,6 +438,7 @@
                             <template x-if="! pick.avatar"><i class="bi bi-person text-gray-400"></i></template>
                         </span>
                         <span class="flex-1 text-[15px] font-bold" style="overflow-wrap:anywhere" x-text="pick.name"></span>
+                        <template x-if="pick.flag"><span class="fi" :class="'fi-' + pick.flag" style="width:20px;height:15px;border-radius:2px;flex:none" :title="pick.nationality"></span></template>
                         <button type="button" class="ae-ghost" style="height:34px" @click="pick = null">{{ __('Change') }}</button>
                     </div>
                 </template>
@@ -350,7 +460,10 @@
                                     </span>
                                     <span class="min-w-0 flex-1">
                                         <b style="overflow-wrap:anywhere" x-text="c.name"></b>
-                                        <small x-text="[c.nationality, (c.roles || []).length ? @js(__('already')) + ': ' + c.roles.join(', ') : ''].filter(Boolean).join(' · ')"></small>
+                                        <small class="flex items-center gap-1.5 flex-wrap">
+                                            <template x-if="c.flag"><span class="fi" :class="'fi-' + c.flag" style="width:16px;height:12px;border-radius:2px;flex:none" :title="c.nationality"></span></template>
+                                            <span x-text="[c.nationality, (c.roles || []).length ? @js(__('already')) + ': ' + c.roles.join(', ') : ''].filter(Boolean).join(' · ')"></span>
+                                        </small>
                                     </span>
                                     <i class="bi bi-chevron-right text-gray-400 rtl:rotate-180"></i>
                                 </button>
@@ -396,21 +509,60 @@
                 </div>
             </section>
 
-            {{-- The jobs: one person may hold several (Referee 1 and Referee 2,
-                 Tatami manager and Scorekeeper…) — one tick each, one appointment each. --}}
+            {{-- The designations: one person may hold several (Referee 1 and
+                 Referee 2, Tatami manager and Scorekeeper…) — one appointment
+                 each. "+ Add designation" opens a picker per click; "Other"
+                 takes a designation the list has no word for. --}}
             <section class="ae-sec">
                 <div class="flex items-center justify-between gap-2" style="margin-bottom:12px">
-                    <h2 class="ae-h" style="margin:0"><i class="bi bi-person-badge-fill"></i>{{ __('Jobs') }}</h2>
-                    <span class="text-[12px] font-semibold text-gray-500" x-text="f.jobs.length ? f.jobs.length + ' ' + (f.jobs.length === 1 ? @js(__('job')) : @js(__('jobs'))) : @js(__('Tick one or more'))"></span>
+                    <h2 class="ae-h" style="margin:0"><i class="bi bi-person-badge-fill"></i>{{ __('Designations') }}</h2>
+                    <span class="text-[12px] font-semibold text-gray-500" x-text="f.jobs.length ? f.jobs.length + ' ' + (f.jobs.length === 1 ? @js(__('designation')) : @js(__('designations'))) : @js(__('Add one or more'))"></span>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2" role="group" aria-label="{{ __('Jobs') }}">
-                    <template x-for="r in jobOptions" :key="r.key">
-                        <button type="button" class="ae-card" :class="f.jobs.includes(r.key) && 'is-on'" role="checkbox" :aria-checked="f.jobs.includes(r.key)" @click="toggleJob(r.key)">
-                            <span class="ae-box"><i class="bi bi-check-lg"></i></span><span class="min-w-0"><b x-text="r.label"></b><small x-show="r.hint" x-text="r.hint"></small></span>
-                        </button>
+
+                <div class="space-y-2" x-show="f.jobs.length" role="list" aria-label="{{ __('Designations') }}">
+                    <template x-for="k in f.jobs" :key="k">
+                        <div class="ae-card is-on of-job" role="listitem">
+                            <span class="ae-box"><i class="bi bi-check-lg"></i></span>
+                            <span class="min-w-0 flex-1"><b style="overflow-wrap:anywhere" x-text="jobLabel(k)"></b><small x-show="jobNote(k)" x-text="jobNote(k)"></small></span>
+                            <button type="button" class="of-x" @click="removeJob(k)" :aria-label="@js(__('Remove')) + ' ' + jobLabel(k)" :title="@js(__('Remove'))"><i class="bi bi-x-lg"></i></button>
+                        </div>
                     </template>
                 </div>
-                <p class="text-[12px] text-gray-500 mt-2" x-show="mode === 'edit'" x-cloak>{{ __('Untick a job to take them off it. Their fee is counted once, on the job you opened.') }}</p>
+
+                <div class="space-y-2" :class="f.jobs.length && 'mt-2'" x-show="adding.length">
+                    <template x-for="d in adding" :key="d.uid">
+                        <div class="of-pick">
+                            <div class="flex items-start gap-2">
+                                <div class="flex-1 min-w-0">
+                                    <x-fields.select model="d.value" options-expr="pickOptions()" placeholder="{{ __('Choose a designation…') }}"
+                                        :searchable="true" search-placeholder="{{ __('Search designations…') }}" change="pickedJob(d)" />
+                                </div>
+                                <button type="button" class="of-x" style="margin-top:6px" @click="dropRow(d)" aria-label="{{ __('Cancel') }}" title="{{ __('Cancel') }}"><i class="bi bi-x-lg"></i></button>
+                            </div>
+                            <div class="mt-2" x-show="d.value === '__other'" x-cloak>
+                                <div class="flex items-center gap-2">
+                                    <input type="text" class="ae-in flex-1" :id="'ofOther' + d.uid" x-model="d.text" maxlength="80"
+                                           @keydown.enter.prevent="commitOther(d)" placeholder="{{ __('e.g. Announcer, Results officer…') }}"
+                                           aria-label="{{ __('New designation') }}" autocomplete="off">
+                                    <button type="button" class="ae-ghost" :disabled="! otherKey(d.text) || d.saving" @click="commitOther(d)" x-text="d.saving ? @js(__('Saving…')) : @js(__('Add'))">{{ __('Add') }}</button>
+                                </div>
+                                <span class="ae-lbl" style="margin-top:10px">{{ __('Listed under') }}</span>
+                                <div class="flex flex-wrap gap-1.5" role="radiogroup" aria-label="{{ __('Listed under') }}">
+                                    <template x-for="s in sections" :key="s.key">
+                                        <button type="button" role="radio" class="of-sec" :class="(d.section || guessSection(d.text)) === s.key && 'is-on'"
+                                                :aria-checked="(d.section || guessSection(d.text)) === s.key" @click="d.section = s.key" x-text="s.label"></button>
+                                    </template>
+                                </div>
+                                <p class="text-[12px] text-gray-500 mt-2">{{ __('Saved to your list of designations, so you can pick it at every event from now on.') }}</p>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <button type="button" class="of-add" :class="(f.jobs.length || adding.length) && 'mt-2'" @click="addRow()">
+                    <i class="bi bi-plus-lg"></i>{{ __('Add designation') }}
+                </button>
+                <p class="text-[12px] text-gray-500 mt-2" x-show="mode === 'edit'" x-cloak>{{ __('Remove a designation to take them off it. Their fee is counted once, on the designation you opened.') }}</p>
             </section>
 
             {{-- Club and pay --}}

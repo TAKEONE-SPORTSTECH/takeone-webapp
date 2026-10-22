@@ -71,7 +71,10 @@ class FederationEvents
             'orgId' => $e->federation?->uuid,
             'name' => $e->name,
             'sport' => $e->sport,
-            'status' => $e->status,
+            // Derived from what has happened (FederationEvent::lifecycleStatus);
+            // the typed one is kept beside it for the edit form.
+            'status' => $e->lifecycleStatus(),
+            'statusTyped' => $e->status,
             'cap' => $e->capacity,
             'startDate' => $e->starts_on,
             'endDate' => $e->ends_on,

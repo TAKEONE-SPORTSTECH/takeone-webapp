@@ -20,8 +20,11 @@ use Illuminate\Support\Str;
  *
  * @see database/migrations/2026_09_06_130000_create_event_clubs_table.php
  */
-class EventClub extends Model
+class EventClub extends Model implements \Ahl\Certificates\Contracts\Recipient
 {
+    /* A club written down for the day holds its thank-you certificate too. */
+    use \App\Certificates\Concerns\ClubRecipient;
+
     protected $table = 'event_clubs';
 
     protected $fillable = [
@@ -173,5 +176,16 @@ class EventClub extends Model
             'invited_at' => $this->invited_at?->toIso8601String(),
             'responded_at' => $this->responded_at?->toIso8601String(),
         ];
+    }
+
+    /* A real club's own name and crest win, as in present(). */
+    protected function certificateClubName(): string
+    {
+        return (string) ($this->tenant?->club_name ?: $this->name);
+    }
+
+    protected function certificateLogoPath(): ?string
+    {
+        return $this->tenant?->logo ?: ($this->logo ?: null);
     }
 }

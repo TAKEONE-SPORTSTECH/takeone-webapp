@@ -93,3 +93,12 @@ Schedule::command('media:verify --quiet-when-clean --orphans')->dailyAt('04:30')
 */
 Schedule::command('translate:doctor')->everyFiveMinutes()->withoutOverlapping()
     ->runInBackground()->user('www-data');
+
+/*
+| Duplicate watch (app/Duplicates) — finds people, clubs and entries that
+| exist twice, fixes the certain ones when DUPLICATE_AUTOFIX is on, tells
+| super-admins about the rest. A no-op unless DUPLICATE_WATCH is on.
+| As www-data, for the same reason as the doctor above.
+*/
+Schedule::command('duplicates:watch')->hourlyAt(17)->withoutOverlapping()
+    ->runInBackground()->user('www-data');

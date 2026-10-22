@@ -99,6 +99,18 @@ class ClubPromotion
      */
     public function promote(EventClub $club, ClubEvent $event): Tenant
     {
+        /*
+         * Already a club on TakeOne under this very name (one club, no
+         * ambiguity): the typed copy is linked to it instead of a second club
+         * being made — a promotion must never be how a duplicate is born.
+         * Behind duplicates.guard.promotion.
+         */
+        if (config('duplicates.guard.promotion')
+            && ($existing = app(\App\Clubs\Support\ClubMatch::class)->uniqueSameName((string) $club->name))
+            && EventClubLink::link($club, $existing, null, 'promotion')['ok']) {
+            return $existing;
+        }
+
         return DB::transaction(function () use ($club, $event) {
             $tenant = Tenant::create([
                 // NOT NULL, and it has to be somebody. The organiser who wrote

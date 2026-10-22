@@ -243,6 +243,15 @@ class FederationPlatformEntries
                 ? ['payer_type' => 'club', 'payer_id' => $tenantId]
                 : ($club ? ['payer_type' => 'federation_club', 'payer_id' => $club->id] : []) + ['updated_at' => now()]);
 
+        // Entered while the club was still an application, the entry names no
+        // club; now that the club IS a platform club, it does (crest + flag on
+        // every screen). Only fills a blank. Behind duplicates.guard.federation_links.
+        if ($tenantId && config('duplicates.guard.federation_links')) {
+            ClubEventRegistration::where('event_id', $ev->id)->where('user_id', $user->id)->where('role', 'participant')
+                ->whereNull('representing_tenant_id')
+                ->update(['representing_tenant_id' => $tenantId]);
+        }
+
         // A federation sorts its athletes by the rule book itself: an entered
         // athlete with no division is placed, the division created if needed.
         $registration ??= ClubEventRegistration::where('event_id', $ev->id)->where('user_id', $user->id)->where('role', 'participant')->first();
@@ -449,7 +458,7 @@ class FederationPlatformEntries
                 continue;
             }
 
-            $user = User::create([
+            $user = $this->knownOfficial($ev, $tenantId, $name) ?? User::create([
                 'full_name' => mb_substr($name, 0, 150), 'name' => mb_substr($name, 0, 150),
                 'email' => null, 'password' => null, 'is_unclaimed' => true, 'is_discoverable' => false,
             ]);
@@ -472,6 +481,33 @@ class FederationPlatformEntries
         if ($applied !== $appliedBefore) {
             $this->rememberApplied($entry, $applied);
         }
+    }
+
+    /**
+     * The person this club already named under this name at another of its
+     * events — the same referee, not a new one per competition. Only the
+     * club's OWN earlier officials are looked at (its own data; nothing of
+     * another club's is consulted), only for a platform club, and never
+     * somebody who already holds an official's role at this event (one
+     * person, one role here). Behind duplicates.guard.officials.
+     */
+    private function knownOfficial(ClubEvent $ev, ?int $tenantId, string $name): ?User
+    {
+        if (! $tenantId || ! config('duplicates.guard.officials')) {
+            return null;
+        }
+        $people = app(\App\Events\Support\KnownPerson::class);
+        $key = $people->normalised($name);
+        if ($key === '') {
+            return null;
+        }
+        $here = \App\Events\Models\EventOfficial::where('event_id', $ev->id)->pluck('user_id')->flip();
+
+        return \App\Events\Models\EventOfficial::with('user')
+            ->where('representing_tenant_id', $tenantId)->where('event_id', '!=', $ev->id)
+            ->orderByDesc('id')->limit(200)->get()
+            ->map(fn ($o) => $o->user)
+            ->first(fn ($u) => $u && ! isset($here[$u->id]) && $people->normalised((string) ($u->full_name ?: $u->name)) === $key);
     }
 
     /** Remember what was applied from this entry's named officials (see officials()). */

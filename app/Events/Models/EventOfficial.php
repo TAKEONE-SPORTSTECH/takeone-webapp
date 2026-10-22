@@ -42,10 +42,56 @@ class EventOfficial extends Model
     /** Being paid a stated fee, which becomes an event expense. */
     public const COMP_PAID = 'paid';
 
-    /** @return array<int, string> */
+    /*
+     * Jobs a competition credits but which grant NOTHING (2026-10-18, the
+     * owner: "officials is a broad word"). Like a mat role, anyone may hold
+     * one — no club membership — because EventAccess never reads them.
+     */
+    public const ROLE_COMPETITION_MANAGER = 'competition_manager';
+
+    public const ROLE_ACCREDITATION = 'accreditation';
+
+    public const ROLE_MEDICAL = 'medical';
+
+    public const ROLE_TECHNICAL_DELEGATE = 'technical_delegate';
+
+    public const ROLE_CHIEF_REFEREE = 'chief_referee';
+
+    public const ROLE_TEAM_MANAGER = 'team_manager';
+
+    public const ROLE_COACH = 'coach';
+
+    public const ROLE_TEAM_DOCTOR = 'team_doctor';
+
+    /**
+     * The roles that grant ACCESS to the event. Never add a credit role here:
+     * this list is what makes a role members-only.
+     *
+     * @return array<int, string>
+     */
     public static function roles(): array
     {
         return [self::ROLE_JURY, self::ROLE_WEIGH_IN, self::ROLE_PAYMENTS, self::ROLE_ORGANISER];
+    }
+
+    /**
+     * The credit-only roles, each with the section of the officials list it
+     * reads under (App\Events\Support\OfficialRoles::SECTIONS).
+     *
+     * @return array<string, string>
+     */
+    public static function creditRoles(): array
+    {
+        return [
+            self::ROLE_COMPETITION_MANAGER => 'organising',
+            self::ROLE_ACCREDITATION => 'organising',
+            self::ROLE_MEDICAL => 'organising',
+            self::ROLE_TECHNICAL_DELEGATE => 'technical',
+            self::ROLE_CHIEF_REFEREE => 'technical',
+            self::ROLE_TEAM_MANAGER => 'team',
+            self::ROLE_COACH => 'team',
+            self::ROLE_TEAM_DOCTOR => 'team',
+        ];
     }
 
     /** @return array<int, string> */
@@ -174,7 +220,14 @@ class EventOfficial extends Model
 
         $label = trim(sprintf(
             '%s — %s',
-            __('personal.event_officials_role_'.$this->role),
+            // The job's own name: the platform's lang key exists only for the
+            // four access roles, so a paid referee used to read as the raw key.
+            \Illuminate\Support\Facades\Lang::has('personal.event_officials_role_'.$this->role)
+                ? __('personal.event_officials_role_'.$this->role)
+                : ($this->role === self::ROLE_OTHER
+                    ? (trim((string) $this->role_label) ?: __('personal.personal_event_officials_role_other'))
+                    : (($this->event ? app(\App\Events\Support\OfficialRoles::class)->labels($this->event)[$this->role] ?? null : null)
+                        ?? \Illuminate\Support\Str::headline($this->role))),
             $this->user?->full_name ?? $this->user?->name ?? __('personal.event_officials_someone')
         ));
 

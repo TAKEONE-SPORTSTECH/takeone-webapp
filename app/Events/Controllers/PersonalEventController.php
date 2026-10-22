@@ -274,6 +274,17 @@ class PersonalEventController extends Controller
                 $live = collect($demo)->where('ended', false)->concat($fed)->sortBy($when)->values();
                 $demo = $live->concat(collect($demo)->where('ended', true))->values()->all();
             }
+            // …and once they end, on the Past tab with the finished club
+            // events, most recent first (2026-10-18).
+            $fedPast = \App\Federations\Support\MemberFederationEvents::past($me);
+            if ($fedPast !== []) {
+                $when = fn (array $v) => $v['sort'] ?? (isset($v['date_iso']) ? strtotime($v['date_iso']) : 0);
+                $done = collect($demo)->where('ended', true)->concat($fedPast)
+                    // A federation event running as a platform event can also be
+                    // on the club list — one card per event.
+                    ->unique(fn (array $v) => $v['key'] ?? $v['id'])->sortByDesc($when)->values();
+                $demo = collect($demo)->where('ended', false)->concat($done)->values()->all();
+            }
         }
 
         $isMobile = (bool) $request->attributes->get('is_mobile');
@@ -767,6 +778,7 @@ class PersonalEventController extends Controller
             // decision, though an official always reads it (EventAccess::
             // drawVisible).
             'drawReveal' => $event->draw_reveal ?: \App\Events\Models\ClubEvent::DRAW_ALWAYS,
+            'flagSource' => \App\Events\Support\FlagSource::of($event),
             'visibility' => $event->visibility ?: \App\Events\Models\ClubEvent::LISTED,
             // Club payments (EventEntryInvoice): shown where clubs pay through the platform desk.
             'clubPayments' => ($cp = \App\Events\Models\EventEntryInvoice::where('event_id', $event->id))->exists()
@@ -910,6 +922,15 @@ class PersonalEventController extends Controller
                 DB::table('memberships')
                     ->whereIn('tenant_id', $clubs)
                     ->select('user_id')
+            )
+            // The host's own people — a federation's owner and staff (and the
+            // bodies above it). They run this sport's events and were missing:
+            // the federation's own head, a national team coach, could not be
+            // found to appoint at the federation's own event (2026-10-20).
+            ->union(
+                DB::table('users')
+                    ->whereIn('id', \App\Events\Support\EventHost::of($event)->managerIds($event) ?: [0])
+                    ->select('id as user_id')
             );
     }
 
@@ -1320,6 +1341,10 @@ class PersonalEventController extends Controller
             'placement' => $placement['action'],
             'moved_from' => $placement['from']?->name,
             'unplaced' => $unplaced,
+            // How this entry now sits against the range of the division it is in
+            // ('in' | 'out' | 'unknown', DivisionRange) — so a desk never shows a
+            // plain tick for a weight outside the division.
+            'fit' => ($cat = $registration->fresh()->category) ? (new \App\Events\Support\DivisionRange($cat))->judge($registration->fresh())['fit'] : null,
             // Echoed back so the desk shows what the arena screen will announce
             // — including a rank that came from the profile rather than this
             // form, which is the official's cue that they need not type it.
@@ -2890,7 +2915,10 @@ class PersonalEventController extends Controller
             'third_place_match' => \App\Events\Support\BronzeRule::playsOff($event),
             // The bench is an organiser's working area, not part of the public
             // draw — and only the client that may arrange is told it can.
-            'can_arrange' => $canArrangeDraw = $this->canArrangeDraw($event, $type, $canManage),
+            'can_arrange' => $canArrangeDraw = $this->canArrangeDraw($event, $type, $canManage) || $this->freeMoves($event, $canManage),
+            // Free move (FreeEdit::move): after the start the organiser's Move
+            // drags anyone in any round, writing only the corners it touches.
+            'free_arrange' => $this->freeMoves($event, $canManage),
             /*
              * The padlock banner, and it is now asked of the READER rather than
              * of the clock (2026-09-18). Arranging outlives the start — see
@@ -2940,6 +2968,22 @@ class PersonalEventController extends Controller
         ]);
         $fit = (bool) ($data['fit'] ?? false);
         unset($data['fit']);
+
+        // After the start the package refuses every move (it re-flows the whole
+        // first round). With free edit on, the organiser's drag is written
+        // corner by corner instead (FreeEdit::move) — nothing re-flows.
+        if ($this->freeMoves($event, app(EventAccess::class)->canManage($event, $me))) {
+            $out = app(\App\Events\Support\Tournament\FreeEdit::class)->move($event, $data, $me);
+            if (! $out['ok']) {
+                return response()->json(['success' => false, 'message' => $out['message']], 422);
+            }
+
+            return response()->json(['success' => true, 'message' => $out['message'], 'data' => [
+                'division' => (new \App\Events\Support\BracketView)->division(
+                    $out['category']->load(['matches', 'registrations.user:id,full_name,name,profile_picture,profile_picture_is_public,updated_at'])
+                ),
+            ]]);
+        }
 
         // One division per person: a basket → corner move puts somebody on a board.
         if ($data['from']['type'] === 'bench' && $data['to']['type'] === 'slot') {
@@ -3012,6 +3056,21 @@ class PersonalEventController extends Controller
         }
 
         $data['charge'] = (bool) ($data['charge'] ?? false);
+
+        // Free edit, event under way: written corner by corner (FreeEdit::place)
+        // — a move empties every corner they held in the old bracket.
+        if ($this->freeMoves($event, app(EventAccess::class)->canManage($event, $me))) {
+            $placed = app(\App\Events\Support\Tournament\FreeEdit::class)
+                ->place($event, (int) $data['competitor_id'], (int) $data['to_category_id'], $data['to'], $data['mode'] === 'copy', $me);
+            if (! $placed['ok']) {
+                return response()->json(['success' => false, 'message' => $placed['message']], 422);
+            }
+
+            return response()->json(['success' => true, 'message' => $placed['message'], 'data' => array_filter([
+                'division' => $this->freeDivision($placed['to']),
+                'source' => $placed['from'] ? $this->freeDivision($placed['from']) : null,
+            ])]);
+        }
 
         // One division per person: a COPY onto another board is a second bracket.
         if ($data['to']['type'] === 'slot') {
@@ -3215,6 +3274,24 @@ class PersonalEventController extends Controller
             'competitor_id' => ['required', 'integer'],
         ]);
 
+        // Free edit, event under way: the person MOVES here — out of every
+        // corner of their old bracket — and the package's own late entry then
+        // finds them a corner; when it cannot, they wait in this basket.
+        if ($this->freeMoves($event, app(EventAccess::class)->canManage($event, $me))) {
+            $placed = app(\App\Events\Support\Tournament\FreeEdit::class)
+                ->place($event, (int) $data['competitor_id'], (int) $data['category_id'], null, false, $me);
+            if (! $placed['ok']) {
+                return response()->json(['success' => false, 'message' => $placed['message']], 422);
+            }
+
+            $auto = $this->dispatchAction($event, 'admit_late_entry', ['category_id' => (int) $data['category_id'], 'competitor_id' => $placed['entry']->id]);
+            if ($auto->getStatusCode() === 200) {
+                return $auto;
+            }
+
+            return $this->freeGrowOrBasket($event, $placed);
+        }
+
         // One division per person. The picked entry is MOVED here unless the
         // person already holds one in this division, so it never counts itself.
         $entry = $event->registrations()->where('id', (int) $data['competitor_id'])->first();
@@ -3267,6 +3344,29 @@ class PersonalEventController extends Controller
             ->where('id', (int) $data['competitor_id'])->with('user:id,full_name,name')->first();
         if (! $entry) {
             return response()->json(['success' => false, 'message' => __('events::events.late_entry_not_an_entrant')], 422);
+        }
+
+        // Free edit, event under way: the old steps below answer "that action
+        // isn't available right now" (arrange/transfer are withdrawn at the
+        // start). Do what Add athlete does instead (FreeEdit::place).
+        if ($this->freeMoves($event, true)) {
+            $slot = ($data['to']['type'] ?? null) === 'slot' && ! empty($data['to']['match_id']) ? $data['to'] : null;
+            $placed = app(\App\Events\Support\Tournament\FreeEdit::class)
+                ->place($event, $entry->id, $category->id, $slot, false, $me);
+            if (! $placed['ok']) {
+                return response()->json(['success' => false, 'message' => $placed['message']], 422);
+            }
+            if (! $slot) {
+                $auto = $this->dispatchAction($event, 'admit_late_entry', ['category_id' => $category->id, 'competitor_id' => $placed['entry']->id]);
+                if ($auto->getStatusCode() === 200) {
+                    return $auto;
+                }
+
+                return $this->freeGrowOrBasket($event, $placed);
+            }
+
+            return response()->json(['success' => true, 'message' => $placed['message'],
+                'data' => ['division' => $this->freeDivision($placed['to'])]]);
         }
 
         $own = $entry->category_id === $category->id ? $entry : ($entry->user_id ? $event->registrations()
@@ -3358,6 +3458,49 @@ class PersonalEventController extends Controller
             'success' => true,
             'one_division' => (bool) $data['on'],
             'message' => __($data['on'] ? 'events::events.one_division_on' : 'events::events.one_division_off'),
+            // Turning it on refuses NEW second placements; anybody already in two
+            // divisions is listed here so the screen can ask the organiser where
+            // each one competes (OneDivisionRule::conflicts — read-only).
+            'conflicts' => $data['on'] ? \App\Events\Support\OneDivisionRule::conflicts($event) : [],
+        ]);
+    }
+
+    /** Who stands in more than one division right now (OneDivisionRule::conflicts). Arrangers only. */
+    public function oneDivisionConflicts(Request $request, ClubEvent $event): JsonResponse
+    {
+        $this->assertCanArrange($event, Auth::user());
+
+        return response()->json([
+            'success' => true,
+            'one_division' => (bool) $event->one_division_per_person,
+            'conflicts' => \App\Events\Support\OneDivisionRule::conflicts($event),
+        ]);
+    }
+
+    /**
+     * Which flag a competitor flies at this event — their club's country or
+     * their own nationality (App\Events\Support\FlagSource). Organiser only;
+     * the console row and the federation Draw tab both call it. Changes no
+     * result, number or corner — only which flag is drawn.
+     */
+    public function setFlagSource(Request $request, ClubEvent $event): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertCanManage($event, $me);
+
+        $data = $request->validate(['source' => ['required', Rule::in(\App\Events\Support\FlagSource::ALL)]]);
+        $changed = app(\App\Events\Support\FlagSource::class)->set($event, $data['source']);
+
+        \Illuminate\Support\Facades\Log::info('Event flag source set', ['event' => $event->uuid, 'source' => $data['source'], 'bout_corners' => $changed, 'by' => $me->id]);
+        $this->pushDivisionsChanged($event);
+        $this->pushEventRefresh($event);
+
+        return response()->json([
+            'success' => true,
+            'flag_source' => $data['source'],
+            'message' => __($data['source'] === \App\Events\Support\FlagSource::NATIONALITY
+                ? 'events::events.flag_source_nationality_saved'
+                : 'events::events.flag_source_club_saved'),
         ]);
     }
 
@@ -3484,6 +3627,49 @@ class PersonalEventController extends Controller
      * arranging is on offer at all — the package withdraws `arrange_draw` the
      * moment the event starts, so a started draw is final for everyone.
      */
+    /**
+     * No corner was free for a person just placed in a division (free edit):
+     * add a bout for them — the ladder grows a round, they play in against one
+     * competitor and everybody else walks through (LateEntry::growAnyway).
+     * Only when even that cannot be done do they wait in the basket.
+     */
+    private function freeGrowOrBasket(ClubEvent $event, array $placed): JsonResponse
+    {
+        $entry = $placed['entry'];
+        $category = $placed['to'];
+        $name = $entry->user?->full_name ?: __('events::events.athlete');
+
+        $grown = (new \App\Events\Support\Tournament\LateEntry)->growAnyway($event, $category, $entry);
+
+        if (! ($grown['ok'] ?? false)) {
+            return response()->json(['success' => true, 'message' => __('events::events.free_edit_in_basket', ['name' => $name]),
+                'data' => ['division' => $this->freeDivision($category)]]);
+        }
+
+        rescue(fn () => app(\App\Sports\Combat\Engine\Scheduler::class)->scheduleAndNumber($event->fresh()), null, true);
+        rescue(fn () => $this->typeFor($event)->announceDrawChanged($event, $category->id), null, false);
+        rescue(fn () => app(\App\Scoreboard\Fleet::class)->boardsChanged($event), null, false);
+
+        return response()->json(['success' => true,
+            'message' => __('events::events.late_entry_grown', ['name' => $name, 'opponent' => $grown['opponent']]),
+            'data' => ['division' => $this->freeDivision($category->fresh())]]);
+    }
+
+    /** One division as the board reads it, after a free edit. */
+    private function freeDivision(\App\Events\Models\EventCategory $category): array
+    {
+        return (new \App\Events\Support\BracketView)->division(
+            $category->load(['matches', 'registrations.user:id,full_name,name,profile_picture,profile_picture_is_public,updated_at'])
+        );
+    }
+
+    /** Free move is on for this organiser: free edit enabled and the event under way or over. */
+    private function freeMoves(ClubEvent $event, bool $canManage): bool
+    {
+        return $canManage && \App\Events\Support\Tournament\FreeEdit::enabled()
+            && ($event->hasStarted() || $event->hasEnded());
+    }
+
     private function canArrangeDraw(ClubEvent $event, EventType $type, bool $canManage): bool
     {
         $who = $canManage || app(EventAccess::class)->isOfficial($event, Auth::user());
@@ -3920,6 +4106,9 @@ class PersonalEventController extends Controller
             // else. Sent so the form can show what is on file and ask when it is
             // blank — which is how a referee ended up with no flag at all.
             'nationality' => $u->nationality ?: null,
+            // The flag to draw beside it — ISO-2, for the local flag set (`fi fi-xx`);
+            // stored nationalities come as alpha-2, alpha-3 or a name.
+            'flag' => \App\Support\Flag::iso2($u->nationality),
         ];
 
         return response()->json([
@@ -3958,17 +4147,27 @@ class PersonalEventController extends Controller
             'candidates' => $candidates
                 ->map(fn (User $u) => $shape($u) + ['roles' => ($heldRoles[$u->id] ?? collect())->values()])
                 ->values(),
-            'roles' => collect($this->officialRoleOptions($event))
-                ->map(function ($label, $key) use ($event, $hints) {
-                    return [
-                        'value' => $key,
-                        'label' => $label,
-                        // Every role explains itself now: a mat role says what the job
-                        // is, a platform role says what access it grants.
-                        'hint' => $hints[$key] ?? null,
-                        'group' => in_array($key, EventOfficial::roles(), true) ? 'platform' : 'mat',
-                    ];
-                })->values(),
+            'roles' => (function () use ($event, $hints) {
+                $sections = app(\App\Events\Support\OfficialRoles::class)->sections($event);
+
+                return collect($this->officialRoleOptions($event))
+                    ->map(function ($label, $key) use ($hints, $sections) {
+                        $section = $sections[$key] ?? 'organising';
+
+                        return [
+                            'value' => $key,
+                            'label' => $label,
+                            // Every role explains itself now: a mat role says what the job
+                            // is, a platform role says what access it grants.
+                            'hint' => $hints[$key] ?? null,
+                            'group' => in_array($key, EventOfficial::roles(), true) ? 'platform' : 'mat',
+                            // Which part of the officials list it reads under — the
+                            // pickers head their lists by it.
+                            'section' => $section,
+                            'section_label' => \App\Events\Support\OfficialRoles::sectionLabel($section),
+                        ];
+                    })->values();
+            })(),
             'compensations' => collect(EventOfficial::compensations())->map(fn ($c) => [
                 'value' => $c,
                 'label' => __('personal.event_officials_'.$c),
@@ -4097,23 +4296,8 @@ class PersonalEventController extends Controller
      */
     private function officialRoleHints(ClubEvent $event): array
     {
-        $out = [];
-
-        $sport = app(\App\Sports\Combat\SportRegistry::class)->get($event->sport);
-
-        if ($sport !== null) {
-            foreach ($sport->officialRoles() as $role) {
-                if (! empty($role['key'])) {
-                    $out[$role['key']] = $role['hint'] ?? null;
-                }
-            }
-        }
-
-        foreach (EventOfficial::roles() as $role) {
-            $out[$role] = __('personal.personal_event_officials_role_'.$role.'_hint');
-        }
-
-        return $out;
+        // One vocabulary, one place (OfficialRoles) — the credit roles included.
+        return app(\App\Events\Support\OfficialRoles::class)->hints($event);
     }
 
     /**
@@ -4131,6 +4315,11 @@ class PersonalEventController extends Controller
      */
     private function isMatRole(ClubEvent $event, string $role): bool
     {
+        // `other` is a typed-in designation and grants nothing (EventOfficial::ROLE_OTHER).
+        if ($role === EventOfficial::ROLE_OTHER) {
+            return true;
+        }
+
         return array_key_exists($role, $this->officialRoleOptions($event))
             && ! in_array($role, EventOfficial::roles(), true);
     }
@@ -4158,7 +4347,8 @@ class PersonalEventController extends Controller
 
         $data = $request->validate([
             'full_name' => ['required', 'string', 'min:2', 'max:120'],
-            'role' => ['required', Rule::in(array_keys($this->officialRoleOptions($event)))],
+            'role' => ['required', Rule::in($this->appointableRoles($event))],
+            'role_label' => ['nullable', 'string', 'max:80', 'required_if:role,'.EventOfficial::ROLE_OTHER],
             'compensation' => ['required', Rule::in(EventOfficial::compensations())],
             'fee' => ['nullable', 'numeric', 'min:0.001', 'max:999999', 'required_if:compensation,'.EventOfficial::COMP_PAID],
             'nationality' => ['nullable', 'string', 'size:2', 'alpha', Rule::in($this->countryCodes())],
@@ -4199,7 +4389,27 @@ class PersonalEventController extends Controller
             ], 422);
         }
 
-        $person = \App\Events\Support\UnclaimedPerson::make($data['full_name'], [
+        $roleLabel = $this->otherRoleLabel($data);
+        if ($data['role'] === EventOfficial::ROLE_OTHER && $roleLabel === null) {
+            return response()->json(['success' => false, 'message' => __('events::events.official_other_label_required')], 422);
+        }
+
+        /*
+         * Somebody the platform already has — the same phone AND a name that
+         * is recognisably theirs (KnownPerson, the entry desk's own rule) — is
+         * appointed as themselves rather than recorded a second time. Blind:
+         * the organiser typed both, so nothing is revealed they did not know.
+         * Behind duplicates.guard.officials.
+         */
+        $person = null;
+        if (config('duplicates.guard.officials') && filled($data['phone'] ?? null)) {
+            $person = app(\App\Events\Support\KnownPerson::class)
+                ->matches($data['phone_code'] ?? null, $data['phone'], $data['full_name'])->first();
+            if ($person && EventOfficial::where('event_id', $event->id)->where('user_id', $person->id)->where('role', $data['role'])->exists()) {
+                return response()->json(['success' => false, 'message' => __('events::events.official_already_in_role')], 422);
+            }
+        }
+        $person ??= \App\Events\Support\UnclaimedPerson::make($data['full_name'], [
             'gender' => $data['gender'] ?? null,
             'birthdate' => $data['birthdate'] ?? null,
             'nationality' => $data['nationality'] ?? null,
@@ -4211,6 +4421,7 @@ class PersonalEventController extends Controller
             'event_id' => $event->id,
             'user_id' => $person->id,
             'role' => $data['role'],
+            'role_label' => $roleLabel,
         ]);
 
         $official->assigned_by = $me->id;
@@ -4242,7 +4453,7 @@ class PersonalEventController extends Controller
         return response()->json([
             'success' => true,
             'message' => __('personal.personal_event_officials_added', [
-                'role' => $this->officialRoleOptions($event)[$data['role']] ?? $data['role'],
+                'role' => $roleLabel ?? $this->officialRoleOptions($event)[$data['role']] ?? $data['role'],
             ]),
             'official' => [
                 'id' => $official->id,
@@ -4271,7 +4482,8 @@ class PersonalEventController extends Controller
 
         $data = $request->validate([
             'user_id' => ['required', 'integer', 'exists:users,id'],
-            'role' => ['required', Rule::in(array_keys($this->officialRoleOptions($event)))],
+            'role' => ['required', Rule::in($this->appointableRoles($event))],
+            'role_label' => ['nullable', 'string', 'max:80', 'required_if:role,'.EventOfficial::ROLE_OTHER],
             // Officiating is volunteered or paid; if paid, the amount is not
             // optional — it becomes a line in the event's P&L.
             'compensation' => ['required', Rule::in(EventOfficial::compensations())],
@@ -4301,11 +4513,29 @@ class PersonalEventController extends Controller
             }
         }
 
+        $roleLabel = $this->otherRoleLabel($data);
+        if ($data['role'] === EventOfficial::ROLE_OTHER && $roleLabel === null) {
+            return response()->json(['success' => false, 'message' => __('events::events.official_other_label_required')], 422);
+        }
+
         $official = EventOfficial::firstOrNew([
             'event_id' => $event->id,
             'user_id' => $data['user_id'],
             'role' => $data['role'],
         ]);
+
+        /*
+         * A typed-in designation is its own job: "Announcer" held already does
+         * not make "Results officer" a duplicate. Only the same wording is.
+         */
+        if ($official->exists && $roleLabel !== null
+            && mb_strtolower(trim((string) $official->role_label)) !== mb_strtolower($roleLabel)) {
+            $official = new EventOfficial([
+                'event_id' => $event->id,
+                'user_id' => $data['user_id'],
+                'role' => $data['role'],
+            ]);
+        }
 
         if ($official->exists) {
             return response()->json([
@@ -4319,9 +4549,15 @@ class PersonalEventController extends Controller
         // Never carry a fee on a volunteer — it would sit in the row unused and
         // reappear as a cost the moment someone flipped the type.
         $official->fee = $data['compensation'] === EventOfficial::COMP_PAID ? $data['fee'] : null;
+        $official->role_label = $roleLabel;
         $official->forceFill(\App\Events\Support\EventClubChoice::resolve($event, $data['club'] ?? null));
         // Saving syncs the matching expense (EventOfficial::booted).
-        $official->save();
+        try {
+            $official->save();
+        } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+            // The table still allows one typed-in designation per person.
+            return response()->json(['success' => false, 'message' => __('events::events.official_other_one_only')], 422);
+        }
 
         $this->recordOfficialNationality(User::find($data['user_id']), $data['nationality'] ?? null);
 
@@ -4331,9 +4567,90 @@ class PersonalEventController extends Controller
             // Says which role, because there are now thirteen of them rather than
             // the one the copy used to assume.
             'message' => __('personal.personal_event_officials_added', [
-                'role' => $this->officialRoleOptions($event)[$data['role']] ?? $data['role'],
+                'role' => $roleLabel ?? $this->officialRoleOptions($event)[$data['role']] ?? $data['role'],
             ]),
         ]);
+    }
+
+    /**
+     * Add a designation to the host's officials' list (OfficialDesignation),
+     * offered from then on at every event of that host. Whoever may manage this
+     * event may add to its host's list; the answer is the new option, shaped as
+     * officials() lists roles, so the picker can select it at once. A name the
+     * list already has — standard or added — answers with that one instead.
+     */
+    public function storeOfficialDesignation(Request $request, ClubEvent $event): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertCanManage($event, $me);
+
+        $data = $request->validate([
+            'label' => ['required', 'string', 'min:2', 'max:80'],
+            'section' => ['required', Rule::in(\App\Events\Support\OfficialRoles::SECTIONS)],
+        ]);
+        $label = mb_substr(trim(preg_replace('/\s+/u', ' ', strip_tags($data['label']))), 0, 80);
+        if (mb_strlen($label) < 2) {
+            return response()->json(['success' => false, 'message' => __('events::events.official_other_label_required')], 422);
+        }
+
+        $roles = app(\App\Events\Support\OfficialRoles::class);
+        $option = function (string $key) use ($event, $roles) {
+            $section = $roles->sections($event)[$key] ?? 'organising';
+
+            return [
+                'value' => $key,
+                'label' => $roles->labels($event)[$key] ?? $key,
+                'hint' => $roles->hints($event)[$key] ?? null,
+                'group' => in_array($key, EventOfficial::roles(), true) ? 'platform' : 'mat',
+                'section' => $section,
+                'section_label' => \App\Events\Support\OfficialRoles::sectionLabel($section),
+            ];
+        };
+
+        // Already on the list, under any name the picker shows: that one.
+        $existing = collect($roles->labels($event))->search(fn ($l) => mb_strtolower(trim((string) $l)) === mb_strtolower($label));
+        if ($existing !== false) {
+            return response()->json(['success' => true, 'existing' => true, 'message' => __('events::events.official_designation_exists'), 'role' => $option((string) $existing)]);
+        }
+
+        $host = \App\Events\Support\EventHost::of($event);
+        if (! $host->id || $host->kind === 'none') {
+            return response()->json(['success' => false, 'message' => __('events::events.official_designation_no_host')], 422);
+        }
+        $list = \App\Events\Models\OfficialDesignation::where('host_type', $host->kind)->where('host_id', $host->id);
+        if ($list->count() >= \App\Events\Models\OfficialDesignation::MAX_PER_HOST) {
+            return response()->json(['success' => false, 'message' => __('events::events.official_designation_full')], 422);
+        }
+
+        $d = \App\Events\Models\OfficialDesignation::create([
+            'host_type' => $host->kind, 'host_id' => $host->id,
+            'label' => $label, 'section' => $data['section'], 'created_by' => $me->id,
+        ]);
+        \Illuminate\Support\Facades\Log::info('events.official_designation.added', ['event' => $event->uuid, 'host' => $host->kind.':'.$host->id, 'designation' => $d->uuid, 'by' => $me->id]);
+
+        return response()->json(['success' => true, 'message' => __('events::events.official_designation_added', ['label' => $label]), 'role' => $option($d->key())], 201);
+    }
+
+    /**
+     * Every role an appointment may be made to: the event's own vocabulary,
+     * plus `other` — a designation the list has no word for, typed in.
+     *
+     * @return array<int, string>
+     */
+    private function appointableRoles(ClubEvent $event): array
+    {
+        return [...array_keys($this->officialRoleOptions($event)), EventOfficial::ROLE_OTHER];
+    }
+
+    /** The typed-in wording of an `other` job, cleaned; null for every other role. */
+    private function otherRoleLabel(array $data): ?string
+    {
+        if (($data['role'] ?? null) !== EventOfficial::ROLE_OTHER) {
+            return null;
+        }
+        $label = trim(preg_replace('/\s+/u', ' ', strip_tags((string) ($data['role_label'] ?? ''))));
+
+        return $label !== '' ? mb_substr($label, 0, 80) : null;
     }
 
     /**
@@ -4355,7 +4672,10 @@ class PersonalEventController extends Controller
             'nationality' => ['nullable', 'string', 'size:2', 'alpha', Rule::in($this->countryCodes())],
             // Changing the position in place, rather than removing and re-adding —
             // which would lose the appointment's history and its linked expense.
-            'role' => ['nullable', Rule::in(array_keys($this->officialRoleOptions($event)))],
+            'role' => ['nullable', Rule::in($this->appointableRoles($event))],
+            // The wording of a typed-in (`other`) job — corrected in place, so a
+            // person's one typed-in job can be renamed without a second row.
+            'role_label' => ['nullable', 'string', 'max:80'],
             // Whose referee this is — see storeOfficial(). An empty string is a
             // deliberate "independent"; the key being ABSENT leaves whatever is
             // recorded alone (CLAUDE.md → Absent is not the same as blank).
@@ -4376,6 +4696,18 @@ class PersonalEventController extends Controller
             }
 
             $official->role = $data['role'];
+        }
+
+        if ($official->role === EventOfficial::ROLE_OTHER) {
+            if ($request->has('role_label')) {
+                $label = $this->otherRoleLabel(['role' => EventOfficial::ROLE_OTHER, 'role_label' => $data['role_label'] ?? '']);
+                if ($label === null) {
+                    return response()->json(['success' => false, 'message' => __('events::events.official_other_label_required')], 422);
+                }
+                $official->role_label = $label;
+            }
+        } elseif ($official->isDirty('role')) {
+            $official->role_label = null;   // a listed job has no typed-in wording
         }
 
         if ($request->has('club')) {
@@ -5792,7 +6124,18 @@ class PersonalEventController extends Controller
             return response()->json(['success' => false, 'message' => __('events::events.action_unavailable')], 422);
         }
 
+        // One division per person, with people already in two (DrawGuard; flag OFF by default).
+        if ($action === 'generate_draw' && ($refused = \App\Events\Support\DrawGuard::refusal($event))) {
+            return response()->json(['success' => false, 'message' => $refused,
+                'conflicts' => \App\Events\Support\OneDivisionRule::conflicts($event)], 422);
+        }
+
         $result = $type->performAction($event, $action, $request->all());
+
+        // Divisions too small to be fair, reported beside the draw (never refused).
+        if ($action === 'generate_draw' && ($small = \App\Events\Support\DrawGuard::small($event)) !== []) {
+            $result['small_divisions'] = $small;
+        }
 
         return response()->json($result + [
             'redirect' => route('me.events.bracket.manage', $event->uuid),
@@ -5816,7 +6159,34 @@ class PersonalEventController extends Controller
             'status' => ['nullable', Rule::in(['upcoming', 'live', 'done'])],
         ]);
 
+        /*
+         * Taking a result back or changing it (ResultCorrection): refused while
+         * a later bout it would rewrite has been fought or started; a clear
+         * resets the scoreline so the bout is fought again; and the change is
+         * logged and the podium re-derived afterwards. Behind
+         * EVENT_RESULT_CORRECTION — off, this door behaves exactly as before.
+         */
+        $correcting = null;
+        if (\App\Events\Support\Tournament\ResultCorrection::enabled()) {
+            $bout = \App\Events\Models\EventMatch::where('event_id', $event->id)->find($unit);
+            if ($bout && \App\Events\Support\Tournament\ResultCorrection::changes($bout, $payload)) {
+                $blockers = \App\Events\Support\Tournament\ResultCorrection::blockers($bout);
+                if ($blockers->isNotEmpty()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => \App\Events\Support\Tournament\ResultCorrection::refusal($blockers),
+                    ], 422);
+                }
+                $correcting = [$bout, \App\Events\Support\Tournament\ResultCorrection::snapshot($bout)];
+                $payload = \App\Events\Support\Tournament\ResultCorrection::clearPayload($payload);
+            }
+        }
+
         $changed = $this->typeFor($event)->recordOutcome($event, $unit, $payload);
+
+        if ($correcting && ($changed['ok'] ?? $changed['success'] ?? true) !== false) {
+            \App\Events\Support\Tournament\ResultCorrection::after($event, $correcting[0], $correcting[1], $me);
+        }
 
         /*
          * ⚠️ THE PACKAGE'S OWN ANSWER WINS.
@@ -6461,6 +6831,8 @@ class PersonalEventController extends Controller
             'streams' => array_values(array_filter(EventStreams::of($event), fn ($r) => is_array($r) && ($r['key'] ?? '') !== '')),
             // One bracket per person (OneDivisionRule) — the tab's switch.
             'one_division' => (bool) $event->one_division_per_person,
+            // Which flag a competitor flies (FlagSource) — the tab's second switch.
+            'flag_source' => \App\Events\Support\FlagSource::of($event),
         ]);
     }
 
@@ -6896,6 +7268,8 @@ class PersonalEventController extends Controller
             ], 422);
         }
 
+        $released = $category->registrations()->pluck('user_id');
+
         DB::transaction(function () use ($category) {
             /*
              * The bouts go with the group.
@@ -6916,6 +7290,9 @@ class PersonalEventController extends Controller
             $category->registrations()->update(['category_id' => null]);
             $category->delete();
         });
+
+        // Released people who still hold another entry keep only that one.
+        \App\Events\Support\SpareEntries::fold($event, $released);
 
         $this->pushDivisionsChanged($event);
 
@@ -7707,6 +8084,13 @@ class PersonalEventController extends Controller
                 $sibling->category_id = $category->id;
                 $sibling->category_source = ClubEventRegistration::PLACED_MANUAL;
                 $sibling->save();
+
+                // Recorded as FREE (the way Transfer copies): a row with no fee
+                // lines is valued at the list price, so marking the club paid
+                // would otherwise charge this second division a second time.
+                if (\App\Events\Support\SpareEntries::enabled() && ! \App\Events\Support\EventStreams::many($event)) {
+                    EventFee::commit($sibling, ['total' => 0.0, 'currency' => EventFee::currency($event), 'lines' => []]);
+                }
             }
 
             if ($remove) {
@@ -7734,6 +8118,12 @@ class PersonalEventController extends Controller
                     ->update(['b_competitor_id' => null, 'b_name' => null]);
             }
         });
+
+        // Somebody taken out of this division who still holds an entry in
+        // another one leaves no stray row behind.
+        if ($remove) {
+            \App\Events\Support\SpareEntries::fold($event, ClubEventRegistration::whereIn('id', $remove)->pluck('user_id'));
+        }
 
         /*
          * One division changed shape, so one division is re-derived. Nothing
@@ -8977,7 +9367,7 @@ class PersonalEventController extends Controller
                 ->where('kind', \App\Events\Models\EventRunSlot::KIND_GROUP)
                 ->where('mode', \App\Events\Support\RunSessions::ROUND_BY_ROUND)
                 ->orderBy('position')->first()
-                ?? $order->addBlock($event, \App\Events\Models\EventRunSlot::KIND_GROUP, 'Round by round (WT)', null, $day, \App\Events\Support\RunSessions::ROUND_BY_ROUND);
+                ?? $order->addBlock($event, \App\Events\Models\EventRunSlot::KIND_GROUP, 'Round by round', null, $day, \App\Events\Support\RunSessions::ROUND_BY_ROUND);
 
             $groupIds = \App\Events\Models\EventRunSlot::where('event_id', $event->id)
                 ->where('kind', \App\Events\Models\EventRunSlot::KIND_GROUP)->pluck('id')->all();

@@ -43,7 +43,7 @@ class RevokeCertificateTool extends BaseTool
         }
 
         app(CertificateService::class)->revoke($c, $user, strip_tags($v['reason']));
-        CertificateRealtime::refresh([$c->recipient_id]);
+        CertificateRealtime::refresh([CertificateRealtime::holder($c)]);
 
         return Response::json(['certificate' => $c->uuid, 'status' => 'revoked']);
     }

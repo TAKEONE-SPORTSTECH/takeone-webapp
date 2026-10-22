@@ -1114,7 +1114,7 @@ return [
     'personal_event_officials_remove' => 'إزالة',
     'personal_event_officials_removed' => 'تمت الإزالة من هيئة التحكيم.',
     'personal_event_officials_role' => 'المهمة',
-    'personal_event_officials_role_jury' => 'هيئة التحكيم',
+    'personal_event_officials_role_jury' => 'هيئة التحكيم (القرعة)',
     'personal_event_officials_role_other' => 'أخرى',
     'personal_event_officials_role_jury_hint' => 'ترتيب القرعة يدويًا قبل أول نزال.',
     'personal_event_officials_role_organiser' => 'المنظّم',

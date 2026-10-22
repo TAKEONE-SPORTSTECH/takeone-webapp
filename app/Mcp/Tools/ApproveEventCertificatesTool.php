@@ -54,7 +54,7 @@ class ApproveEventCertificatesTool extends BaseTool
         foreach ($drafts as $c) {
             if (Gate::forUser($user)->allows('approve', $c)) {
                 $service->approve($c, $user);
-                CertificateRealtime::refresh([$c->recipient_id]);
+                CertificateRealtime::refresh([CertificateRealtime::holder($c)]);
                 $approved++;
             }
         }

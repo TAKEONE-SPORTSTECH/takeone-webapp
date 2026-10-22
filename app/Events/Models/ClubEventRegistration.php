@@ -198,6 +198,15 @@ class ClubEventRegistration extends Model
 
     public function countryCode(): ?string
     {
+        /*
+         * The event may fly nationalities instead (owner, 2026-10-16 —
+         * App\Events\Support\FlagSource). Then the passport comes first and
+         * the club below is only the fallback for a nationality not on file.
+         */
+        if (\App\Events\Support\FlagSource::byNationality($this->event_id) && $this->user?->nationality) {
+            return $this->user->nationality;
+        }
+
         if ($this->representedTenantId()) {
             return $this->representingTenant?->country ?: ($this->meta ?: null);
         }

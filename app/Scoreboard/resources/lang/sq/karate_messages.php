@@ -102,6 +102,8 @@ return [
     'ctl_reset' => 'Rivendos',
     'ctl_result_pending' => 'Fituesi · jo i regjistruar',
     'ctl_resync' => 'Risinkronizo',
+    'ctl_unload' => 'Hiq ndeshjen',
+    'ctl_unload_confirm' => 'Prek përsëri për ta hequr',
     'ctl_resync_hint' => 'Ndryshimet shfaqen menjëherë në tabelën e rezultateve. Nëse një ekran duket i ngjallur, risinkronizimi rifreskon të gjitha tabelat në këtë mat.',
     'ctl_resynced' => 'Sinkronizuar përsëri ✓',
     'ctl_round' => 'Rrëndësia',

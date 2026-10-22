@@ -59,6 +59,8 @@ class EventParticipantBadges extends EventBadges
                 'divisions' => $rows->map(fn ($r) => $r->category ? (string) ($r->category->getRawOriginal('name') ?: $r->category->name) : null)->filter()->unique()->implode(' · '),
                 'club' => $first->representingTenant?->club_name ?: ($clubs[$first->id]['name'] ?? null),
                 'photo' => $rows->pluck('photo')->filter()->first(),
+                // The entry the club is read from, for the club's crest on the badge.
+                'entry' => $first,
             ];
         })->sortBy(fn ($p) => mb_strtolower((string) ($p['user']->full_name ?: $p['user']->name)))->values();
     }
@@ -104,6 +106,15 @@ class EventParticipantBadges extends EventBadges
     /** Every competitor's badge, four to an A4 sheet — the file a print shop is sent. */
     public function sheets(ClubEvent $event, string $locale, ?callable $progress = null): string
     {
+        if ($design = $this->badgeDesign($event)) {
+            $pages = $this->participants($event)->map(fn ($p) => [
+                $design,
+                $this->designValues($event, $this->participantFields($p, $event), $p['entry'] ? $this->entryCrest($event, $p['entry']) : null,
+                    $p['user']->nationality, $p['entry'] ? $this->entryClub($event, $p['entry']) : null),
+            ])->all();
+
+            return \App\Printables\Printer::sheets($pages, $progress);
+        }
         $service = app(CertificateService::class);
         $template = $this->template($event);
         $pages = $this->participants($event)->map(fn ($p) => fn () => $service->renderDocument($template, $locale, $this->participantFields($p, $event), $event))->all();
@@ -116,7 +127,7 @@ class EventParticipantBadges extends EventBadges
         $ids = ClubEventRegistration::where('event_id', $event->id)->where('role', 'participant')->orderBy('id')
             ->get(['id', 'updated_at', 'category_id'])->map(fn ($r) => $r->id.'@'.$r->updated_at.'@'.$r->category_id)->implode(',');
 
-        return substr(sha1($locale.'|'.$ids.'|'.$this->template($event)->updated_at), 0, 16);
+        return substr(sha1($locale.'|'.$ids.'|'.$this->template($event)->updated_at.'|'.$this->designSignature($event)), 0, 16);
     }
 
     public function printCount(Model $context, string $type): int

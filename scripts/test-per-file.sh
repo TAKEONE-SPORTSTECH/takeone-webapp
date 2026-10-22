@@ -31,6 +31,11 @@ for f in $files; do
 done
 
 grep -hE '^[0-9]+\) ' "$OUT"/*.txt | sed -E 's/^[0-9]+\) //' | sort -u > "$OUT/_failing.txt"
+# A file that never reached a summary (fatal error, out of memory) names no
+# failing test — count it as one, or a crash would pass for green.
+for t in "$OUT"/tests_*.txt; do
+  grep -qE '^(OK \(|OK, but|Tests: .*|FAILURES!|ERRORS!|No tests executed)' "$t" || echo "CRASHED $(basename "$t" .txt)"
+done | sort -u >> "$OUT/_failing.txt"
 echo "files: $total, files with failures: $failed_files, failing tests: $(wc -l < "$OUT/_failing.txt")"
 
 if [ -n "$BASELINE" ]; then

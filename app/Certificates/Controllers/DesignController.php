@@ -43,6 +43,17 @@ class DesignController extends Controller
     public function page(Request $request, string $context, string $key)
     {
         [$provider, $model] = $this->managedContext($context, $key, $request);
+
+        // With the new designer switched on (App\Printables), this room hands over to it,
+        // on the same certificate type. `?classic=1` still opens this room.
+        if (\App\Printables\Designer::enabled() && ! $request->boolean('classic')) {
+            $type = in_array($request->query('type'), $provider->types(), true) ? $request->query('type') : ($provider->types()[0] ?? null);
+            $url = \App\Printables\Designer::url($model, 'certificate', $type, $request->query('back'));
+            if ($url) {
+                return redirect()->to($url);
+            }
+        }
+
         $isMobile = (bool) $request->attributes->get('is_mobile');
 
         return view($isMobile ? 'cert::design.mobile' : 'cert::design.desktop', [

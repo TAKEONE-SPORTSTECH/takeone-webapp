@@ -150,6 +150,44 @@ class FederationApiController extends Controller
         return response()->json(['success' => $r['ok'], 'message' => $r['message'], 'event' => ['id' => $data['event']], 'feature' => $r['state'] ?? null], $r['ok'] ? 200 : 422);
     }
 
+    /**
+     * The results report's cover page (FederationReportCover): a manager of
+     * the event's federation uploads a PDF or a picture; it opens every
+     * download of the Results tab's PDF. Out of scope answers as not found.
+     */
+    public function reportCover(Request $request, \App\Federations\Services\FederationReportCover $cover): JsonResponse
+    {
+        $access = $this->access($request);
+        abort_unless($access['manager'] ?? false, 404);
+        $data = $request->validate([
+            'event' => ['required', 'uuid'],
+            'file' => ['required', 'file', 'max:10240'],
+        ]);
+        $ev = $cover->event($access, $data['event']);
+        abort_unless($ev, 404);
+
+        $error = $cover->store($ev, $request->file('file'));
+        if ($error === null) {
+            \Illuminate\Support\Facades\Log::info('Federation report cover uploaded', ['event' => $ev->uuid, 'by' => $request->user()->id]);
+        }
+
+        return response()->json(['success' => $error === null, 'message' => $error ?? 'Cover page saved.', 'cover' => $cover->kind($ev)], $error ? 422 : 200);
+    }
+
+    public function reportCoverDelete(Request $request, \App\Federations\Services\FederationReportCover $cover): JsonResponse
+    {
+        $access = $this->access($request);
+        abort_unless($access['manager'] ?? false, 404);
+        $data = $request->validate(['event' => ['required', 'uuid']]);
+        $ev = $cover->event($access, $data['event']);
+        abort_unless($ev, 404);
+
+        $cover->remove($ev);
+        \Illuminate\Support\Facades\Log::info('Federation report cover removed', ['event' => $ev->uuid, 'by' => $request->user()->id]);
+
+        return response()->json(['success' => true, 'message' => 'Cover page removed.', 'cover' => null]);
+    }
+
     public function upload(Request $request, FederationEvents $events): JsonResponse
     {
         $access = $this->access($request);
@@ -206,6 +244,11 @@ class FederationApiController extends Controller
         $shown = $editor->show($access, $data['entry'], $data['athlete']);
         // One answer for "not yours" and "not there" (anti-enumeration).
         abort_unless($shown, 404);
+        // Lists show a child's national ID masked; opening the athlete shows it
+        // in full, so who opened it is kept (NationalIdMask).
+        if (($shown['natId'] ?? '') !== '' && \App\Federations\Support\NationalIdMask::applies($shown['dob'] !== '' ? \Illuminate\Support\Carbon::parse($shown['dob']) : null)) {
+            activity()->causedBy($request->user())->withProperties(['takeone_id' => $shown['takeoneId']])->log('federation.national_id_viewed');
+        }
 
         return response()->json(['success' => true, 'athlete' => $shown, 'canEdit' => (bool) ($access['manager'] ?? false)]);
     }
@@ -363,10 +406,34 @@ class FederationApiController extends Controller
     public function regsWithdraw(Request $request, FederationDesk $desk): JsonResponse
     {
         $access = $this->access($request);
-        $data = $request->validate(['athletes' => ['required', 'array', 'max:1000']]);
-        $ok = $desk->withdrawRegs($access, $data['athletes']);
+        // Taking athletes off an event needs the word DELETE typed and a reason
+        // given — refused here, whatever the page did or did not ask.
+        $data = $request->validate([
+            'athletes' => ['required', 'array', 'max:1000'],
+            'reason' => ['required', 'string', 'min:5', 'max:500'],
+            'confirm' => ['required', 'string', 'in:DELETE'],
+        ], [
+            'reason.required' => 'Say why they are being removed.',
+            'reason.min' => 'Say why they are being removed (at least 5 characters).',
+            'confirm.required' => 'Type DELETE to confirm.',
+            'confirm.in' => 'Type DELETE to confirm.',
+        ]);
+        $n = $desk->withdrawRegs($access, $data['athletes'], $request->user(), trim(strip_tags($data['reason'])), $request->ip());
+        $ok = $n !== null;
 
-        return response()->json(['success' => $ok, 'regs' => $desk->regs($access)], $ok ? 200 : 403);
+        return response()->json(['success' => $ok, 'withdrawn' => (int) $n, 'regs' => $desk->regs($access)], $ok ? 200 : 403);
+    }
+
+    /** Event → Registrations: who withdrew athletes, when and why (managers only). */
+    public function regsWithdrawals(Request $request, FederationDesk $desk): JsonResponse
+    {
+        $access = $this->access($request);
+        $data = $request->validate(['event' => ['required', 'uuid']]);
+        $rows = $desk->withdrawals($access, $data['event']);
+        // One answer for "not yours" and "not there" (anti-enumeration).
+        abort_if($rows === null, 404);
+
+        return response()->json(['success' => true, 'withdrawals' => $rows], 200, ['Cache-Control' => 'no-store, private']);
     }
 
     /** Event → Clubs tab: take a whole club's athletes off the event. Answers with the registrations again. */
@@ -377,7 +444,7 @@ class FederationApiController extends Controller
             'event' => ['required', 'uuid'],
             'club' => ['required', 'string', 'regex:/^(fc|fa)-[0-9a-f-]{36}$/'],
         ]);
-        $n = $desk->withdrawClub($access, $data['event'], $data['club']);
+        $n = $desk->withdrawClub($access, $data['event'], $data['club'], $request->user(), $request->ip());
         // One answer for "not yours" and "not there" (anti-enumeration).
         abort_if($n === null, 404);
 
@@ -696,8 +763,10 @@ class FederationApiController extends Controller
             'club' => ['required', 'string', 'regex:/^fa-[0-9a-f-]{36}$/'],
             'decision' => ['required', 'in:new,link,reject'],
             'target' => ['required_if:decision,link', 'nullable', 'string', 'max:120', 'regex:/^[a-z0-9\-]+$/'],
+            // "Yes, a second club beside the one with the same email/phone" — see decide().
+            'override' => ['nullable', 'boolean'],
         ]);
-        $error = $manager->decide($request->user(), $access, $data['club'], $data['decision'], $data['target'] ?? null);
+        $error = $manager->decide($request->user(), $access, $data['club'], $data['decision'], $data['target'] ?? null, (bool) ($data['override'] ?? false));
         $done = ['new' => 'Club approved.', 'link' => 'Linked to the existing club.', 'reject' => 'Application refused.'][$data['decision']];
 
         return $this->clubAnswer($error, $done, $access, $picker);

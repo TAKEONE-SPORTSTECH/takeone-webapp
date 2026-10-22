@@ -439,7 +439,7 @@ return [
     // and made one button twice the height of its neighbours.
     'event_manage_officials_sub' => 'Who helps you run it',
     'personal_event_officials_role' => 'Role',
-    'personal_event_officials_role_jury' => 'Jury',
+    'personal_event_officials_role_jury' => 'Jury (draw)',
     'personal_event_officials_role_other' => 'Other',
     'personal_event_officials_role_jury_hint' => 'May arrange the draw by hand before the first bout.',
     'personal_event_officials_role_weigh_in' => 'Weigh-in',

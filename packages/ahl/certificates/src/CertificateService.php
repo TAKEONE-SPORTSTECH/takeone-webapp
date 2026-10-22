@@ -148,6 +148,19 @@ class CertificateService
         });
     }
 
+    /**
+     * Remove a certificate whatever its status — its stored PDF first, then the row.
+     * Unlike delete() this takes an ISSUED one too: its holder loses it and its QR stops
+     * verifying, so it is for an organiser clearing an event out, never a routine path.
+     */
+    public function destroy(Certificate $certificate): void
+    {
+        DB::transaction(function () use ($certificate) {
+            $this->files->delete($certificate, self::PDF_SLOT);
+            $certificate->delete();
+        });
+    }
+
     /** Approve a draft: issue date = today, final PDF stored (now, or on first open — render_on_approve), recipient notified (notify_on_approve). */
     public function approve(Certificate $certificate, ?Authenticatable $by = null): Certificate
     {
@@ -203,6 +216,13 @@ class CertificateService
     public function bundle(iterable $certificates, string $purpose = self::PURPOSE_DOWNLOAD, ?callable $progress = null): string
     {
         $list = is_array($certificates) ? $certificates : iterator_to_array($certificates, false);
+
+        // Certificates drawn from a host-made design are bundled by that host (Contracts\DesignedPages).
+        $designed = config('certificates.designed_pages');
+        if ($designed && class_exists($designed) && method_exists($designed, 'bundle')
+            && ($bytes = app($designed)->bundle($list, fn (Certificate $c) => $this->render($c, $purpose), $progress)) !== null) {
+            return $bytes;
+        }
 
         return $this->bundlePages(array_map(fn (Certificate $c) => fn () => $this->render($c, $purpose), $list), $progress);
     }
@@ -392,25 +412,26 @@ class CertificateService
             ? $this->templateFor($certificate->type, $certificate->context_id ? $certificate->context : null)
             : $certificate->template;
         $recipient = $certificate->recipient;
-        $locale = $this->localeOf($recipient);
         $details = (array) ($certificate->details ?? []);
+        $fill = $this->designFill($certificate);
+        ['name' => $name, 'qr' => $qr, 'stamp' => $stamp, 'locale' => $locale] = $fill;
 
-        $bytes = $this->renderView($template, $locale, [
-            'name' => $recipient instanceof Recipient ? $recipient->certificateName() : (string) ($recipient?->getAttribute('name') ?? ''),
+        // A host-made design for this certificate type draws it instead of the template
+        // (Contracts\DesignedPages). Not inside a bundle capture, which needs the template's HTML.
+        $bytes = null;
+        if ($this->capture === null && ($designed = config('certificates.designed_pages')) && class_exists($designed)) {
+            $bytes = app($designed)->render($certificate, $fill, $purpose, $imageDpi);
+        }
+
+        $bytes ??= $this->renderView($template, $locale, [
+            'name' => $name,
             'title' => $certificate->title ?: $template->title($locale),
             'body' => $this->fill($template->body($locale), $certificate, $locale),
             'grade' => $certificate->gradeLabel($locale),
             'date' => $certificate->issued_on ?? today(),
             'certificate_no' => $certificate->certificate_no,
-            // A draft shows where its code will sit with the design room's stand-in (a link
-            // that verifies nothing); the real one, which proves the certificate, comes on approval.
-            'qr' => $certificate->isApproved() ? $this->qrDataUri($this->verifyUrl($certificate))
-                : ($certificate->isDraft() ? $this->qrDataUri($this->verifyUrl(Certificates::model()::make(['verify_token' => 'sample']))) : null),
-            'stamp' => match ($certificate->status) {
-                CertificateStatus::Draft => __('certificates::certificates.draft_mark', [], $locale),
-                CertificateStatus::Revoked => __('certificates::certificates.revoked_mark', [], $locale),
-                default => null,
-            },
+            'qr' => $qr,
+            'stamp' => $stamp,
             'photo' => $template->show_photo && $recipient instanceof Recipient ? $recipient->certificatePhoto() : null,
             'place' => isset($details['place']) ? (int) $details['place'] : null,
             'extras' => $this->extras($template, $certificate, $locale),
@@ -421,6 +442,38 @@ class CertificateService
         }
 
         return $bytes;
+    }
+
+    /**
+     * What a host-made design is filled with for one certificate (Contracts\DesignedPages):
+     * the holder's name, photo and locale, the issue date, the QR and the stamp. One
+     * place, so the page that prints it and a designer previewing it agree.
+     *
+     * @return array{name: string, qr: ?string, qr_text: ?string, stamp: ?string, photo: ?string, date: string, locale: string}
+     */
+    public function designFill(Certificate $certificate): array
+    {
+        $recipient = $certificate->recipient;
+        $locale = $this->localeOf($recipient);
+        // A draft shows where its code will sit with the design room's stand-in (a link
+        // that verifies nothing); the real one, which proves the certificate, comes on approval.
+        $qrText = $certificate->isApproved() ? $this->verifyUrl($certificate)
+            : ($certificate->isDraft() ? $this->verifyUrl(Certificates::model()::make(['verify_token' => 'sample'])) : null);
+
+        return [
+            'name' => $recipient instanceof Recipient ? $recipient->certificateName() : (string) ($recipient?->getAttribute('name') ?? ''),
+            'qr' => $qrText ? $this->qrDataUri($qrText) : null,
+            // The link itself, for a design that draws its own (styled, vector) code.
+            'qr_text' => $qrText,
+            'stamp' => match ($certificate->status) {
+                CertificateStatus::Draft => __('certificates::certificates.draft_mark', [], $locale),
+                CertificateStatus::Revoked => __('certificates::certificates.revoked_mark', [], $locale),
+                default => null,
+            },
+            'photo' => $recipient instanceof Recipient ? $recipient->certificatePhoto() : null,
+            'date' => ($certificate->issued_on ?? today())->locale($locale)->translatedFormat('j F Y'),
+            'locale' => $locale,
+        ];
     }
 
     /**

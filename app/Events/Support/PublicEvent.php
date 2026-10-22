@@ -647,7 +647,7 @@ class PublicEvent
             ->sortBy(fn ($o) => $order[$o->role === \App\Events\Models\EventOfficial::ROLE_OTHER
                 ? 'other:'.(trim((string) $o->role_label) ?: __('personal.personal_event_officials_role_other'))
                 : $o->role] ?? PHP_INT_MAX)
-            ->map(function ($o) use ($labels) {
+            ->map(function ($o) use ($labels, $event) {
                 $club = $o->club();
                 $photo = EntryPhoto::showable($o->photo) ? file_url($o->photo) : null;
                 if (! $photo && $o->user->profile_picture && $o->user->profile_picture_is_public) {
@@ -665,6 +665,9 @@ class PublicEvent
                     'club' => $club['name'] ?? null,
                     'club_logo' => $club['logo'] ?? null,
                     'job' => $job,
+                    // Which part of the officials list this reads under
+                    // (OfficialRoles::SECTIONS) — the competition report heads by it.
+                    'section' => app(OfficialRoles::class)->sectionOf($event, (string) $o->role, $o->role_label),
                     'division_rows' => [['id' => 0, 'name' => $job]],
                 ];
             })

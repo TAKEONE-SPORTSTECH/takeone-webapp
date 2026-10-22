@@ -23,8 +23,21 @@
                     <sc-if value="{{ dm.canOneDiv }}" hint-placeholder-val="{{ false }}">
                       <button type="button" role="switch" aria-checked="{{ dm.oneDivPressed }}" onClick="{{ dm.onOneDiv }}" title="When on, nobody can be placed in a second division's bracket" style="{{ dm.oneDivStyle }}"><span style="{{ dm.oneDivDot }}"></span>{{ dm.oneDivLabel }}</button>
                     </sc-if>
+                    <sc-if value="{{ dm.canFlagSrc }}" hint-placeholder-val="{{ false }}">
+                      <button type="button" onClick="{{ dm.onFlagSrc }}" title="Tap to switch: the flag beside each athlete is their club's country, or their own nationality" style="{{ dm.flagSrcStyle }}">⚑ {{ dm.flagSrcLabel }}</button>
+                    </sc-if>
                     <sc-if value="{{ dm.canPdf }}" hint-placeholder-val="{{ false }}">
-                      <button type="button" onClick="{{ dm.onPdf }}" title="Download every division's bracket as one PDF" style="height:40px;padding:0 14px;border:1px solid #d5dae3;border-radius:11px;font-family:inherit;font-size:.8rem;font-weight:700;color:#1e2c4f;background:#fff;cursor:pointer" style-hover="border-color:#caa14f">{{ dm.pdfLabel }}</button>
+                      <div style="position:relative">
+                        <button type="button" onClick="{{ dm.onPdfToggle }}" aria-haspopup="menu" aria-expanded="{{ dm.pdfOpen }}" title="Download every division's bracket as one PDF" style="{{ dm.pdfStyle }}" style-hover="border-color:#caa14f">{{ dm.pdfLabel }}<span aria-hidden="true" style="font-size:.7rem;color:#8a6d20">{{ dm.pdfCaret }}</span></button>
+                        <sc-if value="{{ dm.pdfOpen }}" hint-placeholder-val="{{ false }}">
+                          <div onClick="{{ dm.onPdfClose }}" style="position:fixed;inset:0;z-index:45"></div>
+                          <div role="menu" onClick="{{ dm.stop }}" style="position:absolute;top:46px;right:0;z-index:46;min-width:260px;max-width:calc(100vw - 2rem);padding:6px;background:#fff;border:1px solid #eef1f6;border-radius:14px;box-shadow:0 18px 40px rgba(30,44,79,.16);animation:rise .18s cubic-bezier(.22,.68,.35,1) both">
+                            <sc-for list="{{ dm.pdfItems }}" as="i" hint-placeholder-count="2">
+                              <button type="button" role="menuitem" onClick="{{ i.onClick }}" style="{{ i.style }}" style-hover="background:#fdf6e6"><span style="font-size:.82rem;font-weight:700;color:#1e2c4f">{{ i.label }}</span><span style="font-size:.7rem;color:#6b7689">{{ i.hint }}</span></button>
+                            </sc-for>
+                          </div>
+                        </sc-if>
+                      </div>
                     </sc-if>
                     <sc-if value="{{ dm.canDelAll }}" hint-placeholder-val="{{ false }}">
                       <button type="button" onClick="{{ dm.onDelAll }}" title="Clear every division away — no athlete leaves the event" style="height:40px;padding:0 14px;border:1px solid #f0c9c3;border-radius:11px;font-family:inherit;font-size:.8rem;font-weight:700;color:#c0392b;background:#fff;cursor:pointer" style-hover="background:#fcefed">Clear divisions</button>
@@ -57,16 +70,18 @@
                   <div style="padding:28px 16px;text-align:center;border-radius:13px;background:#f7f8fb;border:1px dashed #d5dae3"><div style="font-size:.95rem;font-weight:700;color:#1e2c4f">No divisions yet</div><div style="font-size:.8rem;color:#6b7689;margin-top:6px">Use + Add to create one by hand, add them from the sport's weight classes, or add a heading.</div></div>
                 </sc-if>
                 <sc-if value="{{ dm.flt.inTable }}" hint-placeholder-val="{{ true }}">
-                  <div role="group" aria-label="Filter divisions" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 14px;padding:10px 12px;border-radius:13px;background:#f7f8fb;border:1px solid #eef1f6">
-                    <span style="font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#8a93a6;margin-inline-end:2px">Gender</span>
+                  <div role="group" aria-label="Filter divisions" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:100%;box-sizing:border-box;margin:0 0 12px;padding:6px 8px;border-radius:12px;background:#f7f8fb;border:1px solid #eef1f6">
+                    <input type="search" autocomplete="off" aria-label="Search divisions" placeholder="Search a division…" value="{{ dm.flt.q }}" onChange="{{ dm.flt.onQ }}" style="{{ dm.flt.qStyle }}">
+                    <span aria-hidden="true" style="flex:none;width:1px;height:18px;background:#d5dae3;margin:0 2px"></span>
+                    <span style="flex:none;font-size:.58rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#8a93a6">Gender</span>
                     <sc-for list="{{ dm.flt.genders }}" as="g" hint-placeholder-count="3"><button type="button" onClick="{{ g.onClick }}" aria-pressed="{{ g.pressed }}" style="{{ g.style }}">{{ g.label }}</button></sc-for>
-                    <span aria-hidden="true" style="width:1px;height:22px;background:#d5dae3;margin:0 6px"></span>
-                    <span style="font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#8a93a6;margin-inline-end:2px">Status</span>
-                    <div style="position:relative">
+                    <span aria-hidden="true" style="flex:none;width:1px;height:18px;background:#d5dae3;margin:0 2px"></span>
+                    <span style="flex:none;font-size:.58rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#8a93a6">Status</span>
+                    <div style="position:relative;flex:none">
                       <button type="button" onClick="{{ dm.flt.onStToggle }}" aria-haspopup="menu" aria-expanded="{{ dm.flt.stOpen }}" aria-label="Filter by status" style="{{ dm.flt.stStyle }}">{{ dm.flt.stLabel }}<span aria-hidden="true" style="font-size:.7rem">{{ dm.flt.stCaret }}</span></button>
                       <sc-if value="{{ dm.flt.stOpen }}" hint-placeholder-val="{{ false }}">
                         <div onClick="{{ dm.flt.onStClose }}" style="position:fixed;inset:0;z-index:45"></div>
-                        <div role="menu" onClick="{{ dm.flt.stStop }}" style="position:absolute;top:38px;left:0;z-index:46;min-width:190px;padding:6px;background:#fff;border:1px solid #eef1f6;border-radius:14px;box-shadow:0 18px 40px rgba(30,44,79,.16);animation:rise .18s cubic-bezier(.22,.68,.35,1) both">
+                        <div role="menu" onClick="{{ dm.flt.stStop }}" style="position:absolute;top:33px;left:0;z-index:46;min-width:190px;padding:6px;background:#fff;border:1px solid #eef1f6;border-radius:14px;box-shadow:0 18px 40px rgba(30,44,79,.16);animation:rise .18s cubic-bezier(.22,.68,.35,1) both">
                           <sc-for list="{{ dm.flt.statuses }}" as="c" hint-placeholder-count="5"><button type="button" role="menuitemradio" aria-checked="{{ c.pressed }}" onClick="{{ c.onClick }}" style="{{ c.style }}" style-hover="background:#fdf6e6"><span>{{ c.label }}</span><span aria-hidden="true">{{ c.checked }}</span></button></sc-for>
                         </div>
                       </sc-if>

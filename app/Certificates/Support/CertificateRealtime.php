@@ -11,7 +11,16 @@ namespace App\Certificates\Support;
  */
 class CertificateRealtime
 {
-    /** @param iterable<int> $userIds */
+    /**
+     * The member to tell about one certificate — null when its holder is not a
+     * person (a club's thank-you), whose id is no user's id.
+     */
+    public static function holder(\Ahl\Certificates\Models\Certificate $certificate): ?int
+    {
+        return $certificate->recipient_type === (new \App\Members\Models\User)->getMorphClass() ? (int) $certificate->recipient_id : null;
+    }
+
+    /** @param iterable<int|null> $userIds */
     public static function refresh(iterable $userIds, ?int $except = null): void
     {
         $ids = collect($userIds)->map(fn ($id) => (int) $id)->filter()->unique()->reject(fn ($id) => $id === $except)->values();

@@ -76,7 +76,136 @@ class FederationEventFigures
                 ['done' => $divisions > 0 && $single === 0 && $unplaced === 0, 'label' => 'Divisions', 'note' => $divNote, 'subs' => $this->divisionRows($ev, $perDivision, $unplaced)],
                 ['done' => $athletes > 0 && $weighed === $athletes, 'label' => 'Weigh-in', 'note' => $weighed.' of '.$athletes.' weighed in'],
                 ['done' => $drawable->isNotEmpty() && $drawn === $drawable->count(), 'label' => 'Draw', 'note' => $drawn.' of '.$drawable->count().' divisions drawn'],
-                ['done' => $officials > 0, 'label' => 'Officials appointed', 'note' => (string) $officials, 'subs' => $this->officialJobs($officialRows), 'tab' => 'offs', 'hint' => 'Open this event’s officials'],
+                ['done' => $officials > 0, 'label' => 'Officials appointed', 'note' => (string) $officials, 'subs' => $this->officialJobs($officialRows, $ev), 'tab' => 'offs', 'hint' => 'Open this event’s officials'],
+            ],
+            // The Overview's cockpit (UX brief 2026-10-22): where the event is in
+            // its life, the one next step, and what needs attention — derived.
+            'cockpit' => rescue(fn () => $this->cockpit($e, $ev, $regs, $perDivision, $drawable, $drawn, $athletes, $weighed, $unplaced, $officials, $details), null, report: true),
+        ];
+    }
+
+    /**
+     * Lifecycle, next step and the "needs attention" list for one platform-run
+     * event. Read-only; every item names the tab that fixes it.
+     *
+     * @return array{steps: list<array{label:string, state:string}>, current:int, next:?array{label:string, tab:string}, attention: list<array{sev:string, title:string, text:string, tab:string, action:string}>, glance: list<array{label:string, value:string}>}
+     */
+    private function cockpit(FederationEvent $e, ClubEvent $ev, $regs, $perDivision, $drawable, int $drawn, int $athletes, int $weighed, int $unplaced, int $officials, array $details): array
+    {
+        $bouts = DB::table('event_matches')->where('event_id', $ev->id)->whereNotNull('a_competitor_id')->whereNotNull('b_competitor_id');
+        $boutCount = (clone $bouts)->count();
+        $fought = (clone $bouts)->whereNotNull('winner')->count();
+        $decided = $drawable->isEmpty() ? 0 : DB::table('event_categories')->whereIn('id', $drawable)->whereNotNull('podium')->where('podium', '!=', '[]')->count();
+        $entries = $regs->whereNotNull('category_id')->count();
+        $ended = $e->hasEnded();
+
+        $done = [
+            trim((string) ($details['venue'] ?? '')) !== '' && $e->starts_on,       // Setup
+            $athletes > 0 && ($weighed > 0 || $drawn > 0 || $ended),                 // Registration
+            $athletes > 0 && $weighed === $athletes,                                 // Weigh-in
+            $drawable->isNotEmpty() && $drawn === $drawable->count(),                // Draw
+            $fought > 0,                                                             // Live
+            $drawable->isNotEmpty() && $decided >= $drawable->count(),               // Results
+            $ended && $drawable->isNotEmpty() && $decided >= $drawable->count(),     // Closed
+        ];
+        $labels = ['Setup', 'Registration', 'Weigh-in', 'Draw', 'Live', 'Results', 'Closed'];
+        $current = 7;
+        foreach ($done as $i => $d) {
+            if (! $d) {
+                $current = $i;
+                break;
+            }
+        }
+        $steps = [];
+        foreach ($labels as $i => $l) {
+            $steps[] = ['label' => $l, 'state' => $i < $current ? 'done' : ($i === $current ? 'current' : 'todo')];
+        }
+        $next = [
+            0 => ['label' => 'Set the venue and dates', 'tab' => 'edit'],
+            1 => ['label' => 'Enter athletes', 'tab' => 'regs'],
+            2 => ['label' => 'Weigh in athletes', 'tab' => 'regs'],
+            3 => ['label' => 'Make the draw', 'tab' => 'divs'],
+            4 => ['label' => 'Run the bouts', 'tab' => 'divs'],
+            5 => ['label' => 'Finish the divisions', 'tab' => 'results'],
+            6 => ['label' => 'Review the final results', 'tab' => 'results'],
+        ][$current] ?? null;
+
+        // ── Needs attention, most serious first ─────────────────────────
+        $att = [];
+        $conflicts = count(\App\Events\Support\OneDivisionRule::conflicts($ev));
+        if ($conflicts) {
+            $att[] = ['sev' => 'critical', 'title' => $conflicts.' '.($conflicts === 1 ? 'athlete is' : 'athletes are').' in two divisions',
+                'text' => $ev->one_division_per_person ? 'One division per person is on. Choose where each one competes.' : 'They will fight in both brackets.', 'tab' => 'divs', 'action' => 'Resolve', 'open' => 'double-entries'];
+        }
+        $below = max(2, (int) config('events.division_merge.below', 3));
+        $small = $perDivision->filter(fn ($n) => $n > 0 && $n < $below);
+        if ($small->isNotEmpty()) {
+            $names = DB::table('event_categories')->whereIn('id', $small->keys())->orderBy('sort_order')->limit(4)->pluck('name')->all();
+            $att[] = ['sev' => 'high', 'title' => $small->count().' '.($small->count() === 1 ? 'division has' : 'divisions have').' fewer than '.$below.' athletes',
+                'text' => implode(' · ', $names).($small->count() > 4 ? ' …' : ''), 'tab' => 'divs', 'action' => 'Review merges'];
+        }
+        $outside = DB::table('club_event_registrations as r')->join('event_categories as c', 'c.id', '=', 'r.category_id')
+            ->where('r.event_id', $ev->id)->where('r.role', 'participant')->whereNotNull('r.weighed_in_at')->whereNotNull('r.weight')
+            ->where(fn ($q) => $q->where(fn ($w) => $w->whereNotNull('c.max_weight')->whereColumn('r.weight', '>', 'c.max_weight'))
+                ->orWhere(fn ($w) => $w->whereNotNull('c.min_weight')->whereColumn('r.weight', '<', 'c.min_weight')))
+            ->distinct()->count('r.user_id');
+        if ($outside) {
+            $att[] = ['sev' => 'high', 'title' => $outside.' '.($outside === 1 ? 'athlete' : 'athletes').' weighed outside their division',
+                'text' => 'Move them, or keep them there on purpose.', 'tab' => 'regs', 'action' => 'Check weigh-ins'];
+        }
+        if ($unplaced) {
+            $att[] = ['sev' => 'high', 'title' => $unplaced.' '.($unplaced === 1 ? 'entry is' : 'entries are').' in no division',
+                'text' => 'They will not appear in any draw.', 'tab' => 'divs', 'action' => 'Place them'];
+        }
+        if ($athletes > 0 && $weighed < $athletes && ! $ended) {
+            $att[] = ['sev' => 'medium', 'title' => ($athletes - $weighed).' of '.$athletes.' athletes not weighed in yet',
+                'text' => 'Weigh-in decides the division each one fights in.', 'tab' => 'regs', 'action' => 'Weigh in'];
+        }
+        if ($drawable->isNotEmpty() && $drawn < $drawable->count()) {
+            $att[] = ['sev' => 'medium', 'title' => ($drawable->count() - $drawn).' '.(($drawable->count() - $drawn) === 1 ? 'division has' : 'divisions have').' no draw yet',
+                'text' => $drawn.' of '.$drawable->count().' drawn.', 'tab' => 'divs', 'action' => 'Make the draw'];
+        }
+        if ($ended && $drawable->isNotEmpty() && $decided < $drawable->count()) {
+            $att[] = ['sev' => 'medium', 'title' => ($drawable->count() - $decided).' '.(($drawable->count() - $decided) === 1 ? 'division has' : 'divisions have').' no result',
+                'text' => 'The event is over; record the remaining finals.', 'tab' => 'results', 'action' => 'Open results'];
+        }
+        if ($officials === 0 && $athletes > 0) {
+            $att[] = ['sev' => 'medium', 'title' => 'No officials appointed', 'text' => 'Referees and judges are named on the Officials tab.', 'tab' => 'offs', 'action' => 'Appoint'];
+        }
+
+        // ── The rules the draw follows (Draw tab, brief §2.3) — read from where
+        // each one already lives; nothing here is a second copy of a setting.
+        $mergeOn = \App\Events\Support\DivisionMerge::enabled();
+        $rules = [
+            ['label' => 'Minimum athletes per division', 'value' => (string) $below, 'note' => 'Fewer than this and the division needs a decision: merge, combine or exhibition.'],
+            ['label' => 'One division per athlete', 'value' => $ev->one_division_per_person ? 'On' : 'Off', 'note' => $ev->one_division_per_person ? 'Nobody can be placed in a second bracket.' : 'An athlete may stand in several divisions.'],
+            ['label' => 'Bronze', 'value' => \App\Events\Support\BronzeRule::playsOff($ev) ? 'One' : 'Two', 'note' => \App\Events\Support\BronzeRule::playsOff($ev) ? 'A third-place bout decides it.' : 'Both semi-final losers take bronze.'],
+            ['label' => 'Merging small divisions', 'value' => $mergeOn ? 'Allowed' : 'Off', 'note' => $mergeOn
+                ? 'Same gender only; consent needed over '.rtrim(rtrim(number_format((float) config('events.division_merge.consent_gap', 12), 1), '0'), '.').'% weight gap, never over '.rtrim(rtrim(number_format((float) config('events.division_merge.max_gap', 15), 1), '0'), '.').'%; ages at most '.(int) config('events.division_merge.max_age_months', 24).' months apart.'
+                : 'Small divisions are not merged by the platform.'],
+            ['label' => 'Draw guard', 'value' => \App\Events\Support\DrawGuard::enabled() ? 'On' : 'Off', 'note' => \App\Events\Support\DrawGuard::enabled() ? 'The draw is refused while anyone stands in two divisions.' : 'The draw is never blocked; the checks above are advice.'],
+        ];
+        $checks = [
+            ['key' => 'double', 'label' => 'In two divisions', 'n' => $conflicts, 'sev' => 'critical', 'open' => 'double-entries', 'tab' => 'divs'],
+            ['key' => 'small', 'label' => 'Below the minimum', 'n' => $small->count(), 'sev' => 'high', 'tab' => 'divs'],
+            ['key' => 'outside', 'label' => 'Weighed outside', 'n' => $outside, 'sev' => 'high', 'tab' => 'regs'],
+            ['key' => 'unplaced', 'label' => 'In no division', 'n' => $unplaced, 'sev' => 'high', 'tab' => 'divs'],
+        ];
+
+        return [
+            'rules' => $rules,
+            'checks' => $checks,
+            'steps' => $steps,
+            'current' => $current,
+            'next' => $next,
+            'attention' => $att,
+            'glance' => [
+                ['label' => 'Athletes', 'value' => (string) $athletes],
+                ['label' => 'Division entries', 'value' => (string) $entries],
+                ['label' => 'Divisions', 'value' => (string) $perDivision->count()],
+                ['label' => 'Bouts', 'value' => $fought.' / '.$boutCount],
+                ['label' => 'Clubs', 'value' => (string) $this->clubCount($e)],
+                ['label' => 'Weighed in', 'value' => $weighed.' / '.$athletes],
             ],
         ];
     }
@@ -89,9 +218,12 @@ class FederationEventFigures
      *
      * @return array<int, array{label: string, note: string}>
      */
-    private function officialJobs(\Illuminate\Support\Collection $rows): array
+    private function officialJobs(\Illuminate\Support\Collection $rows, ?\App\Events\Models\ClubEvent $ev = null): array
     {
-        return $rows->map(fn ($r) => self::jobOf($r->role, $r->role_label))->countBy()->sortDesc()->map(fn ($n, $job) => [
+        // The same names the Officials tab groups by, so a job here opens a chip that exists there.
+        $names = $ev ? rescue(fn () => app(\App\Events\Support\OfficialRoles::class)->labels($ev), [], false) : [];
+
+        return $rows->map(fn ($r) => self::jobOf($r->role, $r->role_label, $names))->countBy()->sortDesc()->map(fn ($n, $job) => [
             // Every job opens the dashboard's own Officials tab, filtered to it.
             'label' => $job, 'note' => (string) $n, 'tab' => 'offs', 'job' => $job, 'hint' => 'Open this event’s '.mb_strtolower($job),
         ])->values()->all();
@@ -103,12 +235,14 @@ class FederationEventFigures
      * "Referee 2" are one job ("Referees"); a platform role reads as its name.
      * One definition, used by the checklist and the event's Officials tab.
      */
-    public static function jobOf(?string $role, ?string $roleLabel): string
+    public static function jobOf(?string $role, ?string $roleLabel, array $roleNames = []): string
     {
         $names = ['jury' => 'Jury', 'weigh_in' => 'Weigh-in', 'payments' => 'Payments', 'organiser' => 'Organisers'];
         $label = trim((string) preg_replace('/\s*\d+$/', '', (string) $roleLabel));
         if ($label === '') {
-            return $names[(string) $role] ?? 'Other';
+            // A job from the event's list (OfficialRoles::labels, passed in)
+            // reads as its own name — a referee is a referee, not "Other".
+            return $names[(string) $role] ?? $roleNames[(string) $role] ?? 'Other';
         }
         $label = mb_strtolower($label);
 

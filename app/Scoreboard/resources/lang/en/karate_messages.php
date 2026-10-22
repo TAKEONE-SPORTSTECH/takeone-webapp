@@ -79,6 +79,8 @@ return [
     'ctl_dismiss' => 'Close · keep this result unfiled',
     'ctl_result_pending' => 'Winner · not filed',
     'ctl_resync' => 'Resync',
+    'ctl_unload' => 'Unload bout',
+    'ctl_unload_confirm' => 'Tap again to unload',
     'ctl_resync_hint' => 'Changes appear on the scoreboard instantly. If a screen looks stuck, resync reloads every board on this mat.',
     'end_title' => 'How did this bout end?',
     'end_auto' => 'Award by score',

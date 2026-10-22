@@ -85,6 +85,33 @@ class FederationEvent extends Model implements LimitsOfferedLocales, Translatabl
         return false;
     }
 
+    /**
+     * The ONE status every screen shows (UX brief 2026-10-22, §3.1): the typed
+     * status, unless what has happened says otherwise. An event still typed
+     * "Planning" or "Registration open" whose dates have passed is Completed;
+     * one whose mats have recorded a real bout is Live. The list, the event
+     * header and Statistics all read this — before, the same event said
+     * Planning on one screen and Completed on another.
+     *
+     * Read-only: nothing is written back, so the organiser's own status is
+     * kept and wins again the moment it is set to anything else.
+     */
+    public function lifecycleStatus(): string
+    {
+        $typed = (string) $this->status;
+        if (! in_array($typed, ['Planning', 'Registration open'], true)) {
+            return $typed;
+        }
+        if ($this->hasEnded()) {
+            return 'Completed';
+        }
+        $scored = $this->club_event_id && \App\Events\Models\EventMatch::where('event_id', $this->club_event_id)
+            ->whereNotNull('winner')->whereNotNull('a_competitor_id')->whereNotNull('b_competitor_id')
+            ->where(fn ($q) => $q->whereNull('won_by_bye')->orWhere('won_by_bye', false))->exists();
+
+        return $scored ? 'Live' : $typed;
+    }
+
     // ─── Translation (App\Translation) ───────────────────────────────────
 
     /**

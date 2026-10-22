@@ -45,7 +45,10 @@ class CertificateFileController extends Controller
         // so under cache/ (StoragePath), keyed by what would change it.
         $png = null;
         if ($c->isApproved()) {
-            $path = StoragePath::file('cache/certificates', $c->uuid.'-'.substr(sha1($c->status->value.$c->updated_at), 0, 10), 'png');
+            // Keyed by what the picture is drawn from: the certificate, its design and — for a club — its crest.
+            $design = app(\App\Certificates\Support\DesignedCertificates::class)->designFor($c);
+            $holder = $c->recipient && method_exists($c->recipient, 'certificateStamp') ? $c->recipient->certificateStamp() : '';
+            $path = StoragePath::file('cache/certificates', $c->uuid.'-'.substr(sha1($c->status->value.$c->updated_at.'|'.($design ? $design->uuid.'@'.$design->revision : '').'|'.$holder), 0, 10), 'png');
             $png = Storage::disk('local')->exists($path) ? Storage::disk('local')->get($path) : null;
             if (! $png) {
                 $png = $service->imageContents($c, 110);

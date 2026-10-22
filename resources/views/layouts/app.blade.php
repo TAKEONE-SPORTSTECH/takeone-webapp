@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html @if(\App\Ui\NewUi::active()) data-t1-theme="{{ in_array(request()->cookie('t1_theme'), ['light', 'dark', 'system'], true) ? request()->cookie('t1_theme') : 'light' }}" @endif lang="{{ str_replace('_', '-', app()->getLocale()) }}" {{-- Direction from EITHER list: the interface speaks two languages, the
+<html @if(\App\Ui\NewUi::active()) @if(request()->routeIs('me.events.manage')) data-t1-theme="light" data-t1-lock="light" @else data-t1-theme="{{ in_array(request()->cookie('t1_theme'), ['light', 'dark', 'system'], true) ? request()->cookie('t1_theme') : 'light' }}" @endif @endif lang="{{ str_replace('_', '-', app()->getLocale()) }}" {{-- Direction from EITHER list: the interface speaks two languages, the
      content is readable in sixty, and Persian, Urdu and Hebrew are
      right-to-left whether or not the buttons are. --}}dir="{{ config('locales.' . app()->getLocale() . '.dir') ?? config('content_locales.' . app()->getLocale() . '.dir', 'ltr') }}">
 <head>
@@ -30,6 +30,30 @@
     <meta name="color-scheme" content="light">
     <meta name="darkreader-lock">
     <style>html { color-scheme: only light; }</style>
+    @if(\App\Ui\NewUi::active())
+    {{-- The event console is always LIGHT (owner, 2026-10-16), whatever the
+         device's theme switch or the phone says. The server locks it on first
+         paint (the <html> tag above); this keeps it locked — and lets it go
+         again — when the mobile shell swaps pages without a reload. --}}
+    <script>
+    (function () {
+        if (window.__t1ThemeLock) return;
+        window.__t1ThemeLock = true;
+        var console_ = /^\/me\/events\/[0-9a-f-]{36}\/manage\/?$/i;
+        function chosen() {
+            var m = document.cookie.match(/(?:^|; )t1_theme=(light|dark|system)(?:;|$)/);
+            return m ? m[1] : 'light';
+        }
+        function apply() {
+            var h = document.documentElement;
+            if (console_.test(location.pathname)) { h.dataset.t1Lock = 'light'; h.dataset.t1Theme = 'light'; }
+            else { delete h.dataset.t1Lock; h.dataset.t1Theme = chosen(); }
+        }
+        window.addEventListener('shell:navigated', apply);
+        window.addEventListener('pageshow', apply);
+    })();
+    </script>
+    @endif
     <meta name="csrf-token" content="{{ csrf_token() }}">
     @auth
     <meta name="rt-user" content="{{ Auth::id() }}">

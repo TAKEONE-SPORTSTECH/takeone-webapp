@@ -93,6 +93,10 @@ class FederationAthleteEditor
 
         // National ID: one person per number on the register.
         $natId = array_key_exists('natId', $data) ? mb_substr(trim((string) $data['natId']), 0, 40) : null;
+        // A masked ID (what a list shows) is never written over the real one.
+        if (\App\Federations\Support\NationalIdMask::isMasked($natId)) {
+            $natId = null;
+        }
         if ($natId !== null && $natId !== '') {
             $hash = FederationAthlete::hashNationalId($natId);
             if ($hash && FederationAthlete::where('national_id_hash', $hash)->whereKeyNot($athlete->id)->exists()) {

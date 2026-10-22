@@ -378,6 +378,10 @@
              button that greys out exactly when you reach for it is worse than
              no button at all. --}}
         <button id="btnResync" class="cbtn" style="color:var(--ao-ink);border:1px solid rgba(138,180,255,.45);">{{ __('scoreboard::karate_messages.ctl_resync') }}</button>
+        {{-- Take the bout off the mat, back to the queue (owner, 2026-10-17).
+             The engine's `clear`: it never writes the bout or its result, only
+             empties this mat. Two taps, because it also drops an UNFILED score. --}}
+        <button id="btnUnload" class="cbtn bout" style="grid-column:1 / -1;color:var(--text);border:1px solid var(--line-2);">{{ __('scoreboard::karate_messages.ctl_unload') }}</button>
         {{-- The draw on this tablet (App\Events\Support\TabletDraw) — whole
              row, so the odd button out does not leave a hole in the grid. --}}
         @if(! empty($drawUrl))
@@ -1664,6 +1668,22 @@
   el('btnKo').onclick = endOpen;
   el('btnReset').onclick = function () { send('reset'); };
   el('btnBouts').onclick = function () { bouts().open(); };
+
+  // Unload: first tap arms it for three seconds, the second sends `clear`.
+  (function () {
+    var b = el('btnUnload'), label = b.textContent, armedAt = 0;
+    b.onclick = function () {
+      if (Date.now() - armedAt > 3000) {
+        armedAt = Date.now();
+        b.textContent = @json(__('scoreboard::karate_messages.ctl_unload_confirm'));
+        setTimeout(function () { if (Date.now() - armedAt >= 3000) b.textContent = label; }, 3050);
+        return;
+      }
+      armedAt = 0;
+      b.textContent = label;
+      send('clear');
+    };
+  })();
 
 @include('scoreboard::karate.scoreboard.partials.console-link')
 

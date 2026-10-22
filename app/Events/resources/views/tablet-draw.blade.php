@@ -104,6 +104,16 @@
         @media (max-width: 639px) { .td-ed { top: calc(112px + env(safe-area-inset-top, 0px)); inset-inline: 8px; width: auto; max-height: 50vh; }
                                     .td-ed-help { display: none; } }
         .td-menu { width: min(300px, calc(100vw - 24px)); }
+        /* A phone: the bar's tools fold into ⋯ (see .td-more), and the event's
+           name wraps rather than being cut short. */
+        .td-more { display: none; }
+        @media (max-width: 639px) {
+            .td-barpill { display: none !important; }
+            .td-more { display: inline-flex; }
+            .td-title { white-space: normal; overflow: visible; text-overflow: clip; }
+            /* On a phone the split view's toggle lives in the ⋯ sheet, not on the board. */
+            .bk-split-toggle { display: none !important; }
+        }
         /* A confirmation sheet: a bottom sheet on a phone, a centred card on a desk. */
         @media (min-width: 640px) { .td-sheet { inset: auto !important; top: 50% !important; left: 50% !important; transform: translate(-50%, -50%);
                                                  width: 520px; border-radius: 1.5rem !important; } }
@@ -141,7 +151,7 @@
                 <p class="text-[10px] font-extrabold uppercase tracking-[0.14em] leading-none text-white/85">
                     <i class="bi bi-diagram-3-fill bracket-icon"></i> {{ __('events::events.tablet_draw_eyebrow') }}
                 </p>
-                <h1 class="text-sm font-bold text-white truncate leading-tight mt-0.5">{{ $title }}</h1>
+                <h1 class="td-title text-sm font-bold text-white truncate leading-tight mt-0.5">{{ $title }}</h1>
             </div>
 
             @if(! empty($u['pdf']))
@@ -150,7 +160,7 @@
                      failure is a toast here, and the screen's layout rides along. --}}
                 {{-- A menu since 2026-10-16 (owner): this division or all of them,
                      downloaded or shared. --}}
-                <button type="button" class="td-pill is-ghost" x-ref="pdfBtn" @click="openPdfMenu()"
+                <button type="button" class="td-pill td-barpill is-ghost" x-ref="pdfBtn" @click="openPdfMenu()"
                         title="{{ __('events::events.tablet_download_hint') }}"
                         :aria-expanded="pdfMenu.open ? 'true' : 'false'">
                     <i class="bi bi-download"></i><span>{{ __('events::events.tablet_download') }}</span><i class="bi bi-chevron-down text-[10px]"></i>
@@ -163,7 +173,7 @@
                      permission — every edit is still authorised server-side) and
                      Edit opens it again. --}}
                 @unless($pinRequired)
-                    <button type="button" class="td-pill is-gold" x-show="viewOnly" x-cloak @click="resume()">
+                    <button type="button" class="td-pill td-barpill is-gold" x-show="viewOnly" x-cloak @click="resume()">
                         <i class="bi bi-pencil-square"></i><span>{{ __('events::events.tablet_edit_again') }}</span>
                     </button>
                 @endunless
@@ -171,7 +181,7 @@
                 {{-- The "Editing as <name>" chip was removed (owner, 2026-10-16).
                      With a PIN the grant's countdown still shows, on its own. --}}
                 @if($pinRequired)
-                <span class="td-chip hidden md:inline-flex" title="{{ __('events::events.tablet_editing_as', ['name' => $editorName]) }}">
+                <span class="td-chip td-barpill hidden md:inline-flex" title="{{ __('events::events.tablet_editing_as', ['name' => $editorName]) }}">
                     <i class="bi bi-stopwatch"></i><span x-text="clock()"></span>
                 </span>
                 @endif
@@ -181,20 +191,21 @@
                          switch, and the switch says which one a tap does. --}}
                     {{-- One pill since 2026-10-16 (owner): it names the tool a tap is
                          using now, and opens the menu of all five. --}}
-                    <button type="button" class="td-pill is-light" x-ref="modeBtn" @click="openModeMenu()"
+                    <button type="button" class="td-pill td-barpill is-light" x-ref="modeBtn" @click="openModeMenu()"
                             :aria-expanded="modeMenu.open ? 'true' : 'false'">
                         <span x-show="mode === 'move'" class="inline-flex items-center gap-1.5"><i class="bi bi-arrows-move"></i><span>{{ __('events::events.tablet_mode_move') }}</span></span>
                         <span x-show="mode === 'winner'" x-cloak class="inline-flex items-center gap-1.5"><i class="bi bi-trophy-fill"></i><span>{{ __('events::events.tablet_mode_winner') }}</span></span>
                         <span x-show="mode === 'unwin'" x-cloak class="inline-flex items-center gap-1.5"><i class="bi bi-arrow-counterclockwise"></i><span>{{ __('events::events.tablet_mode_unwin') }}</span></span>
                         <span x-show="mode === 'numbers'" x-cloak class="inline-flex items-center gap-1.5"><i class="bi bi-123"></i><span>{{ __('events::events.tablet_mode_numbers') }}</span></span>
                         <span x-show="mode === 'names'" x-cloak class="inline-flex items-center gap-1.5"><i class="bi bi-pencil-fill"></i><span>{{ __('events::events.tablet_names') }}</span></span>
+                        <span x-show="mode === 'fix'" x-cloak class="inline-flex items-center gap-1.5"><i class="bi bi-pencil-square"></i><span>{{ __('events::events.free_edit_mode') }}</span></span>
                         <i class="bi bi-chevron-down text-[10px]"></i>
                     </button>
                 @endif
                 @if($editorManages && (! empty($u['shuffle']) || ! empty($u['renumberAll'])))
                     {{-- ONE Arrange control (owner, 2026-10-16): Shuffle and Renumber
                          bouts, which used to be two pills, now live in one menu. --}}
-                    <button type="button" class="td-pill is-gold" x-ref="arrBtn" @click="openArrMenu()" :disabled="busy"
+                    <button type="button" class="td-pill td-barpill is-gold" x-ref="arrBtn" @click="openArrMenu()" :disabled="busy"
                             :aria-expanded="arrMenu.open ? 'true' : 'false'">
                         <i class="bi bi-sliders2"></i><span>{{ __('events::events.tablet_arrange_menu') }}</span><i class="bi bi-chevron-down text-[10px]"></i>
                     </button>
@@ -203,7 +214,7 @@
                     {{-- ONE Division control (owner, 2026-10-16: "combine Add, Delete
                          and Edit"): a small menu — add, edit the one on show, delete
                          it, and the event's one-division-per-person switch. --}}
-                    <button type="button" class="td-pill is-ghost" x-ref="divBtn" @click="openDivMenu()" :disabled="busy"
+                    <button type="button" class="td-pill td-barpill is-ghost" x-ref="divBtn" @click="openDivMenu()" :disabled="busy"
                             :aria-expanded="divMenu.open ? 'true' : 'false'">
                         <i class="bi bi-collection"></i><span>{{ __('events::events.tablet_div_menu') }}</span><i class="bi bi-chevron-down text-[10px]"></i>
                     </button>
@@ -212,16 +223,16 @@
                      bracket on show (owner, 2026-10-15) — labelled always, not
                      an icon on its own. The window's server side (LateEntry)
                      fills a bye first and never touches a fought bout. --}}
-                <button type="button" class="td-pill is-gold" @click="$dispatch('bracket-add:open')"
+                <button type="button" class="td-pill td-barpill is-gold" @click="$dispatch('bracket-add:open')"
                         title="{{ __('events::events.tablet_add_athlete_hint') }}">
                     <i class="bi bi-person-plus-fill"></i><span>{{ __('events::events.tablet_add_athlete') }}</span>
                 </button>
                 @if($pinRequired)
-                <button type="button" class="td-pill is-ghost" @click="lock()" :disabled="busy">
+                <button type="button" class="td-pill td-barpill is-ghost" @click="lock()" :disabled="busy">
                     <i class="bi bi-lock-fill"></i><span class="hidden sm:inline">{{ __('events::events.tablet_lock') }}</span>
                 </button>
                 @else
-                <button type="button" class="td-pill is-ghost" @click="done()">
+                <button type="button" class="td-pill td-barpill is-ghost" @click="done()">
                     <i class="bi bi-check2-circle"></i><span>{{ __('events::events.tablet_done') }}</span>
                 </button>
                 @endif
@@ -229,13 +240,23 @@
             @else
                 {{-- Both ask for the PIN first; "Late entry" then opens the
                      add window by itself once the board is unlocked. --}}
-                <button type="button" class="td-pill is-ghost" @click="openPad('edit')">
+                <button type="button" class="td-pill td-barpill is-ghost" @click="openPad('edit')">
                     <i class="bi bi-pencil-square"></i><span>{{ __('events::events.tablet_edit_bout') }}</span>
                 </button>
-                <button type="button" class="td-pill is-gold" @click="openPad('add')">
+                <button type="button" class="td-pill td-barpill is-gold" @click="openPad('add')">
                     <i class="bi bi-person-plus-fill"></i><span>{{ __('events::events.tablet_late_entry') }}</span>
                 </button>
             @endif
+
+            {{-- ⋯ on a PHONE (owner, 2026-10-18: "make them the same"): the bar
+                 above does not fit 390px, so on a phone it folds into this one
+                 button and a sheet with exactly the same tools, each calling
+                 the same function. Tablets and desks keep the bar. --}}
+            <button type="button" class="td-ctl td-more" x-ref="moreBtn" @click="more = true"
+                    aria-label="{{ __('events::events.tablet_more') }}" title="{{ __('events::events.tablet_more') }}"
+                    :aria-expanded="more ? 'true' : 'false'">
+                <i class="bi bi-three-dots-vertical"></i>
+            </button>
         </x-slot:controls>
 
         @if($editing)
@@ -253,6 +274,122 @@
             </x-slot:overlay>
         @endif
     </x-draw-stage>
+
+    <template x-teleport="body">
+        {{-- ===== The phone's ⋯ sheet — the bar's tools, folded =====
+             Every row calls the same function its pill does, offered under the
+             same conditions, so a phone and a tablet hold one set of tools
+             (owner, 2026-10-18). Design Rule #8: the gradient band carries the
+             handle, the subject and the ✕; read-only rows, so no footer. --}}
+        <div x-show="more" x-cloak class="fixed inset-0 z-[75]" @keydown.escape.window="more = false"
+             @draw-split:changed.window="splitOpen = !! $event.detail.open">
+            <div class="absolute inset-0 bg-black/50" @click="more = false"></div>
+            <div class="absolute inset-x-0 bottom-0 max-h-[85vh] flex flex-col rounded-t-3xl bg-white shadow-2xl overflow-hidden"
+                 x-show="more" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                 role="menu" aria-label="{{ __('events::events.tablet_more') }}">
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, #1e2c4f, #1e2c4fb0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi bi-diagram-3-fill bracket-icon text-xl"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-black leading-tight">{{ __('events::events.tablet_draw_eyebrow') }}</h3>
+                            <p class="text-[12px] text-white/85 mt-0.5">{{ $title }}</p>
+                        </div>
+                        <button type="button" @click="more = false" aria-label="{{ __('shared.close') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto py-2" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
+                    @php
+                        $tdRow = 'w-full flex items-center gap-3 px-5 py-3 text-start text-sm font-semibold text-gray-800 hover:bg-gray-50 active:bg-gray-100';
+                        $tdIco = 'w-9 h-9 rounded-xl grid place-items-center flex-shrink-0';
+                    @endphp
+                    @if(! empty($u['pdf']))
+                        <button type="button" role="menuitem" class="{{ $tdRow }}" @click="fromMore(() => openPdfMenu())">
+                            <span class="{{ $tdIco }}" style="background:#eef1f6;color:#1e2c4f"><i class="bi bi-download"></i></span>
+                            <span class="flex-1">{{ __('events::events.tablet_download') }}</span><i class="bi bi-chevron-right rtl:rotate-180 text-gray-400"></i>
+                        </button>
+                    @endif
+                    @if($editing)
+                        @unless($pinRequired)
+                            <button type="button" role="menuitem" class="{{ $tdRow }}" x-show="viewOnly" @click="more = false; resume()">
+                                <span class="{{ $tdIco }}" style="background:linear-gradient(100deg,#edcd85,#d0a854);color:#1e2c4f"><i class="bi bi-pencil-square"></i></span>
+                                <span class="flex-1">{{ __('events::events.tablet_edit_again') }}</span>
+                            </button>
+                        @endunless
+                        <template x-if="! viewOnly"><div>
+                            @if($editorManages)
+                                <button type="button" role="menuitem" class="{{ $tdRow }}" @click="fromMore(() => openModeMenu())">
+                                    <span class="{{ $tdIco }}" style="background:#eef1f6;color:#1e2c4f"><i class="bi" :class="{ move: 'bi-arrows-move', winner: 'bi-trophy-fill', unwin: 'bi-arrow-counterclockwise', numbers: 'bi-123', names: 'bi-pencil-fill', fix: 'bi-pencil-square' }[mode]"></i></span>
+                                    <span class="flex-1 min-w-0">
+                                        <span class="block">{{ __('events::events.tablet_mode_head') }}</span>
+                                        <span class="block text-xs font-medium text-gray-500" x-text="{ move: @js(__('events::events.tablet_mode_move')), winner: @js(__('events::events.tablet_mode_winner')), unwin: @js(__('events::events.tablet_mode_unwin')), numbers: @js(__('events::events.tablet_mode_numbers')), names: @js(__('events::events.tablet_names')), fix: @js(__('events::events.free_edit_mode')) }[mode]"></span>
+                                    </span>
+                                    <i class="bi bi-chevron-right rtl:rotate-180 text-gray-400"></i>
+                                </button>
+                            @endif
+                            @if($editorManages && (! empty($u['shuffle']) || ! empty($u['renumberAll'])))
+                                <button type="button" role="menuitem" class="{{ $tdRow }}" @click="fromMore(() => openArrMenu())" :disabled="busy">
+                                    <span class="{{ $tdIco }}" style="background:linear-gradient(100deg,#edcd85,#d0a854);color:#1e2c4f"><i class="bi bi-sliders2"></i></span>
+                                    <span class="flex-1">{{ __('events::events.tablet_arrange_menu') }}</span><i class="bi bi-chevron-right rtl:rotate-180 text-gray-400"></i>
+                                </button>
+                            @endif
+                            @if($editorManages && ! empty($u['divisions']))
+                                <button type="button" role="menuitem" class="{{ $tdRow }}" @click="fromMore(() => openDivMenu())" :disabled="busy">
+                                    <span class="{{ $tdIco }}" style="background:#eef1f6;color:#1e2c4f"><i class="bi bi-collection"></i></span>
+                                    <span class="flex-1">{{ __('events::events.tablet_div_menu') }}</span><i class="bi bi-chevron-right rtl:rotate-180 text-gray-400"></i>
+                                </button>
+                            @endif
+                            @if(config('events.draw_transfer'))
+                                {{-- Two boards (the split view), from the sheet rather
+                                     than a button floating on the board (owner,
+                                     2026-10-18). Offered while arranging — Move — which
+                                     is when the split view can open at all. --}}
+                                <button type="button" role="menuitem" class="{{ $tdRow }}" x-show="mode === 'move' || splitOpen"
+                                        @click="more = false; window.dispatchEvent(new CustomEvent('draw-split:toggle'))">
+                                    <span class="{{ $tdIco }}" style="background:#eef1f6;color:#1e2c4f"><i class="bi" :class="splitOpen ? 'bi-x-lg' : 'bi-layout-split'"></i></span>
+                                    <span class="flex-1 min-w-0">
+                                        <span class="block" x-text="splitOpen ? @js(__('events::events.transfer_close_split')) : @js(__('events::events.transfer_split'))"></span>
+                                        <span class="block text-xs font-medium text-gray-500" x-show="! splitOpen">{{ __('events::events.transfer_split_hint') }}</span>
+                                    </span>
+                                </button>
+                            @endif
+                            <button type="button" role="menuitem" class="{{ $tdRow }}" @click="more = false; $dispatch('bracket-add:open')">
+                                <span class="{{ $tdIco }}" style="background:linear-gradient(100deg,#edcd85,#d0a854);color:#1e2c4f"><i class="bi bi-person-plus-fill"></i></span>
+                                <span class="flex-1">{{ __('events::events.tablet_add_athlete') }}</span>
+                            </button>
+                            @if($pinRequired)
+                                <button type="button" role="menuitem" class="{{ $tdRow }}" @click="more = false; lock()" :disabled="busy">
+                                    <span class="{{ $tdIco }}" style="background:#eef1f6;color:#1e2c4f"><i class="bi bi-lock-fill"></i></span>
+                                    <span class="flex-1">{{ __('events::events.tablet_lock') }}</span>
+                                </button>
+                            @else
+                                <button type="button" role="menuitem" class="{{ $tdRow }}" @click="more = false; done()">
+                                    <span class="{{ $tdIco }}" style="background:#eef1f6;color:#1e2c4f"><i class="bi bi-check2-circle"></i></span>
+                                    <span class="flex-1">{{ __('events::events.tablet_done') }}</span>
+                                </button>
+                            @endif
+                        </div></template>
+                    @else
+                        <button type="button" role="menuitem" class="{{ $tdRow }}" @click="more = false; openPad('edit')">
+                            <span class="{{ $tdIco }}" style="background:#eef1f6;color:#1e2c4f"><i class="bi bi-pencil-square"></i></span>
+                            <span class="flex-1">{{ __('events::events.tablet_edit_bout') }}</span>
+                        </button>
+                        <button type="button" role="menuitem" class="{{ $tdRow }}" @click="more = false; openPad('add')">
+                            <span class="{{ $tdIco }}" style="background:linear-gradient(100deg,#edcd85,#d0a854);color:#1e2c4f"><i class="bi bi-person-plus-fill"></i></span>
+                            <span class="flex-1">{{ __('events::events.tablet_late_entry') }}</span>
+                        </button>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </template>
 
     @if($editing && $editorManages)
     {{-- ===== The tool menu (Move · Winner · Remove winner · Bout no. · Names) ===== --}}
@@ -297,6 +434,22 @@
                     <span class="flex-1">{{ __('events::events.tablet_names') }}</span>
                     <i class="bi bi-check-lg" x-show="mode === 'names'"></i>
                 </button>
+                @if(! empty($u['freeEdit']))
+                {{-- Free edit (owner, 2026-10-17: "stop blocking me"): a tap on any
+                     bout — fought, finished, after the event — opens it to be
+                     written exactly as it happened (FreeEdit). --}}
+                <div class="border-t border-gray-100 mt-1"></div>
+                <button type="button" role="menuitemradio" :aria-checked="mode === 'fix' ? 'true' : 'false'" @click="modeMenu.open = false; setMode('fix')"
+                        class="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-start hover:bg-muted/60"
+                        :class="mode === 'fix' ? 'text-primary' : 'text-gray-800'">
+                    <span class="w-9 h-9 rounded-xl grid place-items-center flex-shrink-0" :class="mode === 'fix' ? 'bg-primary text-white' : 'bg-amber-50 text-amber-700'"><i class="bi bi-pencil-square"></i></span>
+                    <span class="flex-1 min-w-0">
+                        <span class="block">{{ __('events::events.free_edit_mode') }}</span>
+                        <span class="block text-[11px] font-medium text-muted-foreground">{{ __('events::events.free_edit_mode_hint') }}</span>
+                    </span>
+                    <i class="bi bi-check-lg" x-show="mode === 'fix'"></i>
+                </button>
+                @endif
             </div>
         </div>
     </template>
@@ -310,21 +463,30 @@
                  :style="pdfMenu.style" @click.stop
                  x-show="pdfMenu.open" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 -translate-y-1 scale-95" x-transition:enter-end="opacity-100 translate-y-0 scale-100">
                 <p class="px-4 pt-3 pb-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-gray-400">{{ __('events::events.bracket_pdf_head') }}</p>
-                <button type="button" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-gray-800 hover:bg-muted/60 text-start" @click="pdfMenu.open = false; window.drawStagePdf && window.drawStagePdf(@js($u['pdf']), true)">
+                {{-- With or without bout numbers (owner, 2026-10-16) — applies to Download and Share. --}}
+                <button type="button" role="switch" :aria-checked="pdfNumbers ? 'true' : 'false'" @click="pdfNumbers = ! pdfNumbers"
+                        class="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-gray-800 hover:bg-muted/60 text-start">
+                    <span class="w-9 h-9 rounded-xl bg-muted text-gray-700 grid place-items-center flex-shrink-0"><i class="bi bi-123"></i></span>
+                    <span class="flex-1">{{ __('events::events.bracket_pdf_numbers') }}</span>
+                    <span class="w-10 h-6 rounded-full flex-shrink-0 relative transition-colors" :class="pdfNumbers ? 'bg-primary' : 'bg-gray-300'">
+                        <span class="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all" :style="pdfNumbers ? 'inset-inline-start:18px' : 'inset-inline-start:2px'"></span>
+                    </span>
+                </button>
+                <button type="button" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-gray-800 hover:bg-muted/60 text-start" @click="pdfMenu.open = false; window.drawStagePdf && window.drawStagePdf(@js($u['pdf']), true, false, ! pdfNumbers)">
                     <span class="w-9 h-9 rounded-xl bg-red-50 text-red-600 grid place-items-center flex-shrink-0"><i class="bi bi-file-earmark-pdf"></i></span>
                     <span>{{ __('events::events.bracket_pdf_this') }}</span>
                 </button>
-                <button type="button" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-gray-800 hover:bg-muted/60 text-start" @click="pdfMenu.open = false; window.drawStagePdf && window.drawStagePdf(@js($u['pdf']), false)">
+                <button type="button" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-gray-800 hover:bg-muted/60 text-start" @click="pdfMenu.open = false; window.drawStagePdf && window.drawStagePdf(@js($u['pdf']), false, false, ! pdfNumbers)">
                     <span class="w-9 h-9 rounded-xl bg-red-50 text-red-600 grid place-items-center flex-shrink-0"><i class="bi bi-files"></i></span>
                     <span>{{ __('events::events.bracket_pdf_all') }}</span>
                 </button>
                 <div class="border-t border-gray-100 mt-1"></div>
                 <p class="px-4 pt-3 pb-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-gray-400">{{ __('events::events.bracket_pdf_share_head') }}</p>
-                <button type="button" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-gray-800 hover:bg-muted/60 text-start" @click="pdfMenu.open = false; window.drawStagePdf && window.drawStagePdf(@js($u['pdf']), true, true)">
+                <button type="button" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-gray-800 hover:bg-muted/60 text-start" @click="pdfMenu.open = false; window.drawStagePdf && window.drawStagePdf(@js($u['pdf']), true, true, ! pdfNumbers)">
                     <span class="w-9 h-9 rounded-xl bg-primary/10 text-primary grid place-items-center flex-shrink-0"><i class="bi bi-share"></i></span>
                     <span>{{ __('events::events.bracket_pdf_this') }}</span>
                 </button>
-                <button type="button" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-gray-800 hover:bg-muted/60 text-start" @click="pdfMenu.open = false; window.drawStagePdf && window.drawStagePdf(@js($u['pdf']), false, true)">
+                <button type="button" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-gray-800 hover:bg-muted/60 text-start" @click="pdfMenu.open = false; window.drawStagePdf && window.drawStagePdf(@js($u['pdf']), false, true, ! pdfNumbers)">
                     <span class="w-9 h-9 rounded-xl bg-primary/10 text-primary grid place-items-center flex-shrink-0"><i class="bi bi-share-fill"></i></span>
                     <span>{{ __('events::events.bracket_pdf_all') }}</span>
                 </button>
@@ -635,6 +797,150 @@
     </template>
     @endif
 
+    @if(! empty($u['freeEdit']))
+    {{-- ===== Free edit (Design Rule #8 band) — one bout written exactly as it
+         happened, whatever state the event is in (FreeEdit). ===== --}}
+    <template x-teleport="body">
+        <div x-show="fix.open" x-cloak class="fixed inset-0 z-[80]" role="dialog" aria-modal="true"
+             @keydown.escape.window="fix.pick ? (fix.pick = null) : (fix.open = false)">
+            <div class="absolute inset-0 bg-black/50" x-show="fix.open" x-transition.opacity @click="fix.open = false"></div>
+
+            <div x-show="fix.open"
+                 x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                 x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+                 class="absolute inset-x-0 bottom-0 mx-auto w-full max-w-md max-h-[92vh] flex flex-col bg-white rounded-t-3xl shadow-2xl">
+
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl text-white relative overflow-hidden"
+                     style="background: linear-gradient(150deg, {{ $c }}, {{ $c }}b0);">
+                    <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
+                    <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
+                    <div class="relative flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
+                            <i class="bi bi-pencil-square text-xl"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-black leading-tight">{{ __('events::events.free_edit_title') }}</h3>
+                            <p class="text-[12px] text-white/85 mt-0.5">
+                                <span x-text="fix.match ? ((fix.match.no ? '#' + fix.match.no + ' · ' : '') + fix.match.round) : ''"></span>
+                            </p>
+                        </div>
+                        <button type="button" @click="fix.open = false" aria-label="{{ __('shared.close') }}"
+                                class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex-1 overflow-y-auto px-5 pt-5 pb-2">
+                    <div x-show="fix.loading" class="py-10 grid place-items-center text-gray-400">
+                        <i class="bi bi-arrow-repeat animate-spin text-2xl"></i>
+                    </div>
+
+                    <template x-if="! fix.loading && fix.match">
+                        <div>
+                            {{-- The two corners. A tap opens the picker under that corner. --}}
+                            <template x-for="side in ['a', 'b']" :key="side">
+                                <div class="mb-4">
+                                    <p class="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-2"
+                                       x-text="side === 'a' ? @js(__('events::events.free_edit_corner_a')) : @js(__('events::events.free_edit_corner_b'))"></p>
+                                    <div class="flex items-center gap-2">
+                                        <button type="button" @click="fix.pick = fix.pick === side ? null : side; fix.q = ''"
+                                                class="flex-1 min-w-0 h-12 px-3.5 rounded-xl border text-start flex items-center gap-2 transition-colors"
+                                                :class="fix.pick === side ? 'border-primary ring-2 ring-primary/30' : 'border-gray-200 hover:bg-muted/60'">
+                                            <span class="w-2 h-8 rounded-full flex-shrink-0" :class="side === 'a' ? 'bg-red-500' : 'bg-blue-500'"></span>
+                                            <span class="flex-1 min-w-0 text-sm font-bold"
+                                                  :class="fix[side] ? 'text-gray-900' : 'text-muted-foreground font-medium'"
+                                                  x-text="fix[side] ? fix[side].name : @js(__('events::events.free_edit_empty'))"></span>
+                                            <i class="bi bi-chevron-down text-xs text-gray-400 transition-transform" :class="fix.pick === side ? 'rotate-180' : ''"></i>
+                                        </button>
+                                        <input type="text" inputmode="numeric" maxlength="10" autocomplete="off"
+                                               class="w-16 h-12 px-2 text-center text-lg font-black border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                               :placeholder="@js(__('events::events.free_edit_score'))"
+                                               :value="side === 'a' ? fix.aScore : fix.bScore"
+                                               @input="side === 'a' ? (fix.aScore = $event.target.value) : (fix.bScore = $event.target.value)">
+                                    </div>
+
+                                    {{-- In the flow, never absolute: the sheet body scrolls. --}}
+                                    <div x-show="fix.pick === side" x-transition.opacity class="mt-2 rounded-xl border border-gray-100 shadow-lg overflow-hidden bg-white">
+                                        <div class="relative p-2 border-b border-gray-100">
+                                            <i class="bi bi-search absolute left-5 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                            <input type="text" x-model="fix.q" autocomplete="off"
+                                                   class="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                   placeholder="{{ __('events::events.late_entry_search') }}">
+                                        </div>
+                                        <div class="max-h-60 overflow-y-auto">
+                                            <button type="button" @click="fixChoose(side, null)"
+                                                    class="w-full px-3.5 py-2.5 text-start text-sm font-semibold text-gray-500 hover:bg-muted/60 flex items-center gap-2">
+                                                <i class="bi bi-dash-circle"></i>{{ __('events::events.free_edit_make_empty') }}
+                                            </button>
+                                            <template x-for="p in fixMatches()" :key="p.id">
+                                                <button type="button" @click="fixChoose(side, p)"
+                                                        class="w-full px-3.5 py-2.5 text-start hover:bg-muted/60 flex items-center gap-2"
+                                                        :class="fix[side] && fix[side].id === p.id ? 'text-primary' : 'text-gray-800'">
+                                                    <span class="flex-1 min-w-0">
+                                                        <span class="block text-sm font-semibold" x-text="p.name"></span>
+                                                        <span class="block text-[11px]" :class="p.here ? 'text-green-600' : 'text-muted-foreground'"
+                                                              x-text="p.division || @js(__('events::events.late_entry_no_division'))"></span>
+                                                    </span>
+                                                    <i class="bi bi-check-lg" x-show="fix[side] && fix[side].id === p.id"></i>
+                                                </button>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+
+                            {{-- Winner: three selection cards. --}}
+                            <p class="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-2">{{ __('events::events.free_edit_winner') }}</p>
+                            <div class="space-y-2 mb-4">
+                                <template x-for="w in ['a', 'b', null]" :key="String(w)">
+                                    <button type="button" @click="if (w === null || fix[w]) fix.winner = w" :disabled="w !== null && ! fix[w]"
+                                            class="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border text-start flex items-center gap-3 transition-colors disabled:opacity-40"
+                                            :class="fix.winner === w ? 'border-primary bg-primary/5' : 'border-gray-200 hover:bg-muted/60'">
+                                        <span class="w-8 h-8 rounded-lg grid place-items-center flex-shrink-0"
+                                              :class="w === null ? 'bg-muted text-gray-500' : (fix.winner === w ? 'bg-amber-100 text-amber-700' : 'bg-muted text-gray-500')">
+                                            <i class="bi" :class="w === null ? 'bi-dash-lg' : 'bi-trophy-fill'"></i>
+                                        </span>
+                                        <span class="flex-1 min-w-0 text-sm font-semibold text-gray-800"
+                                              x-text="w === null ? @js(__('events::events.free_edit_no_winner')) : (fix[w] ? fix[w].name : @js(__('events::events.free_edit_empty')))"></span>
+                                        <span class="w-5 h-5 rounded-full border-2 flex-shrink-0 grid place-items-center"
+                                              :class="fix.winner === w ? 'border-primary' : 'border-gray-300'">
+                                            <span class="w-2.5 h-2.5 rounded-full bg-primary" x-show="fix.winner === w"></span>
+                                        </span>
+                                    </button>
+                                </template>
+                            </div>
+
+                            {{-- Carry the winner into the next bout's corner (that corner only). --}}
+                            <button type="button" role="switch" x-show="fix.match.has_next" :aria-checked="fix.advance ? 'true' : 'false'" @click="fix.advance = ! fix.advance"
+                                    class="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl bg-muted/60 text-start mb-3">
+                                <span class="flex-1 min-w-0">
+                                    <span class="block text-sm font-semibold text-gray-800">{{ __('events::events.free_edit_advance') }}</span>
+                                    <span class="block text-[11px] text-muted-foreground">{{ __('events::events.free_edit_advance_hint') }}</span>
+                                </span>
+                                <span class="w-10 h-6 rounded-full flex-shrink-0 relative transition-colors" :class="fix.advance ? 'bg-primary' : 'bg-gray-300'">
+                                    <span class="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all" :style="fix.advance ? 'inset-inline-start:18px' : 'inset-inline-start:2px'"></span>
+                                </span>
+                            </button>
+
+                            <p class="text-[12px] text-amber-800 bg-amber-50 rounded-xl px-3.5 py-3 flex items-start gap-2">
+                                <i class="bi bi-info-circle-fill mt-0.5"></i>{{ __('events::events.free_edit_note') }}
+                            </p>
+                        </div>
+                    </template>
+                </div>
+
+                <div class="flex-shrink-0 px-5 pt-3 border-t border-gray-100" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
+                    <button type="button" @click="saveFix()" :disabled="busy || fix.loading || ! fix.match"
+                            class="w-full h-12 rounded-xl bg-primary text-white font-bold text-base hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                        <i class="bi bi-check2-circle"></i>{{ __('events::events.free_edit_save') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </template>
+    @endif
+
     {{-- The PIN keypad only exists while the PIN does (events.tablet_draw_pin). --}}
     @if($pinRequired)
     {{-- ===== The PIN keypad (Design Rule #8 band) ===== --}}
@@ -712,6 +1018,8 @@
 function tabletDraw() {
     return {
         num: { open: false, loading: false, match: null, mats: [], court: null, no: 1 },
+        // Free edit (FreeEdit): one bout, written as it happened.
+        fix: { open: false, loading: false, match: null, people: [], a: null, b: null, winner: null, aScore: '', bScore: '', advance: true, pick: null, q: '' },
         // Add / delete a division (owner, 2026-10-16). `divs` and `cur` follow the board.
         divs: [], cur: null,
         // The one Division control (owner, 2026-10-16): menu, docked editor, switch.
@@ -719,9 +1027,25 @@ function tabletDraw() {
         arrMenu: { open: false, style: '' },
         pdfMenu: { open: false, style: '' },
         modeMenu: { open: false, style: '' },
+        // The phone's ⋯ sheet: the bar's tools, folded (owner, 2026-10-18).
+        more: false,
+        // Whether the two-board view is open — read off its own announcement.
+        splitOpen: false,
+        /* Where a menu opens: under its own button, or — on a phone, where that
+           button is folded away — under ⋯. */
+        anchorRect(el) {
+            // getClientRects, not offsetParent: inside the fixed stage the
+            // latter is null even for a button that is plainly on screen.
+            const shown = n => !! (n && n.getClientRects().length);
+            const use = shown(el) ? el : this.$refs.moreBtn;
+            return shown(use) ? use.getBoundingClientRect() : { bottom: 60, left: 12, right: 12 };
+        },
+        fromMore(fn) { this.more = false; this.$nextTick(() => fn()); },
         ed: { open: false, created: false, id: null, letter: null, name: '', gender: '', minAge: '', maxAge: '', minW: '', maxW: '',
               error: '', loading: false, count: null, min: false, timer: null, seq: 0 },
         oneDivision: @json((bool) ($oneDivisionOn ?? false)),
+        // The draw PDF with or without bout numbers — the Download menu's switch.
+        pdfNumbers: true,
         edPick: false,
         delDiv: { open: false, id: null, name: '', entrants: 0, typed: '', error: '' },
         pad: false, pin: '', error: '', busy: false, shake: false, hint: true, edit: false, intent: null, seen: null, mode: 'move',
@@ -794,12 +1118,13 @@ function tabletDraw() {
                     downCard = e.target.closest ? e.target.closest(SEL) : null;
                 }, true);
                 window.__tdrawNumTap = (e) => {
-                    if (this.mode !== 'numbers' || this.viewOnly) return;
+                    if ((this.mode !== 'numbers' && this.mode !== 'fix') || this.viewOnly) return;
                     const card = (e.target.closest && e.target.closest(SEL)) || downCard;
                     if (! card) return;
                     e.stopPropagation(); e.preventDefault();
                     if (downAt && Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 8) return;
-                    this.openNumber(Number(card.dataset.matchId));
+                    if (this.mode === 'fix') this.openFix(Number(card.dataset.matchId));
+                    else this.openNumber(Number(card.dataset.matchId));
                 };
                 document.addEventListener('click', window.__tdrawNumTap, true);
             }
@@ -838,6 +1163,7 @@ function tabletDraw() {
             if (this.mode === 'winner' && window.showToast) window.showToast('info', @js(__('events::events.tablet_hint_winner')));
             if (this.mode === 'unwin' && window.showToast) window.showToast('info', @js(__('events::events.tablet_hint_unwin')));
             if (this.mode === 'numbers' && window.showToast) window.showToast('info', @js(__('events::events.tablet_hint_numbers')));
+            if (this.mode === 'fix' && window.showToast) window.showToast('info', @js(__('events::events.free_edit_hint')));
             if (m === 'names') { if (! this.edit) BB.toggleEdit(); return; }
             if (this.edit) BB.toggleEdit();
             BB.toggleArrange(m === 'move');
@@ -924,6 +1250,70 @@ function tabletDraw() {
             } finally { this.busy = false; }
         },
 
+        /* ── Free edit ─────────────────────────────────────────────────── */
+        async openFix(id) {
+            if (! id) return;
+            this.fix = { open: true, loading: true, match: null, people: [], a: null, b: null, winner: null, aScore: '', bScore: '', advance: true, pick: null, q: '' };
+            try {
+                const r = await fetch(@js($u['freeEdit'] ?? '').replace('999999999', id),
+                    { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
+                const d = await r.json().catch(() => ({}));
+                if (! r.ok || ! d.success) {
+                    this.fix.open = false;
+                    window.showToast && window.showToast('error', d.message || @js(__('events::events.action_failed')));
+                    return;
+                }
+                const m = d.match;
+                this.fix.match = m;
+                this.fix.people = d.people || [];
+                this.fix.a = m.a.id ? { id: m.a.id, name: m.a.name } : null;
+                this.fix.b = m.b.id ? { id: m.b.id, name: m.b.name } : null;
+                this.fix.winner = m.winner;
+                this.fix.aScore = m.a.score ?? '';
+                this.fix.bScore = m.b.score ?? '';
+                this.fix.advance = !! m.has_next;
+            } catch (e) {
+                this.fix.open = false;
+                window.showToast && window.showToast('error', @js(__('events::events.action_failed')));
+            } finally { this.fix.loading = false; }
+        },
+        fixMatches() {
+            const q = (this.fix.q || '').trim().toLowerCase();
+            const list = q ? this.fix.people.filter((p) => (p.name || '').toLowerCase().includes(q) || (p.division || '').toLowerCase().includes(q)) : this.fix.people;
+            return list.slice(0, 60);
+        },
+        fixChoose(side, p) {
+            this.fix[side] = p ? { id: p.id, name: p.name } : null;
+            if (! p && this.fix.winner === side) this.fix.winner = null;
+            this.fix.pick = null; this.fix.q = '';
+        },
+        async saveFix() {
+            if (this.busy || ! this.fix.match) return;
+            this.busy = true;
+            try {
+                const r = await fetch(@js($u['freeEdit'] ?? '').replace('999999999', this.fix.match.id), {
+                    method: 'PUT', credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest',
+                               'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    body: JSON.stringify({
+                        a: this.fix.a ? this.fix.a.id : null, b: this.fix.b ? this.fix.b.id : null,
+                        winner: this.fix.winner, a_score: String(this.fix.aScore ?? ''), b_score: String(this.fix.bScore ?? ''),
+                        advance: !! (this.fix.advance && this.fix.match.has_next && this.fix.winner),
+                    }),
+                });
+                const d = await r.json().catch(() => ({}));
+                if (! r.ok || ! d.success) {
+                    window.showToast && window.showToast('error', d.message || @js(__('events::events.action_failed')));
+                    return;
+                }
+                this.fix.open = false;
+                window.showToast && window.showToast('success', d.message);
+                window.BracketBoard && window.BracketBoard.reload(true);
+            } catch (e) {
+                window.showToast && window.showToast('error', @js(__('events::events.action_failed')));
+            } finally { this.busy = false; }
+        },
+
         done() {
             if (this.ed.open) this.closeEditor();
             const BB = window.BracketBoard;
@@ -955,7 +1345,7 @@ function tabletDraw() {
 
         /* ── The tool control (what a tap does) ─────────────────────────── */
         openModeMenu() {
-            const r = this.$refs.modeBtn ? this.$refs.modeBtn.getBoundingClientRect() : { bottom: 60, left: 12, right: 12 };
+            const r = this.anchorRect(this.$refs.modeBtn);
             const w = Math.min(300, window.innerWidth - 24);
             const rtl = document.documentElement.dir === 'rtl';
             let x = rtl ? r.right - w : r.left;
@@ -965,7 +1355,7 @@ function tabletDraw() {
 
         /* ── The Download control (this / all · download / share) ───────── */
         openPdfMenu() {
-            const r = this.$refs.pdfBtn ? this.$refs.pdfBtn.getBoundingClientRect() : { bottom: 60, left: 12, right: 12 };
+            const r = this.anchorRect(this.$refs.pdfBtn);
             const w = Math.min(300, window.innerWidth - 24);
             const rtl = document.documentElement.dir === 'rtl';
             let x = rtl ? r.right - w : r.left;
@@ -975,7 +1365,7 @@ function tabletDraw() {
 
         /* ── The Arrange control (Shuffle · Renumber bouts) ─────────────── */
         openArrMenu() {
-            const r = this.$refs.arrBtn ? this.$refs.arrBtn.getBoundingClientRect() : { bottom: 60, left: 12, right: 12 };
+            const r = this.anchorRect(this.$refs.arrBtn);
             const w = Math.min(300, window.innerWidth - 24);
             const rtl = document.documentElement.dir === 'rtl';
             let x = rtl ? r.right - w : r.left;
@@ -986,7 +1376,7 @@ function tabletDraw() {
         /* ── The Division control ───────────────────────────────────────── */
         curDiv() { return this.divs.find((x) => x.id === this.cur && ! x.is_heading) || null; },
         openDivMenu() {
-            const r = this.$refs.divBtn ? this.$refs.divBtn.getBoundingClientRect() : { bottom: 60, left: 12, right: 12 };
+            const r = this.anchorRect(this.$refs.divBtn);
             const w = Math.min(300, window.innerWidth - 24);
             const rtl = document.documentElement.dir === 'rtl';
             let x = rtl ? r.right - w : r.left;

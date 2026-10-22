@@ -27,6 +27,9 @@ use Illuminate\Support\Facades\Storage;
  *   podium         — gold, silver and bronze, read off the division's stored podium
  *   official_thanks — every official of the event, once per person: a thank-you
  *                    for helping make it a success (2026-10-15; off by default)
+ *   club_thanks    — every club that brought athletes, once per club: a thank-you
+ *                    for taking part (2026-10-20; off by default). The CLUB holds
+ *                    it — a Tenant, or the EventClub the organiser wrote down.
  *
  * COMMON to every bracketed sport (CLAUDE.md → Shared Stays Shared): it reads
  * `event_categories.podium` — the one record Advancement writes, whatever the
@@ -50,8 +53,48 @@ class EventCertificates implements CertificateContext
 
     public const TYPE_OFFICIALS = 'official_thanks';
 
+    public const SOURCE_CLUB = 'event_club_thanks';
+
+    public const TYPE_CLUBS = 'club_thanks';
+
     /** @var array<int, array> brand per event, for one request */
     private array $brands = [];
+
+    /** While generateFor() runs: the holders asked for (holderKey => true); null otherwise. */
+    private ?array $holderFilter = null;
+
+    /**
+     * Who a certificate is for, as the outside names them: a person by their
+     * public id (`u:<uuid>`), a club by its name (`n:<name>`) — the name is what
+     * the club's two records share, as clubsPlan() merges them.
+     */
+    public function holderKey(Model $holder): string
+    {
+        return $holder instanceof User
+            ? 'u:'.$holder->uuid
+            : 'n:'.mb_strtolower(trim((string) preg_replace('/\s+/u', ' ', $holder instanceof \Ahl\Certificates\Contracts\Recipient ? $holder->certificateName() : '')));
+    }
+
+    /**
+     * Draft one kind of certificate for the holders named only (holderKey()),
+     * not for everyone due one — "issue to these people" (owner, 2026-10-20).
+     *
+     * @param  list<string>  $holders
+     */
+    public function generateFor(Model $context, ?User $by, string $type, array $holders): array
+    {
+        $this->holderFilter = array_fill_keys($holders, true);
+        try {
+            return $this->generate($context, $by, $type);
+        } finally {
+            $this->holderFilter = null;
+        }
+    }
+
+    private function wanted(Model $holder): bool
+    {
+        return $this->holderFilter === null || isset($this->holderFilter[$this->holderKey($holder)]);
+    }
 
     public function __construct(private EventAccess $access) {}
 
@@ -171,7 +214,7 @@ class EventCertificates implements CertificateContext
 
     public function placeholderKeys(): array
     {
-        return ['division', 'event', 'place', 'medal', 'date', 'venue', 'club', 'representing', 'role'];
+        return ['division', 'event', 'place', 'medal', 'date', 'venue', 'club', 'representing', 'role', 'athletes'];
     }
 
     public function placeholders(Certificate $certificate, string $locale): array
@@ -192,6 +235,8 @@ class EventCertificates implements CertificateContext
             'representing' => $club !== '' ? __('cert::messages.representing', ['club' => $club], $locale) : '',
             // An official's job(s) at the event, for their thank-you certificate.
             'role' => (string) ($d['role'] ?? ''),
+            // How many athletes a club brought, for its thank-you certificate.
+            'athletes' => isset($d['athletes']) ? trans_choice('cert::messages.athletes_count', (int) $d['athletes'], ['count' => (int) $d['athletes']], $locale) : '',
         ];
     }
 
@@ -204,12 +249,13 @@ class EventCertificates implements CertificateContext
             'club' => EventHost::of($context)->name ?: null,
             'place' => $type === 'podium' ? 1 : null,
             'role' => $type === self::TYPE_OFFICIALS ? __('personal.personal_event_officials_role_jury') : null,
+            'athletes' => $type === self::TYPE_CLUBS ? 12 : null,
         ];
     }
 
     public function types(): array
     {
-        return ['participation', 'podium', self::TYPE_OFFICIALS];
+        return ['participation', 'podium', self::TYPE_OFFICIALS, self::TYPE_CLUBS];
     }
 
     /**
@@ -222,6 +268,8 @@ class EventCertificates implements CertificateContext
     {
         return match ($type) {
             self::TYPE_OFFICIALS => ['name', 'role', 'club', 'event', 'date', 'venue'],
+            // {name} is the club's own name here.
+            self::TYPE_CLUBS => ['name', 'athletes', 'event', 'date', 'venue'],
             'podium' => ['name', 'division', 'place', 'medal', 'club', 'representing', 'event', 'date', 'venue'],
             default => ['name', 'division', 'club', 'representing', 'event', 'date', 'venue'],
         };
@@ -235,6 +283,7 @@ class EventCertificates implements CertificateContext
             'participation' => (bool) $s->participation,
             'podium' => (bool) $s->podium,
             'officials' => (bool) $s->officials,
+            'clubs' => (bool) $s->clubs,
             'trigger' => in_array($s->trigger, EventCertificateSetting::TRIGGERS, true) ? $s->trigger : 'division',
         ];
     }
@@ -242,7 +291,7 @@ class EventCertificates implements CertificateContext
     public function saveSettings(Model $context, array $input): array
     {
         $s = EventCertificateSetting::for($context);
-        foreach (['participation', 'podium', 'officials'] as $flag) {
+        foreach (['participation', 'podium', 'officials', 'clubs'] as $flag) {
             if (array_key_exists($flag, $input)) {
                 $s->{$flag} = (bool) $input[$flag];
             }
@@ -263,6 +312,7 @@ class EventCertificates implements CertificateContext
             'participation' => $plan['participation']->count(),
             'podium' => $plan['podium']->count(),
             'officials' => $plan['officials']->count(),
+            'clubs' => $plan['clubs']->count(),
             'decided' => $plan['decided'],
             'pending' => $plan['pending'],
         ];
@@ -275,9 +325,17 @@ class EventCertificates implements CertificateContext
      * changed since — a result corrected at the table — follows the correction;
      * an approved one is left alone for the organiser to revoke.
      */
-    public function generate(Model $context, ?User $by): array
+    public function generate(Model $context, ?User $by, ?string $only = null): array
     {
         $settings = $this->settings($context);
+        // One kind only, whatever the console's switches say: asked for by name
+        // (the federation view's "Issue"), so asking IS the switch.
+        if ($only !== null) {
+            $flag = ['participation' => 'participation', 'podium' => 'podium', self::TYPE_OFFICIALS => 'officials', self::TYPE_CLUBS => 'clubs'][$only] ?? null;
+            foreach (['participation', 'podium', 'officials', 'clubs'] as $f) {
+                $settings[$f] = $f === $flag;
+            }
+        }
         $plan = $this->plan($context);
         $service = app(CertificateService::class);
         $created = 0;
@@ -292,7 +350,7 @@ class EventCertificates implements CertificateContext
                     continue;
                 }
                 foreach ($plan[$type] as $row) {
-                    if ($service->exists($row['user'], $source, $row['registration_id'])) {
+                    if (! $this->wanted($row['user']) || $service->exists($row['user'], $source, $row['registration_id'])) {
                         continue;
                     }
                     $service->createDraft($row['user'], $type, [
@@ -315,7 +373,7 @@ class EventCertificates implements CertificateContext
             // Officials: one thank-you per person, whatever jobs they held.
             if ($settings['officials']) {
                 foreach ($plan['officials'] as $row) {
-                    if ($service->exists($row['user'], self::SOURCE_OFFICIAL, $context->id)) {
+                    if (! $this->wanted($row['user']) || $service->exists($row['user'], self::SOURCE_OFFICIAL, $context->id)) {
                         continue;
                     }
                     $service->createDraft($row['user'], self::TYPE_OFFICIALS, [
@@ -324,6 +382,23 @@ class EventCertificates implements CertificateContext
                         'source' => self::SOURCE_OFFICIAL,
                         'source_id' => $context->id,
                         'details' => array_filter(['role' => $row['role'], 'club' => $row['club']], fn ($v) => $v !== null && $v !== ''),
+                    ], $by);
+                    $created++;
+                }
+            }
+
+            // Clubs: one thank-you per club that brought athletes.
+            if ($settings['clubs']) {
+                foreach ($plan['clubs'] as $row) {
+                    if (! $this->wanted($row['club']) || $this->clubHasCertificate($row['club'], $context, $service)) {
+                        continue;
+                    }
+                    $service->createDraft($row['club'], self::TYPE_CLUBS, [
+                        'achievement' => $row['name'],
+                        'context' => $context,
+                        'source' => self::SOURCE_CLUB,
+                        'source_id' => $context->id,
+                        'details' => ['club' => $row['name'], 'athletes' => $row['athletes']],
                     ], $by);
                     $created++;
                 }
@@ -340,6 +415,11 @@ class EventCertificates implements CertificateContext
         $place = isset($d['place']) ? (int) $d['place'] : null;
         if ($certificate->source === self::SOURCE_OFFICIAL) {
             return (string) ($d['role'] ?? $certificate->achievement ?? '');
+        }
+        if ($certificate->source === self::SOURCE_CLUB) {
+            return isset($d['athletes'])
+                ? trans_choice('cert::messages.athletes_count', (int) $d['athletes'], ['count' => (int) $d['athletes']], $locale)
+                : __('cert::messages.types.club_thanks', [], $locale);
         }
 
         return $place && $place <= 3
@@ -415,6 +495,7 @@ class EventCertificates implements CertificateContext
             'participation' => $participation,
             'podium' => $podium,
             'officials' => $this->officialsPlan($event),
+            'clubs' => $this->clubsPlan($event),
             'decided' => $decided->count(),
             'pending' => $divisions->count() - $decided->count(),
         ];
@@ -439,6 +520,223 @@ class EventCertificates implements CertificateContext
                 'role' => $jobs->map(fn ($o) => $badges->roleLabel($o, $locale))->unique()->implode(' · '),
                 'club' => $jobs->map(fn ($o) => $o->club()['name'] ?? null)->filter()->first(),
             ])->values();
+    }
+
+    /**
+     * The clubs that took part, one row per CLUB: every club with at least one
+     * athlete still entered, resolved the way the board resolves it (a club on
+     * the platform first, then the club the organiser wrote down — EntryClub).
+     * Unlike participation it waits for no result: a club took part the moment
+     * its athletes were entered.
+     *
+     * @return Collection<int, array{club: Tenant|\App\Events\Models\EventClub, name: string, athletes: int}>
+     */
+    public function clubsPlan(ClubEvent $event): Collection
+    {
+        $regs = $event->participantRegistrations()
+            ->where(fn ($q) => $q->whereNull('entry_state')->orWhereNotIn('entry_state', ['withdrawn', 'removed']))
+            ->with(['user.memberClubs', 'representingTenant'])
+            ->get();
+        if ($regs->isEmpty()) {
+            return collect();
+        }
+
+        $written = DB::table('event_club_entrants as l')
+            ->join('event_clubs as c', 'c.id', '=', 'l.event_club_id')
+            ->where('c.event_id', $event->id)
+            ->whereIn('l.registration_id', $regs->pluck('id'))
+            ->pluck('c.id', 'l.registration_id');
+        $eventClubs = \App\Events\Models\EventClub::with('tenant')->whereIn('id', $written->unique()->values())->get()->keyBy('id');
+
+        $clubs = [];
+        foreach ($regs as $r) {
+            $club = $r->competingClub();
+            if (! $club && ($ec = $eventClubs[$written[$r->id] ?? 0] ?? null)) {
+                // A written-down club that is really a platform club is that club.
+                $club = $ec->tenant ?: $ec;
+            }
+            if (! $club || trim($club->certificateName()) === '') {
+                continue;
+            }
+            // One club, one certificate: a typed-in copy of a platform club (same
+            // name) is that club, as the results PDF counts it (BracketPdf::clubPages).
+            $key = mb_strtolower(preg_replace('/\s+/u', ' ', trim($club->certificateName())));
+            $clubs[$key] ??= ['club' => $club, 'name' => $club->certificateName(), 'people' => []];
+            if ($club instanceof Tenant && ! $clubs[$key]['club'] instanceof Tenant) {
+                $clubs[$key]['club'] = $club;   // the platform club holds it
+                $clubs[$key]['name'] = $club->certificateName();
+            }
+            // Athletes, not entries: one person in two divisions is one athlete.
+            $clubs[$key]['people'][$r->user_id ? 'u'.$r->user_id : 'r'.$r->id] = true;
+        }
+
+        return collect($clubs)
+            ->map(fn ($c) => ['club' => $c['club'], 'name' => $c['name'], 'athletes' => count($c['people'])])
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
+    }
+
+    /**
+     * Who holds one JOB at this event, for a print-shop file of that job's
+     * certificates only (CertificateBundles — `official_thanks.<job>`). Null when
+     * the type has no jobs or the job is not one this event has.
+     *
+     * @return list<int>|null user ids
+     */
+    public function bundleRecipients(Model $context, string $type, string $job): ?array
+    {
+        if ($type !== self::TYPE_OFFICIALS || ! $context instanceof ClubEvent) {
+            return null;
+        }
+        $roles = app(OfficialRoles::class);
+        if (! array_key_exists($job, $roles->jobs($context))) {
+            return null;
+        }
+
+        return \App\Events\Models\EventOfficial::where('event_id', $context->id)->get()
+            ->filter(fn ($o) => $roles->jobKey($context, $o) === $job)->pluck('user_id')->map(fn ($id) => (int) $id)->unique()->values()->all();
+    }
+
+    /**
+     * The designs to try for one certificate before its type's general one, most
+     * specific first: an official's thank-you prints from the design of their
+     * job (CertificatePrintable — `official_thanks.<job>`), the first of their
+     * jobs that has one.
+     *
+     * @return list<string>
+     */
+    public function designSlots(Certificate $certificate): array
+    {
+        $event = $certificate->context;
+        if ($certificate->source !== self::SOURCE_OFFICIAL || ! $event instanceof ClubEvent || ! $certificate->recipient instanceof User) {
+            return [];
+        }
+        $roles = app(OfficialRoles::class);
+
+        return \App\Events\Models\EventOfficial::where('event_id', $event->id)->where('user_id', $certificate->recipient->id)->orderBy('id')->get()
+            ->map(fn ($o) => self::TYPE_OFFICIALS.'.'.$roles->jobKey($event, $o))->unique()->values()->all();
+    }
+
+    /**
+     * Has this club had its thank-you here already — under either of its two
+     * records? A typed-in club later linked to the platform club (event_clubs.
+     * tenant_id) is the same club: its certificate counts for both, so linking
+     * never makes a second one.
+     */
+    private function clubHasCertificate(Model $club, ClubEvent $event, CertificateService $service): bool
+    {
+        if ($service->exists($club, self::SOURCE_CLUB, $event->id)) {
+            return true;
+        }
+        $twins = $club instanceof Tenant
+            ? \App\Events\Models\EventClub::where('event_id', $event->id)->where('tenant_id', $club->id)->get()
+            : collect($club instanceof \App\Events\Models\EventClub && $club->tenant_id ? [Tenant::find($club->tenant_id)] : [])->filter();
+
+        return $twins->contains(fn ($twin) => $service->exists($twin, self::SOURCE_CLUB, $event->id));
+    }
+
+    /**
+     * The crest of the club a certificate is about, as a data: URI — the
+     * designer's "Club logo" field (2026-10-20). The club itself for a club's
+     * thank-you; the club an athlete competed for (a platform club first, then
+     * the one the organiser wrote down — EntryClub's order); the club an
+     * official came with. Null when there is none, or it has no crest.
+     */
+    public function clubLogo(Certificate $certificate): ?string
+    {
+        return $this->crest($this->clubOf($certificate));
+    }
+
+    /** The flag of the country the certificate's club is in — the designer's "Club's country flag". */
+    public function clubFlag(Certificate $certificate): ?string
+    {
+        return self::flagOfClub($this->clubOf($certificate));
+    }
+
+    /** The holder's own nationality flag — the designer's "Nationality flag". None for a club. */
+    public function nationalityFlag(Certificate $certificate): ?string
+    {
+        return $certificate->recipient instanceof User ? self::flagDataUri($certificate->recipient->nationality) : null;
+    }
+
+    /** The club a certificate is about: the club itself, the club an official came with, or the one an athlete competed for. */
+    public function clubOf(Certificate $certificate): ?Model
+    {
+        $event = $certificate->context;
+        if (! $event instanceof ClubEvent) {
+            return null;
+        }
+        if ($certificate->source === self::SOURCE_CLUB) {
+            return $certificate->recipient;
+        }
+        if ($certificate->source === self::SOURCE_OFFICIAL) {
+            $o = \App\Events\Models\EventOfficial::where('event_id', $event->id)
+                ->where('user_id', $certificate->recipient instanceof User ? $certificate->recipient->id : 0)
+                ->where(fn ($q) => $q->whereNotNull('representing_tenant_id')->orWhereNotNull('event_club_id'))
+                ->orderBy('id')->first();
+
+            return $o ? $this->officialClub($o) : null;
+        }
+        $regId = (int) (((array) ($certificate->details ?? []))['registration_id'] ?? $certificate->source_id ?? 0);
+        $reg = $regId ? ClubEventRegistration::where('event_id', $event->id)->with(['user.memberClubs', 'representingTenant'])->find($regId) : null;
+
+        return $reg ? $this->entryClub($event, $reg) : null;
+    }
+
+    /** The crest of the club an official came with, as a data: URI (badges too). */
+    public function officialCrest(\App\Events\Models\EventOfficial $o): ?string
+    {
+        return $this->crest($this->officialClub($o));
+    }
+
+    public function officialClub(\App\Events\Models\EventOfficial $o): ?Model
+    {
+        return $o->representing_tenant_id ? Tenant::find($o->representing_tenant_id) : ($o->event_club_id ? \App\Events\Models\EventClub::find($o->event_club_id) : null);
+    }
+
+    /** The crest of the club an entry competes for — a platform club first, then the one written down (badges too). */
+    public function entryCrest(ClubEvent $event, ClubEventRegistration $reg): ?string
+    {
+        return $this->crest($this->entryClub($event, $reg));
+    }
+
+    public function entryClub(ClubEvent $event, ClubEventRegistration $reg): ?Model
+    {
+        $club = $reg->competingClub();
+        if (! $club) {
+            // Linked on this entry, else on the same person's other entries (EntryClub::byPerson).
+            $ids = DB::table('event_club_entrants as l')->join('event_clubs as c', 'c.id', '=', 'l.event_club_id')
+                ->join('club_event_registrations as r', 'r.id', '=', 'l.registration_id')
+                ->where('c.event_id', $event->id)
+                ->where(fn ($q) => $q->where('r.id', $reg->id)->when($reg->user_id, fn ($q) => $q->orWhere('r.user_id', $reg->user_id)))
+                ->distinct()->pluck('c.id');
+            $club = $ids->count() === 1 ? \App\Events\Models\EventClub::find($ids->first()) : null;
+        }
+
+        return $club;
+    }
+
+    /** A club's country flag: a platform club's own country, a written-down club's (or the platform club it is). */
+    public static function flagOfClub(?Model $club): ?string
+    {
+        $code = $club instanceof Tenant ? $club->country
+            : ($club instanceof \App\Events\Models\EventClub ? ($club->tenant?->country ?: $club->country) : null);
+
+        return self::flagDataUri($code);
+    }
+
+    /** A country's flag from the local set (public/images/flags), as a data: URI for print. Never a remote fetch. */
+    public static function flagDataUri(?string $country): ?string
+    {
+        $iso = \App\Support\Flag::iso2($country);
+        $file = $iso ? public_path('images/flags/'.$iso.'.svg') : null;
+
+        return $file && is_file($file) ? 'data:image/svg+xml;base64,'.base64_encode((string) file_get_contents($file)) : null;
+    }
+
+    private function crest(?Model $club): ?string
+    {
+        return $club instanceof \Ahl\Certificates\Contracts\Recipient && ! $club instanceof User ? $club->certificatePhoto() : null;
     }
 
     /** A podium draft follows its division's result until it is approved. */
@@ -530,6 +828,226 @@ class EventCertificates implements CertificateContext
             ->implode('');
 
         return strlen($letters) >= 2 ? $letters : null;
+    }
+
+    /**
+     * What the public certificate check (App\Certificates\Controllers\VerifyController)
+     * shows beyond the paper itself: the holder's face and club, the event, the bouts
+     * they fought, and a way to the division's draw.
+     *
+     * Every piece obeys the rule its own surface already obeys — nothing is shown here
+     * that its usual home would not show the same stranger:
+     *   face      CompetitorFace — only a picture the member chose to make public
+     *   club      EntryClub — club branding is public by intent
+     *   bouts     only when the event is public AND its draw is visible to this viewer
+     *             (PublicEvent::isPublic + EventAccess::drawVisible), as on the draw page
+     *   draw link the public read-only board, under the same two conditions
+     *   videos    the bout page's own link; the footage stays behind its login and
+     *             its own permission check (BoutVideoController::mayWatch)
+     *
+     * @return array<string, mixed>
+     */
+    public function verifyStory(Certificate $certificate, ?User $viewer, string $locale): array
+    {
+        $event = $certificate->context;
+        if (! $event instanceof ClubEvent) {
+            return [];
+        }
+        $details = (array) ($certificate->details ?? []);
+        $regId = (int) ($details['registration_id'] ?? (in_array($certificate->source, [self::SOURCE_ENTRY, self::SOURCE_PODIUM], true) ? $certificate->source_id : 0));
+        $reg = $regId ? ClubEventRegistration::query()->where('event_id', $event->id)->with(['user.memberClubs', 'category', 'representingTenant'])->find($regId) : null;
+        $host = EventHost::of($event);
+        $holder = $certificate->recipient instanceof User ? $certificate->recipient : $reg?->user;
+        $clubUrl = fn (?Tenant $t) => $t && $t->slug && $t->country_code ? \App\Http\Controllers\QrController::clubPageUrl($t) : null;
+
+        // Weight and height are private on the platform: the person themselves and the
+        // event's staff only — the rule PublicEventController::readinessFor keeps.
+        $access = app(EventAccess::class);
+        $mayBody = $viewer !== null && (($holder && $viewer->is($holder)) || $access->canManage($event, $viewer) || $access->canOfficiate($event, $viewer));
+
+        // Age on the day of the competition (public, as on the entry cards).
+        $on = $event->date ? Carbon::parse($event->getRawOriginal('date') ?? $event->date) : ($certificate->issued_on ?? now());
+        $age = $holder?->birthdate ? Carbon::parse($holder->birthdate)->diffInYears($on) : ($reg?->declared_age ?: null);
+
+        // Once issued, the certificate shows who the holder WAS (CertificateSnapshot), never today's profile.
+        $snap = \App\Certificates\Support\CertificateSnapshot::of($certificate);
+        if ($snap) {
+            $age = $snap['age'] ?? $age;
+        }
+
+        $story = [
+            'photo' => $snap ? \App\Certificates\Support\CertificateSnapshot::photoUrl($certificate) : ($reg ? CompetitorFace::for($reg) : null),
+            'profile_url' => $holder?->uuid ? route('people.show', $holder->uuid) : null,
+            'age' => $age !== null ? (int) $age : null,
+            'weight' => $mayBody && (($w = $snap ? ($snap['weight'] ?? null) : $reg?->weight) !== null) ? rtrim(rtrim(number_format((float) $w, 1), '0'), '.') : null,
+            'weighed' => $mayBody && ($snap ? ! empty($snap['weighed']) : $reg?->weighed_in_at !== null),
+            'height' => $mayBody && ($h = $snap ? ($snap['height'] ?? null) : $holder?->height_cm) ? (int) $h : null,
+            'club' => $reg ? (EntryClub::for($reg) ?? []) + ['url' => $clubUrl($reg->competingClub())] : null,
+            'division' => $reg?->category?->name ?: ($details['division'] ?? null),
+            'role' => $details['role'] ?? null,
+            'event' => [
+                'title' => $this->headline($event),
+                'dates' => $this->dates($event, $locale),
+                'venue' => (string) ($event->getRawOriginal('location') ?? ''),
+                'host' => $host->name,
+                'host_logo' => $host->logo,
+                'host_url' => $clubUrl($host->club),
+                'entrants' => $reg?->category ? $reg->category->registrations()->where('role', 'participant')->count() : null,
+                'url' => route('me.events.show', $event->uuid),
+                'results_url' => route('me.events.results.page', $event->uuid),
+                'entrants_url' => route('me.events.participants', $event->uuid),
+                'map_url' => \App\Support\MapLink::isGoogle((string) $event->location_url) ? $event->location_url
+                    : ($event->gps_lat && $event->gps_long ? 'https://www.google.com/maps/search/?api=1&query='.((float) $event->gps_lat).','.((float) $event->gps_long)
+                    : ($event->getRawOriginal('location') ? 'https://www.google.com/maps/search/?api=1&query='.rawurlencode((string) $event->getRawOriginal('location')) : null)),
+            ],
+            'bouts' => [],
+            'draw_url' => null,
+        ];
+
+        // A club's thank-you: the club is the holder — its name, crest and page.
+        if ($certificate->source === self::SOURCE_CLUB) {
+            $club = $certificate->recipient;
+            $tenant = $club instanceof Tenant ? $club : ($club instanceof \App\Events\Models\EventClub ? $club->tenant : null);
+            $logo = $tenant?->logo ?: ($club instanceof \App\Events\Models\EventClub ? $club->logo : null);
+            $story['club'] = $club ? [
+                'name' => $club->certificateName(), 'logo' => $logo ? file_url($logo) : null,
+                'country' => $tenant?->country ?: ($club->country ?? null), 'url' => $clubUrl($tenant),
+            ] : null;
+            $story['team'] = $club ? $this->teamOf($event, $club->certificateName(), $viewer, $locale) : null;
+
+            return $story;
+        }
+
+        // A team official's thank-you (team manager, coach…): the team they came with.
+        if ($certificate->source === self::SOURCE_OFFICIAL && $holder instanceof User) {
+            $roles = app(OfficialRoles::class);
+            $teamJob = \App\Events\Models\EventOfficial::where('event_id', $event->id)->where('user_id', $holder->id)->orderBy('id')->get()
+                ->first(fn ($o) => ($o->club()['name'] ?? null) && $roles->sectionOf($event, (string) $o->role, $o->role_label) === 'team');
+            if ($teamJob) {
+                $story['team'] = $this->teamOf($event, (string) $teamJob->club()['name'], $viewer, $locale);
+                $story['team_managed'] = true;
+            }
+        }
+
+        $public = app(PublicEvent::class)->isPublic($event) && app(EventAccess::class)->drawVisible($event, $viewer);
+        if ($public && $reg && $reg->user) {
+            $history = app(\App\Members\Support\BoutHistory::class)->forEntry($event, $reg, $viewer);
+            // Every pairing the draw holds — a bout never fought (a final not held) is listed as undecided, not hidden.
+            $bouts = collect($history['bouts'] ?? [])->filter(fn ($b) => $b['bye'] || ! empty($b['opponent_entry']))->values();
+            $opponentIds = $bouts->pluck('opponent_entry')->filter()->unique()->all();
+            $clubs = EntryClub::forMany($event, $opponentIds);
+            $opponents = ClubEventRegistration::query()->whereIn('id', $opponentIds)->with(['user.memberClubs', 'representingTenant'])->get()->keyBy('id');
+            $story['bouts'] = $bouts->map(fn ($b) => [
+                'opponent' => $b['bye'] ? null : $b['opponent'],
+                'opponent_photo' => $b['opponent_photo'],
+                'opponent_url' => ($o = $opponents[$b['opponent_entry']] ?? null)?->user?->uuid ? route('people.show', $o->user->uuid) : null,
+                'opponent_club' => $b['opponent_entry'] ? (($clubs[$b['opponent_entry']] ?? []) + ['url' => $clubUrl(($opponents[$b['opponent_entry']] ?? null)?->competingClub())]) : null,
+                'bout_url' => ! $b['bye'] && $b['match_no'] !== null ? route('me.events.bout', ['event' => $event->uuid, 'matchNo' => $b['match_no']]) : null,
+                'bye' => (bool) $b['bye'],
+                'won' => (bool) $b['won'],
+                'decided' => (bool) $b['decided'],
+                'score' => $b['bye'] ? null : trim(($b['my_score'] ?? '').' – '.($b['their_score'] ?? ''), ' –'),
+                'round' => $b['round'],
+                'video_url' => $b['video_url'],
+            ])->all();
+            if ($reg->category_id) {
+                $story['draw_url'] = route('me.events.bracket.manage', ['event' => $event->uuid, 'division' => $reg->category_id]);
+            }
+        }
+
+        return $story;
+    }
+
+    /**
+     * The athletes one club brought, for the certificate check page (owner,
+     * 2026-10-20): one row per PERSON — best medal, face, flag, name, age, and
+     * each division with a way to its bracket. A club is matched by its name,
+     * the same rule its certificate is issued by (clubsPlan), so a typed-in copy
+     * and the platform club read as one team.
+     *
+     * Every piece obeys the rule its own surface already obeys:
+     *   the list   only when the event is public, or for the event's staff
+     *   faces      CompetitorFace — a picture the member made public
+     *   weight     the event's staff only (the owner's choice — option 1);
+     *              athletes here are often children, and this page is public
+     *   brackets   linked only where the draw is visible to this viewer
+     *
+     * @return array{athletes: list<array>, medals: array<int, int>, staff: bool}|null
+     */
+    public function teamOf(ClubEvent $event, string $clubName, ?User $viewer, string $locale): ?array
+    {
+        $access = app(EventAccess::class);
+        $staff = $viewer !== null && ($access->canManage($event, $viewer) || $access->canOfficiate($event, $viewer));
+        if (! $staff && ! app(PublicEvent::class)->isPublic($event)) {
+            return null;
+        }
+        $drawOpen = $staff || $access->drawVisible($event, $viewer);
+        $norm = fn (?string $n) => mb_strtolower(trim((string) preg_replace('/\s+/u', ' ', (string) $n)));
+        $want = $norm($clubName);
+
+        $regs = $event->participantRegistrations()->with(['user.memberClubs', 'category', 'representingTenant'])->orderBy('id')->get();
+        $written = DB::table('event_club_entrants as l')->join('event_clubs as c', 'c.id', '=', 'l.event_club_id')
+            ->where('c.event_id', $event->id)->whereIn('l.registration_id', $regs->pluck('id'))
+            ->pluck('c.id', 'l.registration_id');
+        $eventClubs = \App\Events\Models\EventClub::with('tenant')->whereIn('id', $written->unique()->values())->get()->keyBy('id');
+        $mine = $regs->filter(function ($r) use ($written, $eventClubs, $norm, $want) {
+            $club = $r->competingClub();
+            if (! $club && ($ec = $eventClubs[$written[$r->id] ?? 0] ?? null)) {
+                $club = $ec->tenant ?: $ec;
+            }
+
+            return $club && $norm($club->certificateName()) === $want;
+        });
+        if ($mine->isEmpty()) {
+            return null;
+        }
+
+        // Places won, per entry, from the podiums the event stored.
+        $placed = [];
+        foreach (EventCategory::where('event_id', $event->id)->whereIn('id', $mine->pluck('category_id')->filter()->unique())->get(['id', 'podium']) as $c) {
+            foreach ((array) $c->podium as $m) {
+                $place = (int) ($m['place'] ?? 0);
+                if (! empty($m['competitor_id']) && $place >= 1 && $place <= 3) {
+                    $placed[(int) $m['competitor_id']] = min($placed[(int) $m['competitor_id']] ?? 9, $place);
+                }
+            }
+        }
+        $on = $event->date ? Carbon::parse($event->getRawOriginal('date') ?? $event->date) : now();
+
+        $athletes = $mine->groupBy(fn ($r) => $r->user_id ? 'u'.$r->user_id : 'r'.$r->id)->map(function ($rows) use ($placed, $on, $staff, $drawOpen, $event) {
+            $first = $rows->first();
+            $user = $first->user;
+            $face = $rows->map(fn ($r) => CompetitorFace::for($r))->filter()->first();
+            $iso = $first->countryCode();
+            $best = $rows->map(fn ($r) => $placed[$r->id] ?? null)->filter()->min();
+            $weighed = $rows->first(fn ($r) => $r->weighed_in_at !== null) ?? $rows->first(fn ($r) => $r->weight !== null);
+
+            return [
+                'name' => (string) ($user?->full_name ?: $user?->name ?: ''),
+                'url' => $user?->uuid ? route('people.show', $user->uuid) : null,
+                'photo' => $face,
+                'gender' => $user?->gender === 'Female' ? 'female' : 'male',
+                'flag' => $iso ? \App\Support\Flag::url($iso) : null,
+                'country' => $iso ? (\App\Support\Countries::name($iso) ?: strtoupper($iso)) : null,
+                'age' => $user?->birthdate ? (int) Carbon::parse($user->birthdate)->diffInYears($on) : ($first->declared_age ?: null),
+                // The event's staff only (see above).
+                'weight' => $staff && $weighed && $weighed->weight !== null ? rtrim(rtrim(number_format((float) $weighed->weight, 1), '0'), '.') : null,
+                'weighed' => $staff && $weighed && $weighed->weighed_in_at !== null,
+                'place' => $best,
+                'divisions' => $rows->filter(fn ($r) => $r->category)->unique('category_id')->map(fn ($r) => [
+                    'name' => (string) ($r->category->getRawOriginal('name') ?: $r->category->name),
+                    'url' => $drawOpen ? route('me.events.bracket.manage', ['event' => $event->uuid, 'division' => $r->category_id]) : null,
+                    'place' => $placed[$r->id] ?? null,
+                ])->values()->all(),
+            ];
+        })->sortBy(fn ($a) => [$a['place'] ?? 9, mb_strtolower($a['name'])])->values();
+
+        return [
+            'athletes' => $athletes->all(),
+            // Medals won, not medallists: two golds in two divisions are two.
+            'medals' => collect([1, 2, 3])->mapWithKeys(fn ($p) => [$p => $athletes->sum(fn ($a) => collect($a['divisions'])->where('place', $p)->count())])->all(),
+            'staff' => $staff,
+        ];
     }
 
     private function dates(ClubEvent $event, string $locale): string

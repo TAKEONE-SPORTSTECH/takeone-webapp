@@ -56,6 +56,7 @@ Engines shared across **several sports** stay outside the sport folders and are 
 
 - `app/Sports/Combat/Engine/DrawEngine.php` — single-elimination draw building
 - `app/Sports/Combat/Engine/Scheduler.php` — day/mat scheduling + bout numbering
+- Known numbering gaps and the fixes still to build: `Documentation/FUTURE-PLANS.md`
 - `app/Sports/Combat/Engine/Results.php` — podium + timeline derivation
 - `app/Sports/Combat/CombatSport.php` + `SportRegistry.php` — the combat-sport plug-in contract and its registry (`config/combat.php`)
 

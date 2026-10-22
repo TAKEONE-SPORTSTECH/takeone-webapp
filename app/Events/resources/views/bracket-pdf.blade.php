@@ -25,6 +25,11 @@
     $clubPages = array_values(array_filter($cover['clubs'] ?? []));
     $offset = $cover ? 2 + count($clubPages) + count($teamPages) : 0;
     $total = count($pages) + $offset;
+    // One part of a longer document: count on from the pages before it.
+    if (isset($pageBase)) {
+        $offset = $pageBase;
+        $total = $pageTotal ?? (count($pages) + $pageBase);
+    }
     // Divisions that have a sheet in THIS document — only those are links.
     $sheetIds = collect($pages)->pluck('id')->flip();
 @endphp
@@ -91,27 +96,7 @@
                       background: {{ $c }}; color: {{ $navy }}; font-family: 'Barlow Condensed', 'Inter', sans-serif; font-weight: 900;
                       font-size: 12pt; letter-spacing: .16em; text-transform: uppercase; clip-path: polygon(2.5mm 0, 100% 0, calc(100% - 2.5mm) 100%, 0 100%); }
 
-        /* Teams — one block per club: crest, name, size, medals; then its athletes. */
-        .club { break-inside: avoid; border: .35mm solid #cfd5e0; border-radius: 1.5mm; overflow: hidden; margin-top: 5mm; }
-        .club-h { display: flex; align-items: center; gap: 4mm; padding: 2.6mm 4mm; background: {{ $navy }}; color: #fff; }
-        .club-h .rk { font-family: 'Barlow Condensed', 'Inter', sans-serif; font-weight: 900; font-style: italic; font-size: 20pt; line-height: 1; color: {{ $c }}; min-width: 7mm; }
-        .club-h .lg { width: 13mm; height: 13mm; flex: 0 0 auto; }
-        .club-h .lg img { width: 100%; height: 100%; object-fit: contain; display: block; }
-        .club-h .lg.none { display: grid; place-items: center; color: {{ $c }}; font-size: 15pt; }
-        .club-h .nm { font-family: 'Barlow Condensed', 'Inter', sans-serif; font-weight: 900; font-style: italic; text-transform: uppercase;
-                      font-size: 17pt; line-height: 1; letter-spacing: .02em; }
-        .club-h .nm small { display: block; font-family: 'Inter', sans-serif; font-style: normal; font-weight: 700; font-size: 7pt;
-                            letter-spacing: .16em; color: {{ $c }}; margin-top: 1.2mm; }
-        .club-h .md { margin-inline-start: auto; display: flex; gap: 3.5mm; align-items: center; }
-        .club-h .md span { display: inline-flex; align-items: center; gap: 1.2mm; font-family: 'Barlow Condensed', 'Inter', sans-serif; font-weight: 800; font-size: 14pt; }
-        .club-h .md span.zero { opacity: .35; }
-        .club-p { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 5mm; padding: 1.5mm 4mm 2mm; }
-        .ath { display: flex; gap: 1.5mm; align-items: flex-start; padding: 1.4mm 0 1.2mm; border-bottom: .25mm solid #e3e6ee; min-width: 0; }
-        .ath .t { min-width: 0; flex: 1; }
-        .ath .n { font-size: 8.4pt; font-weight: 700; color: {{ $navy }}; line-height: 1.25; overflow-wrap: anywhere; }
-        .ath .d { font-size: 6.6pt; color: #6b7590; line-height: 1.3; margin-top: .3mm; }
-        .ath .m { display: flex; gap: .6mm; flex: 0 0 auto; padding-top: .3mm; }
-
+        @include('events::pdf-club-style')
         /* Bracket sheet head */
         .pdf-head { flex: 0 0 auto; padding: 7mm 10mm 9mm; display: flex; align-items: flex-end; gap: 8mm; }
         .pdf-head .stripes { width: 70mm; }
@@ -190,24 +175,7 @@
         .drow .lead { flex: 1; border-bottom: .3mm dotted #c3c9d6; transform: translateY(-1mm); }
         .drow .cnt { font-family: 'Barlow Condensed', 'Inter', sans-serif; font-weight: 900; font-size: 13pt; line-height: 1; color: {{ $goldInk }}; min-width: 6mm; text-align: end; }
 
-        /* Officials & management — one bordered card per person: the face at
-           3:4 (the platform's portrait ratio), the job in gold, the name, the club. */
-        .tgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4.5mm 6mm; }
-        .tsec + .tsec { margin-top: 7mm; }
-        .tsec > .h2 { margin-top: 7mm; }
-        .pcard { display: flex; gap: 4mm; border: .35mm solid #cfd5e0; border-radius: 1.5mm; overflow: hidden; background: #fff; min-height: 34mm; }
-        .pcard .ph { width: 25.5mm; height: 34mm; flex: 0 0 auto; background: #eef1f6; border-inline-end: .35mm solid #cfd5e0; }
-        .pcard .ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
-        .pcard .ph img.ph-none { opacity: .55; }
-        .pcard .tx { padding: 3mm 3.5mm 2.5mm 0; min-width: 0; display: flex; flex-direction: column; }
-        .pcard .job { font-size: 7.2pt; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: {{ $goldInk }}; line-height: 1.25; }
-        .pcard .nm { font-size: 12pt; font-weight: 800; color: {{ $navy }}; line-height: 1.2; margin-top: 1mm; overflow-wrap: anywhere; }
-        .pcard .tx { flex: 1; }
-        .pcard .cl { margin: auto -3.5mm -2.5mm 0; padding: 2mm 3.5mm; display: flex; align-items: center; gap: 1.8mm;
-                     background: {{ $navy }}; color: #fff; font-size: 8.6pt; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; line-height: 1.25; }
-        .pcard .cl i { font-style: normal; font-size: 6pt; font-weight: 800; letter-spacing: .14em; color: {{ $c }}; }
-        .pcard .cl img { width: 6mm; height: 6mm; object-fit: contain; flex: 0 0 auto; }
-
+        @include('events::pdf-team-style')
         .cfoot { position: absolute; inset-inline: 15mm; bottom: 8mm; display: flex; justify-content: space-between;
                  font-size: 7.5pt; color: #6b7590; }
         .cfoot b { color: {{ $goldInk }}; letter-spacing: .06em; }
@@ -456,49 +424,7 @@
                     <span class="slab"></span>
                 </div>
                 <div class="body">
-                    @foreach($cp as $club)
-                        <div class="club">
-                            <div class="club-h">
-                                @if($club['rank'])<span class="rk">{{ $club['rank'] }}</span>@endif
-                                @if($club['logo'])
-                                    <span class="lg"><img src="{{ $club['logo'] }}" alt=""></span>
-                                @else
-                                    <span class="lg none"><i class="bi bi-shield-fill"></i></span>
-                                @endif
-                                <div class="nm">{{ $club['name'] }}
-                                    <small>{{ trans_choice('events::events.draw_print_club_athletes', $club['count'], ['n' => $club['count']]) }}@if($club['continued']) · {{ __('events::events.draw_print_continued') }}@endif</small>
-                                </div>
-                                @if(array_sum($club['medals']) > 0 && ! $club['continued'])
-                                    <div class="md">
-                                        @foreach([1, 2, 3] as $pl)
-                                            <span class="{{ $club['medals'][$pl] ? '' : 'zero' }}"><x-medal-icon :place="$pl" :size="15" :numeral="false" />{{ $club['medals'][$pl] }}</span>
-                                        @endforeach
-                                    </div>
-                                @endif
-                            </div>
-                            <div class="club-p">
-                                @foreach($club['people'] as $a)
-                                    <div class="ath">
-                                        <div class="t">
-                                            @php $linked = collect($a['divisions'])->filter(fn ($d) => $sheetIds->has($d['id']))->values(); @endphp
-                                            {{-- The name opens their first bracket; each division its own. --}}
-                                            @if($linked->isNotEmpty())
-                                                <a class="n" dir="auto" href="#sheet-{{ $linked[0]['id'] }}">{{ $a['name'] }}</a>
-                                            @else
-                                                <div class="n" dir="auto">{{ $a['name'] }}</div>
-                                            @endif
-                                            @if($a['divisions'])
-                                                <div class="d">@foreach($a['divisions'] as $d)@if(! $loop->first) · @endif @if($sheetIds->has($d['id']))<a href="#sheet-{{ $d['id'] }}">{{ $d['name'] }}</a>@else{{ $d['name'] }}@endif @endforeach</div>
-                                            @endif
-                                        </div>
-                                        @if($a['medals'])
-                                            <div class="m">@foreach($a['medals'] as $pl)<x-medal-icon :place="$pl" :size="11" :numeral="false" />@endforeach</div>
-                                        @endif
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    @endforeach
+                    @include('events::pdf-club-blocks', ['clubs' => $cp])
                 </div>
                 <div class="cfoot"><span>{{ $host }}</span><b>{{ 3 + $ci }} / {{ $total }}</b></div>
             </section>
@@ -521,27 +447,7 @@
                     <span class="slab"></span>
                 </div>
                 <div class="body">
-                    @foreach($tp as $sec)
-                        <div class="tsec">
-                            <div class="h2">{{ $sec['heading'] }}</div>
-                            <div class="tgrid">
-                                @foreach($sec['cards'] as $m)
-                                    <div class="pcard">
-                                        <div class="ph">
-                                            @if($m['photo'])<img src="{{ $m['photo'] }}" alt="">@else<img class="ph-none" src="{{ $m['placeholder'] }}" alt="">@endif
-                                        </div>
-                                        <div class="tx">
-                                            <div class="job">{{ $m['job'] }}</div>
-                                            <div class="nm" dir="auto">{{ $m['name'] }}</div>
-                                            @if($m['club'])
-                                                <div class="cl">@if($m['logo'])<img src="{{ $m['logo'] }}" alt="">@else<i>{{ __('events::events.draw_print_club') }}</i>@endif<span>{{ $m['club'] }}</span></div>
-                                            @endif
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    @endforeach
+                    @include('events::pdf-team-blocks', ['sections' => $tp])
                 </div>
                 <div class="cfoot"><span>{{ $host }}</span><b>{{ 3 + count($clubPages) + $ti }} / {{ $total }}</b></div>
             </section>

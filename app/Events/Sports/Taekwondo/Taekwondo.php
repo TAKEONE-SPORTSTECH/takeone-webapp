@@ -104,14 +104,14 @@ class Taekwondo extends AbstractCombatSport
     public function officialRoles(): array
     {
         return [
-            ['key' => 'center_referee',   'label' => __('sport-taekwondo::messages.official_center_referee'), 'hint' => __('sport-taekwondo::messages.official_center_referee_hint')],
-            ['key' => 'corner_judge_1',   'label' => __('sport-taekwondo::messages.official_corner_judge', ['n' => 1]), 'hint' => __('sport-taekwondo::messages.official_corner_judge_hint')],
-            ['key' => 'corner_judge_2',   'label' => __('sport-taekwondo::messages.official_corner_judge', ['n' => 2]), 'hint' => __('sport-taekwondo::messages.official_corner_judge_hint')],
-            ['key' => 'corner_judge_3',   'label' => __('sport-taekwondo::messages.official_corner_judge', ['n' => 3]), 'hint' => __('sport-taekwondo::messages.official_corner_judge_hint')],
-            ['key' => 'review_jury',      'label' => __('sport-taekwondo::messages.official_review_jury'), 'hint' => __('sport-taekwondo::messages.official_review_jury_hint')],
-            ['key' => 'court_supervisor', 'label' => __('sport-taekwondo::messages.official_court_supervisor'), 'hint' => __('sport-taekwondo::messages.official_court_supervisor_hint')],
-            ['key' => 'table_recorder',   'label' => __('sport-taekwondo::messages.official_table_recorder'), 'hint' => __('sport-taekwondo::messages.official_table_recorder_hint')],
-            ['key' => 'timekeeper',       'label' => __('sport-taekwondo::messages.official_timekeeper'), 'hint' => __('sport-taekwondo::messages.official_timekeeper_hint')],
+            ['key' => 'center_referee',   'label' => __('sport-taekwondo::messages.official_center_referee'), 'hint' => __('sport-taekwondo::messages.official_center_referee_hint'), 'section' => 'referees'],
+            ['key' => 'corner_judge_1',   'label' => __('sport-taekwondo::messages.official_corner_judge', ['n' => 1]), 'hint' => __('sport-taekwondo::messages.official_corner_judge_hint'), 'section' => 'referees'],
+            ['key' => 'corner_judge_2',   'label' => __('sport-taekwondo::messages.official_corner_judge', ['n' => 2]), 'hint' => __('sport-taekwondo::messages.official_corner_judge_hint'), 'section' => 'referees'],
+            ['key' => 'corner_judge_3',   'label' => __('sport-taekwondo::messages.official_corner_judge', ['n' => 3]), 'hint' => __('sport-taekwondo::messages.official_corner_judge_hint'), 'section' => 'referees'],
+            ['key' => 'review_jury',      'label' => __('sport-taekwondo::messages.official_review_jury'), 'hint' => __('sport-taekwondo::messages.official_review_jury_hint'), 'section' => 'technical'],
+            ['key' => 'court_supervisor', 'label' => __('sport-taekwondo::messages.official_court_supervisor'), 'hint' => __('sport-taekwondo::messages.official_court_supervisor_hint'), 'section' => 'technical'],
+            ['key' => 'table_recorder',   'label' => __('sport-taekwondo::messages.official_table_recorder'), 'hint' => __('sport-taekwondo::messages.official_table_recorder_hint'), 'section' => 'table'],
+            ['key' => 'timekeeper',       'label' => __('sport-taekwondo::messages.official_timekeeper'), 'hint' => __('sport-taekwondo::messages.official_timekeeper_hint'), 'section' => 'table'],
         ];
     }
 

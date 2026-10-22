@@ -83,7 +83,10 @@ final class PlatformClubEntryDesk implements ClubEntryDesk
                     ->filter(fn ($c) => $c['i3'] !== 'UNK')->values()->all(),
                 // What a club's event does not have: officials, transfers between clubs, national IDs.
                 // …and what it has that a federation's does not: one payment proof per club.
-                'features' => ['officials' => false, 'transfers' => false, 'nationalId' => false, 'proof' => true],
+                // matchPhone: an optional phone on a new athlete, so somebody TakeOne
+                // already has is entered as themselves (duplicates.guard.club_portal).
+                'features' => ['officials' => false, 'transfers' => false, 'nationalId' => false, 'proof' => true,
+                    'matchPhone' => (bool) config('duplicates.guard.club_portal')],
                 'rulebook' => $system ? ['key' => $system->key, 'label' => $system->label, 'age_groups' => $system->ageGroups, 'classes' => $system->table()] : null,
                 'urls' => [
                     'clubs' => $u('clubs'), 'code' => $u('code'), 'verify' => $u('verify'), 'choose' => $u('choose'),

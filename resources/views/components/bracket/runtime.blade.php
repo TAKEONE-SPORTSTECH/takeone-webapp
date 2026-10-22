@@ -665,6 +665,10 @@ window.BracketBoard = window.BracketBoard || (function () {
 
             S.divisions = data.divisions || [];
             S.locked = !!data.locked;
+            /* A printout may leave the bout numbers off (owner, 2026-10-16 —
+               BracketPdf, `?numbers=0`): the draw handed out before the running
+               order is final. Only the PDF ever sends it. */
+            S.hideNumbers = !!data.hide_numbers;
             /* A draw the organiser has not let out yet. The server sends no
                divisions AND says why, so the board can name the day it opens
                instead of drawing nothing — which reads as "nobody entered". */
@@ -672,6 +676,8 @@ window.BracketBoard = window.BracketBoard || (function () {
             // Permission is whatever the SERVER just said — never a client flag
             // that a stale page is still carrying.
             S.canArrange = !!data.can_arrange;
+            // Free move (FreeEdit): every round is draggable, not only the first.
+            S.freeArrange = !!data.free_arrange;
             /* Deciding a bout and correcting a name are the ORGANISER's, which
                is a different permission from arranging — an appointed official
                moves people around a draw without being able to declare a
@@ -1095,7 +1101,10 @@ window.BracketBoard = window.BracketBoard || (function () {
            Saying "Bye — no bout" is the honest answer; the old board printed
            "TBD", which reads as "we have not decided yet". */
         const unfought = !(m.a && m.a.name) || !(m.b && m.b.name);
-        if (m.no) {
+        if (m.no && S.hideNumbers) {
+            /* A real bout, printed without its number: the strip stays, empty
+               on the left, so the sheet reads the same minus the numbers. */
+        } else if (m.no) {
             left.textContent = S.cfg.text.match;
             const no = el('span', 'bk-no');
             no.textContent = m.no;
@@ -1141,7 +1150,8 @@ window.BracketBoard = window.BracketBoard || (function () {
 
         // Only the first round is arrangeable — later rounds are DERIVED from
         // it, so letting anyone drop a name there would invent a result.
-        if (roundIndex === 0) slot.dataset.arrangeable = '1';
+        // Except under free move, where the organiser writes what happened.
+        if (roundIndex === 0 || S.freeArrange) slot.dataset.arrangeable = '1';
 
         const bronze = roundIndex === -1;
 
@@ -1497,8 +1507,21 @@ window.BracketBoard = window.BracketBoard || (function () {
         clearTimeout(S.noticeTimer);
         if (!text) return;
 
+        /* The page's toast first (toast-only notifications): it sits above the
+           arrange banner AND the division menu, both of which float over the
+           board and covered this box (owner, 2026-10-17). 'warning' because
+           the platform's toast switch never silences warnings — a refusal must
+           always be read. The in-board box stays for a page with no toast host. */
+        if (typeof window.showToast === 'function') {
+            window.showToast('warning', String(text));
+            return;
+        }
+
         const box = el('div', 'bk-notice');
         box.style[S.cfg.rtl ? 'left' : 'right'] = '40px';
+        // Below the arrange banner while it shows, so the banner never hides
+        // the message (owner, 2026-10-17: the error was covered).
+        if (S.arrange) box.style.top = '64px';
         box.setAttribute('role', 'status');
 
         const span = el('span');
@@ -2189,9 +2212,15 @@ window.BracketBoard = window.BracketBoard || (function () {
 
         // ---- Mouse / pen ----
         const pts = new Map();
+        /* The pointer is captured only once the press becomes a PAN, never on
+           the press itself (owner, 2026-10-17: a winner could not be declared
+           with a mouse). Capturing on pointerdown re-targets the pointerup — and
+           so the click — to the viewport, so a click on a corner or a bout card
+           arrived with the viewport as its target and declared nothing. Touch
+           never went through here, which is why tablets were fine. */
+        const captured = new Set();
         vp.addEventListener('pointerdown', e => {
             if (e.pointerType === 'touch' || grabbable(e.target)) return;
-            capture(vp, e.pointerId);
             pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
             S.moved = false;
             S.from = { x: e.clientX, y: e.clientY };
@@ -2203,10 +2232,13 @@ window.BracketBoard = window.BracketBoard || (function () {
             const cur = { x: e.clientX, y: e.clientY };
             pts.set(e.pointerId, cur);
             const dx = cur.x - prev.x, dy = cur.y - prev.y;
-            if (wandered(cur.x, cur.y)) S.moved = true;
+            if (wandered(cur.x, cur.y)) {
+                S.moved = true;
+                if (!captured.has(e.pointerId)) { capture(vp, e.pointerId); captured.add(e.pointerId); }
+            }
             S.tx += dx; S.ty += dy; apply();
         });
-        const up = e => pts.delete(e.pointerId);
+        const up = e => { pts.delete(e.pointerId); captured.delete(e.pointerId); };
         vp.addEventListener('pointerup', up);
         vp.addEventListener('pointercancel', up);
 

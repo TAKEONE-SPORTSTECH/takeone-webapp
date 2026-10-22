@@ -1076,7 +1076,7 @@
         {{-- The rule book: which category system and belt system this event
              runs under. The division presets below follow the chosen table. --}}
         <div x-show="isCombat" x-cloak>
-            @php $rbHost = $ev && ! $ev->tenant_id && $ev->host_type ? "'".$ev->host_type.':'.$ev->host_id."'" : "(tenant_id ? 'club:' + tenant_id : '')"; @endphp
+            @php $rbHost = $ev && ! $ev->tenant_id && $ev->host_type ? "'".$ev->host_type.':'.$ev->host_id."'" : "(tenant_id === 'me' || ! tenant_id ? '' : (String(tenant_id).includes(':') ? ((clubs.find(c => c.id === tenant_id) || {}).rule_host || '') : 'club:' + tenant_id))"; @endphp
             <x-event-rule-book model-category="category_system" model-belt="belt_system" sport-model="sport"
                                :host-expr="$rbHost" table-model="ruleTable" />
         </div>

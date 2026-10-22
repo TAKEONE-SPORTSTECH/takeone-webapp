@@ -47,3 +47,8 @@ drafts/*.png
 
 # Entry lists from real competitions carry athletes' personal data — never in git.
 drafts/*.xlsx
+
+# QA run output: screenshots of real athletes and clubs — never in git (2026-10-23)
+/takeone-qa/
+# Printables designer fonts (321 MB) — fetched by scripts/fetch-designer-fonts.php, not committed
+/public/fonts/designer/

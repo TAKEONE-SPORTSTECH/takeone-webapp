@@ -47,7 +47,11 @@ interface CombatSport
      * judges — so the vocabulary belongs to the SPORT, not to any one screen
      * that happens to display it.
      *
-     * @return array<int, array{key: string, label: string}>
+     * An entry may also carry a 'hint' and a 'section' — which part of the
+     * officials list it reads under: 'referees', 'table' or 'technical'
+     * (App\Events\Support\OfficialRoles::SECTIONS). No section reads as a referee.
+     *
+     * @return array<int, array{key: string, label: string, hint?: string, section?: string}>
      */
     public function officialRoles(): array;
 

@@ -315,6 +315,41 @@ class BracketPdfTest extends ContractTestCase
         $this->assertTrue($pdf->finished($event, [$done, $open]));
     }
 
+    public function test_the_draw_can_be_printed_without_bout_numbers(): void
+    {
+        $this->enable();
+
+        $organiser = $this->createUser(['full_name' => 'Master Kim']);
+        $club = $this->clubFor($organiser);
+        $event = $this->championship($club, $organiser);
+        $this->drawnDivision($event, $club);
+        \App\Events\Models\EventMatch::where('event_id', $event->id)->update(['match_no' => 7]);
+
+        $pdf = app(BracketPdf::class);
+        $divisions = $pdf->divisions($event, $organiser->fresh());
+        $payload = function (string $html): array {
+            preg_match('#data:application\\\\?/json;base64,([A-Za-z0-9+/=\\\\]+)#', $html, $m);
+
+            return json_decode(base64_decode(str_replace('\\', '', $m[1] ?? '')), true) ?: [];
+        };
+
+        // The default keeps the numbers; the board is told only when to drop them.
+        $with = $payload($pdf->html($event, $organiser->fresh(), $divisions, 'linear', 'match'));
+        $this->assertFalse($with['hide_numbers']);
+        $without = $payload($pdf->html($event, $organiser->fresh(), $divisions, 'linear', 'match', false, false));
+        $this->assertTrue($without['hide_numbers']);
+        // The bouts themselves are all still there.
+        $this->assertSame(count($with['divisions'][0]['rounds'] ?? []), count($without['divisions'][0]['rounds'] ?? []));
+
+        $this->fakeBrowser();
+        $res = $this->actingAs($organiser->fresh())
+            ->getJson("/me/events/{$event->uuid}/brackets/pdf?numbers=0")
+            ->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringContainsString('-no-numbers.pdf', (string) $res->headers->get('Content-Disposition'));
+
+        $this->actingAs($organiser->fresh())->getJson("/me/events/{$event->uuid}/brackets/pdf?numbers=x")->assertStatus(422);
+    }
+
     public function test_a_finished_day_reads_from_its_first_bout_to_its_last(): void
     {
         $organiser = $this->createUser(['full_name' => 'Master Kim']);

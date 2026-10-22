@@ -207,6 +207,43 @@ return [
     'tablet_draw' => (bool) env('EVENT_TABLET_DRAW', false),
 
     /*
+     | A division's podium goes onto its medallists' profiles: gold, silver,
+     | bronze on the club-recorded tournament row the entry already made
+     | (App\Members\Support\ProfileHistorySync::syncPodium, called from
+     | App\Events\Observers\EventCategoryObserver; past results through
+     | `takeone:sync-event-medals`). OFF by default (RULE #1).
+     | EVENT_PROFILE_MEDALS=true, then config:cache.
+     */
+    'profile_medals' => (bool) env('EVENT_PROFILE_MEDALS', false),
+
+    /*
+     | Taking a result back ("remove the winner, fight again") or changing it,
+     | made safe (App\Events\Support\Tournament\ResultCorrection): refused while
+     | a later bout it would rewrite was fought or started on a mat, the
+     | scoreline reset on a clear, the change logged, the podium re-derived.
+     | OFF by default (RULE #1). EVENT_RESULT_CORRECTION=true, then config:cache.
+     */
+    'result_correction' => (bool) env('EVENT_RESULT_CORRECTION', false),
+
+    /*
+     | Moving an athlete into the division they belong in while the event runs
+     | (App\Events\Support\Tournament\LiveMove): single-corner edits, planned
+     | before anything is written, refused rather than risked — never a fought
+     | or mat-loaded bout, never a renumber or re-cut. OFF by default (RULE #1).
+     | EVENT_LIVE_MOVE=true, then config:cache.
+     */
+    'live_move' => (bool) env('EVENT_LIVE_MOVE', false),
+
+    /*
+     | Free edit on the draw desk (App\Events\Support\Tournament\FreeEdit): the
+     | organiser writes one bout — corners, winner, scores — exactly as it
+     | happened, even once the event has started or ended. Never ripples or
+     | voids a later result; logged. OFF by default (RULE #1).
+     | EVENT_FREE_EDIT=true, then config:cache.
+     */
+    'free_edit' => (bool) env('EVENT_FREE_EDIT', false),
+
+    /*
      | Does editing the draw on a tablet need the event's PIN?
      | OFF (the owner, 2026-10-07: "we don't need a tablet PIN at all"): a
      | paired scoring tablet edits straight away, as the organiser who paired
@@ -250,6 +287,28 @@ return [
         // group (Boxing Ontario: 24 months across adjacent groups).
         'max_age_months' => (int) env('EVENT_DIVISION_MERGE_MAX_MONTHS', 24),
     ],
+
+    /*
+     | Spare entries (App\Events\Support\SpareEntries). A person taken out of a
+     | division — unticked, or their division deleted — while they hold another
+     | entry in the event has the leftover row folded into that entry (fees and
+     | links carried, row deleted) instead of being left in no division. And a
+     | second entry made on the division screen is recorded as FREE, so marking
+     | the club paid never prices it at the list fee a second time. Both caused
+     | Energy Zone Combat 4's twelve stray rows. OFF by default (RULE #1).
+     | EVENT_SPARE_ENTRIES=true, then config:cache.
+     */
+    'spare_entries' => (bool) env('EVENT_SPARE_ENTRIES', false),
+
+    /*
+     | Guards on "Generate draw" (App\Events\Support\DrawGuard). With "one
+     | division per person" on, the draw is refused while anybody still stands
+     | in two divisions (OneDivisionRule::conflicts) — it would put them in two
+     | brackets. Divisions too small to be fair are reported alongside a
+     | successful draw, never refused (merging is the organiser's decision).
+     | OFF by default (RULE #1). EVENT_DRAW_GUARDS=true, then config:cache.
+     */
+    'draw_guards' => (bool) env('EVENT_DRAW_GUARDS', false),
 
     /*
      | A division of ONE competitor gets a board: a final with them in one

@@ -36,8 +36,10 @@
         'revoke' => route('me.certificates.revoke', ['cert' => '00000000-0000-0000-0000-000000000000']),
         'destroy' => route('me.certificates.destroy', ['cert' => '00000000-0000-0000-0000-000000000000']),
         'drafts' => route('me.certificates.drafts.destroy', $p),
+        'everything' => route('me.certificates.destroy-all', $p),
         'bundle' => route('me.certificates.bundle', $p + ['type' => 'xtypex']),
         'bundleDownload' => route('me.certificates.bundle.download', $p + ['type' => 'xtypex']),
+        'selection' => route('me.certificates.selection', $p),
     ];
     $viewer = 'open-certificate-view';
 @endphp
@@ -55,11 +57,41 @@
         wiping: null,
         revoking: null,
         reason: '',
-        s: { settings: { participation: true, podium: true, officials: false, trigger: 'division' }, eligible: { participation: 0, podium: 0, officials: 0, decided: 0, pending: 0 }, counts: { draft: 0, approved: 0, revoked: 0 }, certificates: [], design_url: null, batch: 15, bundles: [] },
+        s: { settings: { participation: true, podium: true, officials: false, clubs: false, trigger: 'division' }, eligible: { participation: 0, podium: 0, officials: 0, clubs: 0, decided: 0, pending: 0 }, counts: { draft: 0, approved: 0, revoked: 0 }, certificates: [], design_url: null, batch: 15, bundles: [] },
         _bundleT: null,
         urls: @js($urls),
 
         get rows() { return this.s.certificates.filter(r => r.status === this.tab); },
+        /* Ticked certificates (uuid => true): approve some drafts, or print some issued ones. */
+        picked: {},
+        pickBusy: false,
+        get pickedRows() { return this.rows.filter(r => this.picked[r.uuid]); },
+        get allPicked() { return this.rows.length > 0 && this.rows.every(r => this.picked[r.uuid]); },
+        pickAll() { const on = ! this.allPicked; const next = { ...this.picked }; this.rows.forEach(r => { next[r.uuid] = on; }); this.picked = next; },
+        async approvePicked() { const ids = this.pickedRows.map(r => r.uuid); if (! ids.length) return; await this.approve(ids); this.picked = {}; },
+        /* One PDF per kind of certificate ticked: remembered as a selection, bundled, then downloaded. */
+        async downloadPicked() {
+            const byType = {};
+            this.pickedRows.forEach(r => { (byType[r.type] = byType[r.type] || []).push(r.uuid); });
+            if (this.pickBusy || ! Object.keys(byType).length) return;
+            this.pickBusy = true;
+            try {
+                for (const [type, uuids] of Object.entries(byType)) {
+                    const sel = await this.call('POST', this.urls.selection, { type, uuids });
+                    let b = await this.call('POST', this.bundleUrl(sel.type));
+                    for (let guard = 0; b.state === 'building' && guard < 600; guard++) {
+                        await new Promise(res => setTimeout(res, 2500));
+                        b = await this.call('GET', this.bundleUrl(sel.type));
+                    }
+                    if (b.state !== 'ready') throw new Error(@js(__('cert::messages.bundle_failed')));
+                    const a = document.createElement('a');
+                    a.href = this.bundleUrl(sel.type, true); a.download = '';
+                    document.body.appendChild(a); a.click(); a.remove();
+                }
+                window.showToast('success', @js(__('cert::messages.picked_downloaded')));
+            } catch (e) { window.showToast('error', e.message); }
+            finally { this.pickBusy = false; }
+        },
         get summary() {
             if (! this.loaded) return '';
             if (this.s.counts.draft) return @js(__('cert::messages.console_row_drafts')).replace(':count', this.s.counts.draft);
@@ -103,6 +135,18 @@
             catch (e) { window.showToast('error', e.message); }
             finally { this.busy = false; }
         },
+        /* Create every certificate that is due and issue them straight away — no drafts to approve one by one. */
+        async issueAll() {
+            if (this.busy) return;
+            this.busy = true;
+            try {
+                const d = await this.call('POST', this.urls.generate, {});
+                this.take(d);
+            } catch (e) { window.showToast('error', e.message); this.busy = false; return; }
+            this.busy = false;
+            if (this.s.counts.draft > 0) await this.approve(null);
+            else window.showToast('info', @js(__('cert::messages.issue_none')));
+        },
         async approve(uuids) {
             if (this.busy) return;
             this.busy = true;
@@ -134,6 +178,32 @@
                 this.s.counts.draft = Math.max(0, this.s.counts.draft - 1);
                 window.showToast('success', d.message);
             } catch (e) { window.showToast('error', e.message); }
+        },
+        /* Delete every certificate of this event — issued ones too — a batch at a time. */
+        async removeEverything() {
+            if (this.busy) return;
+            const total = (this.s.counts.draft || 0) + (this.s.counts.approved || 0) + (this.s.counts.revoked || 0);
+            const ok = await window.confirmAction({
+                title: @js(__('cert::messages.delete_everything_title')),
+                message: @js(__('cert::messages.delete_everything_message')).replace(':count', total).replace(':issued', this.s.counts.approved || 0),
+                type: 'danger', confirmText: @js(__('cert::messages.delete_everything_confirm')),
+            });
+            if (! ok) return;
+            this.busy = true;
+            let done = 0;
+            this.progress = { done: 0, total };
+            try {
+                for (let guard = 0; guard < 200; guard++) {
+                    const d = await this.call('DELETE', this.urls.everything, { confirm: 'delete-all' });
+                    this.take(d);
+                    done += d.deleted;
+                    this.progress = { done: Math.min(done, total), total };
+                    if (! d.deleted || ! d.remaining) break;
+                }
+                window.showToast('success', @js(__('cert::messages.delete_everything_done')).replace(':count', done));
+                this.tab = 'draft';
+            } catch (e) { window.showToast('error', e.message); }
+            finally { this.busy = false; this.progress = null; }
         },
         async removeAll() {
             if (this.busy || ! this.s.counts.draft) return;
@@ -272,7 +342,7 @@
                     {{-- What gets issued --}}
                     <section class="space-y-2">
                         <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-1">{{ __('cert::messages.what_issued') }}</p>
-                        @foreach(['participation' => ['P', 'bg-accent text-primary', 'cert::messages.kind_participation_hint', 'participation'], 'podium' => ['1', 'bg-amber-50 text-amber-700', 'cert::messages.kind_podium_hint', 'podium'], 'officials' => ['O', 'bg-emerald-50 text-emerald-700', 'cert::messages.kind_officials_hint', 'official_thanks']] as $kind => [$glyph, $tile, $hint, $typeKey])
+                        @foreach(['participation' => ['P', 'bg-accent text-primary', 'cert::messages.kind_participation_hint', 'participation'], 'podium' => ['1', 'bg-amber-50 text-amber-700', 'cert::messages.kind_podium_hint', 'podium'], 'officials' => ['O', 'bg-emerald-50 text-emerald-700', 'cert::messages.kind_officials_hint', 'official_thanks'], 'clubs' => ['C', 'bg-sky-50 text-sky-700', 'cert::messages.kind_clubs_hint', 'club_thanks']] as $kind => [$glyph, $tile, $hint, $typeKey])
                             <button type="button" @click="setting({ {{ $kind }}: ! s.settings.{{ $kind }} })" role="switch" :aria-checked="s.settings.{{ $kind }}"
                                     class="m-press w-full text-start bg-white rounded-2xl border-2 p-3 flex items-center gap-3 min-h-[60px] transition-colors"
                                     :class="s.settings.{{ $kind }} ? 'border-primary' : 'border-gray-100'">
@@ -318,6 +388,14 @@
                             </span>
                             <i class="bi bi-chevron-right rtl:rotate-180 text-muted-foreground/50 text-xs"></i>
                         </a>
+                        <button type="button" @click="issueAll()" :disabled="busy"
+                                class="w-full text-start flex items-center gap-3 p-3 min-h-[60px] hover:bg-muted/40 transition-colors disabled:opacity-60">
+                            <span class="w-9 h-9 rounded-xl bg-green-50 text-green-600 grid place-items-center flex-shrink-0"><i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-patch-check-fill'"></i></span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-sm font-bold text-foreground">{{ __('cert::messages.issue_all') }}</span>
+                                <span class="block text-[12px] text-muted-foreground" x-text="progress ? progress.done + ' / ' + progress.total : @js(__('cert::messages.issue_all_hint'))"></span>
+                            </span>
+                        </button>
                         <button type="button" @click="generate()" :disabled="busy"
                                 class="w-full text-start flex items-center gap-3 p-3 min-h-[60px] hover:bg-muted/40 transition-colors disabled:opacity-60">
                             <span class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 grid place-items-center flex-shrink-0"><i class="bi" :class="busy && ! progress ? 'bi-arrow-repeat animate-spin' : 'bi-magic'"></i></span>
@@ -358,6 +436,20 @@
                         </template>
                     </section>
 
+                    {{-- Clear the event out: every certificate, issued ones too (behind a warning). --}}
+                    <section x-show="(s.counts.draft || 0) + (s.counts.approved || 0) + (s.counts.revoked || 0) > 0"
+                             class="bg-white rounded-2xl border border-red-100 overflow-hidden">
+                        <button type="button" @click="removeEverything()" :disabled="busy"
+                                class="w-full text-start flex items-center gap-3 p-3 min-h-[60px] hover:bg-red-50/60 transition-colors disabled:opacity-60">
+                            <span class="w-9 h-9 rounded-xl bg-red-50 text-red-600 grid place-items-center flex-shrink-0"><i class="bi" :class="busy && progress ? 'bi-arrow-repeat animate-spin' : 'bi-trash3-fill'"></i></span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-sm font-bold text-red-600">{{ __('cert::messages.delete_everything') }}</span>
+                                <span class="block text-[12px] text-muted-foreground"
+                                      x-text="@js(__('cert::messages.delete_everything_hint')).replace(':count', (s.counts.draft || 0) + (s.counts.approved || 0) + (s.counts.revoked || 0))"></span>
+                            </span>
+                        </button>
+                    </section>
+
                     {{-- The certificates themselves, with the switch between them right above --}}
                     <section class="space-y-2">
                         <div class="grid grid-cols-3 gap-1 p-1 rounded-xl bg-muted/60" role="tablist">
@@ -378,9 +470,34 @@
                             </div>
                         </template>
 
+                        {{-- Choose some: approve the ticked drafts, or one PDF of the ticked issued ones --}}
+                        <div x-show="rows.length && tab !== 'revoked'" class="flex items-center gap-2 flex-wrap px-1">
+                            <button type="button" @click="pickAll()" role="checkbox" :aria-checked="allPicked"
+                                    class="m-press h-9 px-3 rounded-xl border text-[12px] font-bold inline-flex items-center gap-2 transition-colors"
+                                    :class="allPicked ? 'border-primary text-primary bg-primary/5' : 'border-gray-200 text-foreground'">
+                                <span class="w-[18px] h-[18px] rounded-md border-2 grid place-items-center" :class="allPicked ? 'bg-primary border-primary text-white' : 'border-gray-300'"><i class="bi bi-check-lg text-[11px]" x-show="allPicked"></i></span>
+                                {{ __('cert::messages.select_all') }}
+                            </button>
+                            <span class="text-[12px] text-muted-foreground" x-show="pickedRows.length" x-text="@js(__('cert::messages.picked_count')).replace(':count', pickedRows.length)"></span>
+                            <span class="flex-1"></span>
+                            <template x-if="tab === 'draft' && pickedRows.length">
+                                <button type="button" @click="approvePicked()" :disabled="busy" class="m-press h-9 px-3 rounded-xl bg-primary text-white text-[12px] font-bold inline-flex items-center gap-1.5 disabled:opacity-50"><i class="bi bi-check2-all"></i>{{ __('cert::messages.approve_picked') }}</button>
+                            </template>
+                            <template x-if="tab === 'approved' && pickedRows.length">
+                                <button type="button" @click="downloadPicked()" :disabled="pickBusy" class="m-press h-9 px-3 rounded-xl bg-primary text-white text-[12px] font-bold inline-flex items-center gap-1.5 disabled:opacity-50">
+                                    <i class="bi" :class="pickBusy ? 'bi-arrow-repeat animate-spin' : 'bi-file-earmark-arrow-down'"></i><span x-text="pickBusy ? @js(__('cert::messages.bundle_making')) : @js(__('cert::messages.download_picked'))"></span>
+                                </button>
+                            </template>
+                        </div>
+
                         <template x-for="row in rows" :key="row.uuid">
-                            <div class="bg-white rounded-2xl border border-gray-100 p-3 m-in">
+                            <div class="bg-white rounded-2xl border p-3 m-in transition-colors" :class="picked[row.uuid] ? 'border-primary bg-primary/5' : 'border-gray-100'">
                                 <div class="flex items-center gap-3">
+                                    <button type="button" x-show="row.status !== 'revoked'" @click="picked = { ...picked, [row.uuid]: ! picked[row.uuid] }" role="checkbox" :aria-checked="!! picked[row.uuid]"
+                                            :aria-label="@js(__('cert::messages.pick_one')) + ' ' + (row.holder || '')"
+                                            class="w-9 h-9 -ms-1 grid place-items-center flex-shrink-0">
+                                        <span class="w-[18px] h-[18px] rounded-md border-2 grid place-items-center transition-colors" :class="picked[row.uuid] ? 'bg-primary border-primary text-white' : 'border-gray-300 bg-white'"><i class="bi bi-check-lg text-[11px]" x-show="picked[row.uuid]"></i></span>
+                                    </button>
                                     <button type="button" @click="view(row)" :aria-label="@js(__('cert::messages.view'))"
                                             class="w-12 rounded-md border flex-shrink-0 grid place-items-center" style="height: 34px; background: #fbf8f2;"
                                             :style="'border-color:' + ({ 1: '#b8892b', 2: '#8a939c', 3: '#a0612e' }[row.place] || '#b4a8f5')">

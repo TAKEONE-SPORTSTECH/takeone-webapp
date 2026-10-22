@@ -143,6 +143,8 @@ class FederationOfficialEditor
         $u = $o->user;
         $photo = $o->photo ?: ProfilePhoto::path($u);
         $club = $o->club();
+        // The jobs' own names, so a referee reads as one rather than "Other".
+        $names = $o->event ? rescue(fn () => app(\App\Events\Support\OfficialRoles::class)->labels($o->event), [], false) : [];
 
         return [
             'id' => $o->id,
@@ -151,7 +153,7 @@ class FederationOfficialEditor
             'nat' => ($i = Countries::iso2((string) $u->nationality)) ? strtoupper($i) : '',
             'photo' => $photo ? file_url($photo) : null,
             'role' => (string) $o->role,
-            'roleLabel' => (string) ($o->role_label ?: FederationEventFigures::jobOf($o->role, null)),
+            'roleLabel' => (string) ($o->role_label ?: FederationEventFigures::jobOf($o->role, null, $names)),
             'club' => $club['slug'] ?? '',
             // Shown even when that club is not one of the event's own options.
             'clubName' => $club['name'] ?? null,
@@ -165,7 +167,7 @@ class FederationOfficialEditor
             'jobs' => EventOfficial::where('event_id', $o->event_id)->where('user_id', $u->id)->orderBy('id')->get()
                 ->map(fn (EventOfficial $j) => [
                     'id' => $j->id, 'role' => (string) $j->role,
-                    'label' => (string) ($j->role_label ?: FederationEventFigures::jobOf($j->role, null)),
+                    'label' => (string) ($j->role_label ?: FederationEventFigures::jobOf($j->role, null, $names)),
                     'compensation' => (string) $j->compensation, 'fee' => $j->fee !== null ? (float) $j->fee : null,
                 ])->values()->all(),
         ];

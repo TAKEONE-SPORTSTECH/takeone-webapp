@@ -78,6 +78,15 @@ Route::prefix('federation')->name('federations.')->middleware(SealFederation::cl
         // The event's Clubs tab: a club's editor, in the same kind of frame (FederationClubManager).
         Route::get('/club-edit', [FederationAppController::class, 'clubEdit'])->name('club-edit');
     });
+    // The event's Results tab as a PDF (FederationResultsPdf) — a headless
+    // browser per request, so on the draw PDF's hard limiter, not the page one.
+    Route::middleware(['auth', 'verified', 'two-factor', 'throttle:bracket-pdf'])
+        ->get('/results-pdf/{event}', [FederationAppController::class, 'resultsPdf'])
+        ->whereUuid('event')->name('results-pdf');
+    // The whole competition as one report (FederationCompetitionReport) — same limiter.
+    Route::middleware(['auth', 'verified', 'two-factor', 'throttle:bracket-pdf'])
+        ->get('/competition-report/{event}', [FederationAppController::class, 'competitionReport'])
+        ->whereUuid('event')->name('competition-report');
 
     // Public: the invitation a club opens from a link, and the static files
     // (code, fonts, flags) the pages load. None of it carries data.
@@ -111,6 +120,9 @@ Route::prefix('federation')->name('federations.')->middleware(SealFederation::cl
             Route::post('/events/rulebook', [FederationApiController::class, 'eventRuleBook'])->name('events.rulebook');
             Route::post('/events/feature', [FederationApiController::class, 'eventFeature'])->middleware('throttle:uploads')->name('events.feature');
             Route::post('/uploads', [FederationApiController::class, 'upload'])->middleware('throttle:uploads')->name('uploads');
+            // The results report's cover page (FederationReportCover) — managers only.
+            Route::post('/events/report-cover', [FederationApiController::class, 'reportCover'])->middleware('throttle:uploads')->name('events.report-cover');
+            Route::post('/events/report-cover/delete', [FederationApiController::class, 'reportCoverDelete'])->name('events.report-cover.delete');
             Route::post('/entries/confirm', [FederationApiController::class, 'entryConfirm'])->middleware(RecordFederationTest::class)->name('entries.confirm');
             Route::post('/transfers/reply', [FederationApiController::class, 'transferReply'])->middleware(RecordFederationTest::class)->name('transfers.reply');
             Route::post('/transfers/decide', [FederationApiController::class, 'transferDecide'])->middleware(RecordFederationTest::class)->name('transfers.decide');
@@ -159,6 +171,8 @@ Route::prefix('federation')->name('federations.')->middleware(SealFederation::cl
         ->get('/api/regs/template', [FederationApiController::class, 'regsTemplate'])->name('api.regs.template');
     Route::middleware(['auth', 'verified', 'two-factor', 'throttle:federation-lookup'])
         ->get('/api/regs/athlete', [FederationApiController::class, 'regsAthlete'])->name('api.regs.athlete');
+    Route::middleware(['auth', 'verified', 'two-factor', 'throttle:federation-lookup'])
+        ->get('/api/regs/withdrawals', [FederationApiController::class, 'regsWithdrawals'])->name('api.regs.withdrawals');
     Route::middleware(['auth', 'verified', 'two-factor', 'throttle:federation-lookup'])
         ->get('/api/officials/one', [FederationApiController::class, 'officialOne'])->name('api.officials.one');
     Route::middleware(['auth', 'verified', 'two-factor', 'throttle:federation-lookup'])

@@ -139,7 +139,8 @@
                  */
                 if (! this.roleChosen) {
                     this.roleChosen = true;
-                    const mat = d.roles.find(r => r.group === 'mat');
+                    // The referee, now the list leads with the organising committee.
+                    const mat = d.roles.find(r => r.section === 'referees') || d.roles.find(r => r.group === 'mat');
                     if (mat && mat.value !== this.role) { this.role = mat.value; return this.load(); }
                 }
                 this.compensations = d.compensations || []; this.currency = d.currency || '';

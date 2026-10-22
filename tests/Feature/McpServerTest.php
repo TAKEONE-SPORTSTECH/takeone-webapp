@@ -998,6 +998,7 @@ class McpServerTest extends TestCase
         $result = $this->callTool(\App\Mcp\Tools\SetEventOneDivisionTool::class, ['event' => $event->uuid, 'on' => true]);
         $this->assertTrue($result['one_division_per_person']);
         $this->assertTrue((bool) $event->fresh()->one_division_per_person);
+        $this->assertSame([], $result['conflicts'], 'nobody is in two divisions here');
     }
 
     public function test_transfer_event_competitor_moves_them_into_another_division(): void
@@ -1544,5 +1545,45 @@ class McpServerTest extends TestCase
         $this->actingAs($this->createUser());
         $this->assertArrayHasKey('error', $this->callTool(\App\Mcp\Tools\SetEventEntryChannelsTool::class, ['event' => $event->uuid, 'channels' => ['individual']]));
         $this->assertSame(['club'], $event->fresh()->entry_channels);
+    }
+
+    public function test_a_super_admin_lists_and_resolves_duplicate_findings(): void
+    {
+        $admin = $this->createUser();
+        $this->makeSuperAdmin($admin);
+        $a = \App\Members\Models\User::create(['full_name' => 'Hussam Eid Al Juma', 'name' => 'Hussam Eid Al Juma', 'is_unclaimed' => true]);
+        $b = \App\Members\Models\User::create(['full_name' => 'Hussam Eid Aljuma', 'name' => 'Hussam Eid Aljuma', 'is_unclaimed' => true]);
+        app(\App\Duplicates\Support\DuplicateWatch::class)->record();
+        $this->actingAs($admin);
+
+        $list = $this->callTool(\App\Mcp\Tools\ListDuplicateFindingsTool::class, ['kind' => 'person']);
+        $this->assertTrue($list['success']);
+        $this->assertSame(1, $list['count']);
+        $this->assertSame('likely', $list['findings'][0]['strength']);
+
+        // A likely person pair is not merged from here…
+        $fix = $this->callTool(\App\Mcp\Tools\ResolveDuplicateFindingTool::class, ['finding' => $list['findings'][0]['id'], 'action' => 'fix']);
+        $this->assertArrayHasKey('error', $fix);
+        $this->assertNotSoftDeleted('users', ['id' => $a->id]);
+
+        // …but it can be dismissed, and is then never flagged again.
+        $done = $this->callTool(\App\Mcp\Tools\ResolveDuplicateFindingTool::class, ['finding' => $list['findings'][0]['id'], 'action' => 'dismiss']);
+        $this->assertTrue($done['success']);
+        $this->assertDatabaseHas('member_duplicate_dismissals', ['user_low_id' => min($a->id, $b->id), 'user_high_id' => max($a->id, $b->id)]);
+    }
+
+    public function test_duplicate_findings_are_refused_to_anyone_but_a_super_admin(): void
+    {
+        $owner = $this->createUser();
+        $this->makeClubAdmin($owner, $this->createClub($owner));
+        \App\Members\Models\User::create(['full_name' => 'Hussam Eid Al Juma', 'name' => 'Hussam Eid Al Juma', 'is_unclaimed' => true]);
+        \App\Members\Models\User::create(['full_name' => 'Hussam Eid Aljuma', 'name' => 'Hussam Eid Aljuma', 'is_unclaimed' => true]);
+        app(\App\Duplicates\Support\DuplicateWatch::class)->record();
+        $finding = \App\Duplicates\Models\DuplicateFinding::firstOrFail();
+        $this->actingAs($owner);
+
+        $this->assertArrayHasKey('error', $this->callTool(\App\Mcp\Tools\ListDuplicateFindingsTool::class));
+        $this->assertArrayHasKey('error', $this->callTool(\App\Mcp\Tools\ResolveDuplicateFindingTool::class, ['finding' => $finding->uuid, 'action' => 'dismiss']));
+        $this->assertSame('open', $finding->fresh()->status);
     }
 }

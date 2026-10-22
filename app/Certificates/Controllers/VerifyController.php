@@ -17,7 +17,9 @@ use Illuminate\Support\Facades\Log;
  * was for, who issued it, the number and the date) and the one thing paper
  * cannot: whether it still stands. A draft is never verifiable, and an unknown
  * token gets the same page as a draft, so a stranger learns nothing by guessing.
- * No face: this page is open to anybody holding the paper, and a name is enough.
+ * A face only where the member made their picture public, and bouts and the draw
+ * only where the event's own pages would show them to the same reader
+ * (EventCertificates::verifyStory).
  */
 class VerifyController extends Controller
 {
@@ -25,6 +27,10 @@ class VerifyController extends Controller
     {
         $c = Engine::model()::query()->where('verify_token', $token)->where('status', '!=', 'draft')->first();
         $isMobile = (bool) $request->attributes->get('is_mobile');
+        // The reader may switch language here (?lang=en|ar), whatever their account says.
+        if (in_array($request->query('lang'), ['en', 'ar'], true)) {
+            app()->setLocale($request->query('lang'));
+        }
         $locale = in_array(app()->getLocale(), ['en', 'ar'], true) ? app()->getLocale() : 'en';
 
         if (! $c) {
@@ -42,7 +48,8 @@ class VerifyController extends Controller
             'found' => true,
             'revoked' => $c->isRevoked(),
             'revokedOn' => $c->revoked_at?->toDateString(),
-            'name' => $holder instanceof User ? $holder->certificateName() : '',
+            // A club's thank-you is held by the club (EventCertificates::TYPE_CLUBS).
+            'name' => $holder instanceof \Ahl\Certificates\Contracts\Recipient ? $holder->certificateName() : '',
             'title' => $c->title,
             'what' => $provider ? $provider->describe($c, $locale) : (string) $c->achievement,
             'place' => isset($details['place']) ? (int) $details['place'] : null,
@@ -51,8 +58,21 @@ class VerifyController extends Controller
             'issuer' => $provider && $context ? $provider->issuer($context, $locale) : config('certificates.issuer'),
             'accent' => $provider && $context ? ($provider->brand($context)['accent'] ?? '#6d5bd0') : '#6d5bd0',
             'number' => $c->certificate_no,
-            'issuedOn' => $c->issued_on?->toDateString(),
+            'issuedOn' => $c->issued_on?->locale($locale)->translatedFormat('j F Y'),
+            'checkedAt' => now()->locale($locale)->translatedFormat('j F Y, H:i'),
+            'shareUrl' => route('certificates.verify', $token),
+            'lang' => $locale,
         ];
+
+        // Beyond the paper: face, club, event, bouts, the draw — each under its own surface's rule.
+        $viewer = $request->user();
+        $view['story'] = $provider && method_exists($provider, 'verifyStory') ? $provider->verifyStory($c, $viewer instanceof User ? $viewer : null, $locale) : [];
+
+        // The holder (and whoever runs the event) may download it and open their profile; a stranger reads the record.
+        $isHolder = $viewer instanceof User && $holder instanceof User && $viewer->is($holder);
+        $mayDownload = ! $c->isRevoked() && ($isHolder || ($viewer instanceof User && $provider && $context && $provider->canManage($context, $viewer)));
+        $view['downloadUrl'] = $mayDownload ? route('me.certificates.pdf', $c->uuid) : null;
+        $view['profileUrl'] = $isHolder ? route('member.show', $holder->uuid) : null;
 
         return response()
             ->view($isMobile ? 'cert::verify.mobile' : 'cert::verify.desktop', $view)

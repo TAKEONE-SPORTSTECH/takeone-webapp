@@ -109,7 +109,37 @@ class FederationClubApproval
             rescue(fn () => Password::sendResetLink(['email' => strtolower((string) $app->email)]), report: true);
         }
 
+        $this->linkEventCopies($app, $link->tenant_id ? Tenant::find($link->tenant_id) : null, $by);
+
         return $link;
+    }
+
+    /**
+     * While the club was still an application, the federation's platform
+     * events wrote it down as one of their own clubs (FederationPlatformEntries
+     * → an EventClub of the application's name, no tenant). Now that it IS a
+     * platform club, those copies say so — otherwise its athletes compete with
+     * no crest and no flag. Behind duplicates.guard.federation_links; a failure
+     * here never undoes the approval.
+     */
+    private function linkEventCopies(FederationClubApplication $app, ?Tenant $tenant, ?User $by): void
+    {
+        if (! $tenant || ! config('duplicates.guard.federation_links')) {
+            return;
+        }
+
+        rescue(function () use ($app, $tenant, $by) {
+            $fed = \App\Federations\Models\Federation::find($app->federation_id);
+            $family = $fed ? app(FederationRegistry::class)->tree($fed)->pluck('id') : collect([$app->federation_id]);
+            $events = \App\Federations\Models\FederationEvent::whereIn('federation_id', $family)
+                ->whereNotNull('club_event_id')->pluck('club_event_id');
+            $key = \App\Clubs\Support\ClubMatch::key((string) $app->name);
+
+            \App\Events\Models\EventClub::whereIn('event_id', $events)->whereNull('tenant_id')->whereNull('promoted_tenant_id')
+                ->get()
+                ->filter(fn ($c) => \App\Clubs\Support\ClubMatch::key((string) $c->name) === $key)
+                ->each(fn ($c) => \App\Events\Support\Clubs\EventClubLink::link($c, $tenant, $by, 'federation_approval'));
+        }, null, report: true);
     }
 
     /**
@@ -126,7 +156,7 @@ class FederationClubApproval
             throw new \RuntimeException("That application is {$app->status}, not Pending.");
         }
 
-        return DB::transaction(function () use ($app, $tenant, $by) {
+        $link = DB::transaction(function () use ($app, $tenant, $by) {
             $link = FederationClub::where('federation_id', $app->federation_id)->where('tenant_id', $tenant->id)->lockForUpdate()->first();
 
             if ($link) {
@@ -165,6 +195,10 @@ class FederationClubApproval
 
             return $link;
         });
+
+        $this->linkEventCopies($app, $tenant, $by);
+
+        return $link;
     }
 
     /**

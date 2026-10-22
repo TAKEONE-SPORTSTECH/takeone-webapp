@@ -19,6 +19,9 @@ export default defineConfig({
                 'resources/js/islands/scoreboard-board.jsx',
                 'resources/js/islands/scoreboard-console.jsx',
                 'resources/js/islands/entry.jsx',
+                // The printables designer and its print view (app/Printables, PRINTABLES_DESIGNER).
+                'resources/js/islands/designer.jsx',
+                'resources/js/islands/printables-print.jsx',
             ],
             refresh: true,
         }),

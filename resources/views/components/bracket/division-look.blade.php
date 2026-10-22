@@ -28,13 +28,20 @@ window.DrawDivisionLook = window.DrawDivisionLook || {
         const kg = v => { const x = n(v); return x === null ? '' : String(+x.toFixed(2)); };
         const a1 = n(r.min_age), a2 = n(r.max_age), w1 = n(r.min_weight), w2 = n(r.max_weight);
         const bits = [];
-        if (a1 !== null && a2 !== null) bits.push(a1 === a2 ? a1 + ' yrs' : a1 + '–' + a2 + ' yrs');
-        else if (a1 !== null) bits.push(a1 + '+ yrs');
-        else if (a2 !== null) bits.push('up to ' + a2 + ' yrs');
+        // Non-breaking: "8–9 yrs" never splits across two lines.
+        const NB = '\u00a0';
+        // …nor at its dash: word joiners either side keep "8–9" whole.
+        const DASH = '\u2060–\u2060';
+        if (a1 !== null && a2 !== null) bits.push(a1 === a2 ? a1 + NB + 'yrs' : a1 + DASH + a2 + NB + 'yrs');
+        else if (a1 !== null) bits.push(a1 + '+' + NB + 'yrs');
+        else if (a2 !== null) bits.push('up to ' + a2 + NB + 'yrs');
         const lo = w1 !== null && w1 > 0, hi = w2 !== null && w2 > 0 && w2 < 200;
-        if (lo && hi) bits.push(kg(w1) + '–' + kg(w2) + ' kg');
-        else if (lo) bits.push('+' + kg(w1) + ' kg');
-        else if (hi) bits.push('−' + kg(w2) + ' kg');
+        // A name that already carries its weight class ("… Male -25 kg") is
+        // not followed by the same class again (2026-10-18).
+        if (/(^|\s)[-+−]\s?\d+(\.\d+)?\s*kg\b/i.test(String(d?.name || ''))) return bits.join(' · ');
+        if (lo && hi) bits.push(kg(w1) + DASH + kg(w2) + NB + 'kg');
+        else if (lo) bits.push('+' + kg(w1) + NB + 'kg');
+        else if (hi) bits.push('−' + kg(w2) + NB + 'kg');
         return bits.join(' · ');
     },
     /* A light card with the gender on its leading edge: blue, pink, or a
@@ -55,6 +62,32 @@ window.DrawDivisionLook = window.DrawDivisionLook || {
     icon(d) {
         const g = this.gender(d);
         return g === 'female' ? 'bi-gender-female' : g === 'male' ? 'bi-gender-male' : 'bi-gender-ambiguous';
+    },
+    /* The menu's quick filter (owner, 2026-10-17): a name search, a gender
+       tab, and age / weight ranges. A division stays when its own range
+       OVERLAPS the asked range — "10 to 12 years" keeps the 10–11 group — and
+       a division with no bound on a side is open on that side. */
+    filter(list, f) {
+        f = f || {};
+        /* Person mode (the draw menu's 🧍 switch): the list is exactly the
+           divisions the people found are in — nothing until a search lands. */
+        if (f.mode === 'person') {
+            const ids = Array.isArray(f.ids) ? f.ids.map(String) : null;
+            return ids ? (list || []).filter(d => ids.includes(String(d.id))) : (list || []);
+        }
+        const num = v => (v === null || v === undefined || String(v).trim() === '' || isNaN(Number(v))) ? null : Number(v);
+        const q = String(f.q || '').trim().toLowerCase();
+        const a1 = num(f.a1), a2 = num(f.a2), w1 = num(f.w1), w2 = num(f.w2);
+        const overlaps = (lo, hi, from, to) => (from === null || hi === null || hi >= from) && (to === null || lo === null || lo <= to);
+        return (list || []).filter(d => {
+            if (q && ! String(d.name || '').toLowerCase().includes(q)) return false;
+            if (f.g && f.g !== 'all' && this.gender(d) !== f.g) return false;
+            const r = d.range || {};
+            if (! overlaps(num(r.min_age), num(r.max_age), a1, a2)) return false;
+            let top = num(r.max_weight); if (top !== null && (top <= 0 || top >= 200)) top = null;
+            let bot = num(r.min_weight); if (bot !== null && bot <= 0) bot = null;
+            return overlaps(bot, top, w1, w2);
+        });
     },
     /* Age, then weight, then gender — youngest, lightest, male first;
        open-topped classes (+70 kg) last. Headings are left out. */

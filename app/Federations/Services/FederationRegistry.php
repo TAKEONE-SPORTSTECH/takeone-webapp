@@ -11,8 +11,10 @@ use App\Federations\Models\FederationEntry;
 use App\Federations\Models\FederationEntryAthlete;
 use App\Federations\Models\FederationEvent;
 use App\Federations\Models\FederationTransfer;
+use App\Federations\Support\NationalIdMask;
 use App\Members\Support\ProfilePhoto;
 use App\Support\Countries;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -545,6 +547,8 @@ class FederationRegistry
                     'types' => $ea->types ?: [], 'status' => $ea->status, 'approval' => $ea->approval,
                     'late' => $ea->late, 'chargeable' => $ea->chargeable,
                     'withdrawnAt' => $ea->withdrawn_at?->getTimestampMs(),
+                    // Who a certificate is for (EventCertificates::holderKey) — to issue or print a chosen few.
+                    'holder' => $ea->athlete?->user?->uuid ? 'u:'.$ea->athlete->user->uuid : null,
                 ];
             })->all(),
         ];
@@ -612,7 +616,9 @@ class FederationRegistry
                 ->filter(fn ($a) => array_key_exists((string) $a['athleteId'], $placed['live']))
                 ->map(fn ($a) => [
                     'name' => $a['name'], 'gender' => $a['gender'], 'dob' => $a['dob'], 'weight' => $a['weight'], 'nat' => $a['nat'],
-                    'natId' => $a['natId'], 'photo' => $a['photo'], 'athleteId' => $a['athleteId'], 'takeoneId' => $a['athleteId'],
+                    // Staff lists show a child's national ID masked (NationalIdMask).
+                    'natId' => NationalIdMask::forList($a['natId'], $a['dob'] !== '' ? rescue(fn () => Carbon::parse($a['dob']), null, false) : null),
+                    'photo' => $a['photo'], 'athleteId' => $a['athleteId'], 'takeoneId' => $a['athleteId'], 'holder' => $a['holder'] ?? null,
                     'types' => $a['types'], 'approval' => $a['approval'],
                     'declaredAge' => $placed['declared'][(string) $a['athleteId']] ?? null,
                 ] + ($placed['division'][(string) $a['athleteId']] ?? [])
@@ -639,7 +645,7 @@ class FederationRegistry
                 ->leftJoin('club_event_registrations as r', fn ($j) => $j->on('r.user_id', '=', 'u.id')
                     ->where('r.event_id', $eventId)->where('r.role', 'participant'))
                 ->leftJoin('event_categories as c', 'c.id', '=', 'r.category_id')
-                ->addSelect('c.name as cat', 'c.weight_class', 'c.min_age', 'c.max_age', 'c.sort_order', 'c.gender as cat_gender', 'c.id as cat_id', 'r.declared_age',
+                ->addSelect('c.name as cat', 'c.weight_class', 'c.min_age', 'c.max_age', 'c.sort_order', 'c.gender as cat_gender', 'c.id as cat_id', 'c.min_weight as cat_min_w', 'c.max_weight as cat_max_w', 'r.declared_age',
                     'r.id as reg_id', 'r.weight as reg_weight', 'r.weighed_in_at', 'r.weighed_in_by'))
             ->where('ea.federation_entry_id', $entry->id)
             ->addSelect('fa.takeone_id')
@@ -663,6 +669,12 @@ class FederationRegistry
                 $w['weighedIn'] = $w['weighedIn'] && $done;
                 if ($done && $r->reg_weight !== null) {
                     $w['weighedKg'] ??= (float) $r->reg_weight;
+                    // Weighed outside the range of the division this entry is in:
+                    // shown amber, never a green tick (DivisionRange — a guide, not a gate).
+                    $kg = (float) $r->reg_weight;
+                    if (($r->cat_min_w !== null && $kg < (float) $r->cat_min_w) || ($r->cat_max_w !== null && $kg > (float) $r->cat_max_w)) {
+                        $w['weighOut'] = $kg > (float) ($r->cat_max_w ?? INF) ? 'above' : 'below';
+                    }
                 }
                 $weigh[$tk] = $w;
             }

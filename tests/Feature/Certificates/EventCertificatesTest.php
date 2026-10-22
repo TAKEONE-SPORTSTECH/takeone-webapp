@@ -614,6 +614,33 @@ class EventCertificatesTest extends TestCase
         $this->actingAs($this->organiser->fresh())->getJson(route('me.certificates.bundle.download', $p + ['type' => 'participation']))->assertNotFound();
     }
 
+    public function test_a_print_run_draws_many_certificates_to_a_chromium_and_keeps_their_order(): void
+    {
+        config(['printables.enabled' => true, 'printables.batch' => ['enabled' => true, 'per_chromium' => 1, 'parallel' => 2]]);
+        $this->decidedDivision();
+        $this->generate();
+        $this->actingAs($this->organiser->fresh())
+            ->postJson(route('me.certificates.approve', ['context' => 'club_event', 'key' => $this->event->uuid]), ['all' => true])->assertOk();
+        $issued = Certificate::where('status', 'approved')->where('type', 'participation')->orderBy('id')->with('recipient')->get();
+        $this->assertGreaterThan(1, $issued->count());
+
+        // One certificate per Chromium, two at a time: every page, in the order asked for.
+        $pdf = app(CertificateService::class)->bundle($issued->all());
+        $this->assertStringStartsWith('%PDF', $pdf);
+        $file = tempnam(sys_get_temp_dir(), 'run');
+        file_put_contents($file, $pdf);
+        try {
+            $text = (string) shell_exec('pdftotext '.escapeshellarg($file).' -');
+        } finally {
+            @unlink($file);
+        }
+        $this->assertSame($issued->count(), substr_count($text, "\f"));
+        $pages = explode("\f", $text);
+        foreach ($issued->values() as $i => $c) {
+            $this->assertStringContainsString($c->recipient->certificateName(), $pages[$i], "page {$i}");
+        }
+    }
+
     public function test_arabic_is_joined_on_an_english_page_too(): void
     {
         $shaper = app(\Ahl\Certificates\Support\TextShaper::class);

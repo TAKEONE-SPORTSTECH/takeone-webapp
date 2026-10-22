@@ -227,6 +227,11 @@
                 'badge' => \App\Clubs\Models\Business::where('status', \App\Clubs\Models\Business::STATUS_PENDING)->count()],
             ['route'=>'admin.platform.featured-events', 'pattern'=>['admin.platform.featured-events*'], 'icon'=>'bi-stars', 'label'=>__('platform.featured_nav'),
                 'badge' => \App\Events\Models\EventFeatureRequest::where('status', 'pending')->count()],
+            // The duplicate watch (app/Duplicates) — only while its module and table exist.
+            ...(\Illuminate\Support\Facades\Route::has('admin.duplicates.index') ? [
+                ['route'=>'admin.duplicates.index', 'pattern'=>['admin.duplicates*'], 'icon'=>'bi-intersect', 'label'=>__('duplicates::messages.nav'),
+                    'badge' => rescue(fn () => \App\Duplicates\Models\DuplicateFinding::where('status', 'open')->where('strength', 'likely')->count(), 0, report: false)],
+            ] : []),
         ],
         'System' => [
             ['route'=>'admin.platform.activities',    'pattern'=>['admin.platform.activities*'],'icon'=>'bi-lightning-charge','label'=>'Activities'],

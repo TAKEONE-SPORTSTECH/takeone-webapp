@@ -1,0 +1,195 @@
+        <!-- Results and Bouts (event-results.js) — read-only, from the event's own bracket. -->
+        <sc-if value="{{ dr.has }}" hint-placeholder-val="{{ true }}">
+        <section style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:clamp(16px,2vw,24px);box-shadow:0 14px 40px rgba(30,44,79,.1)">
+          <div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+            <div style="flex:1 1 220px;min-width:0">
+              <div style="font-size:.66rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">{{ dr.eyebrow }}</div>
+              <h3 style="margin:4px 0 0;font-size:1.02rem;font-weight:700;color:#1e2c4f">Results &amp; bouts</h3>
+            </div>
+            <sc-if value="{{ dr.cover.can }}" hint-placeholder-val="{{ false }}">
+            <div style="position:relative;flex:none">
+              <button type="button" onClick="{{ dr.cover.onToggle }}" aria-haspopup="dialog" aria-expanded="{{ dr.cover.open }}" title="The cover page of the downloaded report" style="{{ dr.cover.style }}" style-hover="border-color:#caa14f;background:#fdf6e6"><span aria-hidden="true" style="{{ dr.cover.dot }}"></span><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path><path d="M9 14l2-2 2 2 2-3"></path></svg>{{ dr.cover.label }}<span aria-hidden="true" style="font-size:.7rem;color:#8a6d20">{{ dr.cover.caret }}</span></button>
+              <sc-if value="{{ dr.cover.open }}" hint-placeholder-val="{{ false }}">
+                <div onClick="{{ dr.cover.onClose }}" style="position:fixed;inset:0;z-index:45"></div>
+                <div role="dialog" aria-label="Report cover page" onClick="{{ dr.cover.stop }}" style="position:absolute;top:46px;right:0;z-index:46;width:300px;max-width:calc(100vw - 2rem);background:#fff;border:1px solid #eef1f6;border-radius:16px;box-shadow:0 18px 40px rgba(30,44,79,.16);overflow:hidden;animation:rise .18s cubic-bezier(.22,.68,.35,1) both">
+                  <div style="position:relative;overflow:hidden;padding:14px 16px;color:#fff;background:linear-gradient(135deg,#1e2c4f,#2c3f6e)">
+                    <span aria-hidden="true" style="position:absolute;right:-10px;top:0;bottom:0;width:90px;opacity:.14;background:repeating-linear-gradient(115deg,#d8b25f 0 6px,transparent 6px 16px)"></span>
+                    <div style="position:relative;font-size:.6rem;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:#edcd85">PDF report</div>
+                    <div style="position:relative;margin-top:3px;font-size:.92rem;font-weight:800">Cover page</div>
+                  </div>
+                  <div style="padding:14px 16px 16px;display:flex;flex-direction:column;gap:12px">
+                    <div style="display:flex;align-items:flex-start;gap:8px;font-size:.76rem;line-height:1.45;color:#3d4a66"><span>{{ dr.cover.status }}</span></div>
+                    <div style="font-size:.68rem;color:#6b7689;line-height:1.45">A PDF (its first page is used) or a JPG, PNG or WebP picture, up to 10 MB. Design it A4 portrait for the best fit.</div>
+                    <div style="display:flex;gap:8px">
+                      <label style="{{ dr.cover.pickStyle }}" style-hover="transform:translateY(-1px)"><input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" onChange="{{ dr.cover.onFile }}" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">{{ dr.cover.pick }}</label>
+                      <sc-if value="{{ dr.cover.has }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ dr.cover.onRemove }}" style="{{ dr.cover.removeStyle }}" style-hover="background:#fdecec">Remove</button></sc-if>
+                    </div>
+                    <sc-if value="{{ dr.cover.hasErr }}" hint-placeholder-val="{{ false }}">
+                      <div role="alert" style="padding:8px 10px;border-radius:9px;background:#fdecec;color:#b42318;font-size:.72rem;font-weight:600">{{ dr.cover.err }}</div>
+                    </sc-if>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+            </sc-if>
+            <sc-if value="{{ dr.dl.can }}" hint-placeholder-val="{{ true }}">
+            <div style="position:relative;flex:none">
+              <button type="button" onClick="{{ dr.dl.onToggle }}" aria-haspopup="menu" aria-expanded="{{ dr.dl.open }}" title="Download results, bouts or both" style="{{ dr.dl.style }}" style-hover="border-color:#caa14f;background:#fdf6e6"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><path d="M7 10l5 5 5-5"></path><path d="M5 21h14"></path></svg>{{ dr.dl.label }}<span aria-hidden="true" style="font-size:.7rem;color:#8a6d20">{{ dr.dl.caret }}</span></button>
+              <sc-if value="{{ dr.dl.open }}" hint-placeholder-val="{{ false }}">
+                <div onClick="{{ dr.dl.onClose }}" style="position:fixed;inset:0;z-index:45"></div>
+                <div role="menu" onClick="{{ dr.dl.stop }}" style="position:absolute;top:46px;right:0;z-index:46;min-width:250px;max-width:calc(100vw - 2rem);padding:6px;background:#fff;border:1px solid #eef1f6;border-radius:14px;box-shadow:0 18px 40px rgba(30,44,79,.16);animation:rise .18s cubic-bezier(.22,.68,.35,1) both">
+                  <sc-for list="{{ dr.dl.items }}" as="i" hint-placeholder-count="3">
+                    <button type="button" role="menuitem" onClick="{{ i.onClick }}" style="{{ i.style }}" style-hover="background:#fdf6e6"><span style="font-size:.82rem;font-weight:700;color:#1e2c4f">{{ i.label }}</span><span style="font-size:.7rem;color:#6b7689">{{ i.hint }}</span></button>
+                  </sc-for>
+                  <sc-if value="{{ dr.dl.hasErr }}" hint-placeholder-val="{{ false }}">
+                    <div role="alert" style="margin:4px 6px 2px;padding:8px 10px;border-radius:9px;background:#fdecec;color:#b42318;font-size:.72rem;font-weight:600">{{ dr.dl.err }}</div>
+                  </sc-if>
+                </div>
+              </sc-if>
+            </div>
+            </sc-if>
+            <div role="group" aria-label="Show" style="display:flex;flex:none;padding:3px;border-radius:11px;background:#f1f3f7;border:1px solid #e3e7ee">
+              <sc-for list="{{ dr.tabs }}" as="t" hint-placeholder-count="2"><button type="button" onClick="{{ t.onClick }}" aria-pressed="{{ t.pressed }}" style="{{ t.style }}">{{ t.label }}</button></sc-for>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+            <input type="search" autocomplete="off" aria-label="Search" placeholder="Search a name, club, division or #bout" value="{{ dr.q }}" onChange="{{ dr.onQ }}"
+                   style="flex:1 1 240px;min-width:0;height:40px;padding:0 14px;border:1px solid #d5dae3;border-radius:11px;font-family:inherit;font-size:.82rem;color:#1e2c4f;background:#fff">
+            <sc-if value="{{ dr.bouts }}" hint-placeholder-val="{{ false }}">
+              <div role="group" aria-label="Filter" style="display:flex;flex:none;padding:3px;border-radius:11px;background:#f1f3f7;border:1px solid #e3e7ee">
+                <sc-for list="{{ dr.filters }}" as="f" hint-placeholder-count="3"><button type="button" onClick="{{ f.onClick }}" aria-pressed="{{ f.pressed }}" style="{{ f.style }}">{{ f.label }}</button></sc-for>
+              </div>
+            </sc-if>
+          </div>
+
+          <!-- Results: one card per decided division -->
+          <sc-if value="{{ dr.results }}" hint-placeholder-val="{{ true }}">
+            <sc-if value="{{ dr.noDivs }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:24px;border-radius:14px;background:#f7f8fb;text-align:center;font-size:.84rem;color:#6b7689">No division has finished yet — podiums appear here the moment a final is decided.</div>
+            </sc-if>
+            <sc-if value="{{ dr.hasDivs }}" hint-placeholder-val="{{ true }}">
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:16px;align-items:start">
+                <sc-for list="{{ dr.divs }}" as="d" hint-placeholder-count="3">
+                  <article style="border-radius:18px;overflow:hidden;background:#fff;border:1px solid #e9edf3;box-shadow:0 12px 32px rgba(30,44,79,.08);transition:transform .2s ease,box-shadow .2s ease" style-hover="transform:translateY(-2px);box-shadow:0 18px 40px rgba(30,44,79,.14)">
+                    <header onClick="{{ d.onDraw }}" title="{{ d.drawTitle }}" style="{{ d.headStyle }}">
+                      <span aria-hidden="true" style="position:absolute;right:-10px;top:0;bottom:0;width:120px;opacity:.14;background:repeating-linear-gradient(115deg,#d8b25f 0 6px,transparent 6px 16px)"></span>
+                      <div style="position:relative;display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                        <sc-if value="{{ d.hasSex }}" hint-placeholder-val="{{ true }}"><span style="{{ d.sexStyle }}">{{ d.sex }}</span></sc-if>
+                        <sc-if value="{{ d.hasDraw }}" hint-placeholder-val="{{ true }}"><span style="margin-left:auto;font-size:.68rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#edcd85;white-space:nowrap">Draw ›</span></sc-if>
+                      </div>
+                      <h4 style="position:relative;margin:0;font-size:.95rem;font-weight:800;line-height:1.3;letter-spacing:.01em">{{ d.label }}</h4>
+                    </header>
+                    <sc-if value="{{ d.hasChamp }}" hint-placeholder-val="{{ true }}">
+                      <div onClick="{{ d.champ.onOpen }}" title="{{ d.champ.title }}" style="{{ d.champ.rowStyle }}" style-hover="background:#fbf1d6">
+                        <span style="{{ d.champ.discStyle }}" title="{{ d.champ.word }}">{{ d.champ.place }}</span>
+                        <span role="img" aria-label="{{ d.champ.name }}" style="{{ d.champ.faceStyle }}"></span>
+                        <div style="min-width:0;flex:1;display:flex;flex-direction:column;gap:3px">
+                                <span style="{{ d.champ.wordStyle }}">{{ d.champ.word }}</span>
+                                <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+                                  <span style="{{ d.champ.nameStyle }}"><sc-if value="{{ d.champ.hasFlag }}" hint-placeholder-val="{{ true }}"><img src="{{ d.champ.flag }}" alt="" style="display:inline-block;width:22px;height:16.5px;margin-inline-end:7px;vertical-align:-2px;border-radius:3px;object-fit:cover;box-shadow:0 0 0 1px rgba(30,44,79,.14)"></sc-if><bdi>{{ d.champ.name }}</bdi></span>
+                                  <sc-if value="{{ d.champ.hasKg }}" hint-placeholder-val="{{ true }}"><span style="flex:none;display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:999px;background:#eef1f6;color:#1e2c4f;font-size:.66rem;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap">{{ d.champ.kg }}</span></sc-if>
+                                </div>
+                                <sc-if value="{{ d.champ.hasClub }}" hint-placeholder-val="{{ true }}">
+                                  <div style="display:flex;align-items:center;gap:7px;min-width:0;font-size:.74rem;font-weight:700;letter-spacing:.02em;color:#3d4a66">
+                                    <sc-if value="{{ d.champ.hasLogo }}" hint-placeholder-val="{{ true }}"><img src="{{ d.champ.logo }}" alt="" style="width:24px;height:24px;flex:none;object-fit:contain"></sc-if>
+                                    <span style="text-transform:uppercase;overflow-wrap:anywhere">{{ d.champ.club }}</span>
+                                  </div>
+                                </sc-if>
+                              </div>
+                      </div>
+                    </sc-if>
+                    <sc-for list="{{ d.places }}" as="p" hint-placeholder-count="3">
+                      <div onClick="{{ p.onOpen }}" title="{{ p.title }}" style="{{ p.rowStyle }}" style-hover="background:#f7f8fb">
+                        <span style="{{ p.discStyle }}" title="{{ p.word }}">{{ p.place }}</span>
+                        <span role="img" aria-label="{{ p.name }}" style="{{ p.faceStyle }}"></span>
+                        <div style="min-width:0;flex:1;display:flex;flex-direction:column;gap:3px">
+                                <span style="{{ p.wordStyle }}">{{ p.word }}</span>
+                                <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+                                  <span style="{{ p.nameStyle }}"><sc-if value="{{ p.hasFlag }}" hint-placeholder-val="{{ true }}"><img src="{{ p.flag }}" alt="" style="display:inline-block;width:18px;height:13.5px;margin-inline-end:7px;vertical-align:-2px;border-radius:3px;object-fit:cover;box-shadow:0 0 0 1px rgba(30,44,79,.14)"></sc-if><bdi>{{ p.name }}</bdi></span>
+                                  <sc-if value="{{ p.hasKg }}" hint-placeholder-val="{{ true }}"><span style="flex:none;display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:999px;background:#eef1f6;color:#1e2c4f;font-size:.66rem;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap">{{ p.kg }}</span></sc-if>
+                                </div>
+                                <sc-if value="{{ p.hasClub }}" hint-placeholder-val="{{ true }}">
+                                  <div style="display:flex;align-items:center;gap:7px;min-width:0;font-size:.7rem;font-weight:700;letter-spacing:.02em;color:#3d4a66">
+                                    <sc-if value="{{ p.hasLogo }}" hint-placeholder-val="{{ true }}"><img src="{{ p.logo }}" alt="" style="width:20px;height:20px;flex:none;object-fit:contain"></sc-if>
+                                    <span style="text-transform:uppercase;overflow-wrap:anywhere">{{ p.club }}</span>
+                                  </div>
+                                </sc-if>
+                              </div>
+                      </div>
+                    </sc-for>
+                  </article>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ dr.hasPending }}" hint-placeholder-val="{{ true }}">
+              <div style="margin-top:16px;padding:14px 16px;border-radius:14px;background:#fdf8ec;border:1px solid #f1e3c0">
+                <div style="font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#b45309;margin-bottom:8px">Still being fought · {{ dr.pendingCount }}</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px">
+                  <sc-for list="{{ dr.pending }}" as="x" hint-placeholder-count="4"><button type="button" onClick="{{ x.onDraw }}" style="{{ x.style }}" style-hover="border-color:#caa14f;background:#fdf6e6">{{ x.label }} ›</button></sc-for>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ dr.hasWalkovers }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:12px;padding:14px 16px;border-radius:14px;background:#f5f7fb;border:1px solid #e3e8f0">
+                <div style="font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#3b4558;margin-bottom:4px">Walkover · only entrant · {{ dr.walkoverCount }}</div>
+                <div style="font-size:.74rem;color:#5b6476;margin-bottom:8px">Nobody else entered these divisions, so no bout was fought. Merge them into a nearby division, or award them under your rules.</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px">
+                  <sc-for list="{{ dr.walkovers }}" as="x" hint-placeholder-count="2"><button type="button" onClick="{{ x.onDraw }}" style="{{ x.style }}" style-hover="border-color:#97a1b4;background:#fff">{{ x.label }}{{ x.who }} ›</button></sc-for>
+                </div>
+              </div>
+            </sc-if>
+          </sc-if>
+
+          <!-- Bouts: numbered, mat by mat -->
+          <sc-if value="{{ dr.bouts }}" hint-placeholder-val="{{ false }}">
+            <sc-if value="{{ dr.noMats }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:24px;border-radius:14px;background:#f7f8fb;text-align:center;font-size:.84rem;color:#6b7689">No bouts match.</div>
+            </sc-if>
+            <div style="display:flex;flex-direction:column;gap:18px">
+              <sc-for list="{{ dr.mats }}" as="m" hint-placeholder-count="2">
+                <div>
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                    <span style="display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 12px;border-radius:999px;background:#1e2c4f;color:#fff;font-size:.72rem;font-weight:600">{{ m.title }} <b style="font-weight:700;color:#edcd85">{{ m.count }}</b></span>
+                  </div>
+                  <div style="overflow-x:auto;border:1px solid #eef1f6;border-radius:14px">
+                    <div style="min-width:760px">
+                      <sc-for list="{{ m.bouts }}" as="b" hint-placeholder-count="5">
+                        <div onClick="{{ b.onDraw }}" title="{{ b.drawTitle }}" style="{{ b.rowStyle }}" style-hover="background:#faf7ef">
+                          <div style="font-size:1.05rem;font-weight:800;color:#1e2c4f;font-variant-numeric:tabular-nums">#{{ b.no }}</div>
+                          <div style="min-width:0">
+                            <div style="{{ b.divStyle }}">{{ b.division }}</div>
+                            <div style="font-size:.66rem;color:#6b7689">{{ b.round }}</div>
+                          </div>
+                          <div onClick="{{ b.a.onOpen }}" title="{{ b.a.title }}" style="{{ b.a.style }}" style-hover="background:#f4f1fd">
+                            <span style="{{ b.a.dotStyle }}"></span>
+                            <sc-if value="{{ b.a.hasFace }}" hint-placeholder-val="{{ true }}"><span role="img" aria-label="{{ b.a.name }}" style="{{ b.a.faceStyle }}"></span></sc-if>
+                            <div style="min-width:0;flex:1">
+                              <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:.8rem;line-height:1.25"><sc-if value="{{ b.a.hasFlag }}" hint-placeholder-val="{{ true }}"><img src="{{ b.a.flag }}" alt="" style="width:18px;height:13.5px;flex:none;border-radius:2px;box-shadow:0 0 0 1px rgba(30,44,79,.12);object-fit:cover"></sc-if><span>{{ b.a.name }} <span style="color:#2f7a4f">{{ b.a.crown }}</span></span><sc-if value="{{ b.a.hasKg }}" hint-placeholder-val="{{ true }}"><span style="flex:none;padding:1px 7px;border-radius:999px;background:#f1f3f7;color:#1e2c4f;font-size:.66rem;font-weight:700;white-space:nowrap">{{ b.a.kg }}</span></sc-if></div>
+                              <sc-if value="{{ b.a.hasClub }}" hint-placeholder-val="{{ true }}"><div style="display:flex;align-items:center;gap:5px;margin-top:2px;font-size:.68rem;color:#3d4a66;font-weight:500"><sc-if value="{{ b.a.hasLogo }}" hint-placeholder-val="{{ true }}"><img src="{{ b.a.logo }}" alt="" style="width:16px;height:16px;flex:none;object-fit:contain"></sc-if><span>{{ b.a.club }}</span></div></sc-if>
+                            </div>
+                            <sc-if value="{{ b.a.hasScore }}" hint-placeholder-val="{{ false }}"><b style="font-size:.9rem;font-variant-numeric:tabular-nums">{{ b.a.score }}</b></sc-if>
+                          </div>
+                          <div onClick="{{ b.b.onOpen }}" title="{{ b.b.title }}" style="{{ b.b.style }}" style-hover="background:#f4f1fd">
+                            <span style="{{ b.b.dotStyle }}"></span>
+                            <sc-if value="{{ b.b.hasFace }}" hint-placeholder-val="{{ true }}"><span role="img" aria-label="{{ b.b.name }}" style="{{ b.b.faceStyle }}"></span></sc-if>
+                            <div style="min-width:0;flex:1">
+                              <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:.8rem;line-height:1.25"><sc-if value="{{ b.b.hasFlag }}" hint-placeholder-val="{{ true }}"><img src="{{ b.b.flag }}" alt="" style="width:18px;height:13.5px;flex:none;border-radius:2px;box-shadow:0 0 0 1px rgba(30,44,79,.12);object-fit:cover"></sc-if><span>{{ b.b.name }} <span style="color:#2f7a4f">{{ b.b.crown }}</span></span><sc-if value="{{ b.b.hasKg }}" hint-placeholder-val="{{ true }}"><span style="flex:none;padding:1px 7px;border-radius:999px;background:#f1f3f7;color:#1e2c4f;font-size:.66rem;font-weight:700;white-space:nowrap">{{ b.b.kg }}</span></sc-if></div>
+                              <sc-if value="{{ b.b.hasClub }}" hint-placeholder-val="{{ true }}"><div style="display:flex;align-items:center;gap:5px;margin-top:2px;font-size:.68rem;color:#3d4a66;font-weight:500"><sc-if value="{{ b.b.hasLogo }}" hint-placeholder-val="{{ true }}"><img src="{{ b.b.logo }}" alt="" style="width:16px;height:16px;flex:none;object-fit:contain"></sc-if><span>{{ b.b.club }}</span></div></sc-if>
+                            </div>
+                            <sc-if value="{{ b.b.hasScore }}" hint-placeholder-val="{{ false }}"><b style="font-size:.9rem;font-variant-numeric:tabular-nums">{{ b.b.score }}</b></sc-if>
+                          </div>
+                          <span style="{{ b.howStyle }}">{{ b.how }}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </section>
+        </sc-if>
+        <sc-if value="{{ dr.none }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#fff;border-radius:16px;border-top:3px solid #d8b25f;padding:32px;box-shadow:0 10px 30px rgba(30,44,79,.08);font-size:.86rem;color:#6b7689">No draw yet — results and bouts appear here once the event's brackets are made.</div>
+        </sc-if>

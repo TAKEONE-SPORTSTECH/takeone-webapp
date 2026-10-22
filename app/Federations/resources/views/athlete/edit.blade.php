@@ -22,7 +22,7 @@
     /* The editor's state. Registered before Alpine starts (Alpine is deferred). */
     window.fedAthleteEdit = function (cfg) {
         return {
-            cfg, loading: true, failed: '', busy: false, msg: '', confirmDel: false, canEdit: !! cfg.canEdit,
+            cfg, loading: true, failed: '', busy: false, msg: '', confirmDel: false, wdReason: '', wdTyped: '', canEdit: !! cfg.canEdit,
             a: {}, clubs: [], photo: '', photoUrl: '',
             f: { name: '', gender: '', ageMode: 'dob', dob: '', age: '', nat: '', natId: '', club: '', weight: '' },
 
@@ -138,18 +138,21 @@
                the platform entry, its division place and draw slot go with it. */
             async remove() {
                 if (this.busy || ! this.canEdit) return;
-                if (! this.confirmDel) { this.confirmDel = true; return; }
+                if (! this.confirmDel) { this.confirmDel = true; this.wdReason = ''; this.wdTyped = ''; return; }
+                // A reason and the word DELETE, as the server demands — it records who removed them and why.
+                if (this.wdReason.trim().length < 5) { this.msg = @js(__('Say why they are being removed (at least 5 characters).')); return; }
+                if (this.wdTyped.trim() !== 'DELETE') { this.msg = @js(__('Type DELETE to confirm.')); return; }
                 this.busy = true; this.msg = '';
                 try {
                     const res = await fetch(cfg.urls.withdraw, {
                         method: 'POST', credentials: 'same-origin',
                         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest',
                             'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
-                        body: JSON.stringify({ athletes: [{ entry: cfg.entry, athlete: cfg.athlete }] }),
+                        body: JSON.stringify({ athletes: [{ entry: cfg.entry, athlete: cfg.athlete }], reason: this.wdReason.trim(), confirm: 'DELETE' }),
                     });
                     if (res.status === 401 || res.status === 419) { window.top.location.reload(); return; }
                     const j = await res.json().catch(() => ({}));
-                    if (! res.ok || ! j.success) { this.msg = j.message || 'They could not be removed. Try again.'; this.busy = false; this.confirmDel = false; return; }
+                    if (! res.ok || ! j.success) { let m = j.message || 'They could not be removed. Try again.'; if (j.errors) { const k = Object.keys(j.errors)[0]; if (k) m = j.errors[k][0]; } this.msg = m; this.busy = false; return; }
                     this.post('fed-athlete:saved', { message: (this.f.name || 'The athlete') + ' was removed from the event.', regs: j.regs || null });
                 } catch (e) {
                     this.msg = 'Could not reach the server. Try again.'; this.busy = false; this.confirmDel = false;
@@ -341,8 +344,17 @@
     {{-- Footer: the one action --}}
     <footer class="flex-shrink-0 z-40 px-5 py-3 bg-white border-t border-gray-100 flex items-center gap-3 flex-wrap"
             style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));" x-show="! loading && ! failed && canEdit" x-cloak>
-        <button type="button" class="ae-danger" :class="confirmDel && 'is-armed'" @click="remove()"
-                x-text="confirmDel ? @js(__('Tap again to remove')) : @js(__('Remove from event'))"></button>
+        <div class="w-full space-y-2" x-show="confirmDel" x-cloak>
+            <label class="ae-lbl" for="aeWdReason">{{ __('Why are they being removed?') }} <span style="color:#b4483c">*</span></label>
+            <textarea id="aeWdReason" class="ae-in" rows="2" maxlength="500" x-model="wdReason" style="height:auto;padding-top:.6rem;padding-bottom:.6rem"></textarea>
+            <label class="ae-lbl" for="aeWdTyped">{!! __('Type :word to confirm', ['word' => '<b style="color:#b4483c;letter-spacing:.06em">DELETE</b>']) !!}</label>
+            <div class="flex gap-2">
+                <input id="aeWdTyped" type="text" class="ae-in font-bold" style="letter-spacing:.08em" x-model="wdTyped" placeholder="DELETE" autocomplete="off" spellcheck="false">
+                <button type="button" class="ae-ghost" @click="confirmDel = false; msg = ''">{{ __('Keep them') }}</button>
+            </div>
+        </div>
+        <button type="button" class="ae-danger" :class="confirmDel && 'is-armed'" @click="remove()" :disabled="busy || (confirmDel && (wdReason.trim().length < 5 || wdTyped.trim() !== 'DELETE'))"
+                x-text="confirmDel ? @js(__('Withdraw from event')) : @js(__('Remove from event'))"></button>
         <p class="flex-1 text-[13px] font-semibold" style="color:#b4483c;min-width:120px" role="alert" x-text="msg"></p>
         <button type="button" class="ae-ghost" @click="close()">{{ __('Cancel') }}</button>
         <button type="button" class="ae-save" :disabled="busy" @click="save()"

@@ -49,6 +49,7 @@ class ManageController extends Controller
             'participation' => ['sometimes', 'boolean'],
             'podium' => ['sometimes', 'boolean'],
             'officials' => ['sometimes', 'boolean'],
+            'clubs' => ['sometimes', 'boolean'],
             'trigger' => ['sometimes', Rule::in(['division', 'event', 'manual'])],
         ]);
         $provider->saveSettings($model, $data);
@@ -60,7 +61,10 @@ class ManageController extends Controller
     public function generate(Request $request, string $context, string $key, CertificatePresenter $presenter): JsonResponse
     {
         [$provider, $model] = $this->managedContext($context, $key, $request);
-        $r = $provider->generate($model, $request->user());
+        // Optionally one kind only — issuing the clubs' certificates from the
+        // federation view drafts nothing else (EventCertificates::generate $only).
+        $type = $request->validate(['type' => ['sometimes', 'nullable', Rule::in($provider->types())]])['type'] ?? null;
+        $r = $type ? $provider->generate($model, $request->user(), $type) : $provider->generate($model, $request->user());
         $this->tellOthers($provider, $model, $request);
 
         $message = $r['created'] > 0
@@ -84,9 +88,12 @@ class ManageController extends Controller
             'uuids' => ['sometimes', 'array', 'max:'.self::APPROVE_BATCH],
             'uuids.*' => ['uuid'],
             'all' => ['sometimes', 'boolean'],
+            // Optionally one kind only, so issuing one kind never approves another's drafts.
+            'type' => ['sometimes', 'nullable', Rule::in($provider->types())],
         ]);
 
-        $drafts = Engine::model()::query()->forContext($model)->where('status', 'draft')->orderBy('id');
+        $drafts = Engine::model()::query()->forContext($model)->where('status', 'draft')->orderBy('id')
+            ->when($data['type'] ?? null, fn ($q, $t) => $q->where('type', $t));
         if (! empty($data['uuids'])) {
             $drafts->whereIn('uuid', $data['uuids']);
         } elseif (! ($data['all'] ?? false)) {
@@ -98,13 +105,14 @@ class ManageController extends Controller
             if (Gate::forUser($request->user())->allows('approve', $c)) {
                 $service->approve($c, $request->user());
                 $approved++;
-                CertificateRealtime::refresh([$c->recipient_id]);
+                CertificateRealtime::refresh([CertificateRealtime::holder($c)]);
             }
         }
 
         Log::info('certificates.approved', ['context' => $provider->alias(), 'key' => $key, 'by' => $request->user()->id, 'count' => $approved]);
         $this->tellOthers($provider, $model, $request);
-        $remaining = Engine::model()::query()->forContext($model)->where('status', 'draft')->count();
+        $remaining = Engine::model()::query()->forContext($model)->where('status', 'draft')
+            ->when($data['type'] ?? null, fn ($q, $t) => $q->where('type', $t))->count();
 
         return response()->json([
             'success' => true,
@@ -121,7 +129,7 @@ class ManageController extends Controller
 
         $service->revoke($c, $request->user(), strip_tags($data['reason']));
         Log::info('certificates.revoked', ['certificate' => $c->uuid, 'by' => $request->user()->id]);
-        CertificateRealtime::refresh([$c->recipient_id]);
+        CertificateRealtime::refresh([CertificateRealtime::holder($c)]);
         [$provider, $model] = $this->contextOf($c);
         if ($provider && $model) {
             $this->tellOthers($provider, $model, $request);
@@ -149,6 +157,36 @@ class ManageController extends Controller
      * draft, DELETE_BATCH per request. Only drafts: an issued certificate is revoked,
      * never deleted, because its QR code is already out in the world.
      */
+    /**
+     * Delete EVERY certificate in this context — drafts, issued and revoked — with its
+     * file, a batch at a time (the console keeps calling while `remaining` > 0). Only for
+     * someone who may manage the context; logged, and each holder's list refreshes.
+     */
+    public function destroyAll(Request $request, string $context, string $key, CertificateService $service, CertificatePresenter $presenter): JsonResponse
+    {
+        [$provider, $model] = $this->managedContext($context, $key, $request);
+        $request->validate(['confirm' => ['required', 'in:delete-all']]);
+
+        $deleted = 0;
+        $holders = [];
+        foreach (Engine::model()::query()->forContext($model)->orderBy('id')->limit(self::DELETE_BATCH)->get() as $c) {
+            $holders[] = CertificateRealtime::holder($c);
+            $service->destroy($c);
+            $deleted++;
+        }
+
+        Log::warning('certificates.all_deleted', ['context' => $provider->alias(), 'key' => $key, 'by' => $request->user()->id, 'count' => $deleted]);
+        CertificateRealtime::refresh(array_values(array_unique(array_filter($holders))));
+        $this->tellOthers($provider, $model, $request);
+
+        return response()->json([
+            'success' => true,
+            'message' => trans_choice('cert::messages.deleted_many', $deleted, ['count' => $deleted]),
+            'deleted' => $deleted,
+            'remaining' => Engine::model()::query()->forContext($model)->count(),
+        ] + $this->state($provider, $model, $presenter));
+    }
+
     public function destroyDrafts(Request $request, string $context, string $key, CertificateService $service, CertificatePresenter $presenter): JsonResponse
     {
         [$provider, $model] = $this->managedContext($context, $key, $request);
@@ -186,6 +224,81 @@ class ManageController extends Controller
     }
 
     /**
+     * Issue one kind of certificate to the holders chosen, and only them (owner,
+     * 2026-10-20): draft what they have earned and not been given, then approve
+     * their drafts. Answers with every issued certificate of theirs of that kind,
+     * so the caller can go straight on to a PDF of exactly these.
+     */
+    public function issueSelected(Request $request, string $context, string $key, CertificateService $service): JsonResponse
+    {
+        [$provider, $model] = $this->managedContext($context, $key, $request);
+        abort_unless(method_exists($provider, 'generateFor') && method_exists($provider, 'holderKey'), 404);
+        $data = $request->validate([
+            'type' => ['required', Rule::in($provider->types())],
+            'holders' => ['required', 'array', 'min:1', 'max:1000'],
+            'holders.*' => ['string', 'max:200'],
+        ]);
+        $want = array_fill_keys($data['holders'], true);
+
+        $made = $provider->generateFor($model, $request->user(), $data['type'], $data['holders']);
+        $theirs = fn () => Engine::model()::query()->forContext($model)->where('type', $data['type'])->whereIn('status', ['draft', 'approved'])
+            ->with('recipient')->orderBy('id')->get()->filter(fn ($c) => $c->recipient && isset($want[$provider->holderKey($c->recipient)]));
+
+        $approved = 0;
+        foreach ($theirs()->filter(fn ($c) => $c->isDraft()) as $c) {
+            if (Gate::forUser($request->user())->allows('approve', $c)) {
+                $service->approve($c, $request->user());
+                $approved++;
+                CertificateRealtime::refresh([CertificateRealtime::holder($c)]);
+            }
+        }
+        $issued = $theirs()->filter(fn ($c) => ! $c->isDraft())->values();
+
+        Log::info('certificates.issued_selected', ['context' => $provider->alias(), 'key' => $key, 'type' => $data['type'], 'by' => $request->user()->id, 'holders' => count($want), 'approved' => $approved]);
+        $this->tellOthers($provider, $model, $request);
+
+        return response()->json([
+            'success' => true,
+            'message' => trans_choice('cert::messages.issued_selected', $approved, ['count' => $approved, 'total' => $issued->count()]),
+            'issued' => $approved,
+            'pending' => $made['pending'] ?? 0,
+            'uuids' => $issued->pluck('uuid')->values()->all(),
+        ]);
+    }
+
+    /**
+     * A chosen set of issued certificates of one kind, as a print-shop file:
+     * remembered for two days under a token, and bundled like any other type
+     * (`<type>.sel-<token>` — CertificateBundles reads it back).
+     */
+    public function selection(Request $request, string $context, string $key, CertificateBundles $bundles): JsonResponse
+    {
+        [$provider, $model] = $this->managedContext($context, $key, $request);
+        // Chosen by certificate (the console's ticks) or by holder (a federation list's ticks).
+        $data = $request->validate([
+            'type' => ['required', Rule::in($provider->types())],
+            'uuids' => ['required_without:holders', 'array', 'max:2000'],
+            'uuids.*' => ['uuid'],
+            'holders' => ['required_without:uuids', 'array', 'max:2000'],
+            'holders.*' => ['string', 'max:200'],
+        ]);
+        $issued = Engine::model()::query()->forContext($model)->where('type', $data['type'])->where('status', 'approved')->orderBy('id');
+        if (! empty($data['uuids'])) {
+            $ids = $issued->whereIn('uuid', $data['uuids'])->pluck('id')->map(fn ($id) => (int) $id)->all();
+        } else {
+            abort_unless(method_exists($provider, 'holderKey'), 404);
+            $want = array_fill_keys($data['holders'] ?? [], true);
+            $ids = $issued->with('recipient')->get()->filter(fn ($c) => $c->recipient && isset($want[$provider->holderKey($c->recipient)]))
+                ->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
+        }
+        if ($ids === []) {
+            return response()->json(['success' => false, 'message' => __('cert::messages.selection_none')], 422);
+        }
+
+        return response()->json(['success' => true, 'type' => $bundles->remember($provider, $model, $data['type'], $ids), 'count' => count($ids)]);
+    }
+
+    /**
      * One design's issued certificates as one PDF, for the print shop: start building it
      * (or find it already built). The file is drawn in the background; the answer says
      * how far along it is, and the console hears when it is ready.
@@ -193,7 +306,7 @@ class ManageController extends Controller
     public function bundle(Request $request, string $context, string $key, string $type, CertificateBundles $bundles): JsonResponse
     {
         [$provider, $model] = $this->managedContext($context, $key, $request);
-        abort_unless(in_array($type, $provider->types(), true), 404);
+        abort_unless($bundles->accepts($provider, $model, $type), 404);
 
         $state = $request->isMethod('post')
             ? $bundles->start($provider, $model, $type, $request->user()->id)
@@ -209,7 +322,7 @@ class ManageController extends Controller
     public function bundleDownload(Request $request, string $context, string $key, string $type, CertificateBundles $bundles)
     {
         [$provider, $model] = $this->managedContext($context, $key, $request);
-        abort_unless(in_array($type, $provider->types(), true), 404);
+        abort_unless($bundles->accepts($provider, $model, $type), 404);
         $path = $bundles->path($provider, $model, $type);
         abort_unless($path && \Illuminate\Support\Facades\Storage::disk('local')->exists($path), 404);
         $name = \Illuminate\Support\Str::slug($provider->headline($model)) ?: 'certificates';

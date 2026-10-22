@@ -5,9 +5,12 @@ namespace App\Members\Support;
 use App\Clubs\Models\ClubAffiliation;
 use App\Events\Models\ClubEvent;
 use App\Events\Models\ClubEventRegistration;
+use App\Events\Models\EventCategory;
 use App\Members\Models\Membership;
+use App\Members\Models\PerformanceResult;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\TournamentEvent;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -146,9 +149,129 @@ class ProfileHistorySync
             'verification_method'   => 'club_record',
             'verified_by_tenant_id' => $event->tenant_id,
             'verified_at'           => now(),
-        ])->save();
+        ] + (self::linksEvents() ? ['club_event_id' => $event->id] : []))->save();
 
         return $tournament;
+    }
+
+    /**
+     * Put a division's medals on its medallists' profiles (owner, 2026-10-17).
+     *
+     * The podium is written to `event_categories.podium` by every sport's
+     * Advancement and by the championship Runner; nothing carried it any
+     * further, so a gold won here left the profile's medal count at 0.
+     *
+     * Replaces exactly the medals THIS division wrote before
+     * (`performance_results.source_category_id`) with the podium as it stands
+     * now — so a corrected or cleared result corrects the profile too, and a
+     * medal a member typed in by hand is never touched. Place 4 is a placing,
+     * not a medal (see <x-medal-icon>), and an entry with no account behind it
+     * has no profile to write to.
+     *
+     * @return int  medals now on profiles for this division
+     */
+    public function syncPodium(EventCategory $category): int
+    {
+        if (! self::linksEvents()) {
+            return 0;
+        }
+
+        $event = $category->event ?: ClubEvent::find($category->event_id);
+        if (! $event || $event->isHidden()) {
+            return 0;
+        }
+
+        $medals = [];
+        foreach ((array) ($category->podium ?: []) as $row) {
+            $place = (int) ($row['place'] ?? 0);
+            $entryId = (int) ($row['competitor_id'] ?? 0);
+            if ($entryId && isset(self::MEDALS[$place])) {
+                $medals[] = [$entryId, self::MEDALS[$place]];
+            }
+        }
+
+        $entries = ClubEventRegistration::where('event_id', $event->id)
+            ->whereIn('id', array_column($medals, 0))
+            ->get()->keyBy('id');
+
+        return DB::transaction(function () use ($category, $event, $medals, $entries) {
+            PerformanceResult::where('source_category_id', $category->id)->delete();
+
+            $written = 0;
+            foreach ($medals as [$entryId, $medal]) {
+                $entry = $entries->get($entryId);
+                $tournament = $entry ? $this->tournamentFor($entry, $event) : null;
+                if (! $tournament) {
+                    continue;
+                }
+
+                $result = new PerformanceResult([
+                    'tournament_event_id' => $tournament->id,
+                    'description' => (string) $category->name,
+                    'medal_type' => $medal,
+                ]);
+                $result->forceFill(['source_category_id' => $category->id])->save();
+                $written++;
+            }
+
+            return $written;
+        });
+    }
+
+    /** A division that is gone takes the medals it wrote with it. */
+    public function forgetPodium(int $categoryId): void
+    {
+        if (self::linksEvents()) {
+            PerformanceResult::where('source_category_id', $categoryId)->delete();
+        }
+    }
+
+    /**
+     * The athlete's club-recorded tournament row for this event, made if missing.
+     *
+     * Found by the event's id; failing that, the row made before that link
+     * existed — same member, same day, club-recorded, same title once spacing
+     * is ignored (an event renamed after entries opened differs only there) —
+     * which is then stamped with the id so a later rename cannot lose it.
+     */
+    public function tournamentFor(ClubEventRegistration $entry, ClubEvent $event): ?TournamentEvent
+    {
+        if (! $entry->user_id || ($entry->role && $entry->role !== 'participant')) {
+            return null;
+        }
+
+        $linked = TournamentEvent::where('user_id', $entry->user_id)->where('club_event_id', $event->id)->first();
+        if ($linked) {
+            return $linked;
+        }
+
+        $day = $event->date ? \Carbon\Carbon::parse($event->date)->toDateString() : null;
+        $squash = fn (?string $s) => mb_strtolower(preg_replace('/\s+/u', '', (string) $s));
+
+        $found = TournamentEvent::where('user_id', $entry->user_id)
+            ->whereNull('club_event_id')
+            ->where('verification_method', 'club_record')
+            ->when($day, fn ($q) => $q->whereDate('date', $day))
+            ->get()
+            ->first(fn (TournamentEvent $t) => $squash($t->title) === $squash($event->title));
+
+        $found ??= $this->syncRegistration($entry);
+
+        if ($found && ! $found->club_event_id) {
+            $found->forceFill(['club_event_id' => $event->id])->save();
+        }
+
+        return $found;
+    }
+
+    /** Place on a podium → the profile's medal vocabulary (performance_results.medal_type). */
+    private const MEDALS = [1 => '1st', 2 => '2nd', 3 => '3rd'];
+
+    /** The feature is on, and its columns are there (EVENT_PROFILE_MEDALS). */
+    private static function linksEvents(): bool
+    {
+        return (bool) config('events.profile_medals')
+            && \Illuminate\Support\Facades\Schema::hasColumn('performance_results', 'source_category_id');
     }
 
     /** Best-effort wrapper — a profile-history write must never break a join or an entry. */

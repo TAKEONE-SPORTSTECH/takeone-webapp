@@ -59,17 +59,27 @@ class FederationEventOfficials
 
         // The jobs' own names (the sport's: "Tatami Manager", "Judge 1 (Fukushin)").
         $roleNames = rescue(fn () => app(\App\Events\Support\OfficialRoles::class)->labels($ev), [], false);
+        $roles = app(\App\Events\Support\OfficialRoles::class);
 
         $people = EventOfficial::where('event_id', $ev->id)
-            ->with('user:id,full_name,name,gender,nationality,profile_picture,profile_picture_is_public,updated_at')
+            ->with('user:id,uuid,full_name,name,gender,nationality,profile_picture,profile_picture_is_public,updated_at')
             ->orderBy('id')->get()
             ->filter(fn (EventOfficial $o) => $o->user !== null)
-            ->map(function (EventOfficial $o) use ($manage, $roleNames) {
+            ->map(function (EventOfficial $o) use ($manage, $roleNames, $roles, $ev) {
                 $name = (string) ($o->user->full_name ?: $o->user->name);
                 $club = $o->club();
 
                 $named = $o->role_label ?: ($roleNames[$o->role] ?? null);
-                $job = FederationEventFigures::jobOf($o->role, $o->role_label);
+                // A typed-in job that IS a listed one ("Team manager" from a club's
+                // entry form, "Team Manager" from the list) reads under the listed
+                // name, so the tab shows one group, not two (owner, 2026-10-20).
+                $listed = null;
+                if ($o->role === EventOfficial::ROLE_OTHER && $o->role_label) {
+                    $typed = mb_strtolower(trim((string) $o->role_label));
+                    $listed = collect($roleNames)->first(fn ($l) => mb_strtolower(trim((string) $l)) === $typed);
+                    $named = $listed ?? $named;
+                }
+                $job = $listed ?? FederationEventFigures::jobOf($o->role, $o->role_label);
 
                 return [
                     // A job from the list (not typed by a club) is grouped under its own name, not "Other".
@@ -77,6 +87,8 @@ class FederationEventOfficials
                     // however many jobs they hold — a hash, never the account id.
                     'person' => substr(hash('sha256', $o->user_id.'|'.$o->event_id.'|'.config('app.key')), 0, 16),
                     'job' => $job === 'Other' && $named ? (string) $named : $job,
+                    // The job's stable key — what its own badge and certificate designs are filed under.
+                    'jobKey' => rescue(fn () => $roles->jobKey($ev, $o), '', false),
                     'role' => (string) ($named ?: $job),
                     'name' => $name,
                     'initials' => mb_strtoupper(collect(preg_split('/\s+/u', trim($name)) ?: [])->filter()->take(2)->map(fn ($w) => mb_substr($w, 0, 1))->implode('')),
@@ -93,6 +105,8 @@ class FederationEventOfficials
                     'natFlag' => $o->user->nationality && \App\Support\Flag::exists($o->user->nationality) ? \App\Support\Flag::url($o->user->nationality) : null,
                 ] + ($manage ? [
                     'id' => $o->id,
+                    // Who a certificate is for (EventCertificates::holderKey) — to issue or print a chosen few.
+                    'holder' => 'u:'.$o->user->uuid,
                     'roleKey' => (string) $o->role,
                     'clubKey' => $club['slug'] ?? '',
                     'compensation' => (string) $o->compensation,
@@ -100,9 +114,11 @@ class FederationEventOfficials
                 ] : []);
             });
 
-        $groups = $people->groupBy('job')
-            ->map(fn ($list, $job) => [
-                'label' => $job,
+        // One group per job, however its capitals were typed.
+        $groups = $people->groupBy(fn ($p) => mb_strtolower(trim((string) $p['job'])))
+            ->map(fn ($list) => [
+                'label' => $list->first()['job'],
+                'key' => (string) $list->first()['jobKey'],
                 'count' => $list->count(),
                 // Inside a job: by club, then name — how a sheet is checked.
                 'people' => $list->sortBy(fn ($p) => mb_strtolower(($p['club'] ?? '~').' '.$p['name']))->values()->all(),
@@ -130,6 +146,34 @@ class FederationEventOfficials
                 // The officials, printed (OfficialsPdf) — the Officials tab's "Download".
                 'pdf' => \App\Events\Support\OfficialsPdf::available() ? route('me.events.officials.pdf', $ev->uuid) : null,
                 'designParticipantBadges' => config('certificates.enabled') ? route('me.certificates.design', ['event_participant_badges', $ev->uuid]) : null,
+                // Issuing them and the print shop's PDF, through the certificates
+                // console's own endpoints (each re-authorises the event). `xtypex`
+                // is the certificate type.
+                // Each job's own badge and certificate designs (CertificatePrintable),
+                // and whether it has one yet — a job without prints the general design.
+                'jobDesigns' => config('certificates.enabled') && \App\Printables\Designer::enabled()
+                    ? collect(app(\App\Events\Support\OfficialRoles::class)->jobs($ev))->map(fn ($label, $key) => [
+                        'key' => (string) $key,
+                        'label' => $label,
+                        'badge' => \App\Printables\Designer::url($ev, 'certificate', 'official_badge.'.$key),
+                        'certificate' => \App\Printables\Designer::url($ev, 'certificate', 'official_thanks.'.$key),
+                        'hasBadge' => (bool) \App\Printables\Designer::find($ev, 'certificate', 'official_badge.'.$key),
+                        'hasCertificate' => (bool) \App\Printables\Designer::find($ev, 'certificate', 'official_thanks.'.$key),
+                    ])->values()->all()
+                    : [],
+                // The badges' print-shop PDFs (four to an A4 sheet), per kind of badge.
+                'badgePdfs' => config('certificates.enabled') ? [
+                    'officials' => ['bundle' => route('me.certificates.bundle', ['event_badges', $ev->uuid, 'official_badge']), 'download' => route('me.certificates.bundle.download', ['event_badges', $ev->uuid, 'official_badge'])],
+                    'participants' => ['bundle' => route('me.certificates.bundle', ['event_participant_badges', $ev->uuid, 'participant_badge']), 'download' => route('me.certificates.bundle.download', ['event_participant_badges', $ev->uuid, 'participant_badge'])],
+                ] : null,
+                'certificates' => config('certificates.enabled') ? [
+                    'generate' => route('me.certificates.generate', ['club_event', $ev->uuid]),
+                    'issueSelected' => route('me.certificates.issue-selected', ['club_event', $ev->uuid]),
+                    'selection' => route('me.certificates.selection', ['club_event', $ev->uuid]),
+                    'approve' => route('me.certificates.approve', ['club_event', $ev->uuid]),
+                    'bundle' => route('me.certificates.bundle', ['club_event', $ev->uuid, 'xtypex']),
+                    'download' => route('me.certificates.bundle.download', ['club_event', $ev->uuid, 'xtypex']),
+                ] : null,
             ] : null,
         ];
     }

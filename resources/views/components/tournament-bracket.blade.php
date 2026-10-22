@@ -101,14 +101,19 @@
 <div
     x-data="{
         divisions: [], division: null, canArrange: false, locked: false,
-        arrange: false, picked: null, ready: false,
+        arrange: false, picked: null, ready: false, unlocked: false, unlockable: false,
         get current() { return this.divisions.find(d => d.id === this.division) || null; },
         onLoaded(d) {
             this.divisions = d.divisions; this.division = d.division;
             this.canArrange = d.canArrange; this.locked = d.locked; this.ready = true;
+            this.unlocked = !! d.unlocked; this.unlockable = !! d.unlockable;
             if (!this.canArrange) this.arrange = false;
         },
-        onState(d) { this.arrange = d.arrange; this.picked = d.picked; this.divisions = d.divisions; this.division = d.division; },
+        onState(d) {
+            this.arrange = d.arrange; this.picked = d.picked; this.divisions = d.divisions; this.division = d.division;
+            if (d.unlocked !== undefined) this.unlocked = !! d.unlocked;
+            if (d.unlockable !== undefined) this.unlockable = !! d.unlockable;
+        },
     }"
     @bracket:loaded="onLoaded($event.detail)"
     @bracket:state="onState($event.detail)"
@@ -172,6 +177,15 @@
                 {{ __('events::events.bracket_holding') }} <span x-text="picked" class="underline"></span> —
                 {{ __('events::events.bracket_tap_to_place') }}
             </span>
+            {{-- The way OUT of arranging (owner, 2026-10-17): with the padlock
+                 open on a division that can still be arranged, a tap on a
+                 corner only ever moved a competitor — there was no control left
+                 to declare a winner. This leaves arrange mode; re-opening the
+                 padlock brings it back. --}}
+            <button type="button" @click="window.BracketBoard && window.BracketBoard.toggleArrange(false)"
+                    style="pointer-events:auto; margin-inline-start:auto; padding:4px 10px; border-radius:999px; background:#fff; color:#111827; font-weight:800; white-space:nowrap;">
+                <i class="bi bi-trophy"></i> {{ __('events::events.bracket_results_mode') }}
+            </button>
         </div>
 
         {{-- Control cluster: zoom, fit, and (for organisers) arrange + clear. --}}
@@ -228,11 +242,31 @@
 
         {{-- Locked notice — the draw is final from the first bout. --}}
         <div x-show="locked" x-cloak
+             title="{{ __('events::events.bracket_locked') }}" aria-label="{{ __('events::events.bracket_locked') }}"
              class="bk-locked absolute top-3 z-20 px-2.5 py-1 rounded-full backdrop-blur border
                     text-[0.6rem] font-extrabold flex items-center gap-1.5
                     {{ $rtl ? 'right-3' : 'left-3' }}">
             <i class="bi bi-lock-fill"></i> {{ __('events::events.bracket_locked') }}
         </div>
+
+        {{-- The padlock, ON the board (owner, 2026-10-17: "I don't see the
+             unlock button … make it visible"). It lived only inside menus —
+             the stage's Actions, the desk's Edit pill — so an organiser looking
+             at the board had no idea results were behind a lock. Shown only to
+             a reader who may unlock (the board's own `unlockable`); the board's
+             setUnlocked() does the work, every result is still authorised by
+             the server. --}}
+        <button type="button" x-show="unlockable" x-cloak
+                @click="window.BracketBoard && window.BracketBoard.setUnlocked()"
+                :aria-label="unlocked ? @js(__('events::events.bracket_lock_btn')) : @js(__('events::events.bracket_unlock_btn'))"
+                :title="unlocked ? @js(__('events::events.bracket_lock_btn')) : @js(__('events::events.bracket_unlock_btn'))"
+                class="bk-board-lock absolute z-30 flex items-center gap-2 rounded-full shadow-lg {{ $rtl ? 'right-3' : 'left-3' }}"
+                style="top: 2.6rem; padding: 8px 14px; font-size: 13px; font-weight: 800; border: 2px solid #fff;"
+                :style="unlocked ? 'top:2.6rem;padding:8px 14px;font-size:13px;font-weight:800;border:2px solid #fff;background:#16a34a;color:#fff;'
+                                 : 'top:2.6rem;padding:8px 14px;font-size:13px;font-weight:800;border:2px solid #fff;background:#f59e0b;color:#111827;'">
+            <i class="bi" :class="unlocked ? 'bi-unlock-fill' : 'bi-lock-fill'"></i>
+            <span x-text="unlocked ? @js(__('events::events.bracket_lock_btn')) : @js(__('events::events.bracket_unlock_btn'))"></span>
+        </button>
 
         {{-- Legend — inside the board, floating on its bottom edge. It reads the
              board, so it belongs on it; below the frame it was a line of text the

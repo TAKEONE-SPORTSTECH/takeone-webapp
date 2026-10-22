@@ -33,7 +33,7 @@ class BuildCertificateBundle implements ShouldQueue
     {
         $found = $contexts->resolve($this->context, $this->key);
         $user = User::find($this->userId);
-        if (! $found || ! $user || ! $found[0]->canManage($found[1], $user) || ! in_array($this->type, $found[0]->types(), true)) {
+        if (! $found || ! $user || ! $found[0]->canManage($found[1], $user) || ! $bundles->accepts($found[0], $found[1], $this->type)) {
             return;
         }
         [$provider, $model] = $found;

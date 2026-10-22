@@ -32,6 +32,8 @@ use App\Mcp\Tools\EventCertificateBundleTool;
 use App\Mcp\Tools\EventBadgesTool;
 use App\Mcp\Tools\RevokeCertificateTool;
 use App\Mcp\Tools\ListMyCertificatesTool;
+use App\Mcp\Tools\ListDuplicateFindingsTool;
+use App\Mcp\Tools\ResolveDuplicateFindingTool;
 use App\Mcp\Tools\ListEventFeatureRequestsTool;
 use App\Mcp\Tools\AddWorkHistoryTool;
 use App\Mcp\Tools\ArrangeEventBracketTool;
@@ -189,6 +191,8 @@ class TakeOneServer extends Server
         EventBadgesTool::class,
         RevokeCertificateTool::class,
         ListMyCertificatesTool::class,
+        ListDuplicateFindingsTool::class,
+        ResolveDuplicateFindingTool::class,
     ];
 
     protected array $resources = [

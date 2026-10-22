@@ -56,7 +56,7 @@ class FederationStatistics
         // ------------------------------------------------------------ clubs
         $clubRows = [];
         $clubIndex = [];   // 'fc:<id>' / 'fa:<id>' => row index
-        FederationClub::with('club:id,club_name,gps_lat,gps_long')->whereIn('federation_id', $ids)
+        FederationClub::with('club:id,club_name,logo,gps_lat,gps_long')->whereIn('federation_id', $ids)
             ->where('status', FederationClub::STATUS_APPROVED)->get()
             ->each(function (FederationClub $c) use (&$clubRows, &$clubIndex) {
                 if (! $c->club) {
@@ -70,6 +70,8 @@ class FederationStatistics
                     'lng' => is_numeric($c->club->gps_long) ? (float) $c->club->gps_long : null,
                     'affiliated' => true,
                     'joined' => $c->decided_at ? CarbonImmutable::parse($c->decided_at)->toDateString() : null,
+                    // The club's own logo, served through /file (authorised there).
+                    'logo' => $c->club->logo ? file_url($c->club->logo) : null,
                 ];
             });
         // Applications are clubs not yet on the platform. They enter events,
@@ -84,6 +86,7 @@ class FederationStatistics
                 }
                 $clubIndex['fa:'.$a->id] = count($clubRows);
                 $clubRows[] = ['name' => $a->name, 'body' => $a->federation_id, 'lat' => null, 'lng' => null, 'affiliated' => false, 'joined' => null,
+                    'logo' => $a->logo ? file_url($a->logo) : null,
                     'pending' => $a->status === FederationClubApplication::STATUS_PENDING];
             });
         $clubOf = fn ($clubId, $appId) => $clubId && isset($clubIndex['fc:'.$clubId]) ? $clubIndex['fc:'.$clubId]
@@ -184,6 +187,37 @@ class FederationStatistics
                 }
             });
 
+        // ------------------- platform-run events → bouts & medals (2026-10-18)
+        // An event run on the platform keeps its draw and every result in its
+        // own event (event_categories / event_matches), not in FederationDraws —
+        // read them there. An event that also has dashboard draws keeps those
+        // alone, so nothing is counted twice.
+        $drawn = FederationDraw::whereIn('federation_event_id', $events->pluck('id'))->distinct()->pluck('federation_event_id')->flip();
+        $byUser = $athletes->pluck('id', 'user_id');
+        $platformStatus = [];
+        foreach ($events as $fe) {
+            if (! $fe->club_event_id || isset($drawn[$fe->id])) {
+                continue;
+            }
+            $r = rescue(fn () => $this->platformResults($fe, $eventIndex[$fe->id], fn ($userId) => isset($byUser[$userId]) ? ($athleteIndex[$byUser[$userId]] ?? null) : null, fn ($a) => $a === null ? null : ($athleteRows[$a]['g'] ?? null)), null, report: true);
+            if (! $r) {
+                continue;
+            }
+            array_push($divisions, ...$r['divisions']);
+            array_push($bouts, ...$r['bouts']);
+            array_push($medals, ...$r['medals']);
+        }
+        // One status for every screen (FederationEvent::lifecycleStatus) — the
+        // events list and the event header read the same rule.
+        foreach ($events as $fe) {
+            if (isset($eventIndex[$fe->id]) && ($st = $fe->lifecycleStatus()) !== $fe->status) {
+                $platformStatus[$eventIndex[$fe->id]] = $st;
+            }
+        }
+        foreach ($platformStatus as $i => $st) {
+            $eventRows[$i]['status'] = $st;
+        }
+
         // -------------------------------------------------------- officials
         $officials = [];
         foreach ($entries as $en) {
@@ -283,6 +317,93 @@ class FederationStatistics
         }
 
         return ['rounds' => max($rounds, 1), 'total' => $total, 'entrants' => $entrants, 'bouts' => $out, 'medals' => $medals];
+    }
+
+    /**
+     * One platform-run event's divisions, bouts and medals, in the same row
+     * shapes the dashboard draws produce. Bouts are the mats' recorded results
+     * (byes are not bouts); medals are each division's podium as Advancement
+     * settled it — places 1 to 3, two bronzes where the event awards two.
+     *
+     * A mixed group has no gender of its own, so its bouts and medals take
+     * the athlete's (a bout only when both fighters share one). A division
+     * named for a weight RANGE ("Group A : 5-6y, 17-24kg") carries `wl`, its
+     * weight label, built from the category's own bounds.
+     *
+     * @param  \Closure(int): ?int  $athleteOf  user id → athlete row index
+     * @param  \Closure(?int): ?string  $genderOf  athlete row index → 'M' / 'F' / null
+     * @return array{divisions: array, bouts: array, medals: array, done: int}
+     */
+    private function platformResults(FederationEvent $fe, int $e, \Closure $athleteOf, \Closure $genderOf): array
+    {
+        $eventId = (int) $fe->club_event_id;
+        $cats = \Illuminate\Support\Facades\DB::table('event_categories')->where('event_id', $eventId)->where('is_heading', false)
+            ->get(['id', 'name', 'gender', 'weight_class', 'min_age', 'min_weight', 'max_weight', 'podium'])->keyBy('id');
+        $userOf = \Illuminate\Support\Facades\DB::table('club_event_registrations')->where('event_id', $eventId)
+            ->where('role', 'participant')->pluck('user_id', 'id');
+        $matches = \Illuminate\Support\Facades\DB::table('event_matches')->where('event_id', $eventId)->where('won_by_bye', false)
+            ->get(['category_id', 'round', 'status', 'winner', 'win_reason', 'a_competitor_id', 'b_competitor_id'])->groupBy('category_id');
+        $regs = \Illuminate\Support\Facades\DB::table('club_event_registrations')->where('event_id', $eventId)
+            ->where('role', 'participant')->whereNotNull('category_id')->get(['id', 'category_id'])->groupBy('category_id');
+
+        $order = ['Round Robin', 'Round of 128', 'Round of 64', 'Round of 32', 'Round of 16', 'Quarterfinal', 'Semifinal', 'Third place', 'Final'];
+        $by = ['points' => 'Points', 'hansoku' => 'Disqualification', 'shikkaku' => 'Disqualification', 'kiken' => 'Withdrawal', 'medical' => 'Withdrawal', 'no_show' => 'Withdrawal'];
+        $idx = fn ($regId) => $regId && isset($userOf[$regId]) ? $athleteOf((int) $userOf[$regId]) : null;
+
+        $out = ['divisions' => [], 'bouts' => [], 'medals' => [], 'done' => 0];
+        foreach ($cats as $c) {
+            $ms = $matches->get($c->id, collect());
+            $podium = json_decode((string) $c->podium, true);
+            $people = $regs->get($c->id, collect());
+            if ($ms->isEmpty() && ! is_array($podium) && $people->isEmpty()) {
+                continue;
+            }
+            $d = FederationEventBracket::division($c->name, $c->weight_class, $c->min_age !== null ? (int) $c->min_age : null);
+            $g = strtolower(substr((string) $c->gender, 0, 1));
+            $meta = ['e' => $e, 'div' => $d['division'], 'g' => $g === 'f' ? 'F' : ($g === 'm' ? 'M' : null),
+                'age' => $d['ageGroup'] !== '—' ? \App\Support\KarateShotukanWeightclasses::englishName($d['ageGroup']) : null];
+            if (! preg_match('/(?:^|\s)[-+]\d+(?:\.\d+)?\s*kg\b/i', $d['division'])) {
+                $meta['wl'] = $this->weightRange($c->min_weight, $c->max_weight);
+            }
+
+            $rounds = $ms->pluck('round')->unique()->map(fn ($r) => array_search($r, $order, true))->filter(fn ($i) => $i !== false)->sort()->values();
+            $done = $ms->filter(fn ($m) => $m->status === 'done' && in_array($m->winner, ['a', 'b'], true) && $m->a_competitor_id && $m->b_competitor_id);
+            foreach ($done as $m) {
+                [$w, $l] = $m->winner === 'a' ? [$m->a_competitor_id, $m->b_competitor_id] : [$m->b_competitor_id, $m->a_competitor_id];
+                $pos = $rounds->search(array_search($m->round, $order, true));
+                $g = $meta['g'] ?? (($gw = $genderOf($idx($w))) === $genderOf($idx($l)) ? $gw : null);
+                $out['bouts'][] = ['g' => $g] + $meta + ['r' => $pos === false ? 0 : $pos, 'last' => max(0, $rounds->count() - 1), 'w' => $idx($w), 'l' => $idx($l), 'by' => $by[$m->win_reason] ?? null];
+            }
+            $out['done'] += $done->count();
+            $out['divisions'][] = $meta + ['bouts' => $ms->count(), 'done' => $done->count(),
+                'athletes' => $people->map(fn ($r) => $idx($r->id))->filter(fn ($x) => $x !== null)->unique()->values()->all()];
+
+            foreach (is_array($podium) ? $podium : [] as $p) {
+                $place = (int) ($p['place'] ?? 0);
+                if ($place >= 1 && $place <= 3 && ($a = $idx($p['competitor_id'] ?? null)) !== null) {
+                    $out['medals'][] = ['g' => $meta['g'] ?? $genderOf($a)] + $meta + ['a' => $a, 'place' => $place];
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    /** "17–24 kg", "77.6 kg", "-40 kg" or "+55 kg" from a category's bounds; '' when it has none. */
+    private function weightRange(mixed $min, mixed $max): string
+    {
+        $n = fn ($v) => is_numeric($v) && (float) $v > 0 ? rtrim(rtrim(number_format((float) $v, 2, '.', ''), '0'), '.') : null;
+        [$lo, $hi] = [$n($min), $n($max)];
+        if ($hi !== null && (float) $hi >= 200) {
+            $hi = null;
+        }
+
+        return match (true) {
+            $lo !== null && $hi !== null => $lo === $hi ? $lo.' kg' : $lo.'–'.$hi.' kg',
+            $hi !== null => '-'.$hi.' kg',
+            $lo !== null => '+'.$lo.' kg',
+            default => '',
+        };
     }
 
     /** What needs attention, counted from the records. Never a sample. */

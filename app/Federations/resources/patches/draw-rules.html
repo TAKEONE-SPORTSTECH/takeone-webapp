@@ -1,0 +1,25 @@
+        <!-- Draw rules (brief §2.3): the rules the draw follows, and what breaks them now (event-cockpit.js). -->
+        <sc-if value="{{ ck.has }}" hint-placeholder-val="{{ false }}">
+          <section aria-label="Draw rules" style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:20px 24px;box-shadow:0 14px 40px rgba(30,44,79,.08);margin-bottom:18px">
+            <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;justify-content:space-between;margin-bottom:14px">
+              <div>
+                <div style="font-size:.7rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20">Step 1 &#183; Draw rules</div>
+                <h2 style="margin:4px 0 0;font-size:1.05rem;font-weight:700;color:#1e2c4f">Before you draw</h2>
+              </div>
+              <sc-if value="{{ ck.clear }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:#ecf7f0;color:#2f7a4f;font-size:.78rem;font-weight:700">&#10003; Ready to draw</span></sc-if>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:16px">
+              <sc-for list="{{ ck.checks }}" as="k" hint-placeholder-count="4">
+                <div style="{{ k.style }}"><span style="{{ k.nStyle }}">{{ k.n }}</span><span style="font-size:.8rem;font-weight:600">{{ k.label }}</span><sc-if value="{{ k.hasFix }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ k.onFix }}" style="{{ k.fixStyle }}">{{ k.fix }}</button></sc-if></div>
+              </sc-for>
+            </div>
+            <dl style="margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 20px;padding-top:14px;border-top:1px solid #eef1f6">
+              <sc-for list="{{ ck.rules }}" as="r" hint-placeholder-count="5">
+                <div style="min-width:0">
+                  <dt style="font-size:.72rem;color:#6b7689">{{ r.label }}</dt>
+                  <dd style="margin:2px 0 0"><span style="{{ r.valueStyle }}">{{ r.value }}</span><span style="display:block;font-size:.72rem;color:#5b6476;margin-top:2px;line-height:1.45">{{ r.note }}</span></dd>
+                </div>
+              </sc-for>
+            </dl>
+          </section>
+        </sc-if>

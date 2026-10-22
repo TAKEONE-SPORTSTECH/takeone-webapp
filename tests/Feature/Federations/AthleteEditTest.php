@@ -182,11 +182,67 @@ class AthleteEditTest extends TestCase
 
         $this->actingAs($this->owner)->get(route('federations.athlete-edit', ['entry' => $a['entry']->uuid, 'athlete' => $a['athlete']->takeone_id]))
             ->assertOk()->assertSee('regs', false)->assertSee('withdraw', false);
-        $this->actingAs($this->owner)->postJson(route('federations.api.regs.withdraw'), ['athletes' => [['entry' => $a['entry']->uuid, 'athlete' => $a['athlete']->takeone_id]]])
-            ->assertOk()->assertJsonPath('success', true);
+        $rows = ['athletes' => [['entry' => $a['entry']->uuid, 'athlete' => $a['athlete']->takeone_id]]];
 
-        $this->assertSame('Withdrawn', FederationEntryAthlete::where('federation_athlete_id', $a['athlete']->id)->value('status'));
+        // No reason, or DELETE not typed: refused, and nobody is withdrawn.
+        $this->actingAs($this->owner)->postJson(route('federations.api.regs.withdraw'), $rows)
+            ->assertStatus(422)->assertJsonValidationErrors(['reason', 'confirm']);
+        $this->actingAs($this->owner)->postJson(route('federations.api.regs.withdraw'), $rows + ['reason' => 'Injured in training', 'confirm' => 'delete'])
+            ->assertStatus(422)->assertJsonValidationErrors(['confirm']);
+        $this->actingAs($this->owner)->postJson(route('federations.api.regs.withdraw'), $rows + ['reason' => 'no', 'confirm' => 'DELETE'])
+            ->assertStatus(422)->assertJsonValidationErrors(['reason']);
+        $this->assertSame('Active', FederationEntryAthlete::where('federation_athlete_id', $a['athlete']->id)->value('status'));
+        $this->assertSame(0, \App\Federations\Models\FederationWithdrawal::count());
+
+        $this->actingAs($this->owner)->postJson(route('federations.api.regs.withdraw'), $rows + ['reason' => 'Injured in training', 'confirm' => 'DELETE'])
+            ->assertOk()->assertJsonPath('success', true)->assertJsonPath('withdrawn', 1);
+
+        $row = FederationEntryAthlete::where('federation_athlete_id', $a['athlete']->id)->first();
+        $this->assertSame('Withdrawn', $row->status);
         $this->assertFalse(ClubEventRegistration::where('event_id', $ev->id)->where('user_id', $a['user']->id)->where('role', 'participant')->exists());
+
+        // Who did it, why, and whom — one record for the action, linked from the row.
+        $w = \App\Federations\Models\FederationWithdrawal::sole();
+        $this->assertSame($w->id, $row->withdrawal_id);
+        $this->assertSame($this->owner->id, $w->user_id);
+        $this->assertSame('Injured in training', $w->reason);
+        $this->assertSame('selected', $w->scope);
+        $this->assertSame(1, $w->count);
+        $this->assertSame($a['athlete']->takeone_id, $w->athletes[0]['takeone_id']);
+    }
+
+    public function test_the_withdrawal_history_says_who_when_and_why(): void
+    {
+        $fe = $this->fedEvent($this->fed);
+        $a = $this->entered($fe);
+        $this->actingAs($this->owner)->postJson(route('federations.api.regs.withdraw'), ['athletes' => [['entry' => $a['entry']->uuid, 'athlete' => $a['athlete']->takeone_id]],
+            'reason' => 'Club pulled out', 'confirm' => 'DELETE'])->assertOk();
+
+        $this->actingAs($this->owner)->getJson(route('federations.api.regs.withdrawals', ['event' => $fe->uuid]))
+            ->assertOk()
+            ->assertJsonCount(1, 'withdrawals')
+            ->assertJsonPath('withdrawals.0.reason', 'Club pulled out')
+            ->assertJsonPath('withdrawals.0.by', $this->owner->full_name)
+            ->assertJsonPath('withdrawals.0.count', 1)
+            ->assertJsonPath('withdrawals.0.athletes.0.takeoneId', $a['athlete']->takeone_id)
+            ->assertJsonMissingPath('withdrawals.0.ip');
+
+        // Somebody outside the federation: the same not-found as an event that does not exist.
+        $other = $this->createUser();
+        $this->actingAs($other)->getJson(route('federations.api.regs.withdrawals', ['event' => $fe->uuid]))->assertNotFound();
+        $this->actingAs($this->owner)->getJson(route('federations.api.regs.withdrawals', ['event' => (string) \Illuminate\Support\Str::uuid()]))->assertNotFound();
+    }
+
+    public function test_a_non_manager_cannot_withdraw_even_with_a_reason(): void
+    {
+        $fe = $this->fedEvent($this->fed);
+        $a = $this->entered($fe);
+        $other = $this->createUser();
+
+        $this->actingAs($other)->postJson(route('federations.api.regs.withdraw'), ['athletes' => [['entry' => $a['entry']->uuid, 'athlete' => $a['athlete']->takeone_id]],
+            'reason' => 'Trying to remove someone', 'confirm' => 'DELETE'])->assertNotFound();
+        $this->assertSame('Active', FederationEntryAthlete::where('federation_athlete_id', $a['athlete']->id)->value('status'));
+        $this->assertSame(0, \App\Federations\Models\FederationWithdrawal::count());
     }
 
     public function test_removing_a_club_takes_all_its_athletes_off_the_event(): void
@@ -206,6 +262,7 @@ class AthleteEditTest extends TestCase
 
         $this->actingAs($this->owner)->postJson(route('federations.api.regs.withdraw-club'), ['event' => $fe->uuid, 'club' => $club])
             ->assertOk()->assertJsonPath('withdrawn', 1);
+        $this->assertSame($this->owner->id, \App\Federations\Models\FederationWithdrawal::where('scope', 'club')->sole()->user_id);
 
         $this->assertSame('Withdrawn', FederationEntryAthlete::where('federation_athlete_id', $a['athlete']->id)->value('status'));
         $this->assertFalse(ClubEventRegistration::where('event_id', $ev->id)->where('user_id', $a['user']->id)->where('role', 'participant')->exists());

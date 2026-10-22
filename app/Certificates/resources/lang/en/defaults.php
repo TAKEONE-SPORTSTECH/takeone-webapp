@@ -22,6 +22,11 @@ return [
         'title' => 'Certificate of Appreciation',
         'body' => 'with thanks for serving as {role} at {event} on {date}, and for helping make it a success.',
     ],
+    // A participating club's thank-you certificate; {name} is the club.
+    'club_thanks' => [
+        'title' => 'Certificate of Appreciation',
+        'body' => 'in appreciation of the club\'s participation in {event} on {date} with {athletes}, and its contribution to the success of the championship.',
+    ],
     'participation' => [
         'title' => 'Certificate of Participation',
         'body' => 'competed in the {division} division of the {event} on {date}{representing}.',

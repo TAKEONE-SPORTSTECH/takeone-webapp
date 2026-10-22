@@ -290,10 +290,10 @@ class BrazilianJiuJitsu extends AbstractCombatSport
     public function officialRoles(): array
     {
         return [
-            ['key' => 'referee',       'label' => __('sport-brazilianjiujitsu::messages.official_referee'),       'hint' => __('sport-brazilianjiujitsu::messages.official_referee_hint')],
-            ['key' => 'mat_organiser', 'label' => __('sport-brazilianjiujitsu::messages.official_mat_organiser'), 'hint' => __('sport-brazilianjiujitsu::messages.official_mat_organiser_hint')],
-            ['key' => 'scorekeeper',   'label' => __('sport-brazilianjiujitsu::messages.official_scorekeeper'),   'hint' => __('sport-brazilianjiujitsu::messages.official_scorekeeper_hint')],
-            ['key' => 'timekeeper',    'label' => __('sport-brazilianjiujitsu::messages.official_timekeeper'),    'hint' => __('sport-brazilianjiujitsu::messages.official_timekeeper_hint')],
+            ['key' => 'referee',       'label' => __('sport-brazilianjiujitsu::messages.official_referee'),       'hint' => __('sport-brazilianjiujitsu::messages.official_referee_hint'), 'section' => 'referees'],
+            ['key' => 'mat_organiser', 'label' => __('sport-brazilianjiujitsu::messages.official_mat_organiser'), 'hint' => __('sport-brazilianjiujitsu::messages.official_mat_organiser_hint'), 'section' => 'technical'],
+            ['key' => 'scorekeeper',   'label' => __('sport-brazilianjiujitsu::messages.official_scorekeeper'),   'hint' => __('sport-brazilianjiujitsu::messages.official_scorekeeper_hint'), 'section' => 'table'],
+            ['key' => 'timekeeper',    'label' => __('sport-brazilianjiujitsu::messages.official_timekeeper'),    'hint' => __('sport-brazilianjiujitsu::messages.official_timekeeper_hint'), 'section' => 'table'],
         ];
     }
 

@@ -103,7 +103,11 @@ class FederationBulkImport
             [2, '', '', 'Example: same club as above (club left blank)', 'M', 45, '2011', '', '', '', ''],
         ], null, 'A2');
         $sh->getStyle('A2:'.$last.'3')->getFont()->setItalic(true)->getColor()->setRGB('8A93A6');
-        $sh->getStyle('G2:G'.(self::MAX_ROWS + 1))->getNumberFormat()->setFormatCode('yyyy-mm-dd');
+        // A year typed alone ("2011") is a number, and under a plain date format
+        // Excel shows it as 1905-07-03. Anything below 3000 is shown as the
+        // number it is; real dates (serials above 3000, i.e. after 1908) as dates.
+        // The importer already reads a bare year as "year only" (date()).
+        $sh->getStyle('G2:G'.(self::MAX_ROWS + 1))->getNumberFormat()->setFormatCode('[<3000]0;yyyy-mm-dd');
 
         $lists = $book->createSheet()->setTitle('Lists');
         $lists->fromArray([['Clubs / الأندية', 'Categories / الفئات', 'Gender / الجنس']], null, 'A1');

@@ -379,6 +379,15 @@
   // The participants-PDF door per event — present only for a viewer the endpoint will serve.
   var participantsPdf = boot.participantsPdf || {};
   window.TakeOneFed.participantsPdf = function (eventId) { return eventId && participantsPdf[eventId] ? participantsPdf[eventId] : null; };
+  // The Results tab's PDF door per event (FederationResultsPdf), same rule.
+  var resultsPdf = boot.resultsPdf || {};
+  window.TakeOneFed.resultsPdf = function (eventId) { return eventId && resultsPdf[eventId] ? resultsPdf[eventId] : null; };
+  // The whole competition report per event (FederationCompetitionReport).
+  var competitionReport = boot.competitionReport || {};
+  window.TakeOneFed.competitionReport = function (eventId) { return eventId && competitionReport[eventId] ? competitionReport[eventId] : null; };
+  // Its cover page (FederationReportCover) — managers only; {kind, upload, remove}.
+  var resultsCover = boot.resultsCover || {};
+  window.TakeOneFed.resultsCover = function (eventId) { return eventId && resultsCover[eventId] ? resultsCover[eventId] : null; };
   // The draw board per event (Divisions tab → a division's draw), same rule.
   var drawPage = boot.drawPage || {};
   window.TakeOneFed.drawPage = function (eventId) { return eventId && drawPage[eventId] ? drawPage[eventId] : null; };
@@ -531,6 +540,21 @@
     });
   }
 
+  // Registrations → "Withdrawal history": who took athletes off this event,
+  // when and why. Managers only — the address is not handed to anyone else,
+  // and the server checks again.
+  window.TakeOneFed.canSeeWithdrawals = function () { return !!urls.regsWithdrawals; };
+  window.TakeOneFed.withdrawals = function (eventId) {
+    if (!urls.regsWithdrawals || !eventId) return Promise.resolve({ok: false, rows: []});
+    return fetch(urls.regsWithdrawals + '?event=' + encodeURIComponent(eventId),
+      {credentials: 'same-origin', headers: {'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}})
+      .then(function (res) { return res.json().catch(function () { return {}; }).then(function (j) {
+        if (res.status === 401 || res.status === 419) { window.location.reload(); return {ok: false, rows: []}; }
+        return {ok: res.ok && !!j.success, rows: Array.isArray(j.withdrawals) ? j.withdrawals : []};
+      }); })
+      .catch(function () { return {ok: false, rows: []}; });
+  };
+
   // The Registrations tab's delete / clear-all writes the feed back without
   // the removed athletes. On the platform that is a WITHDRAWAL (managers
   // only, checked on the server), never a deletion of the person.
@@ -541,10 +565,35 @@
     after.forEach(function (sub) { (sub.athletes || []).forEach(function (a) { keep[sub.entryId + '|' + a.athleteId] = true; }); });
     var gone = [];
     before.forEach(function (sub) { (sub.athletes || []).forEach(function (a) { if (!keep[sub.entryId + '|' + a.athleteId]) gone.push({entry: sub.entryId, athlete: a.athleteId}); }); });
+    // Only a CONFIRMED withdrawal reaches the server: the dashboard's
+    // confirmation box (DELETE typed, a reason given) sets withdrawIntent
+    // just before it writes. Any other write that drops athletes is put back
+    // as it was, and nobody is withdrawn.
+    var intent = window.TakeOneFed.withdrawIntent || null;
+    window.TakeOneFed.withdrawIntent = null;
+    var was = lastRegs;
+    var restore = function () {
+      put('takeone_club_regs', was || '[]'); lastRegs = was;
+      try { window.dispatchEvent(new StorageEvent('storage', {key: 'takeone_club_regs'})); } catch (e) {}
+    };
+    if (!gone.length) { lastRegs = value; return; }
+    if (!intent || !urls.regsWithdraw) { restore(); return; }
     lastRegs = value;
-    if (gone.length && urls.regsWithdraw) jsonPost(urls.regsWithdraw, {athletes: gone}).then(function (j) {
-      if (!j.__ok) return window.location.reload();
-      if (j.regs) { put('takeone_club_regs', j.regs); lastRegs = JSON.stringify(j.regs); }
+    jsonPost(urls.regsWithdraw, {athletes: gone, reason: intent.reason, confirm: intent.confirm}).then(function (j) {
+      if (j.__status === 401 || j.__status === 419) return window.location.reload();
+      if (j.regs) {
+        put('takeone_club_regs', j.regs); lastRegs = JSON.stringify(j.regs);
+        try { window.dispatchEvent(new StorageEvent('storage', {key: 'takeone_club_regs'})); } catch (e) {}
+      } else {
+        restore();
+      }
+      var msg = j.message || '';
+      if (!j.__ok && j.errors) { var k = Object.keys(j.errors)[0]; if (k) msg = j.errors[k][0]; }
+      if (intent.done) intent.done({ok: !!(j.__ok && j.success), withdrawn: j.withdrawn || 0, message: msg});
+      if (j.__ok && window.TakeOneFed.refresh) window.TakeOneFed.refresh();
+    }).catch(function () {
+      restore();
+      if (intent.done) intent.done({ok: false, message: 'Could not reach the server. Nobody was withdrawn.'});
     });
   }
   var lastRegs = ls.getItem('takeone_club_regs');
@@ -566,8 +615,12 @@
   // selectedId, tab…) stays the truth, the address is its reflection.
   // The federation-wide Officials page was removed (owner, 2026-10-15); each
   // event keeps its own Officials tab. An old /federation/officials link opens Events.
-  var SECTIONS = ['statistics', 'events', 'clubs', 'calendar', 'athletes', 'financials', 'reports', 'settings'];
-  var TABS = {overview: 'overview', stats: 'statistics', regs: 'participants', offs: 'officials', divs: 'draw', schedule: 'schedule', fin: 'financials'};
+  var SECTIONS = ['statistics', 'events', 'clubs', 'calendar', 'athletes', 'financials', 'reports', 'settings', 'federations'];
+  // The prototype calls the Sub-federations screen `federations`; its address
+  // is /federation/sub-federations (a section can never shadow /federation/{slug}).
+  var SECTION_PATH = {federations: 'sub-federations'};
+  var SECTION_OF = {'sub-federations': 'federations'};
+  var TABS = {overview: 'overview', stats: 'statistics', regs: 'participants', offs: 'officials', clubs: 'clubs', divs: 'draw', results: 'results', schedule: 'schedule', fin: 'financials'};
   var TAB_OF = {}; Object.keys(TABS).forEach(function (k) { TAB_OF[TABS[k]] = k; });
   // The tab was called Athletes, at /registrations, until 2026-10-15. A saved or
   // shared link to the old address still opens it, and is corrected in place.
@@ -586,7 +639,7 @@
 
   function urlOf(st) {
     var nav = SECTIONS.indexOf(st.nav) >= 0 ? st.nav : 'statistics';
-    var path = ROOT + '/' + nav, q = '';
+    var path = ROOT + '/' + (SECTION_PATH[nav] || nav), q = '';
     if (nav === 'events' && st.view === 'detail' && st.selectedId) {
       path += '/' + encodeURIComponent(st.selectedId) + '/' + (TABS[st.tab] || 'overview');
     }
@@ -597,6 +650,7 @@
 
   function stateOf(loc, comp) {
     var parts = loc.pathname.replace(/\/+$/, '').split('/').slice(2);   // after /federation
+    if (SECTION_OF[parts[0]]) parts[0] = SECTION_OF[parts[0]];
     var nav = SECTIONS.indexOf(parts[0]) >= 0 ? parts[0] : (parts[0] === 'officials' ? 'events' : 'statistics');
     if (nav === 'settings' && comp.isRestricted && comp.isRestricted()) nav = 'statistics';
     var st = {nav: nav, view: 'overview'};
@@ -614,7 +668,7 @@
 
   function titleOf(st) {
     var fed = (boot.federation && boot.federation.name) || 'Federation';
-    var label = cap(st.nav);
+    var label = st.nav === 'federations' ? 'Sub-federations' : cap(st.nav);
     if (st.nav === 'events' && st.view === 'detail') {
       var ev = (st.events || []).filter(function (e) { return String(e.id) === String(st.selectedId); })[0];
       if (ev) label = (ev.name || 'Event') + ' · ' + cap(TABS[st.tab] || 'overview');
@@ -633,6 +687,18 @@
       // A new screen is a history entry; a filter flip on the same screen is not.
       if (samePath) history.replaceState({fed: 1}, '', url); else history.pushState({fed: 1}, '', url);
     } catch (e) {}
+    // A new screen opens at its top, not at the scroll position of the last
+    // one (QA 2026-10-22: Clubs opened 5,000px down after Athletes). A filter
+    // flip on the same screen, and Back/Forward (go()), keep their place.
+    if (!samePath) { try { window.scrollTo(0, 0); } catch (e) {} }
+    // The open event tab, scrolled into view in a strip wider than the screen
+    // (only on a new screen: a filter flip must not move the page).
+    if (!samePath) setTimeout(function () {
+      try {
+        var cur = document.querySelector('[data-ev-tabs] [aria-current="page"]');
+        if (cur) cur.scrollIntoView({block: 'nearest', inline: 'nearest'});
+      } catch (e) {}
+    }, 0);
     document.title = titleOf(comp.state);
   }
 
@@ -647,6 +713,9 @@
       lastUrl = urlOf(comp.state);
       // A link to something that is not there is corrected, not kept.
       if (lastUrl !== loc.pathname.replace(/\/+$/, '') + loc.search) { try { history.replaceState({fed: 1}, '', lastUrl); } catch (e) {} }
+      setTimeout(function () {
+        try { var cur = document.querySelector('[data-ev-tabs] [aria-current="page"]'); if (cur) cur.scrollIntoView({block: 'nearest', inline: 'nearest'}); } catch (e) {}
+      }, 300);
       document.title = titleOf(comp.state);
     });
   }
@@ -706,6 +775,18 @@
     if (j.participantsPdf && !same(j.participantsPdf, participantsPdf)) {
       Object.keys(participantsPdf).forEach(function (k) { delete participantsPdf[k]; });
       Object.keys(j.participantsPdf).forEach(function (k) { participantsPdf[k] = j.participantsPdf[k]; });
+    }
+    if (j.competitionReport && !same(j.competitionReport, competitionReport)) {
+      Object.keys(competitionReport).forEach(function (k) { delete competitionReport[k]; });
+      Object.keys(j.competitionReport).forEach(function (k) { competitionReport[k] = j.competitionReport[k]; });
+    }
+    if (j.resultsCover && !same(j.resultsCover, resultsCover)) {
+      Object.keys(resultsCover).forEach(function (k) { delete resultsCover[k]; });
+      Object.keys(j.resultsCover).forEach(function (k) { resultsCover[k] = j.resultsCover[k]; });
+    }
+    if (j.resultsPdf && !same(j.resultsPdf, resultsPdf)) {
+      Object.keys(resultsPdf).forEach(function (k) { delete resultsPdf[k]; });
+      Object.keys(j.resultsPdf).forEach(function (k) { resultsPdf[k] = j.resultsPdf[k]; });
     }
     if (j.divisions && !same(j.divisions, divisionDoors)) {
       Object.keys(divisionDoors).forEach(function (k) { delete divisionDoors[k]; });
@@ -769,6 +850,49 @@
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'visible') soon();
   });
+
+  // ------------------------------------------------------------ escape
+  // Escape closes what is on top (UX brief 2026-10-22: no dialog closed on
+  // Escape, and a keyboard user had no way out but Tab-hunting for the ✕).
+  // The page's own close control is pressed — so a dialog closes exactly as it
+  // would by mouse, with whatever it does on the way out. With no dialog open,
+  // an open menu is closed the way the page closes it: a click elsewhere.
+  if (!window.__takeoneFedEscape) {
+    window.__takeoneFedEscape = true;
+    var CLOSE = /^(close|cancel|dismiss|keep it)$/i;
+    var CROSS = /^(\u2715|\u00d7|\u2716|x)$/i;
+    function visible(el) { var r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden'; }
+    function overlays() {
+      var root = document.getElementById('dc-root') || document.body;
+      return Array.prototype.filter.call(root.querySelectorAll('div,section,aside'), function (el) {
+        var cs = el.style; if (cs.position !== 'fixed') return false;
+        var r = el.getBoundingClientRect();
+        return visible(el) && r.width >= window.innerWidth * 0.5 && r.height >= window.innerHeight * 0.3;
+      });
+    }
+    function closer(box) {
+      var btns = box.querySelectorAll('button,[role="button"],a');
+      for (var i = 0; i < btns.length; i++) {
+        var b = btns[i]; if (!visible(b)) continue;
+        var name = (b.getAttribute('aria-label') || b.getAttribute('title') || '').trim();
+        var text = (b.textContent || '').trim();
+        if (CLOSE.test(name) || CLOSE.test(text) || CROSS.test(text)) return b;
+      }
+      return null;
+    }
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape' || e.defaultPrevented || e.isComposing) return;
+      var list = overlays();
+      // The topmost: the last fixed layer with something to close it.
+      for (var i = list.length - 1; i >= 0; i--) {
+        var c = closer(list[i]);
+        if (c) { e.preventDefault(); c.click(); return; }
+      }
+      // A bare backdrop (closes on its own click), else an open menu.
+      if (list.length) { e.preventDefault(); list[list.length - 1].click(); return; }
+      document.body.click();
+    });
+  }
 
   Storage.prototype.setItem = function (key, value) {
     rawSet.call(this, key, value);

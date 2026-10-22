@@ -102,6 +102,8 @@ return [
     'ctl_reset' => 'リセット',
     'ctl_result_pending' => '勝者 · 未記録',
     'ctl_resync' => '再同期',
+    'ctl_unload' => '試合を外す',
+    'ctl_unload_confirm' => 'もう一度タップで外す',
     'ctl_resync_hint' => '変更はスコアボード上で即座に反映されます。画面が固まっているように見える場合は、再同期でこのマット上のすべてのボードをリロードします。',
     'ctl_resynced' => '再同期完了 ✓',
     'ctl_round' => 'ラウンド',

@@ -76,6 +76,14 @@ class OfficialBadgesTest extends TestCase
         return is_array($d) ? $d : ['error' => true];
     }
 
+    /** A page of this size in points, to within a point — the old engine and the designer round differently. */
+    private function assertPageSize(string $pdf, float $w, float $h): void
+    {
+        $this->assertSame(1, preg_match('#/MediaBox\s*\[\s*[\d.]+\s+[\d.]+\s+([\d.]+)\s+([\d.]+)#', $pdf, $m), 'a page size');
+        $this->assertEqualsWithDelta($w, (float) $m[1], 1.0);
+        $this->assertEqualsWithDelta($h, (float) $m[2], 1.0);
+    }
+
     public function test_a_badge_is_an_a6_page_and_a_certificate_is_still_a4(): void
     {
         $this->assertSame([105, 148], Formats::forType(EventBadges::TYPE)->page('portrait'));
@@ -86,7 +94,7 @@ class OfficialBadgesTest extends TestCase
         $badges = app(EventBadges::class);
         $pdf = $badges->render($this->officials[0]->fresh(), 'en');
         $this->assertStringStartsWith('%PDF', $pdf);
-        $this->assertMatchesRegularExpression('#/MediaBox \[\s*0\.?0*\s+0\.?0*\s+297\.\d+\s+419\.\d+#', $pdf);   // A6 in points
+        $this->assertPageSize($pdf, 297.6, 419.5);   // A6 in points (old engine or designer)
 
         // Arabic too, and the picture for a screen.
         $this->assertStringStartsWith('%PDF', $badges->render($this->officials[0]->fresh(), 'ar'));
@@ -131,7 +139,7 @@ class OfficialBadgesTest extends TestCase
         $body = $pdf->streamedContent();
         $this->assertStringStartsWith('%PDF', $body);
         $this->assertSame(2, preg_match_all('#/Type\s*/Page\b(?!s)#', $body));
-        $this->assertMatchesRegularExpression('#/MediaBox \[\s*0\.?0*\s+0\.?0*\s+595\.\d+\s+841\.\d+#', $body);   // A4
+        $this->assertPageSize($body, 595.3, 841.9);   // A4
 
         // Appoint one more and the old file no longer answers for the officials as they are now.
         EventOfficial::create(['event_id' => $this->event->id, 'user_id' => $this->createUser()->id, 'role' => EventOfficial::ROLE_JURY, 'assigned_by' => $this->organiser->id]);

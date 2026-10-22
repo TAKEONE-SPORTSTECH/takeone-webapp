@@ -60,7 +60,7 @@ function clubInvite(NAV) {
 
         // What this host's flow has (BOOT.features): every part is on unless the host says not.
         // `proof` is the one part a host must switch ON (a federation records payments its own way).
-        feat(name) { const f = BOOT.features || {}; return name in f ? f[name] !== false : name !== 'proof'; },
+        feat(name) { const f = BOOT.features || {}; return name in f ? f[name] !== false : ! ['proof', 'matchPhone'].includes(name); },
 
         // ─── Payment proof (features.proof) ───────────────────────────────────
         proofBusy: false,
@@ -460,7 +460,7 @@ function clubInvite(NAV) {
         removeAthlete(i) { this.athletes = this.athletes.filter((_, j) => j !== i); },
 
         // ─── The "Add an athlete" sheet ───────────────────────────────────────
-        blankDraft() { return { name: '', gender: '', dob: '', dobD: '', dobM: '', dobY: '', weight: '', nat: defNat, nat2: ((this.country(defNat) || {}).i2 || '').toUpperCase(), natId: '', photo: null, types: [] }; },
+        blankDraft() { return { name: '', gender: '', dob: '', dobD: '', dobM: '', dobY: '', weight: '', nat: defNat, nat2: ((this.country(defNat) || {}).i2 || '').toUpperCase(), natId: '', phone: '', photo: null, types: [] }; },
         sheetOpen() { return this.addOpen || !! this.draft; },
         openAdd() {
             if (this.clubObj()) { this.addOpen = true; this.draft = null; this.editIdx = null; this.alQ = ''; this.alPick = null; this.alWeight = ''; this.alTypesSel = []; }

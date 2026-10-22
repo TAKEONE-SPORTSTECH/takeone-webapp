@@ -44,11 +44,74 @@ class Certificate extends Model
     {
         static::creating(function (Certificate $c) {
             $c->uuid ??= (string) Str::uuid();
+            // The same thing certified again takes back the QR and number it was issued with.
+            if ($c->verify_token === null && $c->certificate_no === null && ($was = $c->rememberedIdentity())) {
+                $c->verify_token = $was->verify_token;
+                $c->certificate_no = $was->certificate_no;
+            }
             $c->certificate_no ??= static::nextNo();
             $c->verify_token ??= Str::random(32);
             $c->status ??= CertificateStatus::Draft;
             $c->source ??= 'manual';
         });
+
+        // Once issued, the QR is out in the world: remember it, and remember it again on the
+        // way out, so a certificate issued before this table existed is kept as well.
+        static::saved(function (Certificate $c) {
+            if (! $c->isDraft() && ($c->wasRecentlyCreated || $c->wasChanged('status'))) {
+                $c->rememberIdentity();
+            }
+        });
+        static::deleting(function (Certificate $c) {
+            if (! $c->isDraft()) {
+                $c->rememberIdentity();
+            }
+        });
+    }
+
+    /**
+     * What this certificate certifies — holder, context, kind and source — as one key.
+     * Two certificates with the same identity are the same certificate issued twice.
+     */
+    public function identityKey(): string
+    {
+        return hash('sha256', implode('|', [
+            $this->recipient_type, $this->recipient_id, $this->context_type ?? '', $this->context_id ?? '',
+            $this->type, $this->source ?? 'manual', $this->source_id ?? '',
+        ]));
+    }
+
+    private function rememberIdentity(): void
+    {
+        if (! static::identitiesReady() || ! $this->verify_token || ! $this->certificate_no) {
+            return;
+        }
+        $this->getConnection()->table('certificate_identities')->updateOrInsert(
+            ['identity' => $this->identityKey()],
+            ['verify_token' => $this->verify_token, 'certificate_no' => $this->certificate_no, 'updated_at' => now(), 'created_at' => now()],
+        );
+    }
+
+    /** The token and number this identity was issued with — unless a live certificate already holds either. */
+    private function rememberedIdentity(): ?object
+    {
+        if (! static::identitiesReady()) {
+            return null;
+        }
+        $was = $this->getConnection()->table('certificate_identities')->where('identity', $this->identityKey())->first();
+        if (! $was) {
+            return null;
+        }
+        $taken = static::query()->where('verify_token', $was->verify_token)->orWhere('certificate_no', $was->certificate_no)->exists();
+
+        return $taken ? null : $was;
+    }
+
+    private static ?bool $identitiesReady = null;
+
+    private static function identitiesReady(): bool
+    {
+        return static::$identitiesReady ??= \Illuminate\Support\Facades\Schema::hasTable('certificate_identities');
     }
 
     /** Next serial: prefix + two-digit year + zero-padded sequence. */

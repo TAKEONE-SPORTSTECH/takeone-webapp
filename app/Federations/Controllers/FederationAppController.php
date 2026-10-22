@@ -33,7 +33,7 @@ class FederationAppController extends Controller
      * screen the address names and keeps the address in step as you move.
      * Also the only shape a sign-in may return to (FederationLoginController).
      */
-    public const SECTIONS = 'statistics|events|clubs|calendar|athletes|officials|financials|reports|settings';
+    public const SECTIONS = 'statistics|events|clubs|calendar|athletes|officials|financials|reports|settings|sub-federations';
 
     public const DEEP_LINK = '#^/federation/('.self::SECTIONS.')(/[A-Za-z0-9-]{1,64}){0,2}/?$#';
 
@@ -138,6 +138,8 @@ class FederationAppController extends Controller
                 'list' => route('me.events.officials', $ev->uuid),
                 'store' => route('me.events.officials.store', $ev->uuid),
                 'newPerson' => route('me.events.officials.person', $ev->uuid),
+                // A designation added to the host's list, offered on its every event.
+                'designation' => route('me.events.officials.designations.store', $ev->uuid),
                 'one' => route('me.events.officials.update', [$ev->uuid, '__ID__']),
                 'show' => route('federations.api.officials.one'),
                 'person' => route('federations.api.officials.person'),
@@ -163,6 +165,102 @@ class FederationAppController extends Controller
             'urls' => ['show' => route('federations.api.clubs.detail'), 'update' => route('federations.api.clubs.update'),
                 'logo' => route('federations.api.clubs.logo')],
         ])->header('X-Frame-Options', 'SAMEORIGIN')->header('Cache-Control', 'no-store, private');
+    }
+
+    /**
+     * GET /federation/results-pdf/{event}?kind=results|bouts|both — the
+     * event's Results tab as an A4 PDF (FederationResultsPdf). Served to the
+     * same people the tab's data is (FederationEventBracket::payload: the
+     * viewer's federation subtree and sports); anybody else, and an event not
+     * on the platform, gets the 404 a missing event gets. A headless browser
+     * per request, so on the draw PDF's hard limiter.
+     */
+    public function resultsPdf(Request $request, string $event, \App\Federations\Services\FederationResultsPdf $pdf): \Symfony\Component\HttpFoundation\Response
+    {
+        $this->ensureEnabled();
+        abort_unless(\App\Federations\Services\FederationResultsPdf::available(), 404);
+        $access = $this->staffAccess($request);
+        $kind = $request->validate(['kind' => ['required', 'in:'.implode(',', \App\Federations\Services\FederationResultsPdf::KINDS)]])['kind'];
+
+        $q = \App\Federations\Models\FederationEvent::where('uuid', $event)->whereNotNull('club_event_id')
+            ->whereIn('federation_id', collect($this->directory->subtree($access['root']))->pluck('id'));
+        if ($access['sports'] !== []) {
+            $q->whereIn('sport', $access['sports']);
+        }
+        $fe = $q->first();
+        $ev = $fe ? \App\Events\Models\ClubEvent::whereKey($fe->club_event_id)->where('is_archived', false)->first() : null;
+        abort_unless($fe && $ev, 404);
+
+        $refuse = fn (string $message, int $status) => response()->json(['success' => false, 'message' => $message], $status);
+
+        try {
+            $html = $pdf->html($fe, $ev, $request->user(), $kind);
+            if ($html === null) {
+                return $refuse(__('federations::messages.results_pdf_nothing'), 422);
+            }
+            $bytes = $pdf->render($html);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Federation results PDF failed', ['event' => $fe->uuid, 'kind' => $kind, 'error' => $e->getMessage()]);
+
+            return $refuse(__('events::events.bracket_pdf_failed'), 503);
+        }
+
+        // A name that says what it is, built from the title — never from input.
+        $slug = \Illuminate\Support\Str::slug(\Illuminate\Support\Str::ascii((string) ($ev->title ?: $fe->name))) ?: 'event';
+
+        return response($bytes, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$slug.'-'.['results' => 'results', 'bouts' => 'bouts', 'both' => 'results-and-bouts'][$kind].'.pdf"',
+            'Cache-Control' => 'private, no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    /**
+     * GET /federation/competition-report/{event} — the whole competition as
+     * one report PDF (FederationCompetitionReport): front matter, every
+     * bracket, statistics & analytics. Same people as the Results PDF (the
+     * viewer's federation subtree and sports); anybody else gets the 404 a
+     * missing event gets. Three browser prints and a join — the heaviest
+     * download there is — so the draw PDF's hard limiter, and room to finish.
+     */
+    public function competitionReport(Request $request, string $event, \App\Federations\Services\FederationCompetitionReport $report): \Symfony\Component\HttpFoundation\Response
+    {
+        $this->ensureEnabled();
+        abort_unless(\App\Federations\Services\FederationCompetitionReport::available(), 404);
+        $access = $this->staffAccess($request);
+
+        $q = \App\Federations\Models\FederationEvent::where('uuid', $event)->whereNotNull('club_event_id')
+            ->whereIn('federation_id', collect($this->directory->subtree($access['root']))->pluck('id'));
+        if ($access['sports'] !== []) {
+            $q->whereIn('sport', $access['sports']);
+        }
+        $fe = $q->first();
+        $ev = $fe ? \App\Events\Models\ClubEvent::whereKey($fe->club_event_id)->where('is_archived', false)->first() : null;
+        abort_unless($fe && $ev, 404);
+
+        @set_time_limit(240);
+        @ini_set('memory_limit', '512M');
+
+        try {
+            $bytes = $report->build($fe, $ev, $request->user());
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Federation competition report failed', ['event' => $fe->uuid, 'error' => $e->getMessage()]);
+
+            return response()->json(['success' => false, 'message' => __('events::events.bracket_pdf_failed')], 503);
+        }
+        if ($bytes === null) {
+            return response()->json(['success' => false, 'message' => 'There is nothing to report yet — this event has no draw.'], 422);
+        }
+
+        $slug = \Illuminate\Support\Str::slug(\Illuminate\Support\Str::ascii((string) ($ev->title ?: $fe->name))) ?: 'event';
+
+        return response($bytes, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$slug.'-competition-report.pdf"',
+            'Cache-Control' => 'private, no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     /** The dashboard's file address (old bookmarks) lands on the clean one. */
@@ -249,6 +347,8 @@ class FederationAppController extends Controller
                 'transferReply' => route('federations.api.transfers.reply'),
                 'transferDecide' => route('federations.api.transfers.decide'),
                 'regsWithdraw' => route('federations.api.regs.withdraw'),
+                // Registrations → who withdrew athletes, when and why (managers only).
+                'regsWithdrawals' => ($access['manager'] ?? false) ? route('federations.api.regs.withdrawals') : null,
                 // Clubs tab → take a whole club off the event (managers only).
                 'clubWithdraw' => ($access['manager'] ?? false) && \Illuminate\Support\Facades\Route::has('federations.api.regs.withdraw-club') ? route('federations.api.regs.withdraw-club') : null,
                 'regsApprove' => route('federations.api.regs.approve'),
@@ -311,13 +411,34 @@ class FederationAppController extends Controller
     private function live(array $access, $user): array
     {
         $root = $access['root'];
+        $brackets = app(\App\Federations\Services\FederationEventBracket::class)->payload($access);
 
         return [
             'events' => $this->events->payload($access),
             'fedstore' => $this->desk->store($access, $user),
             'draws' => $this->draws->payload($access),
             // The platform event's real bracket and results, for the Statistics tab.
-            'brackets' => app(\App\Federations\Services\FederationEventBracket::class)->payload($access),
+            'brackets' => $brackets,
+            // The Results tab's PDF door per event (FederationResultsPdf) —
+            // only where there is a bracket to print and the browser to print it.
+            'resultsPdf' => (object) (\App\Federations\Services\FederationResultsPdf::available()
+                ? collect(array_keys((array) $brackets))->mapWithKeys(fn ($u) => [$u => route('federations.results-pdf', ['event' => $u])])->all()
+                : []),
+            // The whole competition report per event (FederationCompetitionReport).
+            'competitionReport' => (object) (\App\Federations\Services\FederationCompetitionReport::available()
+                ? collect(array_keys((array) $brackets))->mapWithKeys(fn ($u) => [$u => route('federations.competition-report', ['event' => $u])])->all()
+                : []),
+            // Its cover page (FederationReportCover): what is set, and — for a
+            // manager only — where to upload or remove it.
+            'resultsCover' => (object) (\App\Federations\Services\FederationResultsPdf::available() && ($access['manager'] ?? false)
+                ? collect(array_keys((array) $brackets))->mapWithKeys(function ($u) use ($access) {
+                    $svc = app(\App\Federations\Services\FederationReportCover::class);
+                    $ev = $svc->event($access, $u);
+
+                    return $ev ? [$u => ['kind' => $svc->kind($ev), 'upload' => route('federations.api.events.report-cover'),
+                        'remove' => route('federations.api.events.report-cover.delete')]] : [];
+                })->all()
+                : []),
             // Each event's own officials, for the event's Officials tab.
             'eventOfficials' => app(\App\Federations\Services\FederationEventOfficials::class)->payload($access, $user),
             // Per event, the platform doors this viewer may use: the participants
@@ -554,6 +675,10 @@ class FederationAppController extends Controller
                     'drawPdf' => \App\Events\Support\BracketPdf::available() && \Illuminate\Support\Facades\Route::has('me.events.bracket.pdf') ? route('me.events.bracket.pdf', $k) : null,
                     // One division per person — the event's switch (OneDivisionRule).
                     'oneDivision' => \Illuminate\Support\Facades\Route::has('me.events.bracket.one-division') ? route('me.events.bracket.one-division', $k) : null,
+                    // Who already stands in two divisions (OneDivisionRule::conflicts) — the Overview's "Resolve".
+                    'conflicts' => \Illuminate\Support\Facades\Route::has('me.events.bracket.one-division.conflicts') ? route('me.events.bracket.one-division.conflicts', $k) : null,
+                    // Club country or nationality on the flags (FlagSource).
+                    'flagSource' => \Illuminate\Support\Facades\Route::has('me.events.flag-source') ? route('me.events.flag-source', $k) : null,
                     // Merging small divisions — only while the feature is on, so
                     // the tab never draws a control that would answer 404.
                     'merge' => \App\Events\Support\DivisionMerge::enabled() && \Illuminate\Support\Facades\Route::has('me.events.divisions.merge')

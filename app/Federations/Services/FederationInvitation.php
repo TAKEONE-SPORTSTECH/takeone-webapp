@@ -801,6 +801,24 @@ class FederationInvitation
     }
 
     /** A person's name as it is compared: case, spacing and punctuation dropped. */
+    /** The athlete of this name and birthdate who stands at this very club now, or null. */
+    private function twinAtClub(array $row, FederationClub|FederationClubApplication $club, Collection $federationIds): ?FederationAthlete
+    {
+        $name = trim(strip_tags((string) ($row['name'] ?? '')));
+        $dob = is_string($row['dob'] ?? null) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $row['dob']) ? $row['dob'] : null;
+        if ($name === '' || ! $dob) {
+            return null;
+        }
+        $key = $this->personKey($name);
+
+        return FederationAthlete::with('user')
+            ->whereHas('user', fn ($q) => $q->whereDate('birthdate', $dob))
+            ->whereHas('clubs', fn ($q) => $q->whereIn('federation_id', $federationIds)->whereNull('to_ym')
+                ->where($club instanceof FederationClub ? 'federation_club_id' : 'club_application_id', $club->id))
+            ->get()
+            ->first(fn ($a) => $this->personKey((string) $a->user?->full_name) === $key);
+    }
+
     private function personKey(string $name): string
     {
         return trim(preg_replace('/\s+/u', ' ', preg_replace('/[^\p{L}\p{N} ]+/u', '', mb_strtolower($name))));
@@ -861,7 +879,17 @@ class FederationInvitation
             $result = DB::transaction(function () use ($e, $club, $athlete, $new, $weight, $picked, $phase, $ev, $ids, $by) {
                 $now = now();
                 if (! $athlete) {
-                    $athlete = $this->newAthlete((array) $new, $club, (int) $club->federation_id, $now->format('Y-m'));
+                    /*
+                     * duplicates.guard.staff_enrol: the same name and birthdate
+                     * already at THIS club is that athlete; at another club of
+                     * the federation, newAthlete() refuses (a transfer, not a
+                     * second record) — the check the clubs' own portal always
+                     * had, and which was skipped here because the federation's
+                     * ids were not passed.
+                     */
+                    $guard = (bool) config('duplicates.guard.staff_enrol');
+                    $athlete = $guard ? $this->twinAtClub((array) $new, $club, $ids) : null;
+                    $athlete ??= $this->newAthlete((array) $new, $club, (int) $club->federation_id, $now->format('Y-m'), $guard ? $ids : null);
                     if (! $athlete) {
                         throw new RuntimeException('Enter the athlete\'s full name.');
                     }

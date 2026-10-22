@@ -25,31 +25,54 @@
         @if($found)
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div class="flex items-center gap-3 p-4">
+                    @if(! empty($story['photo']))
+                        {{-- Only a picture the member made public (CompetitorFace). --}}
+                        <a class="cv-photo" href="{{ $story['profile_url'] ?? '#' }}" @if(empty($story['profile_url'])) aria-disabled="true" @endif><img src="{{ $story['photo'] }}" alt="{{ $name }}">
+                            <i class="cv-photo-badge {{ $revoked ? 'is-revoked' : '' }} bi {{ $revoked ? 'bi-x-lg' : 'bi-check-lg' }}"></i></a>
+                    @else
                     <span class="w-12 h-12 rounded-2xl grid place-items-center flex-shrink-0 {{ $revoked ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600' }}">
                         <i class="bi {{ $revoked ? 'bi-x-lg' : 'bi-check-lg' }} text-2xl"></i>
                     </span>
+                    @endif
                     <div class="min-w-0 flex-1">
-                        <p class="text-lg font-black text-foreground leading-tight break-words">{{ $name }}</p>
-                        @if($club)<p class="text-[12px] text-muted-foreground mt-0.5 break-words">{{ $club }}</p>@endif
+                        <p class="text-lg font-black text-foreground leading-tight break-words">@if(! empty($story['profile_url']))<a class="cv-link" href="{{ $story['profile_url'] }}">{{ $name }}</a>@else {{ $name }} @endif</p>
+                        @php $clubInfo = $story['club'] ?? null; $clubName = $clubInfo['name'] ?? $club; @endphp
+                        @if($clubName)<p class="text-[12px] text-muted-foreground mt-0.5 break-words cv-clubline">@if(! empty($clubInfo['url']))<a class="cv-clubline cv-link" href="{{ $clubInfo['url'] }}">@endif @if(! empty($clubInfo['logo']))<img src="{{ $clubInfo['logo'] }}" alt="">@endif<span>{{ $clubName }}</span>@if(! empty($clubInfo['url']))</a>@endif</p>@endif
+                        @if(isset($story) && (! empty($story['age']) || ! empty($story['weight']) || ! empty($story['height'])))
+                            <div class="cv-chips">
+                                @if(! empty($story['age']))<a class="cv-chip" href="{{ $story['profile_url'] ?? ($story['draw_url'] ?? '#') }}"><i class="bi bi-cake2"></i>{{ trans_choice('cert::messages.verify_age', $story['age'], ['age' => $story['age']]) }}</a>@endif
+                                @if(! empty($story['weight']))<a class="cv-chip" href="{{ $story['draw_url'] ?? '#' }}"><i class="bi bi-speedometer2"></i>{{ $story['weight'] }} kg @if($story['weighed']) <i class="bi bi-patch-check-fill cv-ok" title="{{ __('cert::messages.verify_weighed') }}"></i>@endif</a>@endif
+                                @if(! empty($story['height']))<a class="cv-chip" href="{{ $story['profile_url'] ?? '#' }}"><i class="bi bi-arrows-expand"></i>{{ $story['height'] }} cm</a>@endif
+                            </div>
+                        @endif
                     </div>
                     @if($medal)<i class="bi bi-award-fill text-3xl flex-shrink-0" style="color: {{ $medal }};"></i>@endif
                 </div>
                 <dl class="border-t border-gray-100 divide-y divide-gray-50">
-                    @foreach(array_filter([
-                        __('cert::messages.verify_certificate') => $title,
-                        ($headings['what'] ?? __('cert::messages.verify_for')) => $what,
-                        __('cert::messages.verify_event') => $event,
-                        __('cert::messages.verify_number') => $number,
-                        __('cert::messages.verify_issued') => $issuedOn,
-                        __('cert::messages.verify_revoked') => $revoked ? $revokedOn : null,
-                    ]) as $k => $v)
+                    @php
+                        $st = $story ?? [];
+                        $rows = array_filter([
+                            ['k' => __('cert::messages.verify_certificate'), 'v' => $title, 'href' => $downloadUrl ?? null],
+                            ['k' => ($headings['what'] ?? __('cert::messages.verify_for')), 'v' => $what, 'href' => $st['draw_url'] ?? null],
+                            ['k' => __('cert::messages.verify_event'), 'v' => $event, 'href' => $st['event']['url'] ?? null],
+                            ['k' => __('cert::messages.verify_number'), 'v' => $number, 'copy' => true],
+                            ['k' => __('cert::messages.verify_issued'), 'v' => $issuedOn, 'href' => $st['event']['url'] ?? null],
+                            ['k' => __('cert::messages.verify_revoked'), 'v' => $revoked ? $revokedOn : null, 'danger' => true],
+                        ], fn ($r) => filled($r['v']));
+                    @endphp
+                    @foreach($rows as $r)
                         <div class="flex gap-3 px-4 py-3">
-                            <dt class="w-28 flex-shrink-0 text-[12px] font-semibold text-muted-foreground">{{ $k }}</dt>
-                            <dd class="text-[13px] font-semibold text-foreground break-words {{ $k === __('cert::messages.verify_revoked') ? 'text-rose-700' : '' }}">{{ $v }}</dd>
+                            <dt class="w-28 flex-shrink-0 text-[12px] font-semibold text-muted-foreground">{{ $r['k'] }}</dt>
+                            <dd class="text-[13px] font-semibold text-foreground break-words {{ ! empty($r['danger']) ? 'text-rose-700' : '' }}">
+                                @if(! empty($r['href']))<a class="cv-link" href="{{ $r['href'] }}">{{ $r['v'] }} <i class="bi bi-chevron-right cv-go"></i></a>
+                                @elseif(! empty($r['copy']))<button type="button" class="cv-copy" data-copy="{{ $r['v'] }}" data-done="{{ __('cert::messages.verify_copied_number') }}">{{ $r['v'] }} <i class="bi bi-copy cv-go"></i></button>
+                                @else {{ $r['v'] }} @endif
+                            </dd>
                         </div>
                     @endforeach
                 </dl>
             </div>
+            <div class="cv-stack">@includeWhen(isset($shareUrl), 'cert::verify.partials.story')</div>
             <div class="bg-white rounded-2xl border border-gray-100 p-4 flex gap-3">
                 <span class="w-9 h-9 rounded-xl bg-accent text-primary grid place-items-center flex-shrink-0"><i class="bi bi-info-circle"></i></span>
                 <p class="text-[12px] text-muted-foreground leading-relaxed">{{ $headings['note'] ?? __('cert::messages.verify_note') }}</p>

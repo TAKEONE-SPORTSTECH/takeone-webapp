@@ -134,7 +134,11 @@
             'icon' => 'bi-diagram-3-fill', 'tone' => 'bg-purple-50 text-purple-600',
             'label' => __('personal.event_manage_draw'),
             'sub' => $started ? __('personal.event_manage_draw_locked') : __('personal.event_manage_draw_sub'),
-            'href' => route('me.events.bracket.manage', $e['key']),
+            /* The SAME draw screen the scoreboard control opens (owner,
+               2026-10-18: "make them the same") — the draw desk, with every
+               tool the tablet has, folded into ⋯ on a phone. The desk sends
+               anyone who may not arrange back to the ordinary draw page. */
+            'href' => route('me.events.draw-desk', $e['key']),
         ];
         /* Officials moved to the "Setting it up" group (2026-09-06): choosing
            who runs the competition is preparation, not a run-day screen, and
@@ -525,6 +529,12 @@
                     <x-event-draw-visibility :event="$e['key']" :reveal="$drawReveal ?? 'always'"
                                              :date="$drawRevealDate ?? null"
                                              :color="$mgColor" :title="$e['title']" />
+                @endif
+
+                {{-- Which flag a competitor flies: club country or nationality (FlagSource). --}}
+                @if(! empty($e['categories']))
+                    <x-event-flag-source :event="$e['key']" :source="$flagSource ?? 'club'"
+                                         :color="$mgColor ?? $e['color']" :title="$e['title']" />
                 @endif
 
                 {{-- How athletes enter: individuals, clubs, or both (EntryChannels). --}}

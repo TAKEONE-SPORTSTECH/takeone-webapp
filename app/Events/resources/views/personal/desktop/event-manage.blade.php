@@ -425,6 +425,12 @@
                                              :color="$mgColor ?? $e['color']" :title="$e['title']" />
                 @endif
 
+                {{-- Which flag a competitor flies: club country or nationality (FlagSource). --}}
+                @if(! empty($e['categories']))
+                    <x-event-flag-source :event="$e['key']" :source="$flagSource ?? 'club'"
+                                         :color="$mgColor ?? $e['color']" :title="$e['title']" />
+                @endif
+
                 {{-- How athletes enter: individuals, clubs, or both (EntryChannels). --}}
                 @if($entryChannelsEditable ?? false)
                     <x-event-entry-channels :event="$e['key']" :channels="$entryChannels ?? ['individual', 'club']"

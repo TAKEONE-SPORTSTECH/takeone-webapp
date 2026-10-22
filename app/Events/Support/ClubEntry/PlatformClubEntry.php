@@ -160,19 +160,36 @@ final class PlatformClubEntry
     }
 
     /** A "new" club that is already on TakeOne: {reason, key, name, logo, hint} or null. */
-    public function checkClub(string $name, string $email, string $phone): ?array
+    public function checkClub(string $name, string $email, string $phone, bool $contactOnly = false): ?array
     {
         $name = trim(preg_replace('/\s+/u', ' ', $name) ?? $name);
         $email = strtolower(trim($email));
         $match = null;
         $reason = null;
-        if ($name !== '') {
+        /*
+         * duplicates.guard.club_portal: the same name written differently
+         * ("JKS - Bahrain." / "Jks Bahrain") or a near-identical one is offered
+         * too, and the club's PHONE counts as well as its email. A club's name
+         * and crest are public on its page, so offering one reveals nothing;
+         * its contacts stay masked in the hint.
+         */
+        $guard = (bool) config('duplicates.guard.club_portal');
+        if ($name !== '' && ! $contactOnly) {
             $match = Tenant::whereRaw('lower(club_name) = ?', [mb_strtolower($name)])->first();
+            if (! $match && $guard) {
+                $clubs = app(\App\Clubs\Support\ClubMatch::class);
+                $match = $clubs->sameName($name)->first()
+                    ?? ($clubs->similar($name, 1)->first(fn ($s) => $s['score'] >= 75)['tenant'] ?? null);
+            }
             $reason = $match ? 'name' : null;
         }
         if (! $match && filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $match = $this->tenantsByEmail($email)->first();
             $reason = $match ? 'email' : null;
+        }
+        if (! $match && $guard && strlen(preg_replace('/\D/', '', $phone)) >= 7) {
+            $match = $this->tenantsByContact($phone)->first();
+            $reason = $match ? 'phone' : null;
         }
         if (! $match) {
             return null;
@@ -470,6 +487,13 @@ final class PlatformClubEntry
             if (empty($p['club']['distinct']) && ($m = $this->checkClub((string) ($c['name'] ?? ''), (string) ($c['email'] ?? ''), (string) ($c['phone'] ?? '')))) {
                 return ['ok' => false, 'status' => 422, 'code' => 'club_exists', 'match' => $m, 'message' => __('events::club_entry.ui.matchSubName')];
             }
+            // "We are a different club" answers a NAME match only: the same
+            // email or phone is that club, whoever says otherwise
+            // (duplicates.guard.club_portal; the card then offers sign-in only).
+            if (! empty($p['club']['distinct']) && config('duplicates.guard.club_portal')
+                && ($m = $this->checkClub((string) ($c['name'] ?? ''), (string) ($c['email'] ?? ''), (string) ($c['phone'] ?? ''), contactOnly: true))) {
+                return ['ok' => false, 'status' => 422, 'code' => 'club_exists', 'match' => $m, 'message' => __('events::club_entry.ui.matchSubName')];
+            }
             $club = $this->writeDownClub($c);
             if (! $club) {
                 return ['ok' => false, 'status' => 422, 'message' => __('events::club_entry.ui.eClub')];
@@ -725,11 +749,34 @@ final class PlatformClubEntry
         $dob = (string) ($row['dob'] ?? '');
         $dob = preg_match('/^\d{4}-\d{2}-\d{2}$/', $dob) && strtotime($dob) && strtotime($dob) < time() ? $dob : null;
         $nat = preg_match('/^[A-Za-z]{2,3}$/', (string) ($row['nat'] ?? '')) ? strtoupper((string) $row['nat']) : null;
+        $gender = in_array($row['gender'] ?? null, ['Male', 'Female'], true) ? $row['gender'] : null;
+
+        /*
+         * Somebody TakeOne already has: the phone the club typed AND a name
+         * that is recognisably theirs (KnownPerson — the entry desk's rule),
+         * with no birthdate or gender saying otherwise. They are entered as
+         * themselves. Blind: the club typed both, the screen is told nothing
+         * about the person, and enterOne() still refuses a second entry.
+         * Behind duplicates.guard.club_portal.
+         */
+        $phone = trim((string) ($row['phone'] ?? ''));
+        if ($phone !== '' && config('duplicates.guard.club_portal')) {
+            $known = app(\App\Events\Support\KnownPerson::class)->matchesTyped($phone, $name)
+                ->first(fn (User $u) => (! $dob || ! $u->birthdate || $u->birthdate->toDateString() === $dob)
+                    && (! $gender || ! $u->gender || $u->gender === $gender));
+            if ($known) {
+                return $known;
+            }
+        }
+        $mobile = $phone !== '' ? \App\Events\Support\KnownPerson::mobileFromTyped($phone) : null;
 
         $user = UnclaimedPerson::make($name, [
-            'gender' => in_array($row['gender'] ?? null, ['Male', 'Female'], true) ? $row['gender'] : null,
+            'gender' => $gender,
             'birthdate' => $dob,
             'nationality' => $nat,
+            // Kept so the next door recognises them (stored in the platform's own shape).
+            'phone' => $mobile['number'] ?? null,
+            'phone_code' => $mobile['code'] ?? null,
         ]);
         if (is_string($row['photo'] ?? null) && str_starts_with($row['photo'], 'data:image/')) {
             rescue(fn () => ProfilePhoto::store($user, $row['photo']), null, report: true);

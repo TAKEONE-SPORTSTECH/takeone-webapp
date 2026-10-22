@@ -39,6 +39,7 @@
         rows: d.__ok ? (d.rows || []) : [], phases: d.phases || [], days: Math.max(1, parseInt(d.days, 10) || 1),
         presets: d.presets || [], belts: d.belts || [], asks: d.asks || {weight: true, rank: true}, streams: d.streams || [],
         oneDiv: !!d.one_division,
+        flagSrc: d.flag_source === 'nationality' ? 'nationality' : 'club',
         loaded: !!d.__ok,
       }}));
       if (d.__ok) this.dmSgLoad(doors);
@@ -54,6 +55,21 @@
     this.dmSet({oneDivBusy: true});
     T.roFetch('PUT', doors.oneDivision, {on: !dm.oneDiv}).then(d => {
       this.dmSet({oneDivBusy: false, ...(d.__ok ? {oneDiv: !!d.one_division} : {})});
+      this.dmToast(d.message || (d.__ok ? 'Saved.' : 'That did not save. Try again.'), !!d.__ok);
+    });
+  }
+
+  // Which flag a competitor flies (owner, 2026-10-16): their club's country
+  // or their own nationality (App\Events\Support\FlagSource). One tap flips
+  // it; the server re-draws every board.
+  dmFlagSrc(doors) {
+    const T = window.TakeOneFed || {};
+    const dm = this.state.dm || {};
+    if (!doors || !doors.flagSource || !T.roFetch || dm.flagBusy) return;
+    const next = dm.flagSrc === 'nationality' ? 'club' : 'nationality';
+    this.dmSet({flagBusy: true});
+    T.roFetch('PUT', doors.flagSource, {source: next}).then(d => {
+      this.dmSet({flagBusy: false, ...(d.__ok ? {flagSrc: d.flag_source === 'nationality' ? 'nationality' : 'club'} : {})});
       this.dmToast(d.message || (d.__ok ? 'Saved.' : 'That did not save. Try again.'), !!d.__ok);
     });
   }
@@ -461,12 +477,14 @@
   // ── The whole draw as a PDF (App\Events\Support\BracketPdf) ──────────────
   // Fetched rather than linked, so a refusal ("nothing is drawn yet") arrives
   // as a message here instead of navigating the dashboard away.
-  dmDrawPdf() {
+  // noNumbers: the same draw without bout numbers (owner, 2026-10-16).
+  dmDrawPdf(noNumbers) {
     const doors = this._dmDoors, dm = this.state.dm || {};
     if (!doors || !doors.drawPdf || dm.pdfBusy) return;
     this.dmSet({pdfBusy: true});
     this.dmToast('Preparing the draw PDF…');
-    fetch(doors.drawPdf, {credentials: 'same-origin', headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json, application/pdf'}})
+    const url = noNumbers ? doors.drawPdf + (doors.drawPdf.indexOf('?') === -1 ? '?' : '&') + 'numbers=0' : doors.drawPdf;
+    fetch(url, {credentials: 'same-origin', headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json, application/pdf'}})
       .then(res => {
         const type = res.headers.get('Content-Type') || '';
         if (!res.ok || type.indexOf('application/pdf') === -1) {
@@ -967,7 +985,9 @@
     // the draw stands, and an age and a weight window. A division is kept when
     // its own range OVERLAPS the window — "8–9" finds the Under-10s and the
     // 8–11s alike. A viewing aid only; it never changes a division.
-    const flt = {g: 'all', st: 'all', aMin: '', aMax: '', wMin: '', wMax: '', ...((dm && dm.flt) || {})};
+    const flt = {q: '', g: 'all', st: 'all', aMin: '', aMax: '', wMin: '', wMax: '', ...((dm && dm.flt) || {})};
+    // A name search too (owner, 2026-10-17) — the draw board's division menu has the same.
+    const fq = String(flt.q || '').trim().toLowerCase();
     const setFlt = patch => this.dmSet({flt: {...flt, ...patch}});
     const fnum = v => { const t = String(v == null ? '' : v).trim().replace(',', '.'); return t === '' || isNaN(Number(t)) ? null : Number(t); };
     const stKey = r => r.fought > 0 ? 'running' : r.matches > 0 ? 'drawn' : (r.entrants || 0) >= 2 ? 'ready' : 'few';
@@ -975,6 +995,7 @@
     const fa = [fnum(flt.aMin), fnum(flt.aMax)], fw = [fnum(flt.wMin), fnum(flt.wMax)];
     const keep = r => {
       const g = r.range || {};
+      if (fq && !String(r.name || '').toLowerCase().includes(fq)) return false;
       if (flt.g !== 'all' && genderOf(r) !== flt.g) return false;
       if (flt.st !== 'all' && stKey(r) !== flt.st) return false;
       if ((fa[0] !== null || fa[1] !== null) && !overlaps(numOr(g.min_age, 0), numOr(g.max_age, 999), fa[0], fa[1])) return false;
@@ -985,10 +1006,10 @@
       return true;
     };
     const listed = listedAll.filter(x => keep(x.r));
-    const anyFilter = flt.g !== 'all' || flt.st !== 'all' || [flt.aMin, flt.aMax, flt.wMin, flt.wMax].some(v => String(v || '').trim() !== '');
-    const fChip = (on, c) => css('height:32px;padding:0 14px;border-radius:999px;font-family:inherit;font-size:.74rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s;'
+    const anyFilter = flt.g !== 'all' || flt.st !== 'all' || [flt.q, flt.aMin, flt.aMax, flt.wMin, flt.wMax].some(v => String(v || '').trim() !== '');
+    const fChip = (on, c) => css('height:28px;padding:0 10px;border-radius:999px;font-family:inherit;font-size:.7rem;flex:none;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s;'
       + (on ? 'background:#fdf6e6;border:1px solid #caa14f;box-shadow:0 2px 8px rgba(202,161,79,.22);color:#8a6d20' : 'background:#fff;border:1px solid #d5dae3;color:' + (c || '#5d6880')));
-    const fBox = v => css('height:32px;width:52px;min-width:0;max-width:52px;box-sizing:border-box;padding:0 6px;border-radius:999px;font-family:inherit;font-size:.74rem;font-weight:600;text-align:center;color:#1e2c4f;outline:none;font-variant-numeric:tabular-nums;'
+    const fBox = v => css('height:28px;width:42px;min-width:0;max-width:42px;flex:none;box-sizing:border-box;padding:0 4px;border-radius:999px;font-family:inherit;font-size:.7rem;font-weight:600;text-align:center;color:#1e2c4f;outline:none;font-variant-numeric:tabular-nums;'
       + (String(v || '').trim() !== '' ? 'background:#fdf6e6;border:1px solid #caa14f' : 'background:#fff;border:1px solid #d5dae3'));
     const hasMixed = listedAll.some(x => genderOf(x.r) === 'Mixed');
     const filterVals = {
@@ -1003,11 +1024,14 @@
       // Status is one dropdown, not five chips (owner, 2026-10-16), to save room.
       stOpen: !!(dm && dm.stOpen), stCaret: (dm && dm.stOpen) ? '\u25B4' : '\u25BE',
       stLabel: ({all: 'All', ready: 'Ready to draw', few: 'Needs 2+', drawn: 'Drawn', running: 'Running'})[flt.st] || 'All',
-      stStyle: css('display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px 0 14px;border-radius:999px;font-family:inherit;font-size:.74rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s;'
+      stStyle: css('display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 9px 0 11px;border-radius:999px;font-family:inherit;font-size:.7rem;flex:none;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s;'
         + (flt.st !== 'all' ? 'background:#fdf6e6;border:1px solid #caa14f;box-shadow:0 2px 8px rgba(202,161,79,.22);color:#8a6d20' : 'background:#fff;border:1px solid #d5dae3;color:#5d6880')),
       onStToggle: e => { if (e && e.stopPropagation) e.stopPropagation(); this.dmSet({stOpen: !(dm && dm.stOpen)}); },
       onStClose: () => this.dmSet({stOpen: false}),
       stStop: e => { if (e && e.stopPropagation) e.stopPropagation(); },
+      q: flt.q || '', onQ: e => setFlt({q: e.target.value}),
+      qStyle: css('height:28px;width:150px;flex:none;box-sizing:border-box;padding:0 10px;border-radius:999px;font-family:inherit;font-size:.72rem;font-weight:500;color:#1e2c4f;outline:none;'
+        + (String(flt.q || '').trim() !== '' ? 'background:#fdf6e6;border:1px solid #caa14f' : 'background:#fff;border:1px solid #d5dae3')),
       aMin: flt.aMin, aMax: flt.aMax, wMin: flt.wMin, wMax: flt.wMax,
       aMinStyle: fBox(flt.aMin), aMaxStyle: fBox(flt.aMax), wMinStyle: fBox(flt.wMin), wMaxStyle: fBox(flt.wMax),
       onAMin: e => setFlt({aMin: e.target.value}), onAMax: e => setFlt({aMax: e.target.value}),
@@ -1146,18 +1170,31 @@
       orderRows, hint: 'Drag a row, or use the arrows. A heading groups the divisions under it.',
 
       addOpen: !!(dm && dm.addOpen),
-      onAdd: e => { if (e && e.stopPropagation) e.stopPropagation(); this.dmSet({addOpen: !(dm && dm.addOpen)}); },
+      onAdd: e => { if (e && e.stopPropagation) e.stopPropagation(); this.dmSet({addOpen: !(dm && dm.addOpen), pdfOpen: false}); },
       onAddClose: () => this.dmSet({addOpen: false}), stop: e => e.stopPropagation(),
       onAddOne: () => this.dmOpenEditor({__new: true}), onAddHeading: () => this.dmOpenEditor({__new: true, is_heading: true}),
       hasPresets: presets.length > 0, onAddPresets: openPresets,
       canImport: !!(doors.importPreview && doors.import), onAddImport: () => this.dmImOpen(), im: this.dmImVals(dm, css),
-      canPdf: !!doors.drawPdf && divs.length > 0, onPdf: () => this.dmDrawPdf(), pdfLabel: (dm && dm.pdfBusy) ? 'Preparing…' : '⤓ Draw PDF',
+      // One Draw PDF button opening its two editions (owner, 2026-10-18:
+      // "combine download buttons into one").
+      canPdf: !!doors.drawPdf && divs.length > 0, pdfLabel: (dm && dm.pdfBusy) ? 'Preparing…' : '⤓ Draw PDF',
+      pdfOpen: !!(dm && dm.pdfOpen), pdfCaret: (dm && dm.pdfOpen) ? '▴' : '▾',
+      onPdfToggle: e => { if (e && e.stopPropagation) e.stopPropagation(); this.dmSet({pdfOpen: !(dm && dm.pdfOpen), addOpen: false}); },
+      onPdfClose: () => this.dmSet({pdfOpen: false}),
+      pdfItems: [[false, 'With bout numbers', 'Every division\u2019s bracket, bouts numbered for the mats'],
+                 [true, 'Without bout numbers', 'The same brackets, the numbers left off']]
+        .map(([noNum, label, hint]) => ({label, hint, onClick: e => { if (e && e.stopPropagation) e.stopPropagation(); this.dmSet({pdfOpen: false}); this.dmDrawPdf(noNum); },
+          style: css('display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;padding:10px 12px;border:0;border-radius:9px;background:#fff;font-family:inherit;text-align:start;cursor:pointer')})),
+      pdfStyle: css('height:40px;padding:0 14px;border:1px solid ' + ((dm && dm.pdfOpen) ? '#caa14f' : '#d5dae3') + ';border-radius:11px;font-family:inherit;font-size:.8rem;font-weight:700;color:#1e2c4f;background:' + ((dm && dm.pdfOpen) ? '#fdf6e6' : '#fff') + ';cursor:pointer;display:inline-flex;align-items:center;gap:8px;white-space:nowrap'),
       canOneDiv: !!doors.oneDivision, onOneDiv: () => this.dmOneDiv(doors),
       oneDivLabel: (dm && dm.oneDiv) ? 'One division per person: On' : 'One division per person: Off',
       oneDivPressed: (dm && dm.oneDiv) ? 'true' : 'false',
       oneDivStyle: css('height:40px;padding:0 14px;border-radius:11px;font-family:inherit;font-size:.8rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;'
         + ((dm && dm.oneDiv) ? 'border:1px solid #1e2c4f;color:#fff;background:#1e2c4f' : 'border:1px solid #d5dae3;color:#1e2c4f;background:#fff')),
       oneDivDot: css('width:10px;height:10px;border-radius:50%;' + ((dm && dm.oneDiv) ? 'background:#edcd85' : 'background:#c9d0db')),
+      canFlagSrc: !!doors.flagSource, onFlagSrc: () => this.dmFlagSrc(doors),
+      flagSrcLabel: (dm && dm.flagBusy) ? 'Saving…' : ((dm && dm.flagSrc === 'nationality') ? 'Flags: Nationality' : 'Flags: Club country'),
+      flagSrcStyle: css('height:40px;padding:0 14px;border-radius:11px;font-family:inherit;font-size:.8rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;border:1px solid #d5dae3;color:#1e2c4f;background:#fff'),
 
       ed: {
         open: !!ed.open, isHeading, isDivision: !isHeading, title: edTitle,

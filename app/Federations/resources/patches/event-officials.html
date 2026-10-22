@@ -21,19 +21,6 @@
                 </sc-if>
               </div>
             </sc-if>
-            <sc-if value="{{ eo.design.any }}" hint-placeholder-val="{{ false }}">
-              <div style="position:relative">
-                <button type="button" onClick="{{ eo.design.onToggle }}" aria-haspopup="menu" aria-expanded="{{ eo.design.open }}" title="Design and print badges and certificates" style="{{ eo.design.style }}" style-hover="border-color:#caa14f;background:#fdf6e6"><span aria-hidden="true" style="color:#8a6d20">&#9113;</span>Printables<span aria-hidden="true" style="font-size:.7rem;color:#8a6d20">{{ eo.design.caret }}</span></button>
-                <sc-if value="{{ eo.design.open }}" hint-placeholder-val="{{ false }}">
-                  <div onClick="{{ eo.design.onClose }}" style="position:fixed;inset:0;z-index:45"></div>
-                  <div role="menu" onClick="{{ eo.design.stop }}" style="position:absolute;top:46px;left:0;z-index:46;min-width:270px;padding:6px;background:#fff;border:1px solid #eef1f6;border-radius:14px;box-shadow:0 18px 40px rgba(30,44,79,.16);animation:rise .18s cubic-bezier(.22,.68,.35,1) both">
-                    <sc-for list="{{ eo.design.items }}" as="i" hint-placeholder-count="2">
-                      <button type="button" role="menuitem" onClick="{{ i.onClick }}" style="{{ i.style }}" style-hover="background:#fdf6e6"><span style="font-size:.82rem;font-weight:700;color:#1e2c4f">{{ i.label }}</span><span style="font-size:.7rem;color:#6b7689">{{ i.hint }}</span></button>
-                    </sc-for>
-                  </div>
-                </sc-if>
-              </div>
-            </sc-if>
             <sc-if value="{{ eo.canManage }}" hint-placeholder-val="{{ true }}">
               <button type="button" onClick="{{ eo.onAdd }}" title="Appoint an official to this event" style="height:40px;padding:0 18px;border:0;border-radius:11px;font-family:inherit;font-size:.8rem;font-weight:700;color:#1e2c4f;background:linear-gradient(100deg,#edcd85,#d0a854);box-shadow:0 6px 16px rgba(202,161,79,.3);cursor:pointer" style-hover="transform:translateY(-1px)">+ Appoint official</button>
             </sc-if>
@@ -46,13 +33,48 @@
 
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 14px;padding:10px 12px;border-radius:13px;background:#f7f8fb;border:1px solid #eef1f6">
             <span style="font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#8a93a6;margin-inline-end:2px">Job</span>
-            <button type="button" onClick="{{ eo.onAll }}" aria-pressed="{{ eo.allPressed }}" title="Show every official" style="{{ eo.allStyle }}">All <b style="{{ eo.allCountStyle }}">{{ eo.total }}</b></button>
-            <sc-for list="{{ eo.chips }}" as="k" hint-placeholder-count="2">
-              <button type="button" onClick="{{ k.onClick }}" aria-pressed="{{ k.pressed }}" title="{{ k.hint }}" style="{{ k.style }}">{{ k.label }} <b style="{{ k.countStyle }}">{{ k.count }}</b></button>
-            </sc-for>
+            <div style="position:relative;flex:none">
+              <button type="button" onClick="{{ eo.jobDd.onToggle }}" aria-haspopup="menu" aria-expanded="{{ eo.jobDd.open }}" aria-label="Filter by job" style="{{ eo.jobDd.style }}">{{ eo.jobDd.label }}<sc-if value="{{ eo.jobDd.hasCount }}" hint-placeholder-val="{{ false }}"> <b style="{{ eo.jobDd.countStyle }}">{{ eo.jobDd.count }}</b></sc-if><span aria-hidden="true" style="font-size:.7rem">{{ eo.jobDd.caret }}</span></button>
+              <sc-if value="{{ eo.jobDd.open }}" hint-placeholder-val="{{ false }}">
+                <div onClick="{{ eo.jobDd.onClose }}" style="position:fixed;inset:0;z-index:45"></div>
+                <div role="menu" onClick="{{ eo.jobDd.stop }}" style="position:absolute;top:37px;left:0;z-index:46;min-width:220px;max-height:min(360px,60vh);overflow-y:auto;padding:6px;background:#fff;border:1px solid #eef1f6;border-radius:14px;box-shadow:0 18px 40px rgba(30,44,79,.16);animation:rise .18s cubic-bezier(.22,.68,.35,1) both">
+                  <sc-for list="{{ eo.jobDd.items }}" as="o" hint-placeholder-count="4"><button type="button" role="menuitemradio" aria-checked="{{ o.pressed }}" onClick="{{ o.onClick }}" style="{{ o.style }}" style-hover="background:#fdf6e6"><span aria-hidden="true" style="width:12px;flex:none">{{ o.checked }}</span><span>{{ o.label }}</span><sc-if value="{{ o.hasCount }}" hint-placeholder-val="{{ false }}"><b style="{{ o.countStyle }}">{{ o.count }}</b></sc-if></button></sc-for>
+                </div>
+              </sc-if>
+            </div>
             <span aria-hidden="true" style="width:1px;height:22px;background:#d5dae3;margin:0 6px"></span>
             <span style="font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#8a93a6;margin-inline-end:2px">Gender</span>
-            <sc-for list="{{ eo.genders }}" as="g" hint-placeholder-count="3"><button type="button" onClick="{{ g.onClick }}" aria-pressed="{{ g.pressed }}" style="{{ g.style }}">{{ g.label }}</button></sc-for>
+            <div style="position:relative;flex:none">
+              <button type="button" onClick="{{ eo.genDd.onToggle }}" aria-haspopup="menu" aria-expanded="{{ eo.genDd.open }}" aria-label="Filter by gender" style="{{ eo.genDd.style }}">{{ eo.genDd.label }}<sc-if value="{{ eo.genDd.hasCount }}" hint-placeholder-val="{{ false }}"> <b style="{{ eo.genDd.countStyle }}">{{ eo.genDd.count }}</b></sc-if><span aria-hidden="true" style="font-size:.7rem">{{ eo.genDd.caret }}</span></button>
+              <sc-if value="{{ eo.genDd.open }}" hint-placeholder-val="{{ false }}">
+                <div onClick="{{ eo.genDd.onClose }}" style="position:fixed;inset:0;z-index:45"></div>
+                <div role="menu" onClick="{{ eo.genDd.stop }}" style="position:absolute;top:37px;left:0;z-index:46;min-width:220px;max-height:min(360px,60vh);overflow-y:auto;padding:6px;background:#fff;border:1px solid #eef1f6;border-radius:14px;box-shadow:0 18px 40px rgba(30,44,79,.16);animation:rise .18s cubic-bezier(.22,.68,.35,1) both">
+                  <sc-for list="{{ eo.genDd.items }}" as="o" hint-placeholder-count="4"><button type="button" role="menuitemradio" aria-checked="{{ o.pressed }}" onClick="{{ o.onClick }}" style="{{ o.style }}" style-hover="background:#fdf6e6"><span aria-hidden="true" style="width:12px;flex:none">{{ o.checked }}</span><span>{{ o.label }}</span><sc-if value="{{ o.hasCount }}" hint-placeholder-val="{{ false }}"><b style="{{ o.countStyle }}">{{ o.count }}</b></sc-if></button></sc-for>
+                </div>
+              </sc-if>
+            </div>
+            <span aria-hidden="true" style="width:1px;height:22px;background:#d5dae3;margin:0 6px"></span>
+            <!-- This tab's printables: the general ones on All, the job's own on a job's tab. -->
+              <sc-if value="{{ eo.design.any }}" hint-placeholder-val="{{ false }}">
+                <div style="position:relative">
+                  <button type="button" onClick="{{ eo.design.onToggle }}" aria-haspopup="menu" aria-expanded="{{ eo.design.open }}" title="Design and print badges and certificates for this tab" style="{{ eo.design.style }}" style-hover="border-color:#caa14f;background:#fdf6e6"><span aria-hidden="true" style="color:#8a6d20">&#9113;</span>{{ eo.design.label }}<span aria-hidden="true" style="font-size:.7rem;color:#8a6d20">{{ eo.design.caret }}</span></button>
+                  <sc-if value="{{ eo.design.open }}" hint-placeholder-val="{{ false }}">
+                    <div onClick="{{ eo.design.onClose }}" style="position:fixed;inset:0;z-index:45"></div>
+                    <div role="menu" onClick="{{ eo.design.stop }}" style="position:absolute;top:37px;left:0;z-index:46;min-width:320px;max-width:min(380px,calc(100vw - 2rem));padding:6px;background:#fff;border:1px solid #eef1f6;border-radius:14px;box-shadow:0 18px 40px rgba(30,44,79,.16);animation:rise .18s cubic-bezier(.22,.68,.35,1) both">
+                      <sc-for list="{{ eo.design.items }}" as="i" hint-placeholder-count="2">
+                        <div role="group" aria-label="{{ i.label }}" style="{{ i.style }}"><span style="font-size:.82rem;font-weight:700;color:#1e2c4f">{{ i.label }}</span><span role="status" style="{{ i.hintStyle }}">{{ i.hint }}</span>
+                          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><sc-for list="{{ i.actions }}" as="a" hint-placeholder-count="3"><button type="button" role="menuitem" onClick="{{ a.onClick }}" aria-disabled="{{ a.disabled }}" style="{{ a.style }}">{{ a.label }}</button></sc-for></div>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-if>
+            <sc-if value="{{ eo.design.quick.show }}" hint-placeholder-val="{{ false }}">
+              <button type="button" onClick="{{ eo.design.quick.onIssue }}" title="{{ eo.design.quick.issueTitle }}" style="{{ eo.design.quick.issueStyle }}"><span aria-hidden="true">&#10003;</span>{{ eo.design.quick.issueLabel }}</button>
+              <button type="button" onClick="{{ eo.design.quick.onPdf }}" title="{{ eo.design.quick.pdfTitle }}" style="{{ eo.design.quick.pdfStyle }}"><span aria-hidden="true" style="color:#8a6d20">&#8615;</span>{{ eo.design.quick.pdfLabel }}</button>
+            </sc-if>
+            <sc-if value="{{ eo.design.toast.has }}" hint-placeholder-val="{{ false }}"><div role="status" aria-live="polite" onClick="{{ eo.design.toast.onClose }}" title="Close" style="{{ eo.design.toast.style }}"><span aria-hidden="true" style="font-size:1.1rem;flex:none">{{ eo.design.toast.icon }}</span><span>{{ eo.design.toast.text }}</span></div></sc-if>
             <span style="margin-inline-start:auto;display:inline-flex;align-items:center;gap:10px">
               <span style="font-size:.74rem;color:#6b7689;font-variant-numeric:tabular-nums">{{ eo.count }}</span>
               <sc-if value="{{ eo.anyFilter }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ eo.onReset }}" style="height:32px;padding:0 12px;border:0;border-radius:999px;background:none;font-family:inherit;font-size:.74rem;font-weight:700;color:#8a6d20;cursor:pointer;text-decoration:underline;text-underline-offset:3px">Reset</button></sc-if>
@@ -68,7 +90,8 @@
 
           <sc-if value="{{ eo.hasRows }}" hint-placeholder-val="{{ true }}">
           <div style="overflow-x:auto">
-            <div style="display:grid;grid-template-columns:36px minmax(220px,1fr) 150px minmax(150px,200px) 72px minmax(120px,160px) minmax(170px,220px);gap:14px;align-items:center;min-width:1000px;padding:0 0 8px;border-bottom:1px solid #eef1f6">
+            <div style="display:grid;grid-template-columns:22px 36px minmax(220px,1fr) 150px minmax(150px,200px) 72px minmax(120px,160px) minmax(170px,220px);gap:14px;align-items:center;min-width:1036px;padding:0 0 8px;border-bottom:1px solid #eef1f6">
+              <div><sc-if value="{{ eo.canPick }}" hint-placeholder-val="{{ false }}"><button type="button" role="checkbox" aria-checked="{{ eo.allChecked }}" aria-label="Choose every official shown" title="Choose every official shown" onClick="{{ eo.onToggleAll }}" style="{{ eo.allCheckStyle }}">{{ eo.allCheckMark }}</button></sc-if></div>
               <div></div>
               <div aria-sort="{{ eo.sort.name.ariaSort }}"><button type="button" onClick="{{ eo.sort.name.onClick }}" style="{{ eo.sort.name.style }}"><span>Official</span><span>{{ eo.sort.name.arrow }}</span></button></div>
               <div aria-sort="{{ eo.sort.job.ariaSort }}"><button type="button" onClick="{{ eo.sort.job.onClick }}" style="{{ eo.sort.job.style }}"><span>Job</span><span>{{ eo.sort.job.arrow }}</span></button></div>
@@ -78,7 +101,8 @@
               <div aria-sort="{{ eo.sort.club.ariaSort }}"><button type="button" onClick="{{ eo.sort.club.onClick }}" style="{{ eo.sort.club.style }}"><span>Club</span><span>{{ eo.sort.club.arrow }}</span></button></div>
             </div>
             <sc-for list="{{ eo.rows }}" as="p" hint-placeholder-count="6">
-              <div style="display:grid;grid-template-columns:36px minmax(220px,1fr) 150px minmax(150px,200px) 72px minmax(120px,160px) minmax(170px,220px);gap:14px;align-items:center;min-width:1000px;padding:12px 0;border-bottom:1px solid #eef1f6;cursor:pointer" role="button" aria-label="Open {{ p.name }}" onClick="{{ p.onOpen }}" style-hover="background:#faf7ef">
+              <div style="display:grid;grid-template-columns:22px 36px minmax(220px,1fr) 150px minmax(150px,200px) 72px minmax(120px,160px) minmax(170px,220px);gap:14px;align-items:center;min-width:1036px;padding:12px 0;border-bottom:1px solid #eef1f6;cursor:pointer" role="button" aria-label="Open {{ p.name }}" onClick="{{ p.onOpen }}" style-hover="background:#faf7ef">
+                <div><sc-if value="{{ p.canPick }}" hint-placeholder-val="{{ false }}"><button type="button" role="checkbox" aria-checked="{{ p.checked }}" aria-label="Choose {{ p.name }}" onClick="{{ p.onToggleSel }}" style="{{ p.checkStyle }}">{{ p.checkMark }}</button></sc-if></div>
                 <div style="{{ p.avStyle }}">{{ p.initials }}</div>
                 <div style="min-width:0">
                   <div style="font-size:.86rem;font-weight:600;color:#1e2c4f;overflow-wrap:anywhere">{{ p.name }}</div>

@@ -19,6 +19,9 @@
   shift(iso, days) { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10); }
   dayLabel(iso) { return iso ? (+iso.slice(8, 10)) + ' ' + this.MON[+iso.slice(5, 7) - 1] : 'Date TBC'; }
   wLabel(div) { const m = String(div || '').match(/([-+]\d+(?:\.\d+)?\s*kg)/i); return m ? m[1].replace(/\s+/, ' ') : String(div || ''); }
+  // A row's weight: its own `wl` where the server sent one (a division named
+  // for a weight range, not a class), otherwise read from the division name.
+  wOf(d) { return d.wl != null ? d.wl : this.wLabel(d.div); }
   divDisc(div) { return /^kata/i.test(String(div || '')) ? 'Kata' : 'Kumite'; }
   pctChange(cur, prev) { return prev > 0 ? (cur - prev) / prev * 100 : null; }
   // The figures are for the body picked in the dashboard's switcher — that
@@ -73,7 +76,7 @@
     const R = Object.assign({today: new Date().toISOString().slice(0, 10), federation: '', bodies: [], clubs: [], athletes: [], events: [], entries: [],
       divisions: [], bouts: [], medals: [], officials: [], alerts: []}, S || {});
     const bodyName = {}; R.bodies.forEach(b => { bodyName[b.id] = b.name; });
-    const clubs = R.clubs.map((c, i) => ({...c, i, region: bodyName[c.body] || '—', initials: this.initials(c.name)}));
+    const clubs = R.clubs.map((c, i) => ({...c, i, region: bodyName[c.body] || '—', initials: this.initials(c.name), hasLogo: !!c.logo, noLogo: !c.logo}));
     const seen = {}; R.events.forEach(e => { seen[e.name] = (seen[e.name] || 0) + 1; });
     const events = R.events.map((e, i) => ({...e, i, year: e.start ? +e.start.slice(0, 4) : null,
       label: seen[e.name] > 1 ? e.name + ' · ' + this.dayLabel(e.start) : e.name}));
@@ -84,8 +87,8 @@
     athletes.forEach(a => { if (a.reg) years.add(+a.reg.slice(0, 4)); });
     const ages = new Set(); athletes.forEach(a => a.age && ages.add(a.age)); R.entries.forEach(x => x.age && ages.add(x.age));
     const discs = new Set(); R.entries.forEach(x => (x.disc || []).forEach(d => discs.add(d)));
-    const weights = [...new Set(R.divisions.map(d => this.wLabel(d.div)).filter(Boolean))]
-      .sort((a, b) => (a[0] === '+') - (b[0] === '+') || parseFloat(a.slice(1)) - parseFloat(b.slice(1)));
+    const weights = [...new Set(R.divisions.map(d => this.wOf(d)).filter(Boolean))]
+      .sort((a, b) => (a[0] === '+') - (b[0] === '+') || parseFloat(a.replace(/^[-+]/, '')) - parseFloat(b.replace(/^[-+]/, '')));
     const sports = [...new Set(events.map(e => e.sport).filter(Boolean))];
     this._d = {...R, bodyName, clubs, events, athletes, entryClub, weights, sports,
       seasons: [...years].sort((a, b) => b - a).map(String),
@@ -114,12 +117,12 @@
     const gOk = g => f.gender === 'All' || g === (f.gender === 'Male' ? 'M' : 'F');
     const ageOk = a => f.age === 'All' || a === f.age;
     let wSet = null;
-    if (f.weight !== 'All') { wSet = new Set(); D.divisions.forEach(d => { if (this.wLabel(d.div) === f.weight) d.athletes.forEach(a => wSet.add(d.e + ':' + a)); }); }
+    if (f.weight !== 'All') { wSet = new Set(); D.divisions.forEach(d => { if (this.wOf(d) === f.weight) d.athletes.forEach(a => wSet.add(d.e + ':' + a)); }); }
     const discOk = x => f.disc === 'All' || (x.disc || []).includes(f.disc);
     const entOk = x => evSet.has(x.e) && discOk(x) && gOk((D.athletes[x.a] || {}).g) && ageOk(x.age) && clubOk(x.c) && (!wSet || wSet.has(x.e + ':' + x.a));
     const entries = D.entries.filter(x => x.st === 'Active' && entOk(x));
     const withdrawn = D.entries.filter(x => x.st !== 'Active' && entOk(x));
-    const divOk = d => evSet.has(d.e) && (f.disc === 'All' || f.disc === this.divDisc(d.div)) && gOk(d.g) && ageOk(d.age) && (f.weight === 'All' || this.wLabel(d.div) === f.weight);
+    const divOk = d => evSet.has(d.e) && (f.disc === 'All' || f.disc === this.divDisc(d.div)) && gOk(d.g) && ageOk(d.age) && (f.weight === 'All' || this.wOf(d) === f.weight);
     const ec = (e, a) => D.entryClub[e + ':' + a];
     const anyClub = !club && !region;
     const divisions = D.divisions.filter(divOk);
@@ -464,7 +467,7 @@
     const methods = ['Points', 'Ippon', 'Decision', 'Disqualification', 'Withdrawal', 'Not stated'].filter(k => byM[k]).map(k => [k, byM[k]]);
     const topMethod = Math.max(1, ...methods.map(m => m[1]));
     const kd = F.divisions.filter(d => this.divDisc(d.div) === 'Kumite');
-    const wRows = {}; kb.forEach(b => { const k = (b.g === 'F' ? 'Female ' : 'Male ') + this.wLabel(b.div) + (b.age ? ' · ' + b.age : ''); wRows[k] = (wRows[k] || 0) + 1; });
+    const wRows = {}; kb.forEach(b => { const k = (b.g === 'F' ? 'Female ' : 'Male ') + this.wOf(b) + (b.age ? ' · ' + b.age : ''); wRows[k] = (wRows[k] || 0) + 1; });
     const wList = Object.entries(wRows).sort((a, b) => b[1] - a[1]).slice(0, 12), wMax = Math.max(1, ...wList.map(w => w[1]));
     const clubWin = clubRowsAll.filter(c => c.bouts >= 3).map(c => ({a: c.name, r: c.wins / c.bouts})).sort((a, b) => b.r - a.r).slice(0, 3);
     v.ku = {
@@ -491,7 +494,7 @@
     // ---------- medals & rankings
     const medRows = clubRowsAll.filter(c => c.medals > 0).sort((a, b) => (b.gold - a.gold) || (b.medals - a.medals)).slice(0, 8);
     const maxTot = Math.max(1, ...medRows.map(c => c.medals));
-    v.md = {rows: medRows.map((c, i) => ({rank: String(i + 1), name: c.name, initials: c.initials, athletes: fmt(c.athletes), gold: String(c.gold), silver: String(c.silverN), bronze: String(c.bronzeN), total: String(c.medals),
+    v.md = {rows: medRows.map((c, i) => ({rank: String(i + 1), name: c.name, initials: c.initials, logo: c.logo, hasLogo: c.hasLogo, athletes: fmt(c.athletes), gold: String(c.gold), silver: String(c.silverN), bronze: String(c.bronzeN), total: String(c.medals),
       eff: c.athletes ? (c.medals / c.athletes).toFixed(2) : '—',
       g: this.css('height:100%;background:#e3bd5c;width:' + (c.gold / maxTot * 100) + '%'), s: this.css('height:100%;background:#c3cad6;width:' + (c.silverN / maxTot * 100) + '%'), b: this.css('height:100%;background:#c9895b;width:' + (c.bronzeN / maxTot * 100) + '%'),
       onOpen: () => this.setState({drawer: {type: 'club', name: c.name}})})), none: medRows.length === 0};
@@ -503,7 +506,7 @@
     const placeName = ['', 'Gold', 'Silver', 'Bronze'];
     v.em = Object.values(newMed).sort((a, b) => a.place - b.place).slice(0, 4).map(m => { const a = D.athletes[m.a] || {}, c = D.clubs[F.ec(m.e, m.a)];
       return {name: a.name || '—', club: c ? c.name : '—', meta: (m.age || '—') + ' · ' + this.divDisc(m.div), initials: this.initials(a.name),
-        txt: 'First medal on record: ' + placeName[m.place].toLowerCase() + ' in ' + (m.g === 'F' ? 'Female ' : 'Male ') + this.wLabel(m.div) + ' at ' + ((evById[m.e] || {}).name || 'an event') + '.',
+        txt: 'First medal on record: ' + placeName[m.place].toLowerCase() + ' in ' + (m.g === 'F' ? 'Female ' : 'Male ') + this.wOf(m) + ' at ' + ((evById[m.e] || {}).name || 'an event') + '.',
         mv: placeName[m.place] + ' · new medallist', prog: '', bar: this.css('display:none'),
         onOpen: () => this.setState({drawer: {type: 'ath', idx: m.a}})}; });
     v.emNone = v.em.length === 0;
@@ -596,7 +599,7 @@
     if (actAll >= 5 && f.gender === 'All') ins.push(['Participation', 'Female athletes make up ' + (actF / actAll * 100).toFixed(1) + '% of this season’s entrants.', fmt(actF) + ' female athlete' + (actF === 1 ? '' : 's'), 'Show female athletes', '#1f7fa0', () => this.setFilters({gender: 'Female'}, 'Filtered to female athletes')]);
     const bigDiv = F.divisions.slice().sort((a, b) => b.athletes.length - a.athletes.length)[0];
     if (bigDiv && bigDiv.athletes.length >= 2) ins.push(['Categories', 'The most entered division is ' + (bigDiv.g === 'F' ? 'Female ' : 'Male ') + bigDiv.div + (bigDiv.age ? ' · ' + bigDiv.age : '') + '.', bigDiv.athletes.length + ' entrants', 'Filter to this division', '#8a6d20',
-      () => this.setFilters({disc: this.divDisc(bigDiv.div), gender: bigDiv.g === 'F' ? 'Female' : 'Male', age: bigDiv.age || 'All', weight: this.wLabel(bigDiv.div)}, 'Filtered to ' + bigDiv.div)]);
+      () => this.setFilters({disc: this.divDisc(bigDiv.div), gender: bigDiv.g === 'F' ? 'Female' : 'Male', age: bigDiv.age || 'All', weight: this.wOf(bigDiv)}, 'Filtered to ' + bigDiv.div)]);
     const eff = medRows.filter(c => c.athletes > 0).sort((a, b) => b.medals / b.athletes - a.medals / a.athletes)[0];
     if (eff) ins.push(['Clubs', eff.name + ' has the highest medal efficiency.', (eff.medals / eff.athletes).toFixed(2) + ' medals per athlete', 'Open club', '#94701a', () => this.setState({drawer: {type: 'club', name: eff.name}})]);
     const topBody = geoRows.slice().sort((a, b) => b.entries - a.entries)[0];
@@ -614,7 +617,7 @@
       if (c) { const meds = F.medals.filter(m => F.ec(m.e, m.a) === c.i).sort((a, b) => a.place - b.place);
         d = {eyebrow: 'Club preview', title: c.name, sub: c.region + (c.affiliated ? ' · affiliated' : ' · not yet on the platform') + (c.medals ? ' · score ' + c.score.toFixed(1) : ''),
           stats: [['Registered athletes', fmt(c.athletes)], ['Competition entries', fmt(c.entries)], ['Bouts won', fmt(c.wins) + ' of ' + fmt(c.bouts)], ['Medals', fmt(c.medals) + ' (' + c.gold + ' gold)'], ['Participation rate', c.athletes ? c.part + '%' : '—'], ['Ranking trend', '—']],
-          listTitle: 'Medallists this season', list: meds.slice(0, 12).map(m => ({a: ((D.athletes[m.a] || {}).name || '—') + ' · ' + placeName[m.place], b: (m.g === 'F' ? 'Female ' : 'Male ') + this.wLabel(m.div) + ' · ' + ((evById[m.e] || {}).name || '')})),
+          listTitle: 'Medallists this season', list: meds.slice(0, 12).map(m => ({a: ((D.athletes[m.a] || {}).name || '—') + ' · ' + placeName[m.place], b: (m.g === 'F' ? 'Female ' : 'Male ') + this.wOf(m) + ' · ' + ((evById[m.e] || {}).name || '')})),
           cta: 'Filter page to this club', onCta: () => { this.setFilters({club: c.name, region: 'All regions'}, 'Filtered to ' + c.name); this.setState({drawer: null}); }}; } }
     else if (dr && dr.type === 'comp') { const e = D.events.find(x => x.label === dr.name);
       if (e) { const en = entByEv[e.i] || {a: new Set(), c: new Set()}, dv = divByEv[e.i] || {t: 0, d: 0}, meds = F.medals.filter(m => m.e === e.i);
@@ -629,7 +632,7 @@
         const c = D.clubs[a.club];
         d = {eyebrow: 'Athlete preview', title: a.name || '—', sub: (c ? c.name : '—') + ' · ' + (a.age || 'Age not recorded'),
           stats: [['Medals', fmt(meds.length)], ['Bouts won', fmt(won)], ['Bouts lost', fmt(lost)], ['Entries', fmt(D.entries.filter(x => x.a === dr.idx && x.st === 'Active').length)], ['Age category', a.age || '—'], ['Current rank', '—']],
-          listTitle: 'Medals on record', list: meds.map(m => ({a: placeName[m.place] + ' · ' + (m.g === 'F' ? 'Female ' : 'Male ') + this.wLabel(m.div), b: (evById[m.e] || {}).name || ''})), cta: '', onCta: () => {}}; } }
+          listTitle: 'Medals on record', list: meds.map(m => ({a: placeName[m.place] + ' · ' + (m.g === 'F' ? 'Female ' : 'Male ') + this.wOf(m), b: (evById[m.e] || {}).name || ''})), cta: '', onCta: () => {}}; } }
     if (d) { d.stats = d.stats.map(([l, x]) => ({label: l, value: x})); d.hasCta = !!d.cta; d.hasList = d.list.length > 0; v.dw = d; }
     else { v.drawerOpen = false; v.dw = {stats: [], list: []}; }
     v.closeDrawer = () => this.setState({drawer: null});

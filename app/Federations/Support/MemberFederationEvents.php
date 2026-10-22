@@ -20,8 +20,8 @@ use Illuminate\Support\Facades\DB;
  * member's clubs is an approved member of.
  *
  *   · listed from the moment it is created until it ENDS — past its end date
- *     (or start date, when it has no end) or marked Completed, it is gone,
- *     never kept as "past";
+ *     (or start date, when it has no end) or marked Completed. From then on
+ *     it is answered by past() instead — the list's Past tab (2026-10-18);
  *   · the card opens the federation's own public invitation page for the
  *     event — or, once the event runs as a platform event
  *     (FederationPlatformEvent), that event's own /me/events page;
@@ -43,7 +43,22 @@ class MemberFederationEvents
         return rescue(fn () => self::resolve($user), [], report: true);
     }
 
-    private static function resolve(User $user): array
+    /**
+     * The same member's federation events that have ENDED, most recent first
+     * and capped like the finished club events — each card marked `ended`.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public static function past(User $user): array
+    {
+        if (! config('federations.enabled')) {
+            return [];
+        }
+
+        return rescue(fn () => self::resolve($user, true), [], report: true);
+    }
+
+    private static function resolve(User $user, bool $ended = false): array
     {
         // The member's clubs: the ones they belong to, own, or administer.
         $tenants = DB::table('memberships')->where('user_id', $user->id)->where('status', 'active')->pluck('tenant_id')
@@ -82,10 +97,13 @@ class MemberFederationEvents
 
         $events = FederationEvent::with('federation:id,parent_id,name,short_name,color,currency,timezone', 'federation.parent:id,currency')
             ->whereIn('federation_id', array_unique($ids))
-            ->where('status', '!=', 'Completed')
+            ->when(! $ended, fn ($q) => $q->where('status', '!=', 'Completed'))
             ->get()
-            ->filter(fn (FederationEvent $e) => ! $e->hasEnded($now))
+            ->filter(fn (FederationEvent $e) => $e->hasEnded($now) === $ended)
             ->values();
+        if ($ended) {
+            $events = $events->sortByDesc(fn (FederationEvent $e) => (string) ($e->starts_on ?? ''))->take(40)->values();
+        }
 
         // Paid featuring: an approved federation event may take the spotlight too.
         $featured = class_exists(\App\Events\Support\EventFeaturing::class)
@@ -111,8 +129,8 @@ class MemberFederationEvents
                 && ! isset($mayList[$e->club_event_id]) && ! in_array((int) $e->federation_id, array_map('intval', (array) $run), true))->values();
         }
 
-        return $events->map(function (FederationEvent $e) use ($featured, $platform, $mine) {
-            $card = self::card($e) + ['featured' => isset($featured[$e->id])];
+        return $events->map(function (FederationEvent $e) use ($featured, $platform, $mine, $ended) {
+            $card = ['ended' => $ended, 'featured' => ! $ended && isset($featured[$e->id])] + self::card($e);
             if ($ev = $platform->get($e->club_event_id)) {
                 $card['key'] = $ev->uuid;
                 $card['href'] = route('me.events.show', ['event' => $ev->uuid]);

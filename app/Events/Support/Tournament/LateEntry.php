@@ -44,7 +44,39 @@ use Illuminate\Support\Facades\DB;
  */
 class LateEntry
 {
-    public function __construct(private PropagatesResults $advancement) {}
+    /** Advancement is needed to fill a corner; growAnyway() never uses it, so may pass null. */
+    public function __construct(private ?PropagatesResults $advancement = null) {}
+
+    /**
+     * Free edit (owner, 2026-10-17: "when I drag her in and there is no slot,
+     * add a bout"): grow the ladder a round at the front even when what is
+     * already drawn has been fought. The newcomer plays in against somebody
+     * whose road is still clear when there is one, otherwise against the
+     * first competitor drawn; everybody else walks through. Existing bouts
+     * and results are not touched — the rows only shift slot.
+     *
+     * @return array{ok: bool, message?: string, category?: EventCategory, how?: string, opponent?: ?string}
+     */
+    public function growAnyway(ClubEvent $event, EventCategory $category, ClubEventRegistration $entry): array
+    {
+        if (($category->format ?: EventCategory::FORMAT_KNOCKOUT) === EventCategory::FORMAT_ROUND_ROBIN) {
+            return ['ok' => false, 'message' => __('events::events.late_entry_pool')];
+        }
+
+        $rounds = $this->rounds($category);
+        if ($rounds->isEmpty()) {
+            return ['ok' => false, 'message' => __('events::events.late_entry_no_draw')];
+        }
+
+        if ($category->matches()->get()->flatMap(fn (EventMatch $m) => $m->competitorIds())->contains($entry->id)) {
+            return ['ok' => false, 'message' => __('events::events.late_entry_already_drawn')];
+        }
+
+        $onMats = \App\Scoreboard\Fleet::matchesOnMats($event);
+        $third = $category->matches()->where('round', Advancement::ROUND_THIRD)->first();
+
+        return $this->grow($event, $category, $entry, $rounds, $onMats, $third, force: true);
+    }
 
     /**
      * Put a late entrant onto a division's board.
@@ -301,7 +333,8 @@ class LateEntry
         ClubEventRegistration $entry,
         Collection $rounds,
         array $onMats,
-        ?EventMatch $third
+        ?EventMatch $third,
+        bool $force = false
     ): array {
         $first = $rounds->first();
 
@@ -320,6 +353,19 @@ class LateEntry
                 if ($bout->{$side.'_name'}) {
                     $partner = ['index' => $i, 'side' => $side, 'name' => $bout->{$side.'_name'}];
                     break 2;
+                }
+            }
+        }
+
+        // growAnyway(): nobody with a clear road — the organiser asked for the
+        // bout regardless, so the first competitor drawn plays in.
+        if (! $partner && $force) {
+            foreach ($first as $i => $bout) {
+                foreach (['a', 'b'] as $side) {
+                    if ($bout->{$side.'_name'}) {
+                        $partner = ['index' => $i, 'side' => $side, 'name' => $bout->{$side.'_name'}];
+                        break 2;
+                    }
                 }
             }
         }

@@ -194,11 +194,22 @@ class FederationClubManager
     }
 
     /** $decision: new | link | reject. $club: the platform club's slug, for `link`. */
-    public function decide(User $by, array $access, string $key, string $decision, ?string $club): ?string
+    public function decide(User $by, array $access, string $key, string $decision, ?string $club, bool $override = false): ?string
     {
         $app = $this->resolve($access, $key);
         if (! $app instanceof FederationClubApplication || $app->status !== FederationClubApplication::STATUS_PENDING) {
             return 'That application is no longer waiting for a decision.';
+        }
+
+        // A platform club with the SAME email or phone is this club: a second
+        // one is made only on an explicit "yes, a second club" (the sheet's own
+        // confirmation sends `override`). Behind duplicates.guard.federation_links.
+        if ($decision === 'new' && ! $override && config('duplicates.guard.federation_links')) {
+            $same = collect($this->picker->matches($access, $app))
+                ->first(fn ($r) => array_intersect(['Same email', 'Same phone'], (array) ($r['reasons'] ?? [])) !== []);
+            if ($same) {
+                return $same['name'].' is already on TakeOne with the same email or phone. Link the application to it, or confirm that this is a second, different club.';
+            }
         }
 
         try {

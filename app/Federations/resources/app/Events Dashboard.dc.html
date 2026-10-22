@@ -369,6 +369,75 @@
             <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ false }}">
               <button onClick="{{ onDeleteSel }}" style="height:36px;padding:0 14px;border:1px solid #c0392b;border-radius:9px;background:#fff;font-family:inherit;font-size:.76rem;font-weight:600;color:#c0392b;cursor:pointer" style-hover="background:#c0392b;color:#fff">Delete selected ({{ selCount }})</button>
             </sc-if>
+            <sc-if value="{{ rwh.can }}" hint-placeholder-val="{{ false }}">
+              <button type="button" onClick="{{ rwh.onOpen }}" style="height:36px;padding:0 14px;border:1px solid #d5dae3;border-radius:9px;background:#fff;font-family:inherit;font-size:.76rem;font-weight:600;color:#1e2c4f;cursor:pointer;display:inline-flex;align-items:center;gap:7px" style-hover="border-color:#caa14f"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg><span>Withdrawal history</span></button>
+            </sc-if>
+            <sc-if value="{{ rwh.open }}" hint-placeholder-val="{{ false }}">
+              <div onClick="{{ rwh.onClose }}" style="position:fixed;inset:0;background:rgba(30,44,79,.55);z-index:70;display:grid;place-items:center;padding:20px">
+                <div onClick="{{ rwh.stop }}" role="dialog" aria-modal="true" aria-label="Withdrawal history" style="background:#fff;border-radius:20px;border-top:4px solid #d8b25f;max-width:620px;width:100%;max-height:88vh;overflow:auto;padding:24px 26px;box-shadow:0 30px 80px rgba(30,44,79,.4);animation:rise .22s cubic-bezier(.22,.68,.35,1) both;box-sizing:border-box;text-align:start">
+                  <div style="display:flex;align-items:center;gap:12px">
+                    <span style="width:44px;height:44px;flex:none;border-radius:12px;background:#fdf8ec;color:#8a6d20;display:grid;place-items:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg></span>
+                    <div style="flex:1;min-width:0">
+                      <h2 style="margin:0;font-size:1.15rem;font-weight:700;color:#1e2c4f">Withdrawal history</h2>
+                      <div style="margin-top:2px;font-size:.78rem;color:#6b7689">Who took athletes off this event, when, and why.</div>
+                    </div>
+                    <button type="button" onClick="{{ rwh.onClose }}" aria-label="Close" style="width:36px;height:36px;flex:none;border-radius:50%;border:1px solid #d5dae3;background:#fff;color:#1e2c4f;cursor:pointer;font-size:1rem;line-height:1">&#10005;</button>
+                  </div>
+                  <sc-if value="{{ rwh.loading }}" hint-placeholder-val="{{ false }}"><div style="margin-top:18px;padding:22px;text-align:center;font-size:.82rem;color:#6b7689">Loading…</div></sc-if>
+                  <sc-if value="{{ rwh.failed }}" hint-placeholder-val="{{ false }}"><div role="alert" style="margin-top:18px;padding:16px;border-radius:12px;background:#fdecea;color:#b4483c;font-size:.82rem;font-weight:600">The history could not be loaded. Try again.</div></sc-if>
+                  <sc-if value="{{ rwh.none }}" hint-placeholder-val="{{ false }}"><div style="margin-top:18px;padding:22px;text-align:center;font-size:.82rem;color:#6b7689;border:1px dashed #d5dae3;border-radius:14px">No withdrawals yet.</div></sc-if>
+                  <div style="margin-top:16px;display:grid;gap:12px">
+                    <sc-for list="{{ rwh.rows }}" as="w" hint-placeholder-count="2">
+                      <div style="border:1px solid #eef1f6;border-radius:14px;padding:14px 16px;background:#fbfcfe">
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                          <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;background:#fdecea;color:#b4483c;font-size:.72rem;font-weight:700"><span>{{ w.count }}</span> <span>{{ w.countWord }}</span></span>
+                          <sc-if value="{{ w.club }}" hint-placeholder-val="{{ false }}"><span style="padding:3px 10px;border-radius:999px;background:#eef1f6;color:#5d6880;font-size:.72rem;font-weight:700">Whole club</span></sc-if>
+                          <span style="margin-inline-start:auto;font-size:.74rem;color:#6b7689;white-space:nowrap" data-no-tr>{{ w.at }}</span>
+                        </div>
+                        <div style="margin-top:8px;font-size:.8rem;color:#1e2c4f"><span style="color:#6b7689">By</span> <b data-no-tr>{{ w.by }}</b></div>
+                        <sc-if value="{{ w.hasReason }}" hint-placeholder-val="{{ false }}">
+                          <div style="margin-top:6px;padding:8px 10px;border-radius:10px;background:#fff;border-inline-start:3px solid #d8b25f;font-size:.8rem;line-height:1.5;color:#1e2c4f;white-space:pre-wrap;overflow-wrap:anywhere" data-no-tr>{{ w.reason }}</div>
+                        </sc-if>
+                        <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px 10px" data-no-tr>
+                          <sc-for list="{{ w.names }}" as="n" hint-placeholder-count="2"><span style="font-size:.74rem;color:#5d6880">{{ n.text }}</span></sc-for>
+                          <sc-if value="{{ w.hasMore }}" hint-placeholder-val="{{ false }}"><span style="font-size:.74rem;font-weight:700;color:#6b7689">{{ w.more }}</span></sc-if>
+                        </div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ rwd.ask }}" hint-placeholder-val="{{ false }}">
+              <div onClick="{{ rwd.onCancel }}" style="position:fixed;inset:0;background:rgba(30,44,79,.55);z-index:70;display:grid;place-items:center;padding:20px">
+                <div onClick="{{ rwd.stop }}" role="alertdialog" aria-modal="true" aria-label="{{ rwd.title }}" style="background:#fff;border-radius:20px;border-top:4px solid #b4483c;max-width:480px;width:100%;max-height:88vh;overflow:auto;padding:24px 26px;box-shadow:0 30px 80px rgba(30,44,79,.4);animation:rise .22s cubic-bezier(.22,.68,.35,1) both;box-sizing:border-box;text-align:start">
+                  <div style="display:flex;align-items:center;gap:12px">
+                    <span style="width:44px;height:44px;flex:none;border-radius:12px;background:#fdecea;color:#b4483c;display:grid;place-items:center;font-size:1.3rem;font-weight:800">!</span>
+                    <div>
+                      <h2 style="margin:0;font-size:1.15rem;font-weight:700;color:#1e2c4f">{{ rwd.title }}</h2>
+                      <div style="margin-top:3px;font-size:.8rem;font-weight:700;color:#b4483c"><span>{{ rwd.count }}</span> <span>{{ rwd.countWord }}</span></div>
+                    </div>
+                  </div>
+                  <sc-if value="{{ rwd.hasHidden }}" hint-placeholder-val="{{ false }}">
+                    <div role="alert" style="margin-top:14px;padding:10px 12px;border-radius:12px;background:#fff4e5;border:1px solid #f2c98a;color:#8a4b08;font-size:.8rem;font-weight:700;line-height:1.5">&#9888; <span>{{ rwd.hidden }}</span> <span>of them are hidden by your filters.</span> <span>Check the list below before you go on.</span></div>
+                  </sc-if>
+                  <p style="margin:14px 0 10px;font-size:.82rem;line-height:1.6;color:#5d6880">They are taken off this event: out of its participant list, their division and the draw. Your name, the time and your reason are recorded.</p>
+                  <div style="padding:10px 12px;border-radius:12px;background:#f7f8fb;border:1px solid #eef1f6;max-height:170px;overflow:auto" data-no-tr>
+                    <sc-for list="{{ rwd.names }}" as="n" hint-placeholder-count="2"><div style="font-size:.8rem;font-weight:600;color:#1e2c4f;padding:3px 0">{{ n.text }}</div></sc-for>
+                    <sc-if value="{{ rwd.hasMore }}" hint-placeholder-val="{{ false }}"><div style="font-size:.76rem;color:#6b7689;padding-top:3px">{{ rwd.more }}</div></sc-if>
+                  </div>
+                  <label style="display:block;margin:16px 0 6px;font-size:.8rem;color:#1e2c4f">Reason <span style="color:#b4483c">*</span></label>
+                  <textarea value="{{ rwd.reason }}" onChange="{{ rwd.onReason }}" maxlength="500" rows="3" placeholder="Why are they being withdrawn?" style="width:100%;border:1px solid #d5dae3;border-radius:11px;padding:10px 14px;font-family:inherit;font-size:.86rem;color:#1e2c4f;outline:none;box-sizing:border-box;resize:vertical" style-focus="border-color:#b4483c;box-shadow:0 0 0 3px rgba(180,72,60,.18)"></textarea>
+                  <label style="display:block;margin:14px 0 6px;font-size:.8rem;color:#1e2c4f">Type <b style="letter-spacing:.06em;color:#b4483c">DELETE</b> to confirm</label>
+                  <input value="{{ rwd.typed }}" onChange="{{ rwd.onTyped }}" autocomplete="off" spellcheck="false" placeholder="DELETE" style="width:100%;height:46px;border:1px solid #e3c4bf;border-radius:11px;padding:0 14px;font-family:inherit;font-size:.9rem;font-weight:700;letter-spacing:.08em;color:#1e2c4f;outline:none;box-sizing:border-box" style-focus="border-color:#b4483c;box-shadow:0 0 0 3px rgba(180,72,60,.18)">
+                  <sc-if value="{{ rwd.hasMsg }}" hint-placeholder-val="{{ false }}"><div role="alert" style="margin-top:10px;font-size:.8rem;font-weight:600;color:#b4483c">{{ rwd.msg }}</div></sc-if>
+                  <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px">
+                    <button type="button" onClick="{{ rwd.onCancel }}" style="height:42px;padding:0 18px;border-radius:11px;border:1px solid #d5dae3;background:#fff;font-family:inherit;font-size:.84rem;font-weight:600;color:#1e2c4f;cursor:pointer">Cancel</button>
+                    <button type="button" onClick="{{ rwd.onGo }}" aria-disabled="{{ rwd.disabled }}" style="{{ rwd.goStyle }}">{{ rwd.goLabel }}</button>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
             <sc-if value="{{ rp.can }}" hint-placeholder-val="{{ false }}">
               <div style="position:relative">
                 <button type="button" onClick="{{ rp.toggle }}" aria-haspopup="menu" aria-expanded="{{ rp.open }}" style="height:40px;padding:0 16px;border:1px solid #d5dae3;border-radius:11px;font-family:inherit;font-size:.8rem;font-weight:700;color:#1e2c4f;background:#fff;cursor:pointer;display:inline-flex;align-items:center;gap:7px" style-hover="border-color:#caa14f"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>{{ rp.label }}<span style="font-size:.7rem;color:#6b7689">&#9662;</span></button>
@@ -2898,6 +2967,9 @@ class Component extends DCLogic {
     const setF = k => e => this.setState({cmF: {...(this.state.cmF || {}), [k]: e.target.value}, cmMsg: null});
     const upcoming = (cmD && cmD.upcoming) || [];
     const matchKeys = new Set(((cmD && cmD.matches) || []).map(r => r.key));
+    // A platform club with the SAME email or phone is this club: creating a
+    // second one needs its own, explicit confirmation (duplicates.guard).
+    const sameContact = pending ? ((cmD.matches || []).find(r => (r.reasons || []).some(w => w === 'Same email' || w === 'Same phone')) || null) : null;
     const cm = !cmS ? {open: false} : {
       open: true, close: closeMgr,
       eyebrow: pending ? 'Club application' : 'Affiliated club',
@@ -2937,7 +3009,7 @@ class Component extends DCLogic {
       rejectLabel: busy === 'reject' ? 'Refusing\u2026' : conf === 'reject' ? 'Tap again to refuse' : 'Refuse',
       rejectStyle: danger(conf === 'reject', busy === 'reject'),
       onReject: () => act('reject', 'decide', {club: cmS.key, decision: 'reject'}, () => done('Application refused.')),
-      newLabel: busy === 'new' ? 'Approving\u2026' : conf === 'new' ? 'Confirm: create a new club' : 'Approve as a new club',
+      newLabel: busy === 'new' ? 'Approving\u2026' : conf === 'new' ? (sameContact ? 'Create a SECOND club beside ' + sameContact.name : 'Confirm: create a new club') : 'Approve as a new club',
       newStyle: Object.assign(gold(busy === 'new'), {marginLeft: 'auto'}),
       canDelete: pending && !!(FS.canDeleteClubs && FS.canDeleteClubs()),
       deleteNote: (() => {
@@ -2954,7 +3026,7 @@ class Component extends DCLogic {
       deleteLabel: busy === 'delete' ? 'Deleting\u2026' : conf === 'delete' ? 'Tap again to delete for good' : 'Delete this club',
       deleteStyle: Object.assign(danger(conf === 'delete', busy === 'delete'), cmD && cmD.deletion && cmD.deletion.blocked ? {opacity: .45, cursor: 'not-allowed'} : {}),
       onDelete: () => { if (cmD && cmD.deletion && cmD.deletion.blocked) return; act('delete', 'delete', {club: cmS.key}, () => done((cmS.name || 'The club') + ' was deleted.')); },
-      onApproveNew: () => act('new', 'decide', {club: cmS.key, decision: 'new'}, () => done((cmS.name || 'The club') + ' is now a TakeOne club.'))
+      onApproveNew: () => act('new', 'decide', {club: cmS.key, decision: 'new', override: sameContact ? 1 : 0}, () => done((cmS.name || 'The club') + ' is now a TakeOne club.'))
     };
     return {
       ...addVals,
@@ -4928,6 +5000,72 @@ class Component extends DCLogic {
       this.loadClubRegs();
     };
     const selIds = Object.keys(rsel).filter(id => rsel[id]);
+    // Withdrawing asks for the word DELETE typed AND a reason — the server
+    // refuses the request without either, and records who did it and why.
+    const wdAsk = s.regWdAsk || null, wdBusy = !!s.regWdBusy;
+    const wdTypedOk = (s.regWdTyped || '').trim() === 'DELETE';
+    const wdReasonOk = (s.regWdReason || '').trim().length >= 5;
+    const wdReady = wdTypedOk && wdReasonOk && !wdBusy;
+    const askWithdraw = ids => { if (ids.length && !wdBusy) this.setState({regWdAsk: {ids: ids.slice()}, regWdTyped: '', regWdReason: '', regWdMsg: ''}); };
+    // Withdrawal history: read from the server each time it is opened.
+    const whCan = !!(window.TakeOneFed && window.TakeOneFed.canSeeWithdrawals && window.TakeOneFed.canSeeWithdrawals()) && !!(sel && sel.id);
+    const loadHistory = () => {
+      const evId = sel && sel.id;
+      if (!evId || !window.TakeOneFed) return;
+      this.setState({regWhLoading: true});
+      window.TakeOneFed.withdrawals(evId).then(r => this.setState({regWhLoading: false, regWhFailed: !r.ok, regWhRows: r.rows, regWhFor: evId}));
+    };
+    const whRows = (s.regWhFor === (sel && sel.id) ? (s.regWhRows || []) : []);
+    const rwh = {
+      can: whCan, open: !!s.regWhOpen, stop: e => e.stopPropagation(),
+      loading: !!s.regWhLoading, failed: !s.regWhLoading && !!s.regWhFailed,
+      none: !s.regWhLoading && !s.regWhFailed && whRows.length === 0,
+      rows: whRows.map(w => ({
+        at: w.at || '', by: w.by || '—', count: String(w.count || 0), countWord: w.count === 1 ? 'athlete' : 'athletes',
+        club: w.scope === 'club', reason: w.reason || '', hasReason: !!w.reason,
+        names: (w.athletes || []).slice(0, 12).map(a => ({text: a.name + (a.takeoneId ? '  ·  ' + a.takeoneId : '')})),
+        more: (w.athletes || []).length > 12 ? '+' + ((w.athletes || []).length - 12) : '', hasMore: (w.athletes || []).length > 12
+      })),
+      onOpen: () => { this.setState({regWhOpen: true}); loadHistory(); },
+      onClose: () => this.setState({regWhOpen: false})
+    };
+    const rwd = {
+      ask: !!wdAsk, stop: e => e.stopPropagation(),
+      title: 'Withdraw from this event?',
+      count: wdAsk ? String(wdAsk.ids.length) : '', countWord: wdAsk && wdAsk.ids.length === 1 ? 'athlete' : 'athletes',
+      // A selection outlives a filter change: say so when some of the chosen are not on screen.
+      ...(() => { const vis = new Set(filteredRegs.map(r => String(r.id))); const n = wdAsk ? wdAsk.ids.filter(id => !vis.has(String(id))).length : 0;
+        return {hasHidden: n > 0, hidden: String(n)}; })(),
+      names: wdAsk ? wdAsk.ids.slice(0, 8).map(id => { const r = s.regs.find(x => String(x.id) === String(id)); return {text: r ? r.name + (r.club ? '  ·  ' + r.club : '') : String(id)}; }) : [],
+      hasMore: !!(wdAsk && wdAsk.ids.length > 8),
+      more: wdAsk && wdAsk.ids.length > 8 ? '+' + (wdAsk.ids.length - 8) : '',
+      reason: s.regWdReason || '', onReason: e => this.setState({regWdReason: e.target.value, regWdMsg: ''}),
+      typed: s.regWdTyped || '', onTyped: e => this.setState({regWdTyped: e.target.value, regWdMsg: ''}),
+      msg: s.regWdMsg || '', hasMsg: !!s.regWdMsg,
+      disabled: wdReady ? 'false' : 'true',
+      goLabel: wdBusy ? 'Withdrawing…' : 'Withdraw',
+      goStyle: this.cssToObj('height:42px;padding:0 20px;border-radius:11px;font-family:inherit;font-size:.84rem;font-weight:700;color:#fff;background:#b4483c;border:1px solid #b4483c;' + (wdBusy ? 'opacity:.6;cursor:wait' : (wdReady ? 'cursor:pointer' : 'opacity:.35;cursor:not-allowed'))),
+      onGo: () => {
+        const st = this.state, a = st.regWdAsk;
+        if (!a || st.regWdBusy) return;
+        if ((st.regWdReason || '').trim().length < 5) { this.setState({regWdMsg: 'Say why they are being withdrawn (at least 5 characters).'}); return; }
+        if ((st.regWdTyped || '').trim() !== 'DELETE') { this.setState({regWdMsg: 'Type DELETE to confirm.'}); return; }
+        if (!window.TakeOneFed) { this.setState({regWdMsg: 'Not connected to the server. Nobody was withdrawn.'}); return; }
+        this.setState({regWdBusy: true, regWdMsg: ''});
+        window.TakeOneFed.withdrawIntent = {reason: st.regWdReason.trim(), confirm: 'DELETE', done: r => {
+          if (r.ok) { this.setState({regWdBusy: false, regWdAsk: null, regWdTyped: '', regWdReason: ''}); if (this.state.regWhOpen) loadHistory(); }
+          else this.setState({regWdBusy: false, regWdMsg: r.message || 'Nobody was withdrawn. Try again.'});
+        }};
+        deleteRegs(a.ids);
+        // The bridge takes the intent synchronously when the write drops someone;
+        // still here means nothing reached the server.
+        if (window.TakeOneFed.withdrawIntent) {
+          window.TakeOneFed.withdrawIntent = null;
+          this.setState({regWdBusy: false, regWdMsg: 'Nobody was withdrawn — these entries are not on the server.'});
+        }
+      },
+      onCancel: () => { if (!this.state.regWdBusy) this.setState({regWdAsk: null, regWdTyped: '', regWdReason: '', regWdMsg: ''}); }
+    };
     const dirByTk = {};
     ((window.TakeOneFed && window.TakeOneFed.athleteDirectory) ? window.TakeOneFed.athleteDirectory() : []).forEach(a => { if (a.tk) dirByTk[a.tk] = a; });
     let regNames = null; try { regNames = new Intl.DisplayNames(['en'], {type: 'region'}); } catch (e) {}
@@ -5244,8 +5382,9 @@ class Component extends DCLogic {
         filteredRegs.forEach(r => { next[r.id] = !all; });
         this.setState({regSel: next});
       },
-      onDeleteSel: () => deleteRegs(selIds),
-      onClearAll: () => { if (window.confirm('Delete ALL ' + s.regs.length + ' registrations? This clears the test data.')) deleteRegs(s.regs.map(r => r.id)); },
+      onDeleteSel: () => askWithdraw(selIds),
+      onClearAll: () => askWithdraw(s.regs.map(r => r.id)),
+      rwd, rwh,
       regViewList: (s.regView || 'list') === 'list', regViewGroups: s.regView === 'groups',
       regViewOpts: [['list','All athletes'],['groups','By weight category']].map(([id, label]) => ({label,
         style: this.chipStyle((s.regView || 'list') === id), onClick: () => this.setState({regView: id})})),

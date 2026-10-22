@@ -11,7 +11,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Title;
 
 #[Title('One division per person')]
-#[Description('Switch an event\'s "one division per person" rule on or off (App\\Events\\Support\\OneDivisionRule). On: nobody can be placed in a second division\'s bracket — arranging, admitting, copying and the draw desk all refuse it. Off (the default): a person may stand in several. The same switch as the federation Draw tab and the draw desk. Only the event\'s organiser may change it.')]
+#[Description('Switch an event\'s "one division per person" rule on or off (App\\Events\\Support\\OneDivisionRule). On: nobody can be placed in a second division\'s bracket — arranging, admitting, copying and the draw desk all refuse it. Off (the default): a person may stand in several. The same switch as the federation Draw tab and the draw desk. Turning it on also returns `conflicts`: everybody already standing in two divisions, with the division each one fits. Turning it on also returns `conflicts`: everybody ALREADY standing in two divisions, with the division each one fits. Only the event\'s organiser may change it.')]
 class SetEventOneDivisionTool extends BaseTool
 {
     protected bool $isWrite = true;
@@ -48,6 +48,8 @@ class SetEventOneDivisionTool extends BaseTool
 
         return Response::json([
             'one_division_per_person' => (bool) $event->fresh()->one_division_per_person,
+            // Anybody ALREADY in two divisions (the switch only refuses new placements).
+            'conflicts' => $validated['on'] ? \App\Events\Support\OneDivisionRule::conflicts($event) : [],
         ]);
     }
 }

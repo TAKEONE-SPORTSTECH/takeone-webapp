@@ -102,6 +102,8 @@ return [
     'ctl_reset' => 'Réinitialiser',
     'ctl_result_pending' => 'Gagnant · non enregistré',
     'ctl_resync' => 'Resynchroniser',
+    'ctl_unload' => 'Retirer le combat',
+    'ctl_unload_confirm' => 'Touchez encore pour retirer',
     'ctl_resync_hint' => 'Les modifications apparaissent instantanément sur le tableau. Si un écran semble bloqué, resynchroniser recharge tous les tableaux de ce tapis.',
     'ctl_resynced' => 'Synchronisé ✓',
     'ctl_round' => 'Tour',

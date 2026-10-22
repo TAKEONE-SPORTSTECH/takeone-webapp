@@ -102,6 +102,8 @@ return [
     'ctl_reset' => '重置',
     'ctl_result_pending' => '获胜者 · 未归档',
     'ctl_resync' => '重新同步',
+    'ctl_unload' => '卸下比赛',
+    'ctl_unload_confirm' => '再点一次以卸下',
     'ctl_resync_hint' => '更改会立即显示在计分板上。如果屏幕看起来卡住了，请重新同步以重新加载此场地上的所有计分板。',
     'ctl_resynced' => '已同步 ✓',
     'ctl_round' => '回合',

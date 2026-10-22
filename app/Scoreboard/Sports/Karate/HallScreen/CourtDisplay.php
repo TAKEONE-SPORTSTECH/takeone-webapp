@@ -176,16 +176,18 @@ class CourtDisplay
         /*
          * One source for both halves of the same fact — the flag and the word.
          *
-         * Three candidates, in this order:
+         * Three candidates, in the BRACKET's order (BracketView::$flags, then
+         * its bout copy), so the wall and the draw never fly different flags:
          *
-         *  1. What the DRAW recorded, or an official typed at the table. An
-         *     override entered by a human beats anything derived.
-         *  2. The country of the club they compete for. An athlete representing
-         *     a Bahraini club is on the sheet as Bahrain whatever their passport
-         *     says — that rule is unchanged and still comes before the passport.
-         *  3. ClubEventRegistration::countryCode(), which is the ONE place the
-         *     rest of the rule lives: the entry's own country, then the
-         *     ATHLETE'S NATIONALITY.
+         *  1. ClubEventRegistration::countryCode(), the ONE place the rule
+         *     lives — and the only one that obeys the event's flag switch
+         *     (App\Events\Support\FlagSource): the club's country, or the
+         *     athlete's nationality when the organiser chose nationalities.
+         *  2. The country of the club the organiser wrote down.
+         *  3. What the DRAW recorded on the bout — a copy, so last.
+         *
+         * (Until 2026-10-17 the bout copy and the club came first, so a wall
+         * kept the club's flag after the organiser switched to nationalities.)
          *
          * ⚠️ The third was missing here, and it is most of a real field. This
          * event has 84 bouts with no country on the draw and seven written-down
@@ -196,9 +198,9 @@ class CourtDisplay
          * always read through countryCode(); the wall did not.
          */
         $country = (string) (
-            $bout->{$side.'_country'}
+            ($entry?->countryCode() ?: '')
             ?: ($named['country'] ?? '')
-            ?: ($entry?->countryCode() ?: '')
+            ?: $bout->{$side.'_country'}
         );
 
         return [

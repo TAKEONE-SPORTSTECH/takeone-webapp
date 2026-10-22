@@ -539,13 +539,20 @@ class Scoring
         // organiser wrote down for this event stands in, name and crest alike.
         $other = (! $club && $id) ? ($written[$id] ?? null) : null;
 
+        // The flag in the bracket's order (as HallScreen\CourtDisplay does):
+        // countryCode() first, because it alone obeys the event's flag switch
+        // (App\Events\Support\FlagSource) — club country, or the athlete's
+        // nationality. Then the written-down club, then the bout's copy.
+        $country = (string) (($reg?->countryCode() ?: '')
+            ?: ($club?->country ?: ($other['country'] ?? ''))
+            ?: ($match->{$side.'_country'} ?: ''));
+
         return [
             'name' => $match->{$side.'_name'} ?: ($user?->full_name ?? $user?->name ?? ''),
             'club' => $club?->club_name ?? ($other['name'] ?? ''),
-            // The club's country, never the person's passport: they are here
-            // as their club, and that is what the hall is told.
-            'country' => ($club?->country ?: ($other['country'] ?? null)) ?: ($match->{$side.'_country'} ?: ''),
-            'flag' => strtolower((string) ($match->{$side.'_country'} ?: $club?->country ?: ($other['country'] ?? ''))) ?: null,
+            // One answer for the word and the flag (see $country above).
+            'country' => $country,
+            'flag' => strtolower((string) (\App\Support\Countries::iso2($country) ?: $country)) ?: null,
             // The person's own nationality, as an alpha-2 flag code. Read by
             // the Combat style's VS arena only (the owner's call, 2026-10-16):
             // the intro presents the athlete, the scoreboard still presents

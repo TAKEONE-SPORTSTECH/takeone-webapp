@@ -102,6 +102,8 @@ return [
     'ctl_reset' => 'Reiniciar',
     'ctl_result_pending' => 'Vencedor · não arquivado',
     'ctl_resync' => 'Sincronizar novamente',
+    'ctl_unload' => 'Retirar combate',
+    'ctl_unload_confirm' => 'Toque de novo para retirar',
     'ctl_resync_hint' => 'As mudanças aparecem no placar instantaneamente. Se uma tela parecer travada, sincronizar recarrega todos os quadros nesta mesa.',
     'ctl_resynced' => 'Sincronizado ✓',
     'ctl_round' => 'Rodada',

@@ -9,9 +9,17 @@
     const all = Math.max(1, list.reduce((n, c) => n + (c.athletes || 0), 0));
     const max = Math.max(1, ...list.map(c => c.athletes || 0));
     const inits = n => String(n || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+    // Ticked clubs, by the name their certificate is held under (EventCertificates::holderKey).
+    const clubKey = c => 'n:' + String(c.name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+    const cPicked = st.clubSelEv === (sel && sel.id) ? (st.clubSel || {}) : {};
+    const cTick = on => css('width:18px;height:18px;border-radius:5px;cursor:pointer;display:grid;place-items:center;font-size:.66rem;font-weight:700;flex:none;padding:0;font-family:inherit;'
+      + (on ? 'background:linear-gradient(100deg,#edcd85,#d0a854);color:#1e2c4f;border:0;box-shadow:0 2px 6px rgba(202,161,79,.3)' : 'background:#fff;color:transparent;border:1.5px solid #c3cad6'));
+    const setPick = next => this.setState({clubSel: next, clubSelEv: sel && sel.id});
     const clubs = list.map((c, i) => ({
       rank: String(i + 1), name: c.name, hasContact: !!c.contact, contact: c.contact || '', contactRole: c.contactRole || '', athletes: String(c.athletes), male: String(c.male), female: String(c.female),
       hasLogo: !!c.logo, noLogo: !c.logo, initials: inits(c.name),
+      checked: !!cPicked[clubKey(c)], checkMark: cPicked[clubKey(c)] ? '\u2713' : '', checkStyle: cTick(!!cPicked[clubKey(c)]),
+      onToggleSel: e => { if (e && e.stopPropagation) e.stopPropagation(); setPick({...cPicked, [clubKey(c)]: !cPicked[clubKey(c)]}); },
       share: Math.round(100 * (c.athletes || 0) / all) + '%',
       logoStyle: c.logo ? Object.assign(css('display:block;width:36px;height:36px;flex:none;background-size:contain;background-repeat:no-repeat;background-position:center'),
         {backgroundImage: 'url("' + String(c.logo).replace(/["\\]/g, '') + '")'}) : {},
@@ -39,7 +47,12 @@
     }));
     const sum = k => list.reduce((n, c) => n + (c[k] || 0), 0);
     const ce = st.clubEd;
+    const allPicked = list.length > 0 && list.every(c => cPicked[clubKey(c)]);
     return {clubs, empty: !clubs.length, hasRows: !!clubs.length, total: String(clubs.length), canRemove,
+      allChecked: allPicked, allCheckMark: allPicked ? '\u2713' : '', allCheckStyle: cTick(allPicked),
+      onToggleAll: () => { const next = {...cPicked}; list.forEach(c => { next[clubKey(c)] = !allPicked; }); setPick(next); },
+      // The clubs' own printables — the club certificate of thanks (designVals, event-officials.js).
+      design: this.designVals(sel, 'clubs'),
       edOpen: !!(ce && ce.src), edSrc: ce && ce.src ? ce.src : '', onEdClose: () => this.setState({clubEd: null}), edStop: ev => ev.stopPropagation(),
       flash: st.clubFlash || '', hasFlash: !!st.clubFlash,
       athletes: String(sum('athletes')), male: String(sum('male')), female: String(sum('female'))};

@@ -26,10 +26,10 @@ abstract class AbstractCombatSport implements CombatSport
     public function officialRoles(): array
     {
         return [
-            ['key' => 'referee',    'label' => __('events::events.official_referee')],
-            ['key' => 'judge',      'label' => __('events::events.official_judge')],
-            ['key' => 'timekeeper', 'label' => __('events::events.official_timekeeper')],
-            ['key' => 'recorder',   'label' => __('events::events.official_recorder')],
+            ['key' => 'referee',    'label' => __('events::events.official_referee'), 'section' => 'referees'],
+            ['key' => 'judge',      'label' => __('events::events.official_judge'), 'section' => 'referees'],
+            ['key' => 'timekeeper', 'label' => __('events::events.official_timekeeper'), 'section' => 'table'],
+            ['key' => 'recorder',   'label' => __('events::events.official_recorder'), 'section' => 'table'],
         ];
     }
 

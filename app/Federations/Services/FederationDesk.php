@@ -10,7 +10,9 @@ use App\Federations\Models\FederationEntry;
 use App\Federations\Models\FederationEntryAthlete;
 use App\Federations\Models\FederationEvent;
 use App\Federations\Models\FederationTransfer;
+use App\Federations\Models\FederationWithdrawal;
 use App\Members\Models\User;
+use App\Federations\Support\NationalIdMask;
 use App\Members\Support\ProfilePhoto;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -85,7 +87,9 @@ class FederationDesk
             'directory' => $this->directory($ids, $athleteIds, $clubs, $this->sportsOf($access), $viewer),
             'officials' => $this->officials($entries),
             'clubs' => $clubs->map(fn ($c) => $this->registry->club($c) + ['rosterCount' => $this->headcount($c)])->concat($extra)->values()->all(),
-            'athletes' => FederationAthlete::with('user')->whereIn('id', $athleteIds)->get()->map(fn ($a) => $this->registry->athlete($a, $ids))->values()->all(),
+            // A child's national ID is masked in what the dashboard holds (NationalIdMask).
+            'athletes' => FederationAthlete::with('user')->whereIn('id', $athleteIds)->get()->map(fn ($a) => array_key_exists('natId', $row = $this->registry->athlete($a, $ids))
+                ? ['natId' => NationalIdMask::forList($row['natId'], $a->user?->birthdate)] + $row : $row)->values()->all(),
             'transfers' => $transfers->map(fn ($t) => $this->registry->transfer($t))->all(),
             'entriesByEvent' => (object) $byEvent,
             'inviteEvents' => (object) $events->mapWithKeys(fn ($e) => [$e->uuid => $this->registry->eventForInvite($e)])->all(),
@@ -269,7 +273,7 @@ class FederationDesk
                 'age' => $u?->birthdate ? $u->birthdate->age : '—',
                 'nat' => $a->nationality ?: (\App\Support\Countries::iso3($u?->nationality) ?: '—'),
                 ...$this->nationality($a->nationality ?: $u?->nationality),
-                'natId' => (string) ($a->national_id ?: ($this->cpr($u) ?: '—')),
+                'natId' => NationalIdMask::forList($a->national_id ?: ($this->cpr($u) ?: '—'), $u?->birthdate),
                 'mobile' => $this->mobile($u),
                 'email' => $u?->email ?: '—',
                 'tk' => $a->takeone_id,
@@ -321,7 +325,7 @@ class FederationDesk
                 // Profiles store ISO-2 ('BH'); athletes read ISO-3 ('BHR').
                 'nat' => \App\Support\Countries::iso3($u->nationality) ?: ($u->nationality ?: '—'),
                 ...$this->nationality($u->nationality),
-                'natId' => $this->cpr($u) ?: '—',
+                'natId' => NationalIdMask::forList($this->cpr($u) ?: '—', $u->birthdate),
                 'mobile' => $this->mobile($u),
                 'email' => $u->email ?: '—',
                 'tk' => '',
@@ -649,12 +653,6 @@ class FederationDesk
     }
 
     /**
-     * The Registrations tab's delete / clear-all. On the platform it is a
-     * withdrawal, never a deletion — and only a manager may do it.
-     *
-     * @param  array<int, array{entry?: string, athlete?: string}>  $rows
-     */
-    /**
      * Take a whole club off one event (the event's Clubs tab, owner
      * 2026-10-15): every athlete still Active on that club's entry becomes
      * Withdrawn, exactly as withdrawRegs() does one by one, and the route's
@@ -663,7 +661,7 @@ class FederationDesk
      *
      * @return int|null how many athletes were withdrawn; null when not allowed or not found
      */
-    public function withdrawClub(array $access, string $eventUuid, string $clubKey): ?int
+    public function withdrawClub(array $access, string $eventUuid, string $clubKey, ?User $by = null, ?string $ip = null): ?int
     {
         if (! $access['manager'] || ! preg_match('/^(fc|fa)-([0-9a-f-]{36})$/', $clubKey, $m)) {
             return null;
@@ -684,25 +682,105 @@ class FederationDesk
             return null;
         }
 
-        return FederationEntryAthlete::whereIn('federation_entry_id', $entries)->where('status', 'Active')
-            ->update(['status' => 'Withdrawn', 'withdrawn_at' => now()]);
+        $ids = FederationEntryAthlete::whereIn('federation_entry_id', $entries)->where('status', 'Active')->pluck('id');
+
+        return $this->recordWithdrawal($event, $ids, 'club', $by, null, $ip);
     }
 
-    public function withdrawRegs(array $access, array $rows): bool
+    /**
+     * Take the chosen athletes off their events — the Registrations tab's
+     * "Withdraw selected" and the athlete editor's "Remove from event". Always
+     * a withdrawal, never a deletion, and only a manager may do it. Every
+     * action is recorded (FederationWithdrawal): who, when, the reason they
+     * gave, and the athletes as they were named at that moment.
+     *
+     * @param  array<int, array{entry?: string, athlete?: string}>  $rows
+     * @return int|null how many athletes were withdrawn; null when not allowed
+     */
+    public function withdrawRegs(array $access, array $rows, ?User $by = null, ?string $reason = null, ?string $ip = null): ?int
     {
         if (! $access['manager']) {
-            return false;
+            return null;
         }
+        $byEvent = [];
         foreach (array_slice($rows, 0, 1000) as $r) {
             $entry = $this->entryInScope($access, is_string($r['entry'] ?? null) ? $r['entry'] : null);
             if (! $entry) {
                 continue;
             }
-            $entry->athletes()->whereHas('athlete', fn ($q) => $q->where('takeone_id', (string) ($r['athlete'] ?? '')))
-                ->where('status', 'Active')->update(['status' => 'Withdrawn', 'withdrawn_at' => now()]);
+            $ids = $entry->athletes()->whereHas('athlete', fn ($q) => $q->where('takeone_id', (string) ($r['athlete'] ?? '')))
+                ->where('status', 'Active')->pluck('id');
+            $byEvent[$entry->federation_event_id] = ($byEvent[$entry->federation_event_id] ?? collect())->merge($ids);
         }
 
-        return true;
+        $n = 0;
+        foreach ($byEvent as $eventId => $ids) {
+            $n += $this->recordWithdrawal(FederationEvent::find($eventId), $ids->unique()->values(), 'selected', $by, $reason, $ip);
+        }
+
+        return $n;
+    }
+
+    /**
+     * The event's withdrawal history, newest first — who took athletes off,
+     * when, why, and whom. Managers only; one answer (null) for "not yours"
+     * and "not there".
+     *
+     * @return array<int, array<string, mixed>>|null
+     */
+    public function withdrawals(array $access, string $eventUuid): ?array
+    {
+        $event = $access['manager'] ? $this->eventsOf($access)->firstWhere('uuid', $eventUuid) : null;
+        if (! $event) {
+            return null;
+        }
+
+        // The event's own clock, as everywhere else an event's time is shown.
+        $tz = $event->club_event_id ? (\App\Events\Models\ClubEvent::find($event->club_event_id)?->zone() ?? config('app.timezone')) : config('app.timezone');
+
+        return FederationWithdrawal::with('user:id,full_name')->where('federation_event_id', $event->id)
+            ->latest('id')->limit(100)->get()
+            ->map(fn (FederationWithdrawal $w) => [
+                'id' => $w->uuid,
+                'at' => $w->created_at?->timezone($tz)->format('j M Y, H:i'),
+                'by' => $w->user?->full_name ?: '—',
+                'scope' => $w->scope,
+                'reason' => $w->reason,
+                'count' => $w->count,
+                'athletes' => collect($w->athletes ?: [])->map(fn ($a) => ['name' => (string) ($a['name'] ?? ''), 'takeoneId' => (string) ($a['takeone_id'] ?? '')])->values()->all(),
+            ])->all();
+    }
+
+    /**
+     * Withdraw these athlete rows and write the one record that says who did
+     * it and why, in one transaction — rows without a record never happen.
+     * A bulk update on purpose: no model events fire, so nothing downstream
+     * (bouts, results, the draw) is touched by this write itself.
+     */
+    private function recordWithdrawal(?FederationEvent $event, Collection $ids, string $scope, ?User $by, ?string $reason, ?string $ip): int
+    {
+        if ($ids->isEmpty()) {
+            return 0;
+        }
+
+        return DB::transaction(function () use ($event, $ids, $scope, $by, $reason, $ip) {
+            $rows = FederationEntryAthlete::with('athlete.user:id,full_name')->whereIn('id', $ids)->where('status', 'Active')->get();
+            if ($rows->isEmpty()) {
+                return 0;
+            }
+            $w = FederationWithdrawal::create([
+                'federation_event_id' => $event?->id, 'user_id' => $by?->id, 'scope' => $scope,
+                'reason' => $reason, 'count' => $rows->count(), 'ip' => $ip,
+                'athletes' => $rows->map(fn ($r) => ['id' => $r->id, 'name' => $r->athlete?->user?->full_name, 'takeone_id' => $r->athlete?->takeone_id])->values()->all(),
+            ]);
+            FederationEntryAthlete::whereIn('id', $rows->pluck('id'))->update(['status' => 'Withdrawn', 'withdrawn_at' => now(), 'withdrawal_id' => $w->id]);
+
+            \Illuminate\Support\Facades\Log::warning('Federation athletes withdrawn', [
+                'withdrawal' => $w->uuid, 'event' => $event?->uuid, 'by' => $by?->id, 'scope' => $scope, 'count' => $w->count,
+            ]);
+
+            return $w->count;
+        });
     }
 
     /**

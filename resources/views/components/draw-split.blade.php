@@ -69,6 +69,8 @@
                 mainDivision: null,
                 other: null,             // the second board's division
                 pickerOpen: false,
+                // The picker's quick filter — the main menu's, shared (division-filter).
+                flt: { q: '', g: 'all', a1: '', a2: '', w1: '', w2: '' },
                 board: null,
 
                 // The pending drop, waiting for Move / Copy.
@@ -100,6 +102,12 @@
                     if (window.__drawSplit_transfer) document.removeEventListener('bracket:transfer', window.__drawSplit_transfer);
                     window.__drawSplit_transfer = this._onTransfer;
                     document.addEventListener('bracket:transfer', this._onTransfer);
+                    /* Opened or closed from a host's own menu — the draw desk's
+                       ⋯ sheet on a phone (owner, 2026-10-18) — through this one
+                       named event, so the menu never reaches into this scope. */
+                    if (window.__drawSplit_toggle) window.removeEventListener('draw-split:toggle', window.__drawSplit_toggle);
+                    window.__drawSplit_toggle = function () { self.toggle(); };
+                    window.addEventListener('draw-split:toggle', window.__drawSplit_toggle);
                     if (window.__drawSplit_resize) window.removeEventListener('resize', window.__drawSplit_resize);
                     window.__drawSplit_resize = this._onResize;
                     window.addEventListener('resize', this._onResize);
@@ -109,6 +117,9 @@
                 // (components/bracket/division-look), minus the division the
                 // main board already shows.
                 get choices() { return window.DrawDivisionLook.sort(this.divisions).filter(d => d.id !== this.mainDivision); },
+                get shownChoices() { return window.DrawDivisionLook.filter(this.choices, this.flt); },
+                get fltOn() { const f = this.flt; return !! (f.q || f.g !== 'all' || f.a1 !== '' || f.a2 !== '' || f.w1 !== '' || f.w2 !== ''); },
+                fltClear() { this.flt = { q: '', g: 'all', a1: '', a2: '', w1: '', w2: '' }; },
                 nameOf(id) { const d = this.divisions.find(x => x.id === id); return d ? d.name : ''; },
                 get otherName() { return this.nameOf(this.other); },
                 get otherDiv() { return this.divisions.find(x => x.id === this.other) || null; },
@@ -273,7 +284,7 @@
     <button type="button" x-show="arrange" x-cloak @click="toggle()"
             :aria-pressed="open"
             :class="open ? 'bk-ctl-on' : 'bk-ctl'"
-            class="absolute top-16 start-3 z-40 inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl border
+            class="bk-split-toggle absolute top-16 start-3 z-40 inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl border
                    text-xs font-bold shadow-md active:scale-95 transition-all"
             title="{{ __('events::events.transfer_split_hint') }}">
         <i class="bi" :class="open ? 'bi-x-lg' : 'bi-layout-split'"></i>
@@ -286,9 +297,16 @@
          x-transition:enter-start="opacity-0"
          x-transition:enter-end="opacity-100"
          class="absolute z-30 bk-frame flex flex-col"
+         {{-- ⚠️ OBJECT syntax, never a string (owner, 2026-10-18: "the split
+              is happening as I type"). A string :style REPLACES the whole style
+              attribute, and x-show hides this pane with display:none in that
+              same attribute — so when a phone's keyboard resized the screen and
+              `tall` flipped, the rewrite wiped display:none and this closed
+              pane appeared over the board. Objects set only their own
+              properties (and undo the previous set), leaving x-show's alone. --}}
          :style="tall
-            ? 'inset-inline:0; bottom:0; height:50%; border-top:3px solid #d8b25f;'
-            : 'inset-block:0; inset-inline-end:0; width:50%; border-inline-start:3px solid #d8b25f;'"
+            ? { 'inset-inline': '0', 'bottom': '0', 'height': '50%', 'border-top': '3px solid #d8b25f' }
+            : { 'inset-block': '0', 'inset-inline-end': '0', 'width': '50%', 'border-inline-start': '3px solid #d8b25f' }"
          @bracket:loaded.stop="paneLoaded()"
          @bracket:state.stop
          @bracket:match.stop>
@@ -316,9 +334,11 @@
                 </button>
                 <div x-show="pickerOpen" x-cloak x-transition.opacity.duration.120ms role="listbox"
                      class="absolute start-0 mt-2 overflow-y-auto overscroll-contain rounded-xl border border-gray-200 bg-white shadow-xl z-50 py-1"
-                     style="width: min(26rem, calc(100vw - 1.5rem)); max-height: 60vh; -webkit-overflow-scrolling: touch; touch-action: pan-y;"
+                     style="width: min(34rem, calc(100vw - 1.5rem)); max-height: 60vh; -webkit-overflow-scrolling: touch; touch-action: pan-y;"
                      @wheel.stop @touchmove.stop>
-                    <template x-for="d in choices" :key="d.id">
+                    @include('components.bracket.division-filter', ['count' => "shownChoices.length + ' / ' + choices.length"])
+                    <p x-show="shownChoices.length === 0" class="px-4 py-6 text-center text-xs text-gray-500">{{ __('events::events.div_filter_none') }}</p>
+                    <template x-for="d in shownChoices" :key="d.id">
                         <button type="button" role="option" :aria-selected="d.id === other" @click="choose(d.id)"
                                 class="flex items-start gap-2.5 px-3 py-2 text-start text-xs font-bold transition-shadow hover:shadow-md"
                                 style="display:flex; width:calc(100% - .75rem); margin:.25rem .375rem; border-radius:.6rem;"

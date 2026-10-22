@@ -102,6 +102,8 @@ return [
     'ctl_reset' => 'Sıfırla',
     'ctl_result_pending' => 'Kazanan · dosyalı değil',
     'ctl_resync' => 'Yeniden senkronize et',
+    'ctl_unload' => 'Maçı kaldır',
+    'ctl_unload_confirm' => 'Kaldırmak için tekrar dokunun',
     'ctl_resync_hint' => 'Değişiklikler puan tablosunda anında görünür. Bir ekran takılıyorsa, yeniden senkronize etme işlemi bu mat üzerindeki tüm panelleri yeniden yükler.',
     'ctl_resynced' => 'Yeniden senkronize edildi ✓',
     'ctl_round' => 'Tur',

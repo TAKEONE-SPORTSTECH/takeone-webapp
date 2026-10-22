@@ -104,6 +104,7 @@ class ClubEntryApiController extends Controller
             'entries.*.gender' => 'nullable|in:Male,Female', 'entries.*.dob' => 'nullable|string|max:10',
             'entries.*.weight' => 'nullable|numeric|min:15|max:200', 'entries.*.nat' => 'nullable|string|max:3',
             'entries.*.photo' => 'nullable|string|max:3000000', 'entries.*.types' => 'nullable|array|max:10', 'entries.*.types.*' => 'string|max:120',
+            'entries.*.phone' => 'nullable|string|max:32',
         ]);
         $entry = $this->entry($request, $event);
         $desk = ClubEntryDesks::for($event);

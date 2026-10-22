@@ -1,0 +1,39 @@
+          <!-- Resolve double entries (event-cockpit.js deVals) -->
+          <sc-if value="{{ ck.de.open }}" hint-placeholder-val="{{ false }}">
+            <div onClick="{{ ck.de.onClose }}" style="position:fixed;inset:0;z-index:88;background:rgba(11,19,43,.55)"></div>
+            <div role="dialog" aria-modal="true" aria-label="Resolve double entries" style="position:fixed;z-index:90;left:50%;top:50%;transform:translate(-50%,-50%);width:min(680px,calc(100vw - 24px));max-height:calc(100vh - 32px);display:flex;flex-direction:column;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 30px 80px rgba(11,19,43,.35)">
+              <div style="flex:none;position:relative;overflow:hidden;padding:18px 20px;background:linear-gradient(150deg,#1e2c4f,#2b3d68);color:#fff">
+                <div style="position:absolute;right:-40px;top:-50px;width:150px;height:150px;border-radius:50%;background:rgba(237,205,133,.12)"></div>
+                <div style="position:relative;display:flex;align-items:flex-start;gap:12px">
+                  <div style="min-width:0;flex:1">
+                    <div style="font-size:.66rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#edcd85">One division per person</div>
+                    <div style="font-size:1.15rem;font-weight:800;margin-top:4px">Resolve double entries &#183; {{ ck.de.count }}</div>
+                    <div style="font-size:.78rem;color:rgba(255,255,255,.8);margin-top:4px">Choose the one division each athlete competes in. They are taken out of the others.</div>
+                  </div>
+                  <button type="button" onClick="{{ ck.de.onClose }}" aria-label="Close" style="width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);color:#fff;cursor:pointer;font-family:inherit">&#10005;</button>
+                </div>
+              </div>
+              <div style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:16px">
+                <sc-if value="{{ ck.de.busy }}" hint-placeholder-val="{{ false }}"><div style="font-size:.84rem;color:#6b7689">Working&#8230;</div></sc-if>
+                <sc-if value="{{ ck.de.none }}" hint-placeholder-val="{{ false }}"><div style="font-size:.86rem;color:#2f7a4f;font-weight:600">Nobody is in two divisions any more.</div></sc-if>
+                <sc-for list="{{ ck.de.people }}" as="p" hint-placeholder-count="3">
+                  <fieldset style="border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:8px">
+                    <legend style="padding:0;margin-bottom:8px;font-size:.92rem;font-weight:700;color:#1e2c4f">{{ p.name }}</legend>
+                    <sc-for list="{{ p.opts }}" as="o" hint-placeholder-count="2">
+                      <button type="button" role="radio" aria-checked="{{ o.on }}" onClick="{{ o.onPick }}" style="{{ o.style }}"><span style="{{ o.dotStyle }}"></span><span style="min-width:0;flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:.84rem;font-weight:600;color:#1e2c4f;overflow-wrap:anywhere">{{ o.label }}</span><span style="font-size:.72rem;color:#6b7689">{{ o.note }}</span></span></button>
+                    </sc-for>
+                  </fieldset>
+                </sc-for>
+              </div>
+              <div style="flex:none;padding:14px 20px calc(14px + env(safe-area-inset-bottom));border-top:1px solid #eef1f6;display:flex;flex-direction:column;gap:10px;background:#fbfcfe">
+                <sc-if value="{{ ck.de.hasMsg }}" hint-placeholder-val="{{ false }}"><div role="alert" style="font-size:.78rem;color:#a12020">{{ ck.de.msg }}</div></sc-if>
+                <sc-if value="{{ ck.de.fought }}" hint-placeholder-val="{{ false }}">
+                  <button type="button" role="checkbox" aria-checked="{{ ck.de.agree }}" onClick="{{ ck.de.onAgree }}" style="display:flex;align-items:flex-start;gap:10px;border:0;background:transparent;font-family:inherit;text-align:start;cursor:pointer;padding:0"><span style="{{ ck.de.agreeStyle }}">{{ ck.de.agreeMark }}</span><span style="font-size:.78rem;color:#7a2e25;line-height:1.45">Some athletes already fought in a division they are leaving. Their results there will change. I understand.</span></button>
+                </sc-if>
+                <div style="display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap">
+                  <button type="button" onClick="{{ ck.de.onClose }}" style="min-height:44px;padding:0 18px;border:1px solid #d5dae3;border-radius:11px;background:#fff;font-family:inherit;font-size:.84rem;font-weight:600;color:#6b7689;cursor:pointer">Cancel</button>
+                  <button type="button" onClick="{{ ck.de.onApply }}" disabled="{{ ck.de.applyDisabled }}" style="{{ ck.de.applyStyle }}">{{ ck.de.applyLabel }}</button>
+                </div>
+              </div>
+            </div>
+          </sc-if>

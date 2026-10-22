@@ -145,6 +145,15 @@
                                     <input type="text" x-model="draft.natId" :placeholder="t.natIdPh" maxlength="40" dir="ltr"
                                            class="e-field w-full h-11 px-3.5 rounded-xl text-[14px]">
                                 </div>
+                                {{-- Optional. Somebody TakeOne already has (this phone + this name) is
+                                     entered as themselves instead of being recorded twice — and
+                                     nothing about them is shown here. --}}
+                                <div x-show="feat('matchPhone')">
+                                    <label class="inv-label"><span x-text="t.phoneMatch"></span> <span class="font-medium text-muted-foreground">· <span x-text="t.optional"></span></span></label>
+                                    <input type="tel" inputmode="tel" x-model="draft.phone" :placeholder="t.phoneMatchPh" maxlength="20" dir="ltr" autocomplete="off"
+                                           class="e-field w-full h-11 px-3.5 rounded-xl text-[14px]">
+                                    <p class="text-[11px] text-muted-foreground mt-1 m-0 leading-snug" x-text="t.phoneMatchWhy"></p>
+                                </div>
                             </div>
                         </div>
 

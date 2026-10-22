@@ -323,6 +323,10 @@ class Federations extends AbstractModule implements ContributesMessengerThreads,
                 'name' => $f->name.' · '.__('events::events.host_kind_federation'),
                 'currency' => $f->currency ?: null,
                 'timezone' => $f->timezone ?: null,
+                // The host as the rule book's category-systems door reads it
+                // (`type:id`) — the create form sent `club:federation:<uuid>`,
+                // which that door refused (422), so the weight-class preset was dead.
+                'rule_host' => 'federation:'.$f->id,
             ])->values()->all();
     }
 

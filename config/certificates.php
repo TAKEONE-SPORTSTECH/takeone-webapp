@@ -28,6 +28,13 @@ return [
     ],
     'policy' => App\Certificates\Support\CertificatePolicy::class,
     'host' => App\Certificates\Support\TakeOneHost::class,
+
+    /*
+     * A certificate type designed in the new designer (app/Printables) is drawn from
+     * that design instead of its template — only while PRINTABLES_DESIGNER is on, and
+     * only for the types that have a design. Everything else draws exactly as before.
+     */
+    'designed_pages' => App\Certificates\Support\DesignedCertificates::class,
     'notifier' => App\Certificates\Support\TakeOneNotifier::class,
     'files' => App\Certificates\Support\TakeOneFileStore::class,
     'pdf_renderer' => Ahl\Certificates\Support\DompdfRenderer::class,
@@ -59,6 +66,7 @@ return [
         'podium' => 'cert::messages.types.podium',
         'official_badge' => 'cert::messages.types.official_badge',
         'official_thanks' => 'cert::messages.types.official_thanks',
+        'club_thanks' => 'cert::messages.types.club_thanks',
         'participant_badge' => 'cert::messages.types.participant_badge',
     ],
 
@@ -73,6 +81,7 @@ return [
         'manual' => 'cert::messages.sources.manual',
         'event_entry' => 'cert::messages.sources.event_entry',
         'event_podium' => 'cert::messages.sources.event_podium',
+        'event_club_thanks' => 'cert::messages.sources.event_club_thanks',
     ],
 
     'locales' => ['en', 'ar'],

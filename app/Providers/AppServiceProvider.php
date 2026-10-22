@@ -68,6 +68,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // A certificate freezes who its holder was at the event the moment it is
+        // issued — age, weight, height, photograph (App\Certificates\Support\CertificateSnapshot).
+        \Illuminate\Support\Facades\Event::listen(
+            \Ahl\Certificates\Events\CertificateApproved::class,
+            fn ($e) => rescue(fn () => \App\Certificates\Support\CertificateSnapshot::take($e->certificate), null, true),
+        );
+
         /*
          * Aliases for polymorphic types, so a `*_type` column never holds a PHP
          * namespace. See App\Support\MorphMap for why this matters before any
@@ -109,6 +116,8 @@ class AppServiceProvider extends ServiceProvider
          */
         \App\Members\Models\Membership::observe(\App\Members\Observers\MembershipObserver::class);
         \App\Events\Models\ClubEventRegistration::observe(\App\Events\Observers\ClubEventRegistrationObserver::class);
+        // …and a division's podium onto its medallists' profiles (EVENT_PROFILE_MEDALS).
+        \App\Events\Models\EventCategory::observe(\App\Events\Observers\EventCategoryObserver::class);
 
         // A new avatar joins the profile's own pictures, whichever path set it.
         \App\Members\Models\User::observe(\App\Members\Observers\UserObserver::class);

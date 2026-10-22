@@ -1,8 +1,9 @@
 {{-- System · Light · Dark. Remembered on this device (cookie `t1_theme`) and
-     applied at once — no reload. --}}
+     applied at once — no reload. A page that locks its theme (`data-t1-lock`,
+     the event console) keeps it; the choice applies from the next page on. --}}
 <div class="t1 t1-theme" role="group" aria-label="{{ __('ui::messages.theme') }}"
-     x-data="{ th: document.documentElement.dataset.t1Theme || 'light',
-               set(v) { this.th = v; document.documentElement.dataset.t1Theme = v;
+     x-data="{ th: ((document.cookie.match(/(?:^|; )t1_theme=(light|dark|system)(?:;|$)/) || [])[1]) || 'light',
+               set(v) { this.th = v; if (! document.documentElement.dataset.t1Lock) document.documentElement.dataset.t1Theme = v;
                         document.cookie = 't1_theme=' + v + '; path=/; max-age=31536000; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : ''); } }">
     <button type="button" :class="{ on: th === 'system' }" @click="set('system')"><i class="bi bi-circle-half"></i>{{ __('ui::messages.theme_system') }}</button>
     <button type="button" :class="{ on: th === 'light' }" @click="set('light')"><i class="bi bi-sun"></i>{{ __('ui::messages.theme_light') }}</button>

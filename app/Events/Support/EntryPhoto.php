@@ -239,6 +239,12 @@ class EntryPhoto
             return true;
         }
 
+        // An issued certificate shows the face its holder had then (CertificateSnapshot).
+        if (Schema::hasTable('certificates')
+            && DB::table('certificates')->where('details->snapshot->photo->path', $path)->exists()) {
+            return true;
+        }
+
         $entries = DB::table('club_event_registrations')->where('photo', $path);
 
         if ($exceptRegistrationId !== null) {
@@ -295,6 +301,12 @@ class EntryPhoto
         // under them like everybody else's. A row naming it is a claim on it.
         if (Schema::hasTable('event_officials')
             && DB::table('event_officials')->where('photo', $path)->exists()) {
+            return true;
+        }
+
+        // An issued certificate shows the face its holder had then (CertificateSnapshot).
+        if (Schema::hasTable('certificates')
+            && DB::table('certificates')->where('details->snapshot->photo->path', $path)->exists()) {
             return true;
         }
 

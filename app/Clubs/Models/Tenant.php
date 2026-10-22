@@ -29,8 +29,11 @@ use App\Members\Models\Membership;
 use App\Members\Models\User;
 use App\Members\Models\UserNotification;
 
-class Tenant extends Model
+class Tenant extends Model implements \Ahl\Certificates\Contracts\Recipient
 {
+    /* A club holds certificates too — the thank-you an event gives each club that took part. */
+    use \App\Certificates\Concerns\ClubRecipient;
+
     use HasFactory, HasTranslations, LogsActivity, SoftDeletes {
         HasTranslations::setTranslation as protected baseSetTranslation;
     }
@@ -514,5 +517,15 @@ class Tenant extends Model
     public function getCountryCodeAttribute(): string
     {
         return strtolower($this->country ?? 'bh');
+    }
+
+    protected function certificateClubName(): string
+    {
+        return (string) $this->club_name;
+    }
+
+    protected function certificateLogoPath(): ?string
+    {
+        return $this->logo ?: null;
     }
 }

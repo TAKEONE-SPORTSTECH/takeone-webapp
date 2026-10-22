@@ -534,6 +534,16 @@
 /* What tells two identically-named divisions apart. Quieter than the name and
    quieter than a refusal — it is a label, not a verdict. */
 .group .detail{font-size:10.5px;color:var(--muted);font-weight:600}
+/* "Move to the correct division" rows — their own class, so the enrol page's
+   `.group.checked` sweep never reads them as group ticks. */
+.lm{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #e2e8f0;background:#fff;border-radius:12px;cursor:pointer;margin-bottom:5px;transition:background .15s,border-color .15s}
+.lm.incompat{border-style:dashed}
+.lm.on{border-color:#93c5fd;background:#eff6ff}
+.lm .dot{width:20px;height:20px;border-radius:999px;flex-shrink:0;border:2px solid #cbd5e1;background:#fff}
+.lm.on .dot{border:6px solid #2563eb}
+.lm .lbl{min-width:0;font-size:13px;font-weight:600;color:var(--ink)}
+.lm .detail{font-size:10.5px;color:var(--muted);font-weight:600}
+.lm .why{font-size:10.5px;color:var(--warn-fg)}
 .group .tag{margin-left:auto;flex-shrink:0;font-size:9px;font-weight:800;letter-spacing:.05em;color:var(--ok-fg);background:var(--ok-bg);border:1px solid var(--ok-border);border-radius:999px;padding:2px 7px;text-transform:uppercase}
 </style>
 @endpush
@@ -602,6 +612,29 @@
            holds — printed, it only needs signing
            (App\Events\Support\RegistrationFormPdf::fill). The route is the
            organiser's alone and re-checks; this only decides what is offered. */
+        /* Move to the correct division while the event runs (LiveMove). The
+           ORGANISER's alone — the endpoint re-checks; this only decides what
+           is offered, so an official never sees a row that answers 404. */
+        $liveMove = $event && \App\Events\Support\Tournament\LiveMove::enabled()
+            && \Illuminate\Support\Facades\Route::has('me.events.divisions.live-move')
+            && ($lmEvent = \App\Events\Models\ClubEvent::where('uuid', $event)->first())
+            && auth()->user()
+            && app(\App\Events\Support\EventAccess::class)->canManage($lmEvent, auth()->user());
+        if ($liveMove) {
+            $cardActions[] = [
+                'icon' => 'bi-arrow-left-right',
+                'label' => __('events::events.live_move_action'),
+                'hint' => __('events::events.live_move_action_hint'),
+                'onclick' => 'showLiveMove()',
+            ];
+            $cardActions[] = [
+                'icon' => 'bi-arrow-repeat',
+                'label' => __('events::events.live_swap_action'),
+                'hint' => __('events::events.live_swap_action_hint'),
+                'onclick' => 'showLiveSwap()',
+            ];
+        }
+
         $regForm = $event && \App\Events\Support\RegistrationFormPdf::available();
         if ($regForm) {
             $cardActions[] = [
@@ -692,6 +725,43 @@
                  `window.showActions()` is kept: it is part of this sheet's
                  public surface (`ActionSheet.actions`), and nothing in the
                  markup calls it now. --}}
+            @if(! empty($liveMove))
+            {{-- ===== Move to the correct division (LiveMove) ===== --}}
+            <div data-sheet-page="livemove" class="px-4 pt-3">
+                <div id="lm-state" class="text-[12px] text-muted-foreground pb-2"></div>
+                <div class="sec" id="lm-from-sec" style="color:var(--muted);display:none">{{ __('events::events.live_move_now_in') }}</div>
+                <div id="lm-from"></div>
+                <div class="sec" id="lm-to-sec" style="color:var(--ok-fg);display:none">{{ __('events::events.live_move_pick') }}</div>
+                <div id="lm-to"></div>
+                <div class="flex items-center gap-2 pt-3"
+                     style="padding-bottom: calc(1rem + env(safe-area-inset-bottom));">
+                    <button type="button" onclick="closeSheet()"
+                            class="m-press flex-1 h-11 rounded-xl border border-gray-200 bg-white text-foreground text-xs font-black">{{ __('personal.event_card_cancel') }}</button>
+                    <button type="button" id="lm-go" onclick="onLiveMove()" disabled
+                            class="m-press h-11 rounded-xl text-white text-xs font-black disabled:opacity-60"
+                            style="flex: 2 1 0%; background: {{ $sheetColor }};">{{ __('events::events.live_move_confirm') }}</button>
+                </div>
+            </div>
+            {{-- ===== Swap place in the draw (LiveMove::swap) ===== --}}
+            <div data-sheet-page="liveswap" class="px-4 pt-3">
+                <div id="sw-state" class="text-[12px] text-muted-foreground pb-2"></div>
+                <div class="sec" id="sw-from-sec" style="color:var(--muted);display:none">{{ __('events::events.live_move_now_in') }}</div>
+                <div id="sw-from"></div>
+                <div class="sec" id="sw-pick-sec" style="color:var(--ok-fg);display:none">{{ __('events::events.live_swap_pick') }}</div>
+                <input type="search" id="sw-search" autocomplete="off" style="display:none"
+                       placeholder="{{ __('events::events.live_swap_search') }}"
+                       class="w-full px-3 py-2.5 mb-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                <div id="sw-list"></div>
+                <div class="flex items-center gap-2 pt-3"
+                     style="padding-bottom: calc(1rem + env(safe-area-inset-bottom));">
+                    <button type="button" onclick="closeSheet()"
+                            class="m-press flex-1 h-11 rounded-xl border border-gray-200 bg-white text-foreground text-xs font-black">{{ __('personal.event_card_cancel') }}</button>
+                    <button type="button" id="sw-go" onclick="onLiveSwap()" disabled
+                            class="m-press h-11 rounded-xl text-white text-xs font-black disabled:opacity-60"
+                            style="flex: 2 1 0%; background: {{ $sheetColor }};">{{ __('events::events.live_swap_confirm') }}</button>
+                </div>
+            </div>
+            @endif
             <div data-sheet-page="enroll" class="px-4 pt-3">
                 <div id="groups-state" class="text-[12px] text-muted-foreground pb-2"></div>
 
@@ -864,6 +934,8 @@
 
     var PERSON_DIVISIONS = @js($event ? route('me.events.person.divisions', ['event' => $event, 'uuid' => '__UUID__']) : '');
     var DIVISION_MEMBERS = @js($event ? route('me.events.divisions.members', ['event' => $event, 'division' => 0]) : '');
+    var LIVE_MOVE = @js(! empty($liveMove) ? route('me.events.divisions.live-move', ['event' => $event]) : '');
+    var LIVE_SWAP = @js(! empty($liveMove) && \Illuminate\Support\Facades\Route::has('me.events.divisions.live-swap') ? route('me.events.divisions.live-swap', ['event' => $event]) : '');
     /* ⚠️ `?from=participants`, exactly as a participant's own card carries it.
        Without it the profile's back control falls through to its default for
        somebody who manages the event — the organiser's entry list at
@@ -1033,6 +1105,222 @@
         rememberPlace(currentCard);
         closeSheet();
         location.assign(PROFILE_URL.replace('__UUID__', uuid));
+    };
+
+    /* ---------------- Move to the correct division (LiveMove) ----------------
+       The same list the enrol page reads (personDivisions). One division they
+       are in, one they belong in; the server plans the whole move and refuses
+       rather than risks it, and its sentence is what the organiser reads. */
+    var LM = { from: null, to: null, busy: false };
+
+    window.showLiveMove = function () {
+        if (! LIVE_MOVE) return;
+        window.ActionSheet.page(SHEET, 'livemove');
+        LM = { from: null, to: null, busy: false };
+        lmPaint([]);
+        document.getElementById('lm-state').textContent = @js(__('personal.event_card_groups_loading'));
+
+        fetch(PERSON_DIVISIONS.replace('__UUID__', currentCard.dataset.memberId), {
+            headers: { 'Accept': 'application/json' }, credentials: 'same-origin',
+        })
+        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) {
+            if (! r.ok || ! d.success) throw new Error(d.message || @js(__('personal.event_card_groups_failed')));
+            return d;
+        }); })
+        .then(function (d) {
+            var groups = d.groups || [];
+            var mine = groups.filter(function (g) { return g.enrolled && g.registration; });
+            if (mine.length) LM.from = mine[0].registration;
+            document.getElementById('lm-state').textContent =
+                mine.length ? '' : @js(__('events::events.live_move_off_card'));
+            lmPaint(groups);
+        })
+        .catch(function (err) { document.getElementById('lm-state').textContent = err.message; });
+    };
+
+    function lmRow(g, on, pick) {
+        var el = document.createElement('div');
+        el.className = 'lm' + (g.compatible === false ? ' incompat' : '') + (on ? ' on' : '');
+        var dot = document.createElement('span'); dot.className = 'dot';
+        var mid = document.createElement('span'); mid.style.minWidth = '0';
+        var lbl = document.createElement('div'); lbl.className = 'lbl'; lbl.textContent = g.label;   /* a name is never markup */
+        mid.appendChild(lbl);
+        if (g.detail) { var det = document.createElement('div'); det.className = 'detail'; det.textContent = g.detail; mid.appendChild(det); }
+        if (g.reason) { var why = document.createElement('div'); why.className = 'why'; why.textContent = g.reason; mid.appendChild(why); }
+        el.appendChild(dot); el.appendChild(mid);
+        el.onclick = pick;
+        return el;
+    }
+
+    function lmPaint(groups) {
+        var fromBox = document.getElementById('lm-from'), toBox = document.getElementById('lm-to');
+        fromBox.innerHTML = ''; toBox.innerHTML = '';
+        var mine = groups.filter(function (g) { return g.enrolled && g.registration; });
+        var other = groups.filter(function (g) { return ! g.enrolled; })
+            .sort(function (a, b) { return (b.compatible ? 1 : 0) - (a.compatible ? 1 : 0); });
+
+        mine.forEach(function (g) {
+            fromBox.appendChild(lmRow(g, LM.from === g.registration, function () { LM.from = g.registration; lmPaint(groups); }));
+        });
+        other.forEach(function (g) {
+            toBox.appendChild(lmRow(g, LM.to === g.id, function () { LM.to = g.id; lmPaint(groups); }));
+        });
+
+        document.getElementById('lm-from-sec').style.display = mine.length ? '' : 'none';
+        document.getElementById('lm-to-sec').style.display = other.length ? '' : 'none';
+        if (groups.length && mine.length && ! other.length) {
+            document.getElementById('lm-state').textContent = @js(__('events::events.live_move_none'));
+        }
+        document.getElementById('lm-go').disabled = LM.busy || ! LM.from || ! LM.to;
+    }
+
+    window.onLiveMove = function () {
+        if (LM.busy || ! LM.from || ! LM.to) return;
+        LM.busy = true;
+        document.getElementById('lm-go').disabled = true;
+
+        fetch(LIVE_MOVE, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ entry: LM.from, to: LM.to }),
+        })
+        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok && d.success, d: d }; }); })
+        .then(function (res) {
+            LM.busy = false;
+            if (! res.ok) {
+                window.showToast('error', res.d.message || @js(__('personal.event_show_action_failed')));
+                document.getElementById('lm-go').disabled = false;
+                return;
+            }
+            window.showToast('success', res.d.message);
+            var handled = ! window.dispatchEvent(new CustomEvent('participant-enrolled', {
+                cancelable: true, detail: { uuid: currentCard.dataset.memberId },
+            }));
+            if (! handled) location.reload();
+        })
+        .catch(function () {
+            LM.busy = false;
+            window.showToast('error', @js(__('personal.event_show_action_failed')));
+            document.getElementById('lm-go').disabled = false;
+        });
+    };
+
+    /* ---------------- Swap place in the draw (LiveMove::swap) ----------------
+       The person on this card stands in the wrong place; pick who belongs
+       there. The server checks everything (nothing fought, nothing on a mat,
+       one division per person) and swaps who stands in the corners only. */
+    var SW = { from: null, with: null, people: [], busy: false, mine: [] };
+
+    window.showLiveSwap = function () {
+        if (! LIVE_SWAP) return;
+        window.ActionSheet.page(SHEET, 'liveswap');
+        SW = { from: null, with: null, people: [], busy: false, mine: [] };
+        document.getElementById('sw-search').value = '';
+        swPaint();
+        document.getElementById('sw-state').textContent = @js(__('personal.event_card_groups_loading'));
+
+        fetch(PERSON_DIVISIONS.replace('__UUID__', currentCard.dataset.memberId), {
+            headers: { 'Accept': 'application/json' }, credentials: 'same-origin',
+        })
+        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) {
+            if (! r.ok || ! d.success) throw new Error(d.message || @js(__('personal.event_card_groups_failed')));
+            return d;
+        }); })
+        .then(function (d) {
+            SW.mine = (d.groups || []).filter(function (g) { return g.enrolled && g.registration; });
+            if (! SW.mine.length) {
+                document.getElementById('sw-state').textContent = @js(__('events::events.live_move_off_card'));
+                swPaint();
+                return;
+            }
+            swLoad(SW.mine[0].registration);
+        })
+        .catch(function (err) { document.getElementById('sw-state').textContent = err.message; });
+    };
+
+    function swLoad(entry) {
+        SW.from = entry; SW.with = null; SW.people = [];
+        swPaint();
+        document.getElementById('sw-state').textContent = @js(__('personal.event_card_groups_loading'));
+        fetch(LIVE_SWAP + '?entry=' + encodeURIComponent(entry), {
+            headers: { 'Accept': 'application/json' }, credentials: 'same-origin',
+        })
+        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) {
+            if (! r.ok || ! d.success) throw new Error(d.message || @js(__('personal.event_card_groups_failed')));
+            return d;
+        }); })
+        .then(function (d) {
+            SW.people = d.people || [];
+            document.getElementById('sw-state').textContent = '';
+            swPaint();
+        })
+        .catch(function (err) { document.getElementById('sw-state').textContent = err.message; });
+    }
+
+    function swPaint() {
+        var fromBox = document.getElementById('sw-from'), list = document.getElementById('sw-list');
+        var search = document.getElementById('sw-search');
+        fromBox.innerHTML = ''; list.innerHTML = '';
+
+        if (SW.mine.length > 1) {
+            SW.mine.forEach(function (g) {
+                fromBox.appendChild(lmRow(g, SW.from === g.registration, function () { swLoad(g.registration); }));
+            });
+        }
+        document.getElementById('sw-from-sec').style.display = SW.mine.length > 1 ? '' : 'none';
+
+        var q = (search.value || '').trim().toLowerCase();
+        var shown = SW.people.filter(function (p) { return ! q || (p.name || '').toLowerCase().indexOf(q) !== -1; }).slice(0, 60);
+        shown.forEach(function (p) {
+            var bits = [p.division || '', p.fought ? @js(__('events::events.live_swap_fought'))
+                : (p.drawn ? @js(__('events::events.live_swap_drawn')) : @js(__('events::events.live_swap_not_drawn')))];
+            var row = lmRow({ label: p.name, detail: bits.filter(Boolean).join(' · '), compatible: ! p.fought },
+                SW.with === p.entry, function () { if (p.fought) return; SW.with = p.entry; swPaint(); });
+            if (p.fought) row.style.opacity = '.55';
+            list.appendChild(row);
+        });
+
+        var any = SW.people.length > 0;
+        document.getElementById('sw-pick-sec').style.display = any ? '' : 'none';
+        search.style.display = any ? '' : 'none';
+        document.getElementById('sw-go').disabled = SW.busy || ! SW.from || ! SW.with;
+    }
+
+    document.addEventListener('input', function (e) {
+        if (e.target && e.target.id === 'sw-search') swPaint();
+    });
+
+    window.onLiveSwap = function () {
+        if (SW.busy || ! SW.from || ! SW.with) return;
+        SW.busy = true;
+        document.getElementById('sw-go').disabled = true;
+
+        fetch(LIVE_SWAP, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf() },
+            credentials: 'same-origin',
+            body: JSON.stringify({ entry: SW.from, with: SW.with }),
+        })
+        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok && d.success, d: d }; }); })
+        .then(function (res) {
+            SW.busy = false;
+            if (! res.ok) {
+                window.showToast('error', res.d.message || @js(__('personal.event_show_action_failed')));
+                document.getElementById('sw-go').disabled = false;
+                return;
+            }
+            window.showToast('success', res.d.message);
+            var handled = ! window.dispatchEvent(new CustomEvent('participant-enrolled', {
+                cancelable: true, detail: { uuid: currentCard.dataset.memberId },
+            }));
+            if (! handled) location.reload();
+        })
+        .catch(function () {
+            SW.busy = false;
+            window.showToast('error', @js(__('personal.event_show_action_failed')));
+            document.getElementById('sw-go').disabled = false;
+        });
     };
 
     /* ---------------- Enrol in groups ----------------

@@ -98,7 +98,13 @@ class BracketPdf
      *
      * @param  list<array<string, mixed>>  $divisions
      */
-    public function html(ClubEvent $event, User $viewer, array $divisions, string $layout, string $third, bool $withCover = false): string
+    /**
+     * @param  ?int  $pageBase   pages printed before these sheets, when they are one part of a
+     *                           longer document (the federation competition report) — the
+     *                           footer then counts on from there; null for a stand-alone draw
+     * @param  ?int  $pageTotal  that document's page count, with $pageBase
+     */
+    public function html(ClubEvent $event, User $viewer, array $divisions, string $layout, string $third, bool $withCover = false, bool $numbers = true, ?int $pageBase = null, ?int $pageTotal = null): string
     {
         $this->media = [];
         $divisions = $this->inlinePhotos($divisions, $viewer);
@@ -110,6 +116,9 @@ class BracketPdf
             'can_arrange' => false,
             'can_manage' => false,
             'locked' => false,
+            // The draw without bout numbers (owner, 2026-10-16) — the board
+            // keeps every bout and strip, and leaves the number off.
+            'hide_numbers' => ! $numbers,
         ];
 
         return view('events::bracket-pdf', [
@@ -148,6 +157,8 @@ class BracketPdf
             'appCss' => $this->builtCss(),
             'cover' => $withCover ? $this->cover($event, $divisions, $viewer) : null,
             'flagCss' => 'file://'.public_path('images/flags/flag-icons.css'),
+            'pageBase' => $pageBase,
+            'pageTotal' => $pageTotal,
         ])->render();
     }
 
@@ -191,7 +202,7 @@ class BracketPdf
      * @param  list<array<string, mixed>>  $divisions
      * @return array<string, mixed>
      */
-    private function cover(ClubEvent $event, array $divisions, User $viewer): array
+    public function cover(ClubEvent $event, array $divisions, User $viewer, bool $officialsBySection = false): array
     {
         // The caller has authorised this viewer (EventAccess::canArrange).
         $p = app(PublicEvent::class)->readerPayload($event) ?? [];
@@ -324,7 +335,7 @@ class BracketPdf
             'rules' => $rules,
             'requirements' => array_values(array_filter((array) ($p['requirements'] ?? []))),
             'officials' => (array) ($p['officials']['groups'] ?? []),
-            'team' => $this->team($event, (array) ($p['officials']['rows'] ?? []), $viewer),
+            'team' => $this->team($event, (array) ($p['officials']['rows'] ?? []), $viewer, $officialsBySection),
             'clubs' => $this->clubs($event, $divisions, $viewer),
             'groups' => $groups,
             'total' => $counts->sum(),
@@ -396,13 +407,6 @@ class BracketPdf
      */
     private function clubs(ClubEvent $event, array $divisions, User $viewer): array
     {
-        $regs = $event->participantRegistrations()
-            ->with(['user:id,name,full_name', 'category:id,name', 'representingTenant'])
-            ->get();
-        if ($regs->isEmpty()) {
-            return [];
-        }
-
         // Places won, per entry, from the podiums the sheets print.
         $placed = [];
         foreach ($divisions as $d) {
@@ -415,6 +419,26 @@ class BracketPdf
                     $placed[(int) $w['competitor_id']][] = $place;
                 }
             }
+        }
+
+        return $this->clubPages($event, $placed, $viewer);
+    }
+
+    /**
+     * The club pages from places already settled — shared with the federation
+     * Results PDF (FederationResultsPdf), so the two documents rank clubs and
+     * count medals by ONE rule.
+     *
+     * @param  array<int, list<int>>  $placed  registration id => places won (1–3)
+     * @return list<list<array<string, mixed>>>  pages of club blocks
+     */
+    public function clubPages(ClubEvent $event, array $placed, User $viewer): array
+    {
+        $regs = $event->participantRegistrations()
+            ->with(['user:id,name,full_name', 'category:id,name', 'representingTenant'])
+            ->get();
+        if ($regs->isEmpty()) {
+            return [];
         }
 
         $written = EntryClub::forMany($event, $regs->pluck('id'));
@@ -435,7 +459,8 @@ class BracketPdf
             // One line per PERSON, however many divisions they entered.
             $who = $r->user_id ? 'u'.$r->user_id : 'r'.$r->id;
             $person = &$clubs[$key]['people'][$who];
-            $person ??= ['name' => (string) ($r->user?->full_name ?: $r->user?->name ?: __('events::events.athlete')), 'divisions' => [], 'medals' => []];
+            // `reg`: their first entry, for a host that draws faces and flags (FederationResultsPdf).
+            $person ??= ['name' => (string) ($r->user?->full_name ?: $r->user?->name ?: __('events::events.athlete')), 'divisions' => [], 'medals' => [], 'reg' => (int) $r->id];
             if ($r->category?->name) {
                 // id => name: each division links to its own sheet in the PDF.
                 $person['divisions'][(int) $r->category->id] = (string) $r->category->name;
@@ -529,16 +554,18 @@ class BracketPdf
      * @param  list<array<string, mixed>>  $rows
      * @return list<list<array{heading: string, cards: list<array<string, mixed>>}>>  pages of sections
      */
-    private function team(ClubEvent $event, array $rows, User $viewer): array
+    private function team(ClubEvent $event, array $rows, User $viewer, bool $bySection = false): array
     {
         if ($rows === []) {
             return [];
         }
 
         // Which job words are the platform's (management) and which the sport's.
-        $platform = collect(\App\Events\Models\EventOfficial::roles())
-            ->map(fn ($r) => __('personal.personal_event_officials_role_'.$r))->all();
-        $sport = array_diff(array_values(app(OfficialRoles::class)->labels($event)), $platform);
+        // The platform's own jobs — the access roles AND the credit ones
+        // (technical delegate, coach…) — are management; only the sport's are
+        // match officials.
+        $ours = array_merge(\App\Events\Models\EventOfficial::roles(), array_keys(\App\Events\Models\EventOfficial::creditRoles()));
+        $sport = array_values(array_diff_key(app(OfficialRoles::class)->labels($event), array_flip($ours)));
         $organiser = __('personal.personal_event_officials_role_organiser');
 
         $card = function (array $r) use ($viewer) {
@@ -557,7 +584,20 @@ class BracketPdf
             ];
         };
 
-        $sections = array_values(array_filter([
+        /*
+         * The competition report reads like an international results book
+         * (2026-10-18, the owner: "officials is a broad word"): the organising
+         * committee, technical delegate & jury, referees & judges, the table,
+         * then the teams' own officials — each its own heading. The draw PDF
+         * keeps its two.
+         */
+        $sections = $bySection ? array_values(array_filter(array_map(
+            fn ($s) => ['heading' => OfficialRoles::sectionLabel($s),
+                // The organiser heads the committee; everyone else keeps the sheet's order.
+                'cards' => collect($rows)->filter(fn ($r) => ($r['section'] ?? 'organising') === $s)
+                    ->sortBy(fn ($r, $i) => [$r['job'] === $organiser ? 0 : 1, $i])->map($card)->values()->all()],
+            OfficialRoles::SECTIONS,
+        ), fn ($s) => $s['cards'] !== [])) : array_values(array_filter([
             ['heading' => __('events::events.draw_print_management'),
                 // The organiser heads the team; everyone else keeps the sheet's order.
                 'cards' => collect($rows)->reject(fn ($r) => in_array($r['job'], $sport, true))

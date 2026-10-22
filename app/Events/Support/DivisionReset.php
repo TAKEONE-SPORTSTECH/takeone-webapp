@@ -92,6 +92,10 @@ class DivisionReset
             EventCategory::where('event_id', $event->id)->delete();
         });
 
+        // A person who held several entries keeps one, so auto-place does not
+        // have to leave the others behind in no division.
+        SpareEntries::fold($event);
+
         rescue(fn () => activity()->causedBy($by)->withProperties(['event' => $event->uuid, 'divisions' => $snapshot])
             ->log('events.divisions_deleted_all'), null, true);
 

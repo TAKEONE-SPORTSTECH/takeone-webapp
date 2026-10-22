@@ -85,7 +85,7 @@ class EventBadges extends EventCertificates implements \App\Certificates\Contrac
         return ['officials' => $context instanceof ClubEvent ? $this->officials($context)->count() : 0];
     }
 
-    public function generate(Model $context, ?User $by): array
+    public function generate(Model $context, ?User $by, ?string $only = null): array
     {
         return ['created' => 0, 'pending' => 0];
     }
@@ -225,13 +225,91 @@ class EventBadges extends EventCertificates implements \App\Certificates\Contrac
     public function render(EventOfficial $official, string $locale, ?int $dpi = null, string $purpose = CertificateService::PURPOSE_DOWNLOAD): string
     {
         $event = $official->event;
+        if ($design = $this->badgeDesign($event, $this->jobSlots($official))) {
+            return \App\Printables\Printer::render($design, $this->designValues($event, $this->fields($official, $locale), $this->officialCrest($official), $official->user?->nationality, $this->officialClub($official)),
+                ['as' => $dpi ? 'png' : 'pdf', 'dpi' => $dpi ?: 96, 'stamp' => null]);
+        }
 
         return app(CertificateService::class)->renderDocument($this->template($event), $locale, $this->fields($official, $locale), $event, $purpose, $dpi);
+    }
+
+    /* ─────────── badges drawn from the designer (2026-10-20) ─────────── */
+
+    /**
+     * The design a badge prints from while the designer is on: the most specific
+     * saved one of $slots (a job's own — `official_badge.<job>`), else the type's
+     * general design, else its starting page. Null with the designer off: the old
+     * template draws it, exactly as before.
+     */
+    protected function badgeDesign(ClubEvent $event, array $slots = []): ?\App\Printables\Models\PrintableDesign
+    {
+        if (! \App\Printables\Designer::enabled()) {
+            return null;
+        }
+        foreach ($slots as $slot) {
+            if ($found = \App\Printables\Designer::find($event, 'certificate', $slot)) {
+                return $found;
+            }
+        }
+
+        return \App\Printables\Designer::resolve($event, 'certificate', static::TYPE);
+    }
+
+    /** The job designs to try for one official, their jobs in the order appointed. */
+    protected function jobSlots(EventOfficial $official): array
+    {
+        $roles = app(OfficialRoles::class);
+
+        return EventOfficial::where('event_id', $official->event_id)->where('user_id', $official->user_id)->orderBy('id')->get()
+            ->map(fn (EventOfficial $o) => static::TYPE.'.'.$roles->jobKey($official->event, $o))->unique()->values()->all();
+    }
+
+    /** A badge's fields as the designer's values: words as text, pictures as data URIs. */
+    protected function designValues(ClubEvent $event, array $fields, ?string $clubLogo, ?string $nationality = null, ?Model $club = null): array
+    {
+        $qrText = is_string($fields['qr'] ?? null) && str_starts_with($fields['qr'], 'http') ? $fields['qr'] : '';
+        $qr = $qrText !== '' ? app(CertificateService::class)->qrDataUri($qrText) : '';
+
+        return [
+            'name' => (string) ($fields['name'] ?? ''),
+            'role' => (string) ($fields['role'] ?? ''),
+            'club' => (string) ($fields['club'] ?? ''),
+            'event' => (string) ($fields['event'] ?? ''),
+            'nationality' => (string) ($fields['nationality'] ?? ''),
+            'photo' => (string) ($fields['photo'] ?? ''),
+            'qr' => $qr,
+            'qr_text' => $qrText,
+            'logo' => $this->brand($event)['logos'][0] ?? '',
+            'club_logo' => (string) ($clubLogo ?? ''),
+            'nationality_flag' => (string) (self::flagDataUri($nationality) ?? ''),
+            'club_flag' => (string) (self::flagOfClub($club) ?? ''),
+        ];
+    }
+
+    /** What the designs in force are, for a bundle's name: the type's and every job's. */
+    protected function designSignature(ClubEvent $event): string
+    {
+        if (! \App\Printables\Designer::enabled()) {
+            return '';
+        }
+
+        return 'pd:'.\App\Printables\Models\PrintableDesign::query()->where('kind', 'certificate')
+            ->where('owner_type', $event->getMorphClass())->where('owner_id', $event->getKey())
+            ->where(fn ($q) => $q->where('slot', static::TYPE)->orWhere('slot', 'like', static::TYPE.'.%'))
+            ->orderBy('id')->get(['uuid', 'revision'])->map(fn ($d) => $d->uuid.'@'.$d->revision)->implode(',');
     }
 
     /** Every official's badge, four to an A4 sheet with cut lines — the file a print shop is sent. */
     public function sheets(ClubEvent $event, string $locale, ?callable $progress = null): string
     {
+        if (\App\Printables\Designer::enabled()) {
+            $pages = $this->officials($event)->map(fn (EventOfficial $o) => [
+                $this->badgeDesign($event, $this->jobSlots($o)),
+                $this->designValues($event, $this->fields($o, $locale), $this->officialCrest($o), $o->user?->nationality, $this->officialClub($o)),
+            ])->all();
+
+            return \App\Printables\Printer::sheets($pages, $progress);
+        }
         $service = app(CertificateService::class);
         $template = $this->template($event);
         $pages = $this->officials($event)->map(fn (EventOfficial $o) => fn () => $service->renderDocument($template, $locale, $this->fields($o, $locale), $event))->all();
@@ -244,7 +322,7 @@ class EventBadges extends EventCertificates implements \App\Certificates\Contrac
     {
         $o = $this->officials($event);
 
-        return substr(sha1($locale.'|'.$o->map(fn ($x) => $x->id.'@'.$x->updated_at.'@'.$x->user?->updated_at)->implode(',').'|'.$this->template($event)->updated_at), 0, 16);
+        return substr(sha1($locale.'|'.$o->map(fn ($x) => $x->id.'@'.$x->updated_at.'@'.$x->user?->updated_at)->implode(',').'|'.$this->template($event)->updated_at.'|'.$this->designSignature($event)), 0, 16);
     }
 
     public function printCount(Model $context, string $type): int
