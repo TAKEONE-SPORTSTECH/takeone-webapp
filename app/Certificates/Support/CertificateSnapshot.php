@@ -13,7 +13,8 @@ use Carbon\Carbon;
  * day, the weight recorded at the weigh-in, their height, and the photograph that
  * showed them — the moment it is issued. People grow up and change their pictures;
  * a certificate says what was true then, so the check page and every reprint read
- * this snapshot, never today's profile.
+ * this snapshot, never today's profile. The PHOTOGRAPH is the exception: issuing
+ * again moves it to the person's current one (refreshPhoto).
  *
  * The photograph is not copied (CLAUDE.md → A Person's Photo Has One Home): the
  * snapshot names the same file, and EntryPhoto counts a certificate as a claim on
@@ -44,12 +45,7 @@ final class CertificateSnapshot
             : ($certificate->issued_on ? Carbon::parse($certificate->issued_on) : now());
         $birth = $holder?->birthdate ?? null;
 
-        $photo = null;
-        if ($reg && EntryPhoto::showable($reg->photo)) {
-            $photo = ['path' => $reg->photo, 'kind' => 'entry'];
-        } elseif ($holder?->profile_picture) {
-            $photo = ['path' => $holder->profile_picture, 'kind' => 'profile'];
-        }
+        $photo = self::photoFor($reg, $holder);
 
         $details['snapshot'] = array_filter([
             'at' => now()->toIso8601String(),
@@ -61,6 +57,49 @@ final class CertificateSnapshot
         ], fn ($v) => $v !== null);
 
         $certificate->forceFill(['details' => $details])->saveQuietly();
+    }
+
+    /**
+     * The face follows the person: when their event photograph or profile picture has
+     * changed since the certificate was issued, the snapshot names the current one
+     * (owner, 2026-10-26 — a corrected photo must reach the next download). Their age,
+     * weight and height stay as they were at the event. Saving moves updated_at, so
+     * every stored copy drawn with the old face is known to be stale.
+     */
+    public static function refreshPhoto(Certificate $certificate): void
+    {
+        $details = (array) ($certificate->details ?? []);
+        if (empty($details['snapshot'])) {
+            return;
+        }
+        $event = $certificate->context_id ? $certificate->context : null;
+        $regId = (int) ($details['registration_id'] ?? 0);
+        $reg = $event instanceof ClubEvent && $regId
+            ? ClubEventRegistration::query()->where('event_id', $event->id)->find($regId)
+            : null;
+        $photo = self::photoFor($reg, $certificate->recipient);
+        if (($details['snapshot']['photo'] ?? null) == $photo) {
+            return;
+        }
+        if ($photo === null) {
+            unset($details['snapshot']['photo']);
+        } else {
+            $details['snapshot']['photo'] = $photo;
+        }
+        $certificate->forceFill(['details' => $details])->save();
+    }
+
+    /** The photograph that shows them: the one taken for the event, else their profile picture. */
+    private static function photoFor(?ClubEventRegistration $reg, $holder): ?array
+    {
+        if ($reg && EntryPhoto::showable($reg->photo)) {
+            return ['path' => $reg->photo, 'kind' => 'entry'];
+        }
+        if ($holder?->profile_picture) {
+            return ['path' => $holder->profile_picture, 'kind' => 'profile'];
+        }
+
+        return null;
     }
 
     /** @return array<string, mixed> the snapshot, or [] before the certificate is issued */

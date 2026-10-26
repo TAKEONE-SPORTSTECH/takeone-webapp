@@ -98,6 +98,22 @@ class TakeOneHost extends DefaultHost implements BrandsCertificates, OwnsTemplat
         return $this->contexts->forModel($context)?->brand($context) ?? [];
     }
 
+    /**
+     * What a stored copy of this certificate was drawn from, besides its own row: the
+     * holder and club as they stand (the context's pageStamp) and the design it prints
+     * from. A stored PDF made under another stamp is drawn again (CertificateService).
+     */
+    public function pageStamp(Certificate $certificate): string
+    {
+        $context = $certificate->context_id ? $certificate->context : null;
+        $provider = $this->contexts->forModel($context);
+        $design = app(DesignedCertificates::class)->designFor($certificate);
+
+        return sha1($certificate->updated_at.'|'.$certificate->template?->updated_at.'|'
+            .($provider && method_exists($provider, 'pageStamp') ? $provider->pageStamp($certificate) : '').'|'
+            .($design ? $design->uuid.'@'.$design->revision : ''));
+    }
+
     public function previewDetails(string $type, ?Model $context): array
     {
         return $context ? ($this->contexts->forModel($context)?->previewDetails($type, $context) ?? []) : [];

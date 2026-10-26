@@ -344,6 +344,7 @@ class EventCertificates implements CertificateContext
             if ($settings['podium']) {
                 $this->reconcilePodiumDrafts($context, $plan['podium'], $service);
             }
+            $this->refreshIssued($context, $plan, $settings);
 
             foreach (['participation' => self::SOURCE_ENTRY, 'podium' => self::SOURCE_PODIUM] as $type => $source) {
                 if (! $settings[$type]) {
@@ -659,6 +660,28 @@ class EventCertificates implements CertificateContext
         return $certificate->recipient instanceof User ? self::flagDataUri($certificate->recipient->nationality) : null;
     }
 
+    /**
+     * Everything this certificate draws that lives OUTSIDE its own row: the holder's
+     * name, language, face and nationality, and the name, crest and country of the
+     * club it is about. A printed copy made under a different stamp is stale — so a
+     * corrected person or club is never handed back from an old file
+     * (CertificateBundles, CertificateService::pdfContents).
+     */
+    public function pageStamp(Certificate $certificate): string
+    {
+        $holder = $certificate->recipient;
+        $person = $holder instanceof User
+            ? implode('|', [$holder->full_name, $holder->name, $holder->locale, $holder->nationality, $holder->profile_picture, (int) $holder->profile_picture_is_public])
+            : ($holder && method_exists($holder, 'certificateStamp') ? $holder->certificateStamp() : '');
+        $club = $this->clubOf($certificate);
+        $clubStamp = $club && method_exists($club, 'certificateStamp') ? $club->certificateStamp() : '';
+        if ($club instanceof \App\Events\Models\EventClub) {
+            $clubStamp .= '|'.$club->tenant?->updated_at;
+        }
+
+        return sha1($person.'#'.($club ? $club->getMorphClass().':'.$club->getKey() : '').'@'.$clubStamp);
+    }
+
     /** The club a certificate is about: the club itself, the club an official came with, or the one an athlete competed for. */
     public function clubOf(Certificate $certificate): ?Model
     {
@@ -737,6 +760,54 @@ class EventCertificates implements CertificateContext
     private function crest(?Model $club): ?string
     {
         return $club instanceof \Ahl\Certificates\Contracts\Recipient && ! $club instanceof User ? $club->certificatePhoto() : null;
+    }
+
+    /**
+     * What a certificate already given says about its holder follows the event as it
+     * stands now — their club, their division, their job, their photo — so correcting an entry and
+     * issuing again prints it corrected. A revoked one is left as it was, and the PLACE
+     * on a podium certificate is a result, not a detail: never touched here.
+     */
+    private function refreshIssued(ClubEvent $event, array $plan, array $settings): void
+    {
+        $want = [];
+        foreach (['participation' => self::SOURCE_ENTRY, 'podium' => self::SOURCE_PODIUM] as $type => $source) {
+            foreach ($settings[$type] ? $plan[$type] : [] as $row) {
+                $want[$source][$row['registration_id']] = ['achievement' => $row['division'], 'division' => $row['division'], 'club' => $row['club']];
+            }
+        }
+        foreach ($settings['officials'] ? $plan['officials'] : [] as $row) {
+            $want[self::SOURCE_OFFICIAL][$row['user']->id] = ['achievement' => $row['role'], 'role' => $row['role'], 'club' => $row['club']];
+        }
+        if ($want === []) {
+            return;
+        }
+
+        Engine::model()::query()->forContext($event)
+            ->whereIn('source', array_keys($want))
+            ->where('status', '!=', 'revoked')
+            ->get()
+            ->each(function (Certificate $c) use ($want) {
+                $key = $c->source === self::SOURCE_OFFICIAL ? $c->recipient_id : $c->source_id;
+                $now = $want[$c->source][$key] ?? null;
+                if (! $now) {
+                    return;
+                }
+                $details = (array) $c->details;
+                $achievement = $now['achievement'] ?: $c->achievement;
+                unset($now['achievement']);
+                foreach ($now as $field => $value) {
+                    if ($value === null || $value === '') {
+                        unset($details[$field]);
+                    } else {
+                        $details[$field] = $value;
+                    }
+                }
+                if ($details !== (array) $c->details || $achievement !== $c->achievement) {
+                    $c->forceFill(['details' => $details, 'achievement' => $achievement])->save();
+                }
+                \App\Certificates\Support\CertificateSnapshot::refreshPhoto($c);
+            });
     }
 
     /** A podium draft follows its division's result until it is approved. */

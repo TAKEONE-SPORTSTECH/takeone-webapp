@@ -117,13 +117,13 @@ class CertificateBundles
 
     private function signatureFor(CertificateContext $provider, Model $context, string $type): string
     {
-        return $provider instanceof PrintsPages ? $provider->printSignature($context, $type) : $this->signature($context, $type);
+        return $provider instanceof PrintsPages ? $provider->printSignature($context, $type) : $this->signature($provider, $context, $type);
     }
 
     /** What the file holds: these certificates, as they and their designs stand now. */
-    private function signature(Model $context, string $type): string
+    private function signature(CertificateContext $provider, Model $context, string $type): string
     {
-        $rows = $this->issued($context, $type)->with('recipient')->get(['id', 'updated_at', 'template_id', 'recipient_type', 'recipient_id']);
+        $rows = $this->issued($context, $type)->with(['recipient', 'context'])->get();
         $templates = Engine::templateModel()::query()->whereIn('id', $rows->pluck('template_id')->filter()->unique())->pluck('updated_at', 'id');
         // Drawn from the new designer: the file is stale the moment the design changes
         // (and a bundle built before the designer printed — 'pd1' — is never reused).
@@ -138,9 +138,11 @@ class CertificateBundles
                 ->map(fn ($d) => $d->uuid.'@'.$d->revision)->implode(',');
         }
 
-        // A club holder's crest and name are part of the page too (ClubRecipient::certificateStamp).
-        // A person's are not counted here, as before: a member's row changes far too often.
-        $stamp = fn ($r) => $r->recipient && method_exists($r->recipient, 'certificateStamp') ? '@'.$r->recipient->certificateStamp() : '';
+        // Everything a page draws from outside its own row — the holder's name, face and
+        // nationality, the club's name, crest and country (the context's pageStamp) — so
+        // correcting a person or a club never hands back the file printed before it.
+        $stamp = fn ($r) => method_exists($provider, 'pageStamp') ? '@'.$provider->pageStamp($r)
+            : ($r->recipient && method_exists($r->recipient, 'certificateStamp') ? '@'.$r->recipient->certificateStamp() : '');
 
         return substr(sha1($rows->map(fn ($r) => $r->id.'@'.$r->updated_at.$stamp($r))->implode(',').'|'.$templates->map(fn ($t, $id) => $id.'@'.$t)->implode(',').'|'.$designed), 0, 16);
     }

@@ -614,6 +614,62 @@ class EventCertificatesTest extends TestCase
         $this->actingAs($this->organiser->fresh())->getJson(route('me.certificates.bundle.download', $p + ['type' => 'participation']))->assertNotFound();
     }
 
+    /**
+     * The reported bug (2026-10-26): nationalities corrected after the certificates were
+     * issued, issued again, downloaded — and the file still flew the old flags, because
+     * the stored PDFs were reused. A corrected person or club must reach the next download.
+     */
+    public function test_correcting_a_person_or_their_club_reaches_the_next_download(): void
+    {
+        $this->decidedDivision();
+        $this->generate();
+        $this->actingAs($this->organiser->fresh())
+            ->postJson(route('me.certificates.approve', ['context' => 'club_event', 'key' => $this->event->uuid]), ['all' => true])->assertOk();
+        $p = ['context' => 'club_event', 'key' => $this->event->uuid, 'type' => 'participation'];
+        $this->actingAs($this->organiser->fresh())->postJson(route('me.certificates.bundle', $p))->assertOk()->assertJsonPath('state', 'ready');
+        $this->actingAs($this->organiser->fresh())->get(route('me.certificates.bundle.download', $p))->assertOk();
+
+        $service = app(CertificateService::class);
+        $mine = Certificate::where('status', 'approved')->where('type', 'participation')->where('recipient_id', $this->athletes['a']->id)->firstOrFail();
+        $before = $service->pageStamp($mine);
+        $this->assertSame($before, $service->pageStamp($mine->fresh()), 'nothing changed, nothing is redrawn');
+
+        // The nationality (the flag on the page) is corrected: the print-shop file is stale,
+        // and the stored copy of the certificate is drawn again.
+        $this->athletes['a']->forceFill(['nationality' => 'IN'])->save();
+        $this->actingAs($this->organiser->fresh())->getJson(route('me.certificates.bundle.download', $p))->assertNotFound();
+        $this->assertNotSame($before, $service->pageStamp($mine->fresh()));
+
+        // The name too.
+        $this->athletes['a']->forceFill(['full_name' => 'Athlete A Corrected'])->save();
+        $r = $this->actingAs($this->organiser->fresh())->get(route('me.certificates.pdf', $mine->uuid).'?download=1')->assertOk();
+        $file = tempnam(sys_get_temp_dir(), 'cert');
+        file_put_contents($file, $r->baseResponse instanceof \Symfony\Component\HttpFoundation\StreamedResponse ? $r->streamedContent() : $r->getContent());
+        try {
+            $text = (string) shell_exec('pdftotext '.escapeshellarg($file).' -');
+        } finally {
+            @unlink($file);
+        }
+        $this->assertStringContainsString('Athlete A Corrected', $text);
+
+        // The club they competed for is corrected on the entry: issuing again writes it on.
+        $this->entries['a']->forceFill(['representing_tenant_id' => $this->club->id])->save();
+        $this->generate();
+        $this->assertSame($this->club->club_name, $mine->fresh()->details['club'] ?? null);
+        $this->assertSame('approved', $mine->fresh()->status->value, 'issuing again never re-drafts an approved certificate');
+
+        // A new photograph reaches it too, when issued again; the age it was issued with stays.
+        $age = $mine->fresh()->details['snapshot']['age'] ?? null;
+        $this->athletes['a']->forceFill(['profile_picture' => 'members/'.$this->athletes['a']->uuid.'/profile/new-face.jpg'])->save();
+        $this->generate();
+        $this->assertSame('members/'.$this->athletes['a']->uuid.'/profile/new-face.jpg', $mine->fresh()->details['snapshot']['photo']['path'] ?? null);
+        $this->assertSame($age, $mine->fresh()->details['snapshot']['age'] ?? null);
+
+        // Rebuilt, the file answers again.
+        $this->actingAs($this->organiser->fresh())->postJson(route('me.certificates.bundle', $p))->assertOk()->assertJsonPath('state', 'ready');
+        $this->actingAs($this->organiser->fresh())->get(route('me.certificates.bundle.download', $p))->assertOk();
+    }
+
     public function test_a_print_run_draws_many_certificates_to_a_chromium_and_keeps_their_order(): void
     {
         config(['printables.enabled' => true, 'printables.batch' => ['enabled' => true, 'per_chromium' => 1, 'parallel' => 2]]);

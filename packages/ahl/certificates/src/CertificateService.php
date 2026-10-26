@@ -31,6 +31,7 @@ use Carbon\CarbonInterface;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
@@ -381,7 +382,10 @@ class CertificateService
     /** Stored PDF for approved certificates; drafts and revoked ones are rendered on demand with a stamp. */
     public function pdfContents(Certificate $certificate): string
     {
-        if ($certificate->isApproved() && ($file = $this->files->get($certificate, self::PDF_SLOT))) {
+        // The stored file is handed back only while what it was drawn from still stands
+        // (pageStamp): a corrected holder, club or design is drawn again, and stored anew.
+        if ($certificate->isApproved() && Cache::get($this->stampKey($certificate)) === $this->pageStamp($certificate)
+            && ($file = $this->files->get($certificate, self::PDF_SLOT))) {
             return $file['contents'];
         }
 
@@ -439,9 +443,27 @@ class CertificateService
 
         if ($imageDpi === null && $this->capture === null && $certificate->isApproved() && $purpose === self::PURPOSE_DOWNLOAD) {
             $this->files->put($certificate, self::PDF_SLOT, $bytes, 'application/pdf', $certificate->certificate_no.'.pdf');
+            Cache::forever($this->stampKey($certificate), $this->pageStamp($certificate));
         }
 
         return $bytes;
+    }
+
+    /**
+     * What a stored PDF of this certificate depends on, as the host sees it (the holder's
+     * name and nationality, their club, the design…). A host without one keeps the old
+     * rule: an approved certificate's stored file is final.
+     */
+    public function pageStamp(Certificate $certificate): string
+    {
+        $host = Certificates::host();
+
+        return method_exists($host, 'pageStamp') ? (string) $host->pageStamp($certificate) : 'final';
+    }
+
+    private function stampKey(Certificate $certificate): string
+    {
+        return 'certificates:pdf-stamp:'.$certificate->getKey();
     }
 
     /**
