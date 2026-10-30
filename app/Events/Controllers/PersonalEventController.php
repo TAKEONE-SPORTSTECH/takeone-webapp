@@ -2242,6 +2242,15 @@ class PersonalEventController extends Controller
         $workspaceType = $this->typeFor($event);
         $workspaceViewer = Auth::user();
 
+        /* No draw, ever (HasNoDraw — an open mat, a sparring session): the
+           scoring screens' way out lands here, and the console is the page
+           that can end the session. Everybody else gets the event's page. */
+        if ($workspaceType instanceof \App\Events\Contracts\HasNoDraw) {
+            return $workspaceViewer && $this->canManage($event, $workspaceViewer)
+                ? redirect()->route('me.events.manage', $event->uuid)
+                : redirect()->route('me.events.show', $event->uuid);
+        }
+
         if ($workspaceType instanceof \App\Events\Contracts\ProvidesWorkspace
             && $workspaceViewer && $this->canManage($event, $workspaceViewer)) {
             return view($workspaceType->workspaceView(), [

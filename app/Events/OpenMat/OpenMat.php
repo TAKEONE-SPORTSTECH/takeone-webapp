@@ -3,6 +3,7 @@
 namespace App\Events\OpenMat;
 
 use App\Events\AbstractEventType;
+use App\Events\Contracts\HasNoDraw;
 use App\Events\Support\EnrolmentDecision;
 use App\Events\Models\ClubEvent;
 use App\Events\Models\ClubEventRegistration;
@@ -45,7 +46,7 @@ use App\Members\Models\User;
  * become ordinary archived club events, the two open_mat_* tables drop, and
  * nothing else in the product notices.
  */
-class OpenMat extends AbstractEventType
+class OpenMat extends AbstractEventType implements HasNoDraw
 {
     /** `club_events.event_type` for an open mat. */
     public const TYPE = 'open_mat';

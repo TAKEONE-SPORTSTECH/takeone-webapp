@@ -3,6 +3,7 @@
 namespace App\Events\Sparring;
 
 use App\Events\AbstractEventType;
+use App\Events\Contracts\HasNoDraw;
 use App\Events\Models\ClubEvent;
 use App\Events\Models\ClubEventRegistration;
 use App\Events\Models\EventCategory;
@@ -38,7 +39,7 @@ use App\Members\Models\User;
  * Delete this directory and its registry line and the feature is gone — the
  * sessions become ordinary archived club events, and nothing else notices.
  */
-class Sparring extends AbstractEventType
+class Sparring extends AbstractEventType implements HasNoDraw
 {
     /** `club_events.event_type` for a session. */
     public const TYPE = 'sparring';

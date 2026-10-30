@@ -249,6 +249,8 @@ class PublicClubController extends Controller
      */
     public function show(string $country, string $slug)
     {
+        $insiderClubs = $this->clubsTheViewerBelongsTo(Auth::user());
+
         $club = Tenant::with([
             'owner',
             'facilities',
@@ -264,7 +266,14 @@ class PublicClubController extends Controller
             'socialLinks',
             'memberships',
             // Never a HIDDEN event on the club's page — it is reached by its link only.
-            'events' => fn ($q) => $q->listed(),
+            // An INTERNAL one (an open mat, a sparring session, an internal
+            // tournament) is the club's own business: shown only to the people
+            // who belong to the club — the same rule Explore applies.
+            'events' => fn ($q) => $q->listed()->where(fn ($w) => $w
+                ->whereNull('club_events.scope')
+                ->orWhere('club_events.scope', '!=', 'internal')
+                ->orWhereIn('club_events.tenant_id', $insiderClubs)
+                ->orWhere('club_events.created_by', Auth::id() ?? 0)),
             'timelinePosts.likes',
             'timelinePosts.comments.user',
             'perks',
@@ -743,6 +752,26 @@ class PublicClubController extends Controller
      * Every event this user may see, before any date rule. Visibility mirrors
      * App\Events\Support\EventAccess::eligible() (see openEventsFor()).
      */
+    /**
+     * The clubs whose INTERNAL events this viewer may see: the ones they are a
+     * member of, own, or administer. Nobody signed in belongs to none.
+     *
+     * @return array<int, int>
+     */
+    private function clubsTheViewerBelongsTo(?\App\Members\Models\User $me): array
+    {
+        if (! $me) {
+            return [];
+        }
+
+        return $me->memberClubs()->pluck('tenants.id')
+            ->merge(Tenant::where('owner_user_id', $me->id)->pluck('id'))
+            ->merge(DB::table('user_roles')->join('roles', 'roles.id', '=', 'user_roles.role_id')
+                ->where('user_roles.user_id', $me->id)->where('roles.slug', 'club-admin')
+                ->whereNotNull('user_roles.tenant_id')->pluck('user_roles.tenant_id'))
+            ->map(fn ($id) => (int) $id)->unique()->values()->all();
+    }
+
     private function visibleEventsQuery(\App\Members\Models\User $me): \Illuminate\Database\Eloquent\Builder
     {
         $clubIds = $me->memberClubs()->pluck('tenants.id');

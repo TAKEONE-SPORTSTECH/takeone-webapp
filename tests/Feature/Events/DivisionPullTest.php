@@ -76,6 +76,7 @@ class DivisionPullTest extends ContractTestCase
 
     public function test_someone_already_in_another_bracket_is_copied_or_refused_by_the_one_division_switch(): void
     {
+        config(['events.draw_transfer' => true, 'events.lone_entrant_final' => true]);
         $organiser = $this->createUser();
         $club = $this->clubFor($organiser);
         $event = $this->championship($club, $organiser);

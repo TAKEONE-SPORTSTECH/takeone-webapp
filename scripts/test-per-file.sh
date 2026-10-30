@@ -40,7 +40,18 @@ echo "files: $total, files with failures: $failed_files, failing tests: $(wc -l 
 
 if [ -n "$BASELINE" ]; then
   new=$(comm -23 "$OUT/_failing.txt" <(sort -u "$BASELINE"))
-  if [ -n "$new" ]; then echo "NEW failures (not in baseline):"; echo "$new"; exit 1; fi
+  if [ -n "$new" ]; then
+    echo "NEW failures (not in baseline):"; echo "$new"
+    # The per-file outputs stay on the machine that ran them — on CI they are
+    # gone with the runner, leaving only names. Print why each new one failed.
+    for t in "$OUT"/tests_*.txt; do
+      grep -E '^[0-9]+\) ' "$t" | sed -E 's/^[0-9]+\) //' | grep -qxF -f <(echo "$new") || continue
+      echo "::group::$(basename "$t" .txt)"
+      sed -n '/^There w[a-z]* [0-9]* \(failure\|error\)/,$p' "$t" | head -200
+      echo "::endgroup::"
+    done
+    exit 1
+  fi
   echo "no new failures against $BASELINE"; exit 0
 fi
 [ "$failed_files" = "0" ]

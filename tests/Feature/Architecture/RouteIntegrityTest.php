@@ -311,8 +311,13 @@ class RouteIntegrityTest extends TestCase
      */
     private const EXPECTED_ROUTE_COUNT = 1086;
 
-    /** Routes handled by a Closure rather than a controller action. */
-    private const EXPECTED_CLOSURE_COUNT = 22;
+    /**
+     * Routes handled by a Closure rather than a controller action.
+     *
+     * 23 since 2026-10-30: +1, DELETE /mcp — laravel/mcp v0.3.26 (up from
+     * v0.3.11) registers it beside POST /mcp, answering 405 with Allow: POST.
+     */
+    private const EXPECTED_CLOSURE_COUNT = 23;
 
     /**
      * FIXED 2026-08-31: the list is now empty, and must stay empty.

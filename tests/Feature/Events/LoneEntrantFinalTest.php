@@ -128,7 +128,7 @@ class LoneEntrantFinalTest extends TestCase
 
     public function test_a_second_competitor_in_the_empty_corner_makes_it_a_real_bout(): void
     {
-        config(['events.lone_entrant_final' => true]);
+        config(['events.lone_entrant_final' => true, 'events.taekwondo_shared_base' => true]);
         $event = $this->event();
         [$category, $entry] = $this->loneDivision($event);
         $this->draw($event);

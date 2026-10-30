@@ -133,7 +133,9 @@ jobs:
         run: |
           f=deploy/feature-flags.conf
           [ -f "$f" ] || { echo "No $f — switches left as they are."; exit 0; }
-          server='^(APP|DB|MAIL|CACHE|SESSION|QUEUE|LOG|BACKUP|BROADCAST|REDIS|FILESYSTEM|VITE|AWS|PUSHER|REVERB)_|^FILE_XSENDFILE(=|$)'
+          server='^(APP|DB|MAIL|CACHE|SESSION|QUEUE|LOG|BACKUP|BROADCAST|REDIS|FILESYSTEM|VITE|AWS|PUSHER|REVERB)_|^FILE_XSENDFILE(=|$)|DEBUG|^(TELESCOPE|IGNITION|DEBUGBAR|CLOCKWORK|PULSE|NIGHTWATCH|SENTRY|SANCTUM|CORS|HORIZON)_|CAPTCHA|2FA|TWO_FACTOR|VERIF|THROTTLE|TRUST'
+          # Only true/false travels, except these named settings.
+          enums='^(NEW_UI|PARTIES_AUTHORITY)$'
           changed=0
           while IFS= read -r line; do
             case "$line" in ''|'#'*) continue ;; esac
@@ -143,6 +145,9 @@ jobs:
             key=${line%%=*}; val=${line#*=}
             if printf '%s' "$key" | grep -qE "$server"; then
               echo "::warning::$key describes the server, not a feature — skipped"; continue
+            fi
+            if [ "$val" != true ] && [ "$val" != false ] && ! printf '%s' "$key" | grep -qE "$enums"; then
+              echo "::warning::$key is not an on/off switch — skipped"; continue
             fi
             old=$(grep -E "^$key=" .env | tail -1 | cut -d= -f2- || true)
             [ "$old" = "$val" ] && continue

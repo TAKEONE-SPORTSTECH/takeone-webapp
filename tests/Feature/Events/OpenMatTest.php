@@ -175,6 +175,60 @@ class OpenMatTest extends TestCase
         $this->get('/openmat/bjj')->assertRedirect('/login');
     }
 
+    /**
+     * The scoring screens' way out is "the draw". A mat has none, and its draw
+     * desk had no way back to the console — the only page that ends the mat —
+     * so an operator who had started a bout could never close it (2026-10-30).
+     * For an open mat AND a sparring session (both HasNoDraw) it now lands on
+     * the console; a stranger who follows it gets the event page, never the console.
+     */
+    public function test_the_scoring_screens_way_out_leads_back_to_the_console_that_ends_the_session(): void
+    {
+        $user = $this->member();
+        $club = $user->memberClubs()->first();
+        $mat = app(\App\Events\OpenMat\OpenMatSession::class)->openFor($user, $club, OpenMat::sports()[0]);
+        $sparring = app(\App\Events\Sparring\SparringSession::class)->openFor($club, $user, \App\Events\Sparring\Sparring::sports()[0], 1, 3);
+
+        foreach ([$mat, $sparring] as $event) {
+            $this->actingAs($user)->get(route('me.events.bracket.manage', $event->uuid))
+                ->assertRedirect(route('me.events.manage', $event->uuid));
+
+            $this->actingAs($this->createUser())->get(route('me.events.bracket.manage', $event->uuid))
+                ->assertRedirect(route('me.events.show', $event->uuid));
+        }
+    }
+
+    /**
+     * An open mat or a sparring session is the club's own business: it is on
+     * the club's page for the people in the club, and for nobody else — not a
+     * stranger, not a member of another club, not a visitor (2026-10-30).
+     */
+    public function test_a_club_only_session_is_not_on_the_club_page_for_people_outside_the_club(): void
+    {
+        $user = $this->member();
+        $club = $user->memberClubs()->first();
+        $mat = app(\App\Events\OpenMat\OpenMatSession::class)->openFor($user, $club, OpenMat::sports()[0]);
+        $sparring = app(\App\Events\Sparring\SparringSession::class)->openFor($club, $user, \App\Events\Sparring\Sparring::sports()[0], 1, 3);
+        $pages = ['/'.strtolower($club->country).'/clubs/'.$club->slug, '/mobile/'.strtolower($club->country).'/'.$club->slug];
+
+        $outsider = $this->member();
+        foreach ([null, $this->createUser(), $outsider] as $viewer) {
+            auth()->logout();
+            foreach ($pages as $page) {
+                $html = ($viewer ? $this->actingAs($viewer) : $this)->get($page)->assertOk()->getContent();
+                foreach ([$mat, $sparring] as $event) {
+                    $this->assertStringNotContainsString($event->uuid, $html);
+                    $this->assertStringNotContainsString(e($event->title), $html);
+                }
+            }
+        }
+
+        foreach ($pages as $page) {
+            $html = $this->actingAs($user)->get($page)->assertOk()->getContent();
+            $this->assertStringContainsString(e($mat->title), $html, 'The club\'s own people still see their sessions.');
+        }
+    }
+
     private function uuidFrom(?string $location): string
     {
         $this->assertNotNull($location, 'Opening a mat did not redirect anywhere.');

@@ -126,6 +126,7 @@ class BracketArrangementTest extends TestCase
 
     public function test_a_competitor_can_be_taken_out_of_the_draw_and_put_back(): void
     {
+        config(['events.taekwondo_shared_base' => true]);
         $event = $this->event();
         $category = $this->drawnDivision($event);
         $bout = $this->firstRound($category)[0];

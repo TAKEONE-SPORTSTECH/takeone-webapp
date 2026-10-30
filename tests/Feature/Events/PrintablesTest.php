@@ -475,6 +475,7 @@ class PrintablesTest extends TestCase
 
     public function test_the_officials_pdf_is_for_the_organiser_only(): void
     {
+        config(['events.bracket_pdf.enabled' => true, 'events.participants_pdf.enabled' => true]);
         [$owner, $event] = $this->event();
         $ref = $this->createUser(['full_name' => 'Sara Ref', 'nationality' => 'BH']);
         EventOfficial::forceCreate(['event_id' => $event->id, 'user_id' => $ref->id, 'role' => 'jury', 'compensation' => 'volunteer']);
