@@ -101,12 +101,14 @@ jobs:
         # the Android APK served for download, Gradle caches, and drafts.
         # --checksum because size+mtime misses same-size changes such as the
         # Vite manifest (deploy gotcha #3).
-        # --no-owner/--no-group: database/ and docker/ belong to root, and an
-        # attempt to chgrp them fails, so rsync exits 23 after copying every
-        # file and the deploy stops in maintenance mode (2026-10-30). Ownership
-        # is not rsync's job here; the permissions step below handles it.
+        # -rlD, not -a: database/ and docker/ belong to root, and setting their
+        # group, permissions or times fails, so rsync exits 23 after copying
+        # every file and the deploy stops in maintenance mode (2026-10-30).
+        # Contents are compared by --checksum, so times are not needed; new
+        # files take the source's mode under the umask; ownership is handled
+        # by the permissions step below.
         run: |
-          rsync -a --no-owner --no-group --checksum --delete --omit-dir-times \
+          rsync -rlD --checksum --delete \
             --exclude='/.env' \
             --exclude='/database/database.sqlite*' \
             --exclude='/storage/' \
