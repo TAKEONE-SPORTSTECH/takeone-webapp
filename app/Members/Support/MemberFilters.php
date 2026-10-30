@@ -267,7 +267,7 @@ final class MemberFilters
     private function applyMissing(Builder $query, string $field): void
     {
         match ($field) {
-            'phone' => $query->whereRaw(self::PHONE_SQL." = ''"),
+            'phone' => $query->whereRaw(\App\Support\Database\Sql::mobileNumber()." = ''"),
             'club' => $query->doesntHave('memberClubs'),
             'email' => $this->blank($query, 'email'),
             'birthdate' => $query->whereNull('birthdate'),
@@ -315,9 +315,11 @@ final class MemberFilters
     public static function clubOptions(): array
     {
         return Tenant::query()
-            ->orderBy('name')
-            ->get(['id', 'name'])
-            ->map(fn ($club) => ['id' => (string) $club->id, 'name' => (string) $club->name])
+            // The column is club_name. 'name' read as the literal string
+            // "name" on SQLite and is an error on PostgreSQL.
+            ->orderBy('club_name')
+            ->get(['id', 'club_name'])
+            ->map(fn ($club) => ['id' => (string) $club->id, 'name' => (string) $club->club_name])
             ->values()
             ->all();
     }

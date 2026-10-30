@@ -19,6 +19,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // PostgreSQL keeps SQLite's case-insensitive LIKE (see the class).
+        \Illuminate\Database\Connection::resolverFor('pgsql',
+            fn ($pdo, $database, $prefix, $config) => new \App\Support\Database\PostgresConnection($pdo, $database, $prefix, $config));
+
         /*
          * ⚠️ Before anything resolves the translator. The interface's own words
          * live in the database now (see the interface_translations migration);

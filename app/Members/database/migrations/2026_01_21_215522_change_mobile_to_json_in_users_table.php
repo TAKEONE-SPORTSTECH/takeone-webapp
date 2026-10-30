@@ -11,6 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // PostgreSQL cannot hold this column's unique index on json. Nothing is
+        // lost by skipping: the very next migration drops the column and its
+        // index and re-adds `mobile` as nullable json.
+        if (DB::getDriverName() === 'pgsql') {
+            return;
+        }
+
         // First make mobile nullable
         Schema::table('users', function (Blueprint $table) {
             $table->string('mobile')->nullable()->change();

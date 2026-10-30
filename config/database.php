@@ -102,6 +102,22 @@ return [
             'sslmode' => env('DB_SSLMODE', 'prefer'),
         ],
 
+        // Target of `takeone:copy-to-pgsql` (the move off SQLite). Separate from
+        // `pgsql` so it can be named while the app still runs on SQLite.
+        'pgsql_import' => [
+            'driver' => 'pgsql',
+            'host' => env('PG_IMPORT_HOST'),
+            'port' => env('PG_IMPORT_PORT', '5432'),
+            'database' => env('PG_IMPORT_DATABASE'),
+            'username' => env('PG_IMPORT_USERNAME'),
+            'password' => env('PG_IMPORT_PASSWORD'),
+            'charset' => 'utf8',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'public',
+            'sslmode' => env('DB_SSLMODE', 'prefer'),
+        ],
+
         'sqlsrv' => [
             'driver' => 'sqlsrv',
             'url' => env('DB_URL'),

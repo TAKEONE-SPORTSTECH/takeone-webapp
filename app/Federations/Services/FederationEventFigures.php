@@ -95,7 +95,7 @@ class FederationEventFigures
         $bouts = DB::table('event_matches')->where('event_id', $ev->id)->whereNotNull('a_competitor_id')->whereNotNull('b_competitor_id');
         $boutCount = (clone $bouts)->count();
         $fought = (clone $bouts)->whereNotNull('winner')->count();
-        $decided = $drawable->isEmpty() ? 0 : DB::table('event_categories')->whereIn('id', $drawable)->whereNotNull('podium')->where('podium', '!=', '[]')->count();
+        $decided = $drawable->isEmpty() ? 0 : DB::table('event_categories')->whereIn('id', $drawable)->whereNotNull('podium')->whereRaw(\App\Support\Database\Sql::asText('podium')." <> '[]'")->count();
         $entries = $regs->whereNotNull('category_id')->count();
         $ended = $e->hasEnded();
 

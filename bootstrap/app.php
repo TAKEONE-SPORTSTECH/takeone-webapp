@@ -116,6 +116,15 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // PostgreSQL refuses `where id = 'dashboard'` (SQLSTATE 22P02) where
+        // SQLite simply found nothing. A malformed id in a URL is a not-found,
+        // not a crash — and a 500 would tell a prober more than a 404 does.
+        $exceptions->map(function (\Illuminate\Database\QueryException $e) {
+            return $e->getCode() === '22P02'
+                ? new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException('Not found.', $e)
+                : $e;
+        });
+
         // Gracefully handle "page expired" (419 CSRF token mismatch) instead of
         // dead-ending on the raw "Page Expired" screen. This happens when a form
         // is submitted from a page whose CSRF token has gone stale (left open, a

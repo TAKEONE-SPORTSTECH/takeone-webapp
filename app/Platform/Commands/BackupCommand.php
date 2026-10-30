@@ -84,6 +84,7 @@ class BackupCommand extends Command
         return match ($driver) {
             'sqlite' => $this->backupSqlite($dir, $stamp),
             'mysql', 'mariadb' => $this->backupMysql($dir, $stamp, $connection),
+            'pgsql' => $this->backupPgsql($dir, $stamp, $connection),
             default => tap(false, fn () => $this->error("Unsupported database driver for backup: {$driver}")),
         };
     }
@@ -178,6 +179,53 @@ class BackupCommand extends Command
 
         $this->artifacts[] = $target;
         $this->line(sprintf('  <info>✓</info> database  %s (%s)', basename($target), $this->humanSize($target)));
+
+        return true;
+    }
+
+    /**
+     * PostgreSQL: pg_dump's custom format is a consistent snapshot by itself (one
+     * repeatable-read transaction). The password travels in the environment,
+     * never on a command line `ps` can read. Verified by listing the archive
+     * back with pg_restore — a dump that cannot be listed cannot be restored.
+     */
+    private function backupPgsql(string $dir, string $stamp, string $connection): bool
+    {
+        $target = $dir."/db-{$stamp}.dump";
+        $c = config("database.connections.{$connection}");
+        $env = ['PGPASSWORD' => (string) $c['password'], 'PATH' => getenv('PATH') ?: '/usr/bin:/bin'];
+
+        $run = function (array $cmd) use ($env): array {
+            $p = proc_open($cmd, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, null, $env);
+            if (! is_resource($p)) {
+                return [1, ''];
+            }
+            $out = stream_get_contents($pipes[1]);
+            $err = stream_get_contents($pipes[2]);
+
+            return [proc_close($p), $out.$err];
+        };
+
+        [$status, $output] = $run(['pg_dump', '-Fc', '-h', (string) $c['host'], '-p', (string) $c['port'],
+            '-U', (string) $c['username'], '-d', (string) $c['database'], '-f', $target]);
+
+        if ($status !== 0 || ! is_file($target) || filesize($target) === 0) {
+            $this->error('pg_dump failed (exit '.$status.'): '.trim($output));
+
+            return false;
+        }
+
+        [$status, $listing] = $run(['pg_restore', '--list', $target]);
+        $tables = substr_count($listing, ' TABLE DATA ');
+
+        if ($status !== 0 || $tables === 0) {
+            $this->error("Verification FAILED: {$target} could not be read back by pg_restore.");
+
+            return false;
+        }
+
+        $this->artifacts[] = $target;
+        $this->line(sprintf('  <info>✓</info> database  %s (%s, %d tables)', basename($target), $this->humanSize($target), $tables));
 
         return true;
     }

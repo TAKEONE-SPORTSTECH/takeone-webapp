@@ -356,7 +356,7 @@ final class FederationTestMode
             $hit = DB::table($table)->where(function ($q) use ($cols, $likes) {
                 foreach ($cols as $c) {
                     foreach ($likes as $like) {
-                        $q->orWhereRaw('CAST('.DB::getQueryGrammar()->wrap($c).' AS CHAR) LIKE ? ESCAPE \'\\\'', [$like]);
+                        $q->orWhereRaw(\App\Support\Database\Sql::asText(DB::getQueryGrammar()->wrap($c)).' LIKE ? ESCAPE \'\\\'', [$like]);
                     }
                 }
             })->exists();

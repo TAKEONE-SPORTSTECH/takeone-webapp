@@ -103,6 +103,15 @@ abstract class TestCase extends BaseTestCase
                 ."RefreshDatabase would drop every table in it. Expected ':memory:' from phpunit.xml."
             );
         }
+
+        // Any server database must be a dedicated *_test one. The app's own
+        // PostgreSQL database is shared by staging AND production.
+        if ($connection !== 'sqlite' && ! str_ends_with((string) $database, '_test')) {
+            $this->fail(
+                'REFUSING TO RUN: the test suite is pointed at '.$connection.' database '.var_export($database, true).".\n"
+                .'RefreshDatabase would drop every table in it. A server test database must be named *_test.'
+            );
+        }
     }
 
     /**

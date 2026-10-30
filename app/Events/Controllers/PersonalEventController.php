@@ -4062,8 +4062,9 @@ class PersonalEventController extends Controller
          */
         $sportPool = ($wide && $phone === '') ? $this->sportPeople($event) : null;
 
+        // No join here, so rows are already one per person — and PostgreSQL
+        // cannot DISTINCT over the json `mobile` column selected below.
         $candidates = User::query()
-            ->distinct()
             ->when($sportPool !== null, fn ($q) => $q->whereIn('users.id', $sportPool))
             ->when($wide,
                 // Discoverability is the member's own opt-in to being found, so

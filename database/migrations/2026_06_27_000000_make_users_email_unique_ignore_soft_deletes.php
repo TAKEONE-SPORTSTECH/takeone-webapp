@@ -17,6 +17,10 @@ return new class extends Migration
         $driver = Schema::getConnection()->getDriverName();
 
         if (in_array($driver, ['sqlite', 'pgsql'], true)) {
+            // On PostgreSQL ->unique() made a CONSTRAINT, which owns the index.
+            if ($driver === 'pgsql') {
+                DB::statement('ALTER TABLE users DROP CONSTRAINT IF EXISTS users_email_unique');
+            }
             DB::statement('DROP INDEX IF EXISTS users_email_unique');
             DB::statement('CREATE UNIQUE INDEX users_email_unique ON users (email) WHERE deleted_at IS NULL');
         }

@@ -34,7 +34,7 @@ class UnplacedEntrants
     {
         $rows = ClubEventRegistration::where('event_id', $event->id)
             ->where('role', 'participant')
-            ->with(['user:id,uuid,name,full_name,gender,birthdate', 'representingTenant:id,name'])
+            ->with(['user:id,uuid,name,full_name,gender,birthdate', 'representingTenant:id,club_name'])
             ->orderBy('id')
             ->get()
             ->groupBy('user_id');
@@ -79,7 +79,7 @@ class UnplacedEntrants
                 'gender' => in_array(strtolower((string) $user?->gender), ['male', 'female'], true) ? ucfirst(strtolower((string) $user->gender)) : null,
                 'age' => $born ? (int) floor($born->diffInYears($on ?? now())) : ($entry->declared_age !== null ? (int) $entry->declared_age : null),
                 'weight' => $entry->weight !== null && (float) $entry->weight > 0 ? (float) $entry->weight : null,
-                'club' => $entry->representingTenant?->name,
+                'club' => $entry->representingTenant?->club_name,
                 'suggested' => $best['id'] ?? null,
                 'options' => $options->map(fn ($o) => ['id' => $o['id'], 'name' => $o['name'], 'fit' => $o['fit']])->all(),
             ];

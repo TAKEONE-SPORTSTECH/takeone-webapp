@@ -46,7 +46,8 @@ class RegisteredUserController extends Controller
     public function createForClub(Request $request, string $country, string $slug)
     {
         $club = \App\Clubs\Models\Tenant::where('slug', $slug)->first([
-            'club_name', 'slug', 'country_code', 'logo', 'cover_image', 'currency',
+            // `country`, not `country_code`: that is an accessor derived from it.
+            'club_name', 'slug', 'country', 'logo', 'cover_image', 'currency',
             'enrollment_fee', 'registration_fee',
             'registration_splash_image', 'registration_terms', 'registration_requirements', 'translations',
         ]);

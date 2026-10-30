@@ -152,7 +152,7 @@ class ChainDashboardService
         $rows = ClubTransaction::whereIn('tenant_id', $clubIds)
             ->where('type', 'income')
             ->where('transaction_date', '>=', $start)
-            ->selectRaw("tenant_id, strftime('%Y-%m', transaction_date) as month_key, COALESCE(SUM(amount),0) as total")
+            ->selectRaw('tenant_id, '.\App\Support\Database\Sql::yearMonth('transaction_date').' as month_key, COALESCE(SUM(amount),0) as total')
             ->groupBy('tenant_id', 'month_key')
             ->get()
             ->groupBy('tenant_id');

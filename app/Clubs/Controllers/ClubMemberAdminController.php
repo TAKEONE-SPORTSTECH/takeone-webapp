@@ -101,7 +101,7 @@ class ClubMemberAdminController extends Controller
             ->where('m.tenant_id', $clubId)
             ->where('m.status', 'active')
             ->where('m.created_at', '>=', now()->subMonths(11)->startOfMonth())
-            ->selectRaw("strftime('%Y-%m', m.created_at) as ym, u.gender, u.birthdate")
+            ->selectRaw(\App\Support\Database\Sql::yearMonth('m.created_at').' as ym, u.gender, u.birthdate')
             ->get();
 
         $monthlyLabels = [];
@@ -195,8 +195,8 @@ class ClubMemberAdminController extends Controller
             $formerMembers = Membership::where('tenant_id', $clubId)
                 ->where('status', 'former')
                 ->with([
-                    'user:id,uuid,full_name,name,first_name,last_name,profile_picture,gender,birthdate,mobile,email,nationality,updated_at',
-                    'user.guardians.guardian:id,first_name,last_name,profile_picture,updated_at',
+                    'user:id,uuid,full_name,name,profile_picture,gender,birthdate,mobile,email,nationality,updated_at',
+                    'user.guardians.guardian:id,full_name,profile_picture,updated_at',
                 ])
                 ->paginate(20, ['*'], 'former_page');
 
@@ -228,8 +228,8 @@ class ClubMemberAdminController extends Controller
         $query = Membership::where('tenant_id', $clubId)
             ->where('status', 'active')
             ->with([
-                'user:id,uuid,full_name,name,first_name,last_name,profile_picture,gender,birthdate,mobile,email,nationality,updated_at',
-                'user.guardians.guardian:id,first_name,last_name,profile_picture,updated_at',
+                'user:id,uuid,full_name,name,profile_picture,gender,birthdate,mobile,email,nationality,updated_at',
+                'user.guardians.guardian:id,full_name,profile_picture,updated_at',
                 'user.latestHealthRecord',
             ]);
 

@@ -392,7 +392,7 @@ class PlatformController extends Controller
                         ->orWhere('email', 'like', "%{$search}%")
                         ->orWhere('nationality', 'like', "%{$search}%")
                         ->orWhere('gender', 'like', "%{$search}%")
-                        ->orWhereRaw("JSON_EXTRACT(mobile, '$.number') LIKE ?", ["%{$search}%"])
+                        ->orWhereRaw(\App\Support\Database\Sql::jsonText('mobile', 'number').' '.\App\Support\Database\Sql::like().' ?', ["%{$search}%"])
                         ->orWhereHas('memberClubs', fn ($c) => $c->where('club_name', 'like', "%{$search}%"));
                 });
             });

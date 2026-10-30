@@ -121,7 +121,9 @@ class User extends Authenticatable implements \Ahl\Certificates\Contracts\Recipi
             HealthRecord::where('user_id', $id)->delete();
             Goal::where('user_id', $id)->delete();
             TournamentEvent::where('user_id', $id)->delete();
-            Attendance::where('user_id', $id)->delete();
+            // The column is member_id. 'user_id' matched nothing on SQLite (it
+            // read the unknown "user_id" as a string) and errors on PostgreSQL.
+            Attendance::where('member_id', $id)->delete();
 
             // Club interactions
             ClubEventRegistration::where('user_id', $id)->delete();

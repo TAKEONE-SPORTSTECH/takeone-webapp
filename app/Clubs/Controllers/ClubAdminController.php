@@ -717,7 +717,7 @@ class ClubAdminController extends Controller
 
         $rows = ClubTransaction::where('tenant_id', $clubId)
             ->where('transaction_date', '>=', $start)
-            ->selectRaw("strftime('%Y-%m', transaction_date) as month_key, type, SUM(amount) as total")
+            ->selectRaw(\App\Support\Database\Sql::yearMonth('transaction_date').' as month_key, type, SUM(amount) as total')
             ->groupBy('month_key', 'type')
             ->get()
             ->groupBy('month_key');

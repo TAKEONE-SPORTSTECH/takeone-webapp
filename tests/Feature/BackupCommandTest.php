@@ -212,7 +212,7 @@ class BackupCommandTest extends TestCase
     public function test_an_unsupported_database_driver_fails_loudly(): void
     {
         $original = config('database.default');
-        config(['database.default' => 'pgsql', 'database.connections.pgsql.driver' => 'pgsql']);
+        config(['database.default' => 'sqlsrv', 'database.connections.sqlsrv.driver' => 'sqlsrv']);
 
         try {
             $this->artisan('takeone:backup', ['--db-only' => true])

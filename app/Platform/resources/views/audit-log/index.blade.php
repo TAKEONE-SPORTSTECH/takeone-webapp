@@ -152,7 +152,7 @@
                             if ($val === 1 || $val === '1')         return 'Yes';
                             if ($val === 0 || $val === '0')         return 'No';
                             if (in_array($field, $moneyFields))     return number_format((float)$val, 2);
-                            if (is_array($val))                     return implode(', ', $val);
+                            if (is_array($val))                     return implode(', ', array_map(fn ($v) => is_array($v) ? json_encode($v, JSON_UNESCAPED_UNICODE) : $v, $val));
                             // Format datetime-ish strings
                             if (preg_match('/^\d{4}-\d{2}-\d{2}T/', $val)) {
                                 try { return \Carbon\Carbon::parse($val)->format('d M Y, H:i'); } catch (\Exception $e) {}
