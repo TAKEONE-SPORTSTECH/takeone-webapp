@@ -5,6 +5,7 @@
 #   scripts/ship.sh "commit message"     commit what is here, push, deploy
 #   scripts/ship.sh --dry-run            say what would happen, change nothing
 #   scripts/ship.sh                      nothing to commit? ship what is pushed
+#   scripts/ship.sh --uploads-only       only copy uploaded files production lacks
 #
 # The staging box is where the code is written, so it is the SOURCE of a
 # release, never a deploy target. This script:
@@ -13,9 +14,12 @@
 #   3. commits everything here and pushes the current branch,
 #   4. fast-forwards main to it — never a force push, never a merge,
 #   5. runs the Deploy workflow (backup → code archive → maintenance →
-#      sync → migrate → caches → site check) and waits for the result.
+#      sync → migrate → caches → site check) and waits for the result,
+#   6. copies every uploaded file (photos, logos, proofs, bout video) that
+#      production does not have yet — a deploy carries code, never uploads.
 #
-# Nothing on this box is deleted or reset by it.
+# Nothing on this box is deleted or reset by it, and the uploads copy only
+# ever ADDS files on production: never an overwrite, never a delete.
 
 set -euo pipefail
 
@@ -23,10 +27,12 @@ REPO=TAKEONE-SPORTSTECH/takeone-webapp
 cd "$(dirname "$0")/.."
 
 dry=0
+uploads_only=0
 msg=""
 for arg in "$@"; do
     case "$arg" in
         --dry-run) dry=1 ;;
+        --uploads-only) uploads_only=1 ;;
         -*) echo "Unknown option: $arg" >&2; exit 2 ;;
         *) msg="$arg" ;;
     esac
@@ -34,6 +40,42 @@ done
 
 say()  { printf '\n\033[1m%s\033[0m\n' "$*"; }
 fail() { printf '\n\033[31m✗ %s\033[0m\n' "$*" >&2; exit 1; }
+
+# ── Uploads: copy what production does not have yet ─────────────────────
+# A deploy carries code and nothing under storage/, so a photo, logo, proof or
+# bout video uploaded here never reached production on its own (2026-10-30:
+# 1,412 files were missing). This adds the files production lacks, over SSH:
+# --ignore-existing (never overwrites production's copy), no --delete (never
+# removes anything), owned by the deploy user so its backup can read them.
+# Left behind: this box's own backups and scratch, cache/ (thumbnails and cards
+# each box regenerates by itself), PHP files (storage must
+# never carry code), and old APK backups. When UPLOADS_ROOT is set, both boxes
+# already read one shared folder, so there is nothing to copy.
+PROD_SSH=${PROD_SSH:-takeone-live}
+PROD_UPLOADS=/var/www/takeone/storage/app
+sync_uploads() {
+    if grep -qE '^UPLOADS_ROOT=.+' .env; then
+        echo "  UPLOADS_ROOT is set — both boxes share one uploads folder; nothing to copy."
+        return 0
+    fi
+    local extra=()
+    [ "$dry" = 1 ] && extra=(--dry-run)
+    local out
+    out=$(rsync -rlt --ignore-existing --chown=actionsrunner:actionsrunner --chmod=D2775,F664 \
+        --exclude='/backups/' --exclude='/private/' --exclude='/sim/' --exclude='/temp/' --exclude='/cache/' \
+        --exclude='/livewire-tmp/' --exclude='/demo/' --exclude='/tv/*.bak*' \
+        --exclude='*.php' --exclude='*.part' --exclude='.gitignore' \
+        --stats "${extra[@]}" -e ssh storage/app/ "$PROD_SSH:$PROD_UPLOADS/") \
+        || return 1
+    echo "$out" | grep -E '^(Number of regular files transferred|Total transferred file size)' | sed 's/^/  /'
+}
+
+if [ "$uploads_only" = 1 ]; then
+    say "Copying uploads production does not have yet"
+    [ "$dry" = 1 ] && echo "  (dry run — nothing is copied)"
+    sync_uploads || fail "The uploads copy failed."
+    exit 0
+fi
 
 branch=$(git rev-parse --abbrev-ref HEAD)
 [ "$branch" = "HEAD" ] && fail "Detached HEAD — check out a branch first."
@@ -102,7 +144,9 @@ if ! git merge-base --is-ancestor origin/main HEAD; then
 fi
 
 if [ "$dry" = 1 ]; then
-    say "Dry run — would commit, push $branch, fast-forward main by $(git rev-list --count origin/main..HEAD) commit(s) plus the new one, and run Deploy."
+    say "Uploads production does not have yet (would be copied after the deploy)"
+    sync_uploads || echo "  could not check the uploads (SSH to $PROD_SSH failed?)"
+    say "Dry run — would commit, push $branch, fast-forward main by $(git rev-list --count origin/main..HEAD) commit(s) plus the new one, run Deploy, and copy the uploads."
     exit 0
 fi
 
@@ -133,9 +177,23 @@ done
 [ -n "$run" ] || fail "The deploy did not start. Check: gh run list --workflow Deploy"
 
 echo "  https://github.com/$REPO/actions/runs/$run"
-if gh run watch "$run" --repo "$REPO" --exit-status --interval 10 > /dev/null; then
+gh run watch "$run" --repo "$REPO" --exit-status --interval 10 > /dev/null || true
+# `gh run watch` also gives up on a GitHub 502 while the run is still going
+# (2026-10-30), so the run's own conclusion decides, not the watcher's exit.
+result=""
+for _ in $(seq 1 60); do
+    result=$(gh run view "$run" --repo "$REPO" --json status,conclusion \
+        --jq 'if .status == "completed" then .conclusion else "" end' 2>/dev/null || true)
+    [ -n "$result" ] && break
+    sleep 10
+done
+if [ "$result" = "success" ]; then
     say "✓ Shipped. takeone.bh is running $(git rev-parse --short HEAD)."
 else
     gh run view "$run" --repo "$REPO" --log-failed | tail -40 || true
-    fail "The deploy failed (log above). The site may be in maintenance mode; the run log says where the backup and code archive are."
+    fail "The deploy failed (log above). The site may be in maintenance mode; the run log says where the backup and code archive are. Uploads were not copied."
 fi
+
+# ── 6. Uploads ──────────────────────────────────────────────────────────
+say "Copying uploads production does not have yet"
+sync_uploads || fail "The code is live, but the uploads copy failed. Re-run: scripts/ship.sh --uploads-only"
