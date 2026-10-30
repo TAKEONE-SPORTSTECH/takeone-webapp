@@ -181,6 +181,17 @@ class CertificateBundles
         return $type.'.sel-'.$token;
     }
 
+    /**
+     * A remembered selection, for a context that prints pages rather than certificate
+     * records (EventBadges): the ids `remember()` filed under this token.
+     *
+     * @return list<int>|null
+     */
+    public function selected(CertificateContext $provider, Model $context, string $token): ?array
+    {
+        return $this->remembered($provider, $context, $token);
+    }
+
     /** @return list<int>|null */
     private function remembered(CertificateContext $provider, Model $context, string $token): ?array
     {

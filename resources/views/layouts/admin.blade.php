@@ -232,6 +232,10 @@
                 ['route'=>'admin.duplicates.index', 'pattern'=>['admin.duplicates*'], 'icon'=>'bi-intersect', 'label'=>__('duplicates::messages.nav'),
                     'badge' => rescue(fn () => \App\Duplicates\Models\DuplicateFinding::where('status', 'open')->where('strength', 'likely')->count(), 0, report: false)],
             ] : []),
+            // Forms & surveys (app/Forms) — every questionnaire, its answers and its analytics.
+            ...(\Illuminate\Support\Facades\Route::has('admin.forms.index') ? [
+                ['route'=>'admin.forms.index', 'pattern'=>['admin.forms*'], 'icon'=>'bi-ui-checks-grid', 'label'=>__('forms::admin.nav')],
+            ] : []),
         ],
         'System' => [
             ['route'=>'admin.platform.activities',    'pattern'=>['admin.platform.activities*'],'icon'=>'bi-lightning-charge','label'=>'Activities'],

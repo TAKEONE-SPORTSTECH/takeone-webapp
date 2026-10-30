@@ -30,6 +30,100 @@ class FormEngine
         };
     }
 
+    /**
+     * Rules for the PAGED survey layout, and the exact list of keys it may
+     * store. Only what is declared is kept: an extra key in the request is
+     * dropped rather than saved, and a private field (the visitor's cover,
+     * observations, summary) is not even accepted unless the request carries
+     * the visit link.
+     *
+     * Companion keys ride beside a field: `{key}__other` (the "Other" box on
+     * a choice) and `{key}__note` (the note under a one-choice or a scale).
+     *
+     * @return array{0: array, 1: array, 2: list<string>}
+     */
+    public static function surveyRules(Form $form, array $data, bool $visit): array
+    {
+        $rules = [];
+        $labels = [];
+        $keys = [];
+
+        foreach (($form->schema['pages'] ?? []) as $page) {
+            $pagePrivate = ! empty($page['private']);
+            foreach (($page['fields'] ?? []) as $field) {
+                $key = (string) ($field['key'] ?? '');
+                $type = $field['type'] ?? 'text';
+                if (! preg_match('/^[a-z0-9_]{1,40}$/', $key) || in_array($type, ['heading', 'paragraph'], true)) {
+                    continue;
+                }
+                if (($pagePrivate || ! empty($field['private'])) && ! $visit) {
+                    continue;
+                }
+
+                $d = 'fields.'.$key;
+                $labels[$d] = $field['label'] ?? $key;
+                $keys[] = $key;
+                $req = ! empty($field['required']) && self::isVisible($field, $data) ? 'required' : 'nullable';
+                $values = fn (string $list) => collect($field[$list] ?? [])->pluck('value')->map(fn ($v) => (string) $v)->all();
+
+                switch ($type) {
+                    case 'checkboxes':
+                        $rules[$d] = [$req, 'array', 'max:50'];
+                        $rules[$d.'.*'] = ['string', 'in:'.implode(',', $values('options'))];
+                        if (! empty($field['other'])) {
+                            $rules['fields.'.$key.'__other'] = ['nullable', 'string', 'max:300'];
+                            $keys[] = $key.'__other';
+                        }
+                        break;
+                    case 'radio':
+                    case 'select':
+                        $rules[$d] = [$req, 'string', 'in:'.implode(',', $values('options'))];
+                        break;
+                    case 'scale':
+                        $rules[$d] = [$req, 'integer', 'between:'.(int) ($field['min'] ?? 1).','.(int) ($field['max'] ?? 5)];
+                        break;
+                    case 'numbers':
+                        $rules[$d] = ['nullable', 'array:'.implode(',', $values('rows'))];
+                        $rules[$d.'.*'] = ['nullable', 'integer', 'between:0,1000000'];
+                        break;
+                    case 'grid':
+                        $rows = $values('rows');
+                        $rules[$d] = [$req, 'array:'.implode(',', $rows)];
+                        foreach ($rows as $row) {
+                            $rules[$d.'.'.$row] = [$req, 'string', 'in:'.implode(',', $values('columns'))];
+                        }
+                        break;
+                    case 'rank':
+                        $rules[$d] = [$req, 'array', 'max:'.(int) ($field['max'] ?? 5)];
+                        $rules[$d.'.*'] = ['distinct', 'string', 'in:'.implode(',', $values('rows'))];
+                        break;
+                    case 'checkbox':
+                    case 'terms':
+                        $rules[$d] = [$req === 'required' ? 'accepted' : 'nullable', 'boolean'];
+                        break;
+                    case 'date':
+                        $rules[$d] = [$req, 'date'];
+                        break;
+                    case 'number':
+                        $rules[$d] = [$req, 'numeric', 'between:-1000000,1000000'];
+                        break;
+                    default: // text, textarea, phone, email, note
+                        $rules[$d] = [$req, 'string', 'max:'.(in_array($type, ['textarea', 'note'], true) ? 5000 : 300)];
+                        if ($type === 'email') {
+                            $rules[$d][] = 'email';
+                        }
+                }
+
+                if (! empty($field['note'])) {
+                    $rules['fields.'.$key.'__note'] = ['nullable', 'string', 'max:1000'];
+                    $keys[] = $key.'__note';
+                }
+            }
+        }
+
+        return [$rules, $labels, $keys];
+    }
+
     /** Build Laravel validation rules + attribute labels for a submission. */
     public static function rules(Form $form, array $data): array
     {

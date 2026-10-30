@@ -93,6 +93,16 @@ cannot quietly become permanent.
 | `app/Federations/resources/views/invite/show.blade.php` and `invite/partials/*.blade.php` (8 files) | Moved on 2026-10-04 to the shared `app/Events/resources/views/entry/club/{page,partials/*}` — the ONE "Register your club" page for every host (owner's go-ahead, step 3 of the one-front-door plan). `InvitePageController::show` and `ClubEntryController` both render the shared copy now. Checked: `grep -rn "federations::invite.(show|partials)"` finds no renderer (one comment in `EventDoors.php`). The old copies would DRIFT if edited — edit only the shared ones. Registered 2026-10-04. | Delete as its own change once the shared page has served a live event; fix the `EventDoors.php` comment with it. |
 | **Two "same club?" rules** — `App\Clubs\Support\ClubMatch` (name only: same / similar, used by the event doors and the duplicate watch) and `FederationClubPicker::matches()` (email + phone + similar name, the federation approval modal), plus `FederationInvitation::nameKey()` | `ClubMatch` was added 2026-10-21 for the duplicate guard (app/Duplicates). The federation picker was deliberately NOT rewired onto it (RULE #1: it is a live approval screen), so the stop-word list and the "similar" threshold now exist in two places and can drift. Registered 2026-10-21. | On a go-ahead: give `ClubMatch` the email/phone half, point `FederationClubPicker::matches()` and the invitation's `nameKey()` at it, check the approval modal's match rows on a real pending application, then delete the private copies. |
 | `BrazilianJiuJitsu\Controllers\ScoreboardController::catalogue()` + `sideBuilder()` | The BJJ console's whole-draw catalogue for its Bouts tabs. Since 2026-10-09 the same logic lives once in `App\Scoreboard\Support\BoutCatalogue`, built when the Karate console got BJJ's tabbed Bouts card (`karate/scoreboard/partials/bouts-card`). BJJ was deliberately not touched (RULE #1), so there are two copies. Registered 2026-10-09. | On an explicit go-ahead: point BJJ's two catalogue doors at `BoutCatalogue::for()`, check its Weight class / Member / Arcade tabs on a BJJ console, then delete the private copy. |
+| **Two builders of the bout scoreboard state (`msb`)** — `BoutVideoController::playPayload()['msb']` (+ its private `flatPoints()`/`header()`/`corner()` share) and `App\Media\BoutScoreboard::for()` | `BoutScoreboard` was added 2026-10-23 as the Media module's public builder, for sending a bout out (`App\Media\BoutShare`, the `share_bout_video` MCP tool), because a controller is private to its module. The page was deliberately NOT moved onto it (RULE #1: it is the live watch page). `tests/Feature/BoutShareTest::test_the_shared_scoreboard_is_exactly_what_the_page_draws` proves the two produce the same payload today. Registered 2026-10-23. | On a go-ahead: make `playPayload()` call `BoutScoreboard::for()` for `msb`, re-run that parity test and open a filmed bout on mobile and desktop, then delete the controller's private copy. |
+| **Two readers of a bout's officiating log** — `App\Federations\Services\FederationBoutAnalytics::replay()` (private, event-wide report) and `App\Media\BoutStats::replay()` (public, one bout: the stat-sheet PDF, the sent video's closing card, the `bout_stats` MCP tool) | Same rules (last attempt before `finish`, undo_point, penalty level as a state, aka/ao sides). `BoutStats` was added 2026-10-24 because the federation reader is private to its module and RULE #1 kept the live competition report untouched. `BoutStats` additionally handles `encho` and stoppage timing. Registered 2026-10-24. | On a go-ahead: point `FederationBoutAnalytics` at `BoutStats` per bout, compare a full competition report before and after on event 104, then delete the private `replay()`. |
+| **The score bar markup in two places** — inline in `events::personal.mobile.bout-video` (`#msbRoot`, drawn by the player's script) and `media::share.scoreboard` (the same design, drawn server-side for `App\Media\BoutShareRenderer`), plus the per-sport corner words / point names / round label rules in both the page's `RUN()` script and `BoutShareRenderer::stateAt()` | The sent video has to carry the bar burned in, and the page's copy lives inside a 12,000-line standalone design used verbatim (CLAUDE.md, Design Rule #6 exception). The share view adds ONE departure on purpose: a dark backing behind the top-left identity rows and the ticker header, because a sent video cannot switch them off and a white hall wall swallows them. Registered 2026-10-23. | When the page's score bar is next redesigned: make it a partial both include, with the rules in one PHP place that the page's script reads as data. |
+
+- **TakeNote's old phone chip row and floating capture-bar styles** — `.fo-chip`, `.fo-dot`, `.fo-sep`, `.fo-new`
+  and `.cap`, `.cap .b`, `.cap.main` in `app/DevBoard/resources/views/takenote/styles.blade.php`. Registered
+  2026-10-28: the notebook now uses grouped rows on a Folders screen and a plain bottom bar (takenote/layout,
+  phone-styles); `drawChips()` was replaced by `drawFolderRows()`. *Checked:* nothing in `app/DevBoard` builds a
+  `fo-chip`, `fo-sep`, `fo-new` or `cap` element any more (grep the views). *Gate:* the owner has used the new
+  layout on a real phone and not asked for the chips back.
 
 ### Schema
 **Name a dead table or column here; never drop one in passing.**
@@ -114,6 +124,8 @@ cannot quietly become permanent.
 | `club_event_registrations.photo` on regs **2244** and **2546** — `events/cac87b31…/competitors/c2244-…jpg` and `…/c2499-…jpg` | Dangling: the rows name files that are not on disk. Found by `takeone:gather-person-photos` (2026-09-21), which moved the other 52 and deliberately left these — it moves photographs, it does not guess at broken references. Harmless today (`EntryPhoto::showable()` falls through to the profile picture). | Decide per row: re-photograph the competitor, or null the column. Not a bulk operation. |
 | `events/{uuid}/competitors/` and `events/{uuid}/officials/` as a photo store | Superseded by *A Person's Photo Has One Home* (CLAUDE.md): a person's face now lives under `members/{uuid}/photos/`. These folders remain legitimate for an entry with **no account behind it yet**, so they are NOT dead — they are narrowed. | Nothing to remove. Listed so nobody re-widens them. |
 | Photographs kept only because an issued certificate named them | Since 2026-10-26, issuing certificates again repoints each certificate's `details.snapshot.photo` at the person's CURRENT photo (`CertificateSnapshot::refreshPhoto`). A face that `EntryPhoto` had spared from deletion only because a certificate still claimed it is now claimed by nothing and stays on disk. Registered 2026-10-26. | List files under `members/*/` and `events/*/` named by none of the four photo columns nor any certificate snapshot; backup first; files only, never rows. |
+| `storage/app/private/compare/live-db-20261027-033001.sqlite` (23 MB) | A copy of the LIVE production database, taken 2026-10-28 to compare stage against prod during a manual deploy. Was root-owned, which made every uploads backup fail from then until 2026-10-29 (chowned to www-data so the backup can read it). Real member data on the stage box, kept nowhere by design. Registered 2026-10-29. | Confirm the deploy comparison is finished, then delete the folder (it is in the uploads backups since 2026-10-29 — those age out in 14 days). |
+| `cache/bout-share/{media-uuid}/{hash}.mp4` (local media root) | Bouts rendered for sending (`App\Media\BoutShare`, 2026-10-23). DERIVED and safe to delete at any time — the next request renders again. Nothing sweeps it yet: every re-scored bout or changed setting makes a new hash and the old file stays. Roughly 33 MB per minute of full bout, a third of that for highlights. Registered 2026-10-23. | Add a scheduled sweep (files older than N days) before the feature is switched on in production. |
 
 ### Data
 
@@ -134,6 +146,15 @@ cannot quietly become permanent.
 | `personal.event_show_money_unrecorded` — "No fee type recorded" / "بلا نوع رسوم مسجّل" (en + ar) | The income breakdown no longer has such a row: an option-priced event counts an entry with no fee line as zero and says nothing about it, and a base-priced one labels those under the event's own entry fee (2026-09-13, at the user's instruction — "there is nothing called no fee type"). Grepped: no reference left in `app/`, `resources/` or any other lang file. | Delete both keys on a house-cleaning pass. Harmless where it sits — an unused key costs nothing but a line. |
 
 ### Trial data & scratch scripts
+- **`.env.bak-sharing-20261028-135305`** (repo root, stage) — a copy of stage's `.env` taken before `TAKENOTE_SHARING`
+  was added on 28 Oct 2026. Holds every stage secret. Gate: delete once sharing has run a week without needing a
+  rollback. Registered 28 Oct 2026.
+- **`storage/app/backups/db-premigrate-sharing-20261028-140109.sqlite`** — verified snapshot taken right before the
+  folder-shares migration. Gate: the nightly backups' retention covers it; delete after 7 days. Registered 28 Oct 2026.
+- **`.env.bak-relations-20261028-180121`** (repo root, stage) — `.env` copy taken before `TAKENOTE_RELATIONS` was added on
+  28 Oct 2026. Holds every stage secret. Gate: delete once connections have run a week without a rollback. Registered 28 Oct 2026.
+- **`storage/app/backups/db-premigrate-relations-20261028-180105.sqlite`** — verified snapshot (integrity ok, 400
+  migrations, 19 cards) taken right before the relations migration. Gate: delete after 7 days. Registered 28 Oct 2026.
 
 | Item | Why | Gate |
 |---|---|---|
@@ -151,11 +172,66 @@ cannot quietly become permanent.
 | The Google / Firebase service-account key | FCM was deleted 2026-09-01 (it had zero tokens, ever). The key itself still needs **revoking by hand** in the Google console. | Owner: the user. Revoke, then move to Done. |
 | Our SSH `authorized_keys` entry and API token **on the `video.takeone.bh` box** | That integration was removed here on 2026-08-27 and its Sanctum token revoked on this side. The credentials on THAT box are somebody else's machine now and still stand. | Owner: the user, with whoever holds that box. |
 
+### Deploy pipeline leftovers (registered 2026-10-30)
+
+| Item | Why | Gate |
+|---|---|---|
+| `.github/workflows/deploy-staging.yml` | Staging is where code is written (a git working copy), so it is the SOURCE of a release, not a target. The workflow is now manual-only and refuses a working copy at its first step: it can no longer do anything. Checked: `/var/www/takeone` on staging has `.git`. | Delete once `scripts/ship.sh` has shipped a few releases cleanly. |
+| `actions.runner…takeone-server.service` on BOTH boxes | An older runner registration. Enabled, never configured, dies on every boot. The live ones are `…takeone-staging` / `…takeone-production`. | `systemctl disable` it on each box, then remove the unit. |
+| `verify-skills.php`, `public/emperor-dashboard.html` on PRODUCTION only | In no commit (root-owned, 29 Aug). `deploy.yml` protects them from `--delete` so the first pipeline ship does not silently remove them. | Owner says whether either is used; then delete both and their two `P` rules in `deploy.yml`. |
+| `.env.bak-mail-20261027-235514` on PRODUCTION | Hand backup of `.env` from the mail fix. Holds secrets. Protected by the `P /.env*` rule. | Delete by hand once mail has stayed healthy. |
+| `storage/app/backups/code-*.tar.gz` on PRODUCTION | One code archive per deploy (~90 MB, no secrets). `takeone:backup` does not prune them. | Add them to the backup retention, or prune by hand. |
+
 ### Federation Draw tab — views retired 2026-10-16
 
 | Item | Why | Gate |
 |---|---|---|
 | `app/Federations/resources/patches/div-manage.js` → `dmVals`: `orderRows`, `views`, `sections`/`card()` merge bits (`mergeBits`), `sortVals` chips, `showEmpty`/`onEmpty`/`emptyLabel`, the `hasStrip`/`stripLine` block, `dmMove` | Owner asked for the weight classes as a TABLE only (no Cards, no Order, empty divisions always shown, no navy merge strip). The markup is gone from `event-divisions.html`; `view` is forced to `'table'`, so these values are computed and never drawn. Checked: no `{{ dm.views/sections/orderRows/hasStrip/hasEmpty/sort.* }}` left in the template. `hasSafeAll`/`onSafeAll` are still used (moved into the Merge window). | Go-ahead; then delete and re-check the Draw tab renders. Note drag-to-arrange (the event's own division order) has no UI any more. |
+
+### Stage camera APK backups (registered 2026-10-23)
+
+| Item | Why | Gate |
+|---|---|---|
+| `storage/app/tv/takeone-screen-cam.apk.bak-20261023*` — thirty-eight files, ~50–90 MB each | Kept at each boutcam publish on 2026-10-23 (1.0.0 → 1.0.37) so a bad build could be rolled back. `.bak-20261023` is the old mat-cam build (1.0.0); the `-boutcamNNN` ones are boutcam builds superseded the same day. Checked: nothing reads a `.bak-*` name — `ScreenPairingController::APPS` serves only `takeone-screen-cam.apk`. | Once boutcam 1.0.7+ has run a real event on a phone: keep the mat-cam one if that build is still wanted, delete the rest. |
+
+### Stage camera APK backups (registered 2026-10-24)
+
+`storage/app/tv/takeone-screen-cam.apk.bak-20261024-boutcam1037`, `…1038`, `…1039` and `…1040` — the boutcam builds replaced on 24 Oct (1.0.37 → 1.0.41). Kept only to roll back a bad build. Remove after 1.0.41 has been used at an event.
+
+### Design samples shown at a public link (registered 2026-10-23)
+
+| Item | Why | Gate |
+|---|---|---|
+| `public/dl/a897044c72ba9988fd7514471693aa1e/` — `boutcam-bar-samples.html` and its copies `bar-samples-white.html`, `bar-white-v2.html`, `bar-white-v3.html`, `bar-white-v4.html`, `bar-a-final.html`, `bar-a-pyramid.html`, `bar-position.html`, `framing-guide.html`, `camera-view.html`, `bouts-list.html`, `bouts-list-v2.html`, `bouts-list-v3.html`, `vs-music.html` + `vs-intro-music.m4a`, `vs-embers.html`, `vs-screen.html`, `vs-screen-v2.html`, `vs-screen-v3.html`, `vs-screen-upright.html` (carry two members' PUBLIC profile photos) (~540 KB each, logos and flags inlined) | Three score-bar options shown to the owner so they could choose; served at an unguessable address with `noindex`. Carries one real bout's names, clubs, flags and crests (no photos). Nothing links to it. | Delete once the owner has picked an option and it is built. |
+| `public/downloads/club-questionnaire-ffca121beea452df9312c55d.pdf` (registered 2026-10-26) | The blank bilingual club-visit questionnaire, put at an unguessable public address so the owner could download it. No personal data. The kept copy is `Documentation/club-questionnaire/`. | Delete once the owner has it. |
+| `public/downloads/4b52d2d5cf3abb309b21eb75/` — `Sample-Answered-Questionnaire.pdf`, `Findings-and-Action-Plan.pdf`, `Infographic.png`, `coded-responses.csv` (registered 2026-10-26) | Illustrative sample (fictional clubs) of how questionnaire answers become a plan, at an unguessable address for the owner to download. No real data. Kept copies + scripts in `Documentation/club-questionnaire/`. | Delete once the owner has them. |
+| `public/downloads/2e5f173362b599c9156e78d5/` — `QR-Club-Questionnaire.png`, `qr-code.svg` (registered 2026-10-26) | QR card for the online club questionnaire (`/f/6dee2e70-…`), at an unguessable address for the owner to download. Points at the public link only — never the visit link. | Delete once the owner has it; the form itself stays. |
+| `public/downloads/federation-questionnaire-be81ffefdeaf35ddbc7fe54c.pdf` (registered 2026-10-26) | The bilingual federation questionnaire PDF at an unguessable address for the owner to download. Kept copy + scripts in `Documentation/federation-questionnaire/`. | Delete once the owner has it. |
+
+### DevBoard module — "Margin" / TakeNote (registered 2026-10-30)
+
+The owner's private idea board, not part of the sports product; the user asked for it on
+the list on 2026-10-30. **⚠️ It is NOT dead — it is switched on and holds real notes:**
+`DEVBOARD_ENABLED=true` on stage, friends use it (TakeNote), and the two scheduled jobs
+run. Retiring it is a product decision first, a cleanup second.
+
+| Item | Where | Checked 2026-10-30 |
+|---|---|---|
+| The module | `app/DevBoard/` (controllers, models, jobs, mail, middleware, commands, 6 locales, `routes.php` + `routes-takenote.php`) and its line in `config/modules.php` | Nothing outside the folder calls its controllers/services (ModuleBoundaryTest). |
+| Nav links into it | `resources/views/layouts/app.blade.php` (2 places), `resources/views/partials/mobile-account-links.blade.php`, `app/Members/resources/views/layouts/personal-mobile.blade.php`, `app/Ui/resources/views/shell/account-menu.blade.php` — all via `BoardAccess::linkFor()` | These are the only references to the module outside it, besides the ones below. |
+| Scheduled jobs | `routes/console.php` — `devboard:sweep --apply` (04:30 daily), `devboard:remind` (every minute) | — |
+| Tables | 18 `devboard_*` tables, 11 migrations in `app/DevBoard/database/migrations`. Rows on stage: 31 items, 25 cards, 5 notebooks, 9 folders, 25 assets, 1,056 activity, 1 member | Real data, not demo rows. |
+| Uploaded files | `storage/app/platform/devboard/cards/{card-uuid}/…` — 44 files, 5.2 MB (images, voice notes) | Referenced by `devboard_assets.path`. |
+| Vendored JS | `public/vendor/perfect-freehand/`, `public/vendor/sortablejs/` | Only DevBoard loads these local copies (the club gallery/instructors pages load Sortable from jsDelivr, not from here). |
+| Tests & docs | `tests/Feature/DevBoard/` (13 files), `Documentation/DEV-BOARD-PLAN.md`, `.env` `DEVBOARD_ENABLED` | — |
+
+**Gate:** (1) the user's explicit go-ahead to retire it; (2) the friends using TakeNote
+told, and their notes **exported for them** if wanted; (3) a verified backup (RULE #2).
+Then in order: set `DEVBOARD_ENABLED=false` and live with it off for a while; remove the
+nav links and the two schedule lines; delete the files under
+`storage/app/platform/devboard/` **before** the rows; drop the tables; delete the folder,
+its registry line, the two vendored libraries, the tests and the plan doc. Re-check the
+route count and the account menus on mobile, desktop and the new UI.
 
 ### Memories
 

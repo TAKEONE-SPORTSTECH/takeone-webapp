@@ -115,6 +115,13 @@ final class LiveMove
 
                 $lines[] = $this->applyJoin($event, $join, $entry->fresh(['user']), $to, $name);
 
+                // A bout that became a bye left its number behind: no gaps.
+                if (MatNumbering::enabled()) {
+                    collect([...$leave['bouts'], ...$join['bouts']])
+                        ->map(fn (EventMatch $m) => [$m->court, $m->day])->unique()
+                        ->each(fn ($mat) => app(MatNumbering::class)->close($event->id, $mat[0], $mat[1]));
+                }
+
                 return array_values(array_filter($lines));
             });
         } catch (TransferRefused $e) {
@@ -519,6 +526,11 @@ final class LiveMove
             $b->number_pinned = false;
             $b->save();
 
+            // Not at the end of the mat: where it belongs, the mat renumbered.
+            if ($court && MatNumbering::enabled()) {
+                app(MatNumbering::class)->place($b);
+            }
+
             // The bye-holder comes back to fight it: their place in the next bout empties.
             $this->clearCorner($n, $plan['next_side']);
             $n->save();
@@ -708,6 +720,10 @@ final class LiveMove
             rescue(fn () => $type?->announceDrawChanged($event, $id), null, false);
         }
         rescue(fn () => \App\Events\Support\HallWalls::refresh($event), null, false);
+        // The mat's numbers may have moved (MatNumbering): the scoring consoles re-read.
+        if (MatNumbering::enabled()) {
+            rescue(fn () => app(\App\Scoreboard\Fleet::class)->boardsChanged($event), null, false);
+        }
     }
 
     private function no(string $message): array

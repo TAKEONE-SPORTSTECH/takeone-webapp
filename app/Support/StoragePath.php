@@ -383,6 +383,17 @@ class StoragePath
     }
 
     /**
+     * A bout rendered for sending (App\Media\BoutShare) — the footage with the
+     * score bar burned in and the points as chapters. DERIVED: the name is a
+     * hash of the footage and everything drawn on it, so a re-scored bout is a
+     * new file and deleting the folder only costs a re-render.
+     */
+    public static function boutShare(string $mediaUuid, string $hash): string
+    {
+        return self::join(self::CACHE, 'bout-share', preg_replace('/[^a-f0-9-]/', '', strtolower($mediaUuid)), preg_replace('/[^a-f0-9]/', '', $hash).'.mp4');
+    }
+
+    /**
      * A small rendition of a stored image, for a list that paints it tiny.
      *
      * Under `cache/` like every other derived file: it can be deleted at any

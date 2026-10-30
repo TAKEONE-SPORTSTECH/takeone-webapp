@@ -60,9 +60,14 @@ class BoutTimeline
     /**
      * Build the bar for one bout against one recording.
      *
+     * `$rows` is the officiating log to read when it is not the bout's own —
+     * an exhibition is fought outside the draw and logged with no bout id, so
+     * its caller hands over its mat's rows for its own time window. Absent,
+     * the log is read by the bout's id, exactly as always.
+     *
      * @return array{anchored: bool, rounds: array<int, array<string, mixed>>, moments: array<int, array<string, mixed>>}
      */
-    public function for(EventMatch $match, EventRecording $recording): array
+    public function for(EventMatch $match, EventRecording $recording, ?\Illuminate\Support\Collection $rows = null): array
     {
         $empty = ['anchored' => false, 'rounds' => [], 'moments' => []];
 
@@ -72,10 +77,13 @@ class BoutTimeline
             return $empty;
         }
 
-        $rows = DB::table('event_match_events')
-            ->where('match_id', $match->id)
-            ->orderBy('sequence')
-            ->get();
+        // A bout that was fought as an exhibition and linked afterwards was
+        // scored in the exhibition's log, not its own (ExhibitionLink).
+        $rows ??= app(\App\Events\Support\ExhibitionLink::class)->rowsForBout($match)
+            ?? DB::table('event_match_events')
+                ->where('match_id', $match->id)
+                ->orderBy('sequence')
+                ->get();
 
         if ($rows->isEmpty()) {
             return ['anchored' => true, 'rounds' => [], 'moments' => []];

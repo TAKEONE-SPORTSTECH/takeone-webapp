@@ -104,10 +104,10 @@ class EventParticipantBadges extends EventBadges
     }
 
     /** Every competitor's badge, four to an A4 sheet — the file a print shop is sent. */
-    public function sheets(ClubEvent $event, string $locale, ?callable $progress = null): string
+    public function sheets(ClubEvent $event, string $locale, ?callable $progress = null, ?string $type = null): string
     {
         if ($design = $this->badgeDesign($event)) {
-            $pages = $this->participants($event)->map(fn ($p) => [
+            $pages = $this->participantsFor($event, $type)->map(fn ($p) => [
                 $design,
                 $this->designValues($event, $this->participantFields($p, $event), $p['entry'] ? $this->entryCrest($event, $p['entry']) : null,
                     $p['user']->nationality, $p['entry'] ? $this->entryClub($event, $p['entry']) : null),
@@ -117,21 +117,60 @@ class EventParticipantBadges extends EventBadges
         }
         $service = app(CertificateService::class);
         $template = $this->template($event);
-        $pages = $this->participants($event)->map(fn ($p) => fn () => $service->renderDocument($template, $locale, $this->participantFields($p, $event), $event))->all();
+        $pages = $this->participantsFor($event, $type)->map(fn ($p) => fn () => $service->renderDocument($template, $locale, $this->participantFields($p, $event), $event))->all();
 
         return $service->bundlePages($pages, $progress);
     }
 
-    public function signature(ClubEvent $event, string $locale): string
+    public function signature(ClubEvent $event, string $locale, ?string $type = null): string
     {
         $ids = ClubEventRegistration::where('event_id', $event->id)->where('role', 'participant')->orderBy('id')
             ->get(['id', 'updated_at', 'category_id'])->map(fn ($r) => $r->id.'@'.$r->updated_at.'@'.$r->category_id)->implode(',');
 
-        return substr(sha1($locale.'|'.$ids.'|'.$this->template($event)->updated_at.'|'.$this->designSignature($event)), 0, 16);
+        return substr(sha1($locale.'|'.(string) $type.'|'.$ids.'|'.$this->template($event)->updated_at.'|'.$this->designSignature($event)), 0, 16);
     }
 
     public function printCount(Model $context, string $type): int
     {
-        return $context instanceof ClubEvent && $type === self::TYPE ? $this->participants($context)->count() : 0;
+        if (! $context instanceof ClubEvent || explode('.', $type, 2)[0] !== self::TYPE) {
+            return 0;
+        }
+
+        return $this->participantsFor($context, $type)->count();
+    }
+
+    /**
+     * The competitors one bundle prints: everyone, or just the ticked few when the
+     * type names a remembered selection (`participant_badge.sel-<token>`).
+     */
+    public function participantsFor(ClubEvent $event, ?string $type = null): Collection
+    {
+        [, $job] = array_pad(explode('.', (string) $type, 2), 2, null);
+        $all = $this->participants($event);
+        if ($type === null || $job === null || ! str_starts_with((string) $job, 'sel-')) {
+            return $all;
+        }
+        $ids = app(\App\Certificates\Support\CertificateBundles::class)->selected($this, $event, substr((string) $job, 4));
+
+        return $ids === null ? $all : $all->filter(fn ($p) => in_array((int) $p['user']->id, $ids, true))->values();
+    }
+
+    /** The ticked competitors, as the ids a selection bundle is remembered by. */
+    public function pageSelection(Model $context, array $holders): array
+    {
+        if (! $context instanceof ClubEvent || $holders === []) {
+            return [];
+        }
+        $want = array_fill_keys(array_map('strval', $holders), true);
+
+        return $this->participants($context)
+            ->filter(fn ($p) => isset($want[$this->holderKey($p['user'])]))
+            ->map(fn ($p) => (int) $p['user']->id)->unique()->values()->all();
+    }
+
+    /** Competitors hold no job, so a participant badge bundle is never split by one. */
+    public function bundleRecipients(Model $context, string $type, string $job): ?array
+    {
+        return null;
     }
 }

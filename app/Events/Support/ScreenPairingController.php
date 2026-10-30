@@ -208,7 +208,7 @@ class ScreenPairingController extends Controller
          * A fingerprint of the actual bytes means two builds can never collide
          * in a Downloads folder, and the name says which one is in hand.
          */
-        $stamp = substr(hash_file('xxh128', $path) ?: '', 0, 8);
+        $stamp = self::appStamp($variant) ?? '';
 
         return response()->download($path, 'takeone-screen-'.$variant.'-'.$stamp.'.apk', [
             'Content-Type' => 'application/vnd.android.package-archive',
@@ -255,8 +255,27 @@ class ScreenPairingController extends Controller
     {
         $path = self::appPath($variant);
 
-        return $path && is_file($path) ? substr(hash_file('xxh128', $path) ?: '', 0, 8) : null;
+        if (! $path || ! is_file($path)) {
+            return null;
+        }
+
+        // The page asks for this five times and the download once more, and
+        // each answer used to read the whole APK (~90MB for the camera). The
+        // fingerprint only changes when the file does, so it is remembered by
+        // the file's size and modification time — a newly published build is a
+        // new file (moved into place), and reads fresh.
+        clearstatcache(true, $path);
+        $key = 'screen-app-stamp:'.$variant.':'.filesize($path).':'.filemtime($path);
+
+        return self::$stamps[$key] ??= \Illuminate\Support\Facades\Cache::remember(
+            $key,
+            now()->addDay(),
+            fn () => substr(hash_file('xxh128', $path) ?: '', 0, 8),
+        );
     }
+
+    /** @var array<string, string> */
+    private static array $stamps = [];
 
     /** Whether a given build has been published. Cheap enough to ask per render. */
     public static function appAvailable(string $variant = 'tv'): bool

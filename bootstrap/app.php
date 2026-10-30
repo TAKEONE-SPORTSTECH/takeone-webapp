@@ -84,6 +84,11 @@ return Application::configure(basePath: dirname(__DIR__))
             // own storage. Same reasoning: a token, no session, nothing to forge.
             'camera/*/clip/*',
             'camera/*/clip/*/upload',
+            // "Which bouts are these?" — the same device naming the clips it
+            // found in its gallery. Same token, no session; answers only for
+            // the camera's own event.
+            'camera/*/clips/known',
+            'camera/*/clips/plan',
         ]);
         $middleware->alias([
             // Inline `throttle:N,M` counts PER ROUTE (Laravel's counts every

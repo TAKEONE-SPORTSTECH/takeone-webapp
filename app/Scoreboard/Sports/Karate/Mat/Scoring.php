@@ -521,6 +521,27 @@ class Scoring
     }
 
     /**
+     * One entry drawn as a VS corner, for the console's preview of the VS
+     * screen — through the SAME corner() the mat uses, so the preview shows
+     * exactly the name, club, flag, photo and framing the wall will.
+     */
+    public function previewCorner(ClubEvent $event, ClubEventRegistration $reg): array
+    {
+        $match = new EventMatch;
+        $match->forceFill(['event_id' => $event->id, 'a_competitor_id' => $reg->id]);
+
+        $registrations = ClubEventRegistration::where('event_id', $event->id)->whereKey($reg->id)
+            ->with(['user:id,full_name,name,gender,birthdate,nationality,height_cm,profile_picture,profile_picture_is_public',
+                'user.certifications:id,user_id,title,issue_date',
+                'user.skillAcquisitions:id,user_id,proficiency_level,start_date',
+                'user.memberClubs:id,club_name,logo,country',
+                'representingTenant:id,club_name,logo,country'])
+            ->get()->keyBy('id');
+
+        return $this->corner($match, 'a', $registrations, \App\Events\Support\EntryClub::forMany($event, [$reg->id]));
+    }
+
+    /**
      * One corner, as the screens announce it.
      *
      * A competitor's photo obeys profile_picture_is_public — a hall screen is a
@@ -570,6 +591,12 @@ class Scoring
                 : (($user?->profile_picture && $user->profile_picture_is_public)
                     ? file_url($user->profile_picture)
                     : null),
+            // How that photo is PLACED on the VS screen — a zoom and a focal
+            // point over the untouched original (App\Scoreboard\Models\
+            // PhotoVsFrame), set per person in the console's Players tab.
+            // Null: the panel's own framing, as always.
+            'vs_frame' => \App\Scoreboard\Models\PhotoVsFrame::payloadFor($reg?->photo
+                ?: (($user?->profile_picture && $user->profile_picture_is_public) ? $user->profile_picture : null)),
             // The drawn stand-in, for a corner with no picture of their own.
             // Always present — see App\Members\Support\Avatar for why an unknown
             // gender takes the male artwork rather than nothing.

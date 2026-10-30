@@ -303,6 +303,14 @@ Route::post('/camera/{token}/live', [\App\Events\Support\Cameras\CameraControlle
     ->name('camera.live')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
 Route::post('/camera/{token}/clip', [\App\Events\Support\Cameras\CameraController::class, 'clip'])
     ->name('camera.clip')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+// "Which bouts are these?" — clips found in the phone's gallery after a
+// reinstall, named back to their bouts. This camera's event only.
+Route::post('/camera/{token}/clips/known', [\App\Events\Support\Cameras\CameraController::class, 'known'])
+    ->name('camera.clips.known')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+// The score bar for one clip as DATA — states, rounds, highlight windows —
+// so boutcam burns it in and cuts the highlights on the phone, no upload.
+Route::post('/camera/{token}/clips/plan', [\App\Events\Support\Cameras\CameraController::class, 'plan'])
+    ->name('camera.clips.plan')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
 // A clip deleted at the mat. The phone holds the video, so it is the authority
 // on whether the video still exists — this only keeps the index honest.
 Route::delete('/camera/{token}/clip/{clip}', [\App\Events\Support\Cameras\CameraController::class, 'deleteClip'])
@@ -312,6 +320,19 @@ Route::delete('/camera/{token}/clip/{clip}', [\App\Events\Support\Cameras\Camera
 // hundreds of requests where every other camera call is one.
 Route::post('/camera/{token}/clip/{clip}/upload', [\App\Events\Support\Cameras\CameraController::class, 'upload'])
     ->name('camera.clip.upload')->where('token', '[A-Za-z0-9]{40}')->whereNumber('clip')->middleware('throttle:camera-upload');
+// The camera's OWN uploaded clip as a video to send (App\Media\BoutShare) — the
+// score bar burned in, points as chapters — for boutcam's Send button. Asking
+// starts a render once and is then a status read; the file is its own door.
+// 404 whenever there is nothing to give, and the phone sends its own copy.
+Route::post('/camera/{token}/clip/{clip}/share/{kind}', [\App\Events\Support\Cameras\CameraController::class, 'share'])
+    ->name('camera.clip.share')->where('token', '[A-Za-z0-9]{40}')->whereNumber('clip')
+    ->whereIn('kind', ['full', 'highlights'])->middleware(['throttle:screen-token', 'throttle:bout-share']);
+Route::get('/camera/{token}/clip/{clip}/share/{kind}', [\App\Events\Support\Cameras\CameraController::class, 'share'])
+    ->name('camera.clip.share.status')->where('token', '[A-Za-z0-9]{40}')->whereNumber('clip')
+    ->whereIn('kind', ['full', 'highlights'])->middleware('throttle:screen-token');
+Route::get('/camera/{token}/clip/{clip}/share/{kind}/file', [\App\Events\Support\Cameras\CameraController::class, 'shareFile'])
+    ->name('camera.clip.share.file')->where('token', '[A-Za-z0-9]{40}')->whereNumber('clip')
+    ->whereIn('kind', ['full', 'highlights'])->middleware('throttle:camera-upload');
 
 Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
     Route::get('/screen/claim/{code}', [\App\Events\Support\ScreenPairingController::class, 'claim'])
@@ -582,6 +603,25 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
     // it.
     Route::delete('/events/{event:uuid}/bout/{matchNo}/video', [App\Events\Controllers\BoutVideoController::class, 'destroyVideo'])
         ->whereNumber('matchNo')->name('events.bout.video.destroy')->middleware('throttle:admin-write');
+    // The bout as a file to send (App\Media\BoutShare): the whole bout or its
+    // highlights, score bar burned in, points as chapters. Whoever may WATCH
+    // may send — checked on all three doors. Asking is the expensive one and
+    // has its own budget; reading where it stands and fetching the file are
+    // ordinary media reads. 404 throughout while MEDIA_SHARE_EXPORT is off.
+    Route::get('/events/{event:uuid}/bout/{matchNo}/video/share/{kind}', [App\Events\Controllers\BoutVideoController::class, 'shareStatus'])
+        ->whereNumber('matchNo')->whereIn('kind', ['full', 'highlights'])
+        ->name('events.bout.video.share')->middleware('throttle:media-read');
+    Route::post('/events/{event:uuid}/bout/{matchNo}/video/share/{kind}', [App\Events\Controllers\BoutVideoController::class, 'shareRequest'])
+        ->whereNumber('matchNo')->whereIn('kind', ['full', 'highlights'])
+        ->name('events.bout.video.share.request')->middleware('throttle:bout-share');
+    Route::get('/events/{event:uuid}/bout/{matchNo}/video/share/{kind}/file', [App\Events\Controllers\BoutVideoController::class, 'shareFile'])
+        ->whereNumber('matchNo')->whereIn('kind', ['full', 'highlights'])
+        ->name('events.bout.video.share.file')->middleware('throttle:media-read');
+    // The bout's stat sheet as a PDF (App\Media\BoutStats) — whoever may WATCH
+    // the bout, checked in the controller; drawn by headless Chromium, so it
+    // shares the draw PDFs' budget.
+    Route::get('/events/{event:uuid}/bout/{matchNo}/stats.pdf', [App\Events\Controllers\BoutVideoController::class, 'statsPdf'])
+        ->whereNumber('matchNo')->name('events.bout.stats.pdf')->middleware('throttle:bracket-pdf');
     Route::post('/events/{event:uuid}/bout/{matchNo}/notes', [App\Events\Controllers\BoutVideoController::class, 'storeNote'])
         ->whereNumber('matchNo')->name('events.bout.notes.store')->middleware('throttle:member-write');
     Route::put('/events/{event:uuid}/bout/{matchNo}/notes/{note:uuid}', [App\Events\Controllers\BoutVideoController::class, 'updateNote'])

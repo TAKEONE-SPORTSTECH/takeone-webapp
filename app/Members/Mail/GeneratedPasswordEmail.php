@@ -3,6 +3,7 @@
 namespace App\Members\Mail;
 
 use App\Members\Models\User;
+use App\Support\Mail\RetriesDelivery;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -16,6 +17,7 @@ use Illuminate\Queue\SerializesModels;
  */
 class GeneratedPasswordEmail extends Mailable
 {
+    use RetriesDelivery; // waits and tries again — App\Support\Mail\RetriesDelivery
     use Queueable, SerializesModels;
 
     public User $user;

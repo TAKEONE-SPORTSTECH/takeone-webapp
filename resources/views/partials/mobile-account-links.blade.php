@@ -7,6 +7,11 @@
     <i class="bi bi-sliders2 text-lg w-5 text-center"></i>{{ __('nav.admin_panel') }}
 </a>
 @endif
+@if(! $__clubLock && \App\DevBoard\Support\BoardAccess::linkFor(Auth::user()))
+<a href="{{ route('me.margin') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent">
+    <i class="bi bi-vector-pen text-lg w-5 text-center"></i>{{ __('devboard::messages.nav') }}
+</a>
+@endif
 @unless($__clubLock)
 <a href="{{ route('security.show') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent">
     <i class="bi bi-shield-lock text-lg w-5 text-center"></i>{{ __('nav.security') }}

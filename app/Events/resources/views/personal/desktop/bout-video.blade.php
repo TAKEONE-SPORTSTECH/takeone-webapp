@@ -429,6 +429,15 @@
         @if(! empty($angles[0]['mp4']))
           <a class="btn accent" id="downloadBtn" href="{{ $angles[0]['mp4'] }}" download style="text-decoration:none">&#8681; Download</a>
         @endif
+        {{-- The bout as a file for WhatsApp & co — score bar burned in, points
+             as chapters (App\Media\BoutShare). Its sheet is at the foot. --}}
+        @if(! empty($angles) && app(\App\Media\BoutShare::class)->enabled())
+          <button class="btn" id="sendVideoBtn" type="button" onclick="window.BoutShareSheet && window.BoutShareSheet.open()">&#10148; {{ __('events::events.bout_share_button') }}</button>
+        @endif
+        {{-- The bout's stat sheet as a PDF (App\Media\BoutStats) — only when there is one. --}}
+        @if(! empty($stats_pdf_url))
+          <a class="btn" id="statsPdfBtn" href="{{ $stats_pdf_url }}" style="text-decoration:none">&#8681; {{ __('events::events.bout_stats_pdf') }}</a>
+        @endif
       </div>
     </div>
 
@@ -919,5 +928,10 @@ cmInput.onkeydown = e => { if(e.key === 'Enter') postComment(); };
 /* First paint: the chrome must never show a score nobody has reached. */
 paint();
 </script>
+@if(! empty($angles) && app(\App\Media\BoutShare::class)->enabled())
+  <x-bout-share-sheet :event="$e['key']" :match-no="$bout['match_no']" :color="$e['color']"
+      :heading="($bout['a']['name'] ?: '—').' vs '.($bout['b']['name'] ?: '—')"
+      :duration="$duration" trigger="none" />
+@endif
 </body>
 </html>

@@ -49,6 +49,10 @@
         <env name="EVENT_FEDERATION_HOSTS" value="false" force="true"/>
         <!-- Same reason: stage runs these ON. Tests switch them on themselves. -->
         <env name="PARTIES_ENABLED" value="false" force="true"/>
+        <!-- The printables designer is opt-in per test (config(['printables.enabled' => true])),
+             as PrintablesTest and the batch test do: .env has it on for the box, and leaking
+             that in turns the classic design room into a redirect and draws pages with Chrome. -->
+        <env name="PRINTABLES_DESIGNER" value="false" force="true"/>
         <env name="PARTIES_SHADOW" value="false" force="true"/>
         <env name="PARTIES_AUTHORITY" value="" force="true"/>
         <!-- Never boot the tests from the server's cached route/event tables:

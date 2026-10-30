@@ -180,7 +180,12 @@
      does not know `dvh`, and CSS drops the declaration it cannot parse. --}}
 {{-- The division menu's rows — one copy, shared with x-draw-split. --}}
 @include('components.bracket.division-look')
-<div id="{{ $sid }}-stage" class="ev-app-fixed fixed inset-0 z-[60] bg-background flex flex-col"
+{{-- No `ev-app-fixed` (2026-10-24, owner: "why do I see the mobile draw on
+     the desktop?"): that class pins things to the event app's 520px COLUMN on
+     a desktop, and a bracket squeezed into a phone strip in the middle of a
+     monitor is the one screen that must not be. The stage covers the whole
+     window at every size; phones and tablets never had the column anyway. --}}
+<div id="{{ $sid }}-stage" class="fixed inset-0 z-[60] bg-background flex flex-col"
      :class="menuGuard && 'ds-menu-guard'"
      x-effect="if (open) { clearTimeout($el._mg); menuGuard = true; } else { clearTimeout($el._mg); $el._mg = setTimeout(() => menuGuard = false, 700); }"
      style="height: 100vh; height: 100dvh;"
@@ -395,34 +400,52 @@
                      lives. --}}
                 <x-division-groups :event="$ev" :can-manage="$canManage"
                                    :color="$dsColor" :as-menu="true">
+                    @if($dsBanded)
+                        {{-- THE PADLOCK leads the menu (owner, 2026-10-24: "tidy
+                             it, make it more user friendly"): the board's state
+                             at a glance — Locked / Unlocked — and the switch
+                             that changes it, above everything that waits on it. --}}
+                        <x-slot:lead>
+                            <button type="button" role="switch" class="bk-lockcard" x-show="unlockable" x-cloak
+                                    :class="unlocked && 'is-open'" :aria-checked="unlocked ? 'true' : 'false'"
+                                    @click="window.BracketBoard.setUnlocked(! unlocked)">
+                                <span class="bk-ico"><i class="bi" :class="unlocked ? 'bi-unlock-fill' : 'bi-lock-fill'"></i></span>
+                                <span class="flex-1 min-w-0">
+                                    <span class="bk-lockcard-t"
+                                          x-text="unlocked ? @js(__('events::events.bracket_unlocked')) : @js(__('events::events.bracket_locked_word'))"></span>
+                                    <span class="bk-lockcard-s"
+                                          x-text="unlocked ? @js(__('events::events.bracket_lock')) : @js(__('events::events.bracket_unlock'))"></span>
+                                </span>
+                                <span class="bk-sw" :class="unlocked && 'is-on'" aria-hidden="true"><span></span></span>
+                            </button>
+                        </x-slot:lead>
+                    @endif
+
                     <x-slot:actions>
                         <div class="bk-menu">
 
-                            @if($dsBanded)
-                                {{-- BANDED: the bar holds back, the title and
-                                     this ONE menu (2026-10-02, the owner's
-                                     request — four controls were eating the
-                                     event's name). The padlock leads it,
-                                     because everything below it waits on it. --}}
-                                <button type="button" role="menuitem" class="bk-menu-row" x-show="unlockable" x-cloak
-                                        @click="window.BracketBoard.setUnlocked(! unlocked)"
-                                        :aria-pressed="unlocked">
-                                    <i class="bi" :class="unlocked ? 'bi-unlock-fill' : 'bi-lock-fill'"></i>
-                                    <span x-text="unlocked ? @js(__('events::events.bracket_lock')) : @js(__('events::events.bracket_unlock_short'))"></span>
-                                </button>
-                                <div class="bk-menu-rule" x-show="unlockable" x-cloak></div>
-                            @endif
+                            @php
+                                // "Admit a late entry" and "Add competitor" open the
+                                // same window — offer it once.
+                                $dsAdmits = collect($drawActions)->contains(fn ($a) => ($a['action'] ?? null) === 'admit_late_entry');
+                                $dsPin = $canManage && \App\Events\Support\TabletDraw::enabled() && \App\Events\Support\TabletDraw::pinRequired();
+                            @endphp
 
-                            @if($canManage && ! empty($drawActions))
-                                <p class="bk-menu-head">{{ __('events::events.bracket_the_draw') }}</p>
+                            {{-- ── EDIT — the draw's verbs, then the rows that
+                                 need the padlock open. Those are shown always and
+                                 DISABLED while it is shut, rather than hidden: a
+                                 control that appears and disappears teaches
+                                 nobody where it is. --}}
+                            @if($canManage)
+                                <p class="bk-menu-head">{{ __('events::events.bracket_menu_edit') }}</p>
                                 @foreach($drawActions as $action)
                                     {{-- Admitting a late athlete needs to know
                                          WHO, so it opens the window instead of
                                          posting. --}}
                                     @if(($action['action'] ?? null) === 'admit_late_entry')
-                                        <button type="button" role="menuitem" class="bk-menu-row"
+                                        <button type="button" role="menuitem" class="bk-menu-row is-gold"
                                                 @click="$dispatch('bracket-add:open')">
-                                            <i class="{{ \App\Support\Icon::bi($action['icon'] ?? null, '', 'bi-person-plus') }}"></i>
+                                            <span class="bk-ico"><i class="{{ \App\Support\Icon::bi($action['icon'] ?? null, '', 'bi-person-plus') }}"></i></span>
                                             <span>{{ $action['label'] }}</span>
                                         </button>
                                         @continue
@@ -438,119 +461,122 @@
                                         <input type="hidden" name="category_id"
                                                value="{{ $division }}" data-ds-division>
                                         <button type="submit" role="menuitem" class="bk-menu-row">
-                                            <i class="{{ \App\Support\Icon::bi($action['icon'] ?? null, '', 'bi-lightning-charge') }}"></i>
+                                            <span class="bk-ico"><i class="{{ \App\Support\Icon::bi($action['icon'] ?? null, '', 'bi-lightning-charge') }}"></i></span>
                                             <span>{{ $action['label'] }}</span>
                                         </button>
                                     </form>
                                 @endforeach
-                            @endif
 
-
-                            @if(\App\Events\Support\BracketPdf::available())
-                                {{-- The draw on paper — the board itself, printed
-                                     ink-light on A4 (App\Events\Support\BracketPdf).
-                                     High in the menu on purpose: at the foot it
-                                     sat below a phone's screen edge. The route
-                                     re-authorises; this only decides what is
-                                     offered. --}}
-                                <div x-data="{ pdfNumbers: true }">
-                                <p class="bk-menu-head">{{ __('events::events.bracket_pdf_head') }}</p>
-                                {{-- With or without bout numbers (owner, 2026-10-16) — applies to both rows below. --}}
-                                <button type="button" role="switch" class="bk-menu-row" :aria-checked="pdfNumbers ? 'true' : 'false'"
-                                        @click.stop="pdfNumbers = ! pdfNumbers">
-                                    <i class="bi bi-123"></i>
-                                    <span class="flex-1">{{ __('events::events.bracket_pdf_numbers') }}</span>
-                                    <span class="text-[11px] font-bold" :class="pdfNumbers ? 'text-primary' : 'text-muted-foreground'"
-                                          x-text="pdfNumbers ? @js(__('events::events.bracket_pdf_numbers_on')) : @js(__('events::events.bracket_pdf_numbers_off'))"></span>
-                                </button>
-                                <button type="button" role="menuitem" class="bk-menu-row"
-                                        @click="window.drawStagePdf(@js(route('me.events.bracket.pdf', $ev)), true, false, ! pdfNumbers)">
-                                    <i class="bi bi-file-earmark-pdf"></i>
-                                    <span>{{ __('events::events.bracket_pdf_this') }}</span>
-                                </button>
-                                <button type="button" role="menuitem" class="bk-menu-row"
-                                        @click="window.drawStagePdf(@js(route('me.events.bracket.pdf', $ev)), false, false, ! pdfNumbers)">
-                                    <i class="bi bi-files"></i>
-                                    <span>{{ __('events::events.bracket_pdf_all') }}</span>
-                                </button>
-                                </div>
-                            @endif
-
-                            <p class="bk-menu-head">{{ __('events::events.bracket_view') }}</p>
-                            <div class="bk-seg">
-                                <button type="button" class="bk-seg-b" :class="view === 'auto' && 'is-on'"
-                                        @click="window.BracketBoard.setView('auto')">{{ __('events::events.bracket_view_auto') }}</button>
-                                <button type="button" class="bk-seg-b" :class="view === 'desktop' && 'is-on'"
-                                        @click="window.BracketBoard.setView('desktop')">{{ __('events::events.bracket_view_desktop') }}</button>
-                                <button type="button" class="bk-seg-b" :class="view === 'mobile' && 'is-on'"
-                                        @click="window.BracketBoard.setView('mobile')">{{ __('events::events.bracket_view_mobile') }}</button>
-                            </div>
-
-                            <p class="bk-menu-head">{{ __('events::events.bracket_layout') }}</p>
-                            <div class="bk-seg">
-                                <button type="button" class="bk-seg-b" :class="layout === 'linear' && 'is-on'"
-                                        @click="window.BracketBoard.setLayout('linear')">{{ __('events::events.bracket_layout_linear') }}</button>
-                                <button type="button" class="bk-seg-b" :class="layout === 'split' && 'is-on'"
-                                        @click="window.BracketBoard.setLayout('split')">{{ __('events::events.bracket_layout_split') }}</button>
-                            </div>
-
-                            <p class="bk-menu-head">{{ __('events::events.bracket_third') }}</p>
-                            <div class="bk-seg">
-                                <button type="button" class="bk-seg-b" :class="third === 'match' && 'is-on'"
-                                        @click="window.BracketBoard.setThird('match')">{{ __('events::events.bracket_third_match') }}</button>
-                                <button type="button" class="bk-seg-b" :class="third === 'shared' && 'is-on'"
-                                        @click="window.BracketBoard.setThird('shared')">{{ __('events::events.bracket_third_shared') }}</button>
-                            </div>
-
-                            <div class="bk-menu-rule"></div>
-
-                            @if($canManage)
-                                {{-- The three rows that need the padlock open.
-                                     Shown always and DISABLED while it is shut,
-                                     rather than hidden: a control that appears
-                                     and disappears teaches nobody where it is,
-                                     and the padlock is right there. --}}
-                                <button type="button" role="menuitem" class="bk-menu-row is-gold"
-                                        :disabled="! unlocked" :title="unlocked ? '' : @js(__('events::events.bracket_unlock_first'))"
-                                        @click="$dispatch('bracket-add:open')">
-                                    <i class="bi bi-person-plus"></i>
-                                    <span>{{ __('events::events.bracket_add_fighter') }}</span>
-                                </button>
+                                @unless($dsAdmits)
+                                    <button type="button" role="menuitem" class="bk-menu-row is-gold"
+                                            :disabled="! unlocked" :title="unlocked ? '' : @js(__('events::events.bracket_unlock_first'))"
+                                            @click="$dispatch('bracket-add:open')">
+                                        <span class="bk-ico"><i class="bi bi-person-plus"></i></span>
+                                        <span>{{ __('events::events.bracket_add_fighter') }}</span>
+                                    </button>
+                                @endunless
 
                                 <button type="button" role="menuitem" class="bk-menu-row"
                                         :disabled="! unlocked" :title="unlocked ? '' : @js(__('events::events.bracket_unlock_first'))"
                                         @click="window.BracketBoard.toggleEdit()">
-                                    <i class="bi bi-pencil"></i>
+                                    <span class="bk-ico"><i class="bi bi-pencil"></i></span>
                                     <span x-text="edit ? @js(__('events::events.bracket_edit_done')) : @js(__('events::events.bracket_edit_names'))"></span>
                                 </button>
+
+                                @if($dsPin)
+                                    <button type="button" role="menuitem" class="bk-menu-row"
+                                            @click="window.dispatchEvent(new CustomEvent('draw-pin:open'))">
+                                        <span class="bk-ico"><i class="bi bi-tablet-landscape"></i></span>
+                                        <span>{{ __('events::events.tablet_pin_menu') }}</span>
+                                    </button>
+                                @endif
                             @endif
 
-                            <button type="button" role="menuitem" class="bk-menu-row"
-                                    @click="window.BracketBoard.pickBackground()">
-                                <i class="bi bi-image"></i>
-                                <span>{{ __('events::events.bracket_background') }}</span>
-                            </button>
+                            @if(\App\Events\Support\BracketPdf::available())
+                                {{-- ── DOWNLOAD — the draw on paper, printed
+                                     ink-light on A4 (App\Events\Support\BracketPdf).
+                                     The route re-authorises; this only decides
+                                     what is offered. --}}
+                                <div class="bk-sec" x-data="{ pdfNumbers: true }">
+                                    <p class="bk-menu-head">{{ __('events::events.bracket_pdf_head') }}</p>
+                                    <button type="button" role="menuitem" class="bk-menu-row"
+                                            @click="window.drawStagePdf(@js(route('me.events.bracket.pdf', $ev)), true, false, ! pdfNumbers)">
+                                        <span class="bk-ico"><i class="bi bi-file-earmark-pdf"></i></span>
+                                        <span>{{ __('events::events.bracket_pdf_this') }}</span>
+                                    </button>
+                                    <button type="button" role="menuitem" class="bk-menu-row"
+                                            @click="window.drawStagePdf(@js(route('me.events.bracket.pdf', $ev)), false, false, ! pdfNumbers)">
+                                        <span class="bk-ico"><i class="bi bi-files"></i></span>
+                                        <span>{{ __('events::events.bracket_pdf_all') }}</span>
+                                    </button>
+                                    {{-- With or without bout numbers (owner, 2026-10-16) — applies to both rows above. --}}
+                                    <button type="button" role="switch" class="bk-menu-row" :aria-checked="pdfNumbers ? 'true' : 'false'"
+                                            @click.stop="pdfNumbers = ! pdfNumbers">
+                                        <span class="bk-ico"><i class="bi bi-123"></i></span>
+                                        <span class="flex-1">{{ __('events::events.bracket_pdf_numbers') }}</span>
+                                        <span class="bk-sw" :class="pdfNumbers && 'is-on'" aria-hidden="true"><span></span></span>
+                                    </button>
+                                </div>
+                            @endif
 
-                            <button type="button" role="menuitem" class="bk-menu-row" x-show="background" x-cloak
-                                    @click="window.BracketBoard.clearBackground()">
-                                <i class="bi bi-x-circle"></i>
-                                <span>{{ __('events::events.bracket_background_clear') }}</span>
-                            </button>
-
-                            @if($canManage && \App\Events\Support\TabletDraw::enabled() && \App\Events\Support\TabletDraw::pinRequired())
-                                <button type="button" role="menuitem" class="bk-menu-row"
-                                        @click="window.dispatchEvent(new CustomEvent('draw-pin:open'))">
-                                    <i class="bi bi-tablet-landscape"></i>
-                                    <span>{{ __('events::events.tablet_pin_menu') }}</span>
+                            {{-- ── BOARD APPEARANCE — how the board is drawn on
+                                 THIS screen. Folded away by default: it is set
+                                 once, and was most of the menu's length. --}}
+                            <div class="bk-sec" x-data="{ look: false }">
+                                <button type="button" class="bk-menu-row bk-fold" :aria-expanded="look ? 'true' : 'false'"
+                                        @click.stop="look = ! look">
+                                    <span class="bk-ico"><i class="bi bi-palette"></i></span>
+                                    <span class="flex-1">{{ __('events::events.bracket_menu_look') }}</span>
+                                    <i class="bi bi-chevron-down bk-chev" :class="look && 'is-open'"></i>
                                 </button>
-                            @endif
+                                <div x-show="look" x-cloak
+                                     x-transition:enter="transition ease-out duration-150"
+                                     x-transition:enter-start="opacity-0 -translate-y-1"
+                                     x-transition:enter-end="opacity-100 translate-y-0"
+                                     class="bk-fold-body">
+                                    <p class="bk-menu-sub">{{ __('events::events.bracket_view') }}</p>
+                                    <div class="bk-seg">
+                                        <button type="button" class="bk-seg-b" :class="view === 'auto' && 'is-on'"
+                                                @click="window.BracketBoard.setView('auto')">{{ __('events::events.bracket_view_auto') }}</button>
+                                        <button type="button" class="bk-seg-b" :class="view === 'desktop' && 'is-on'"
+                                                @click="window.BracketBoard.setView('desktop')">{{ __('events::events.bracket_view_desktop') }}</button>
+                                        <button type="button" class="bk-seg-b" :class="view === 'mobile' && 'is-on'"
+                                                @click="window.BracketBoard.setView('mobile')">{{ __('events::events.bracket_view_mobile') }}</button>
+                                    </div>
 
+                                    <p class="bk-menu-sub">{{ __('events::events.bracket_layout') }}</p>
+                                    <div class="bk-seg">
+                                        <button type="button" class="bk-seg-b" :class="layout === 'linear' && 'is-on'"
+                                                @click="window.BracketBoard.setLayout('linear')">{{ __('events::events.bracket_layout_linear') }}</button>
+                                        <button type="button" class="bk-seg-b" :class="layout === 'split' && 'is-on'"
+                                                @click="window.BracketBoard.setLayout('split')">{{ __('events::events.bracket_layout_split') }}</button>
+                                    </div>
+
+                                    <p class="bk-menu-sub">{{ __('events::events.bracket_third') }}</p>
+                                    <div class="bk-seg">
+                                        <button type="button" class="bk-seg-b" :class="third === 'match' && 'is-on'"
+                                                @click="window.BracketBoard.setThird('match')">{{ __('events::events.bracket_third_match') }}</button>
+                                        <button type="button" class="bk-seg-b" :class="third === 'shared' && 'is-on'"
+                                                @click="window.BracketBoard.setThird('shared')">{{ __('events::events.bracket_third_shared') }}</button>
+                                    </div>
+
+                                    <button type="button" role="menuitem" class="bk-menu-row"
+                                            @click="window.BracketBoard.pickBackground()">
+                                        <span class="bk-ico"><i class="bi bi-image"></i></span>
+                                        <span>{{ __('events::events.bracket_background') }}</span>
+                                    </button>
+                                    <button type="button" role="menuitem" class="bk-menu-row" x-show="background" x-cloak
+                                            @click="window.BracketBoard.clearBackground()">
+                                        <span class="bk-ico"><i class="bi bi-x-circle"></i></span>
+                                        <span>{{ __('events::events.bracket_background_clear') }}</span>
+                                    </button>
+                                </div>
+                            </div>
 
                             @isset($menuExtra)
                                 {{-- The host's own rows — on the public event,
                                      what its band's gear and ⋯ menu held. --}}
-                                <div class="bk-menu-rule"></div>
-                                {{ $menuExtra }}
+                                <div class="bk-sec">{{ $menuExtra }}</div>
                             @endisset
                         </div>
                     </x-slot:actions>
@@ -629,7 +655,16 @@
              dispatched since the board was written and had never had a
              listener. The board is unchanged by this. --}}
         @if($canManage)
+            {{-- LINK MODE — opened from the scoring console's Exhibitions tab
+                 (?link_exhibition=<uuid>): a tapped bout asks "was this it?"
+                 instead of "who won?". Null (no such exhibition, not yours,
+                 exhibitions off) draws the winner sheet exactly as before. --}}
+            @php $xlPicker = app(\App\Events\Support\ExhibitionLink::class)->picker((string) $ev, request()->query('link_exhibition'), request()->query('mat')); @endphp
+            @if($xlPicker)
+                <x-exhibition-link-picker :picker="$xlPicker" :color="$dsColor" />
+            @else
             <x-bout-outcome-sheet :event="$ev" :color="$dsColor" :layer="70" />
+            @endif
 
             {{-- ADDING SOMEBODY TO A DRAW THAT IS ALREADY RUNNING.
 
@@ -1083,6 +1118,15 @@
     }
     #{{ $sid }}-stage .bk-lock:hover{background:rgba(255,255,255,.25);}
 
+    /* The board's own orange padlock stands down here for an organiser
+       (owner, 2026-10-24: "keep it inside the menu") — the bar's padlock or
+       the ⋯ menu's Lock / Unlock row already does the same thing. Someone
+       without that menu (an appointed official) keeps it: it is their only
+       way to unlock. */
+    @if($canManage)
+    #{{ $sid }}-stage .bk-board-lock{display:none !important;}
+    @endif
+
     /* ── The split view never opens by accident ─────────────────────────────
        Its toggle sits under the division menu. Picking a division with the
        phone keyboard up dismisses the keyboard first, the screen resizes, and
@@ -1122,8 +1166,10 @@
            corner — over the padlock, which turned a tap meant for Lock into
            a split screen. On a phone it sits below the padlock instead. */
         #{{ $sid }}-stage .bk-split-toggle{top:3.5rem;}
-        #{{ $sid }}-stage.has-board-lock .bk-locked,
+        #{{ $sid }}-stage.has-board-lock .bk-locked{visibility:hidden;}
+        @unless($canManage)
         #{{ $sid }}-stage:has(.bk-board-lock:not([style*="display: none"])) .bk-locked{visibility:hidden;}
+        @endunless
     }
     #{{ $sid }}-stage .bk-lock.is-open{
         background:linear-gradient(100deg,#edcd85,#d0a854);border-color:#d8b25f;color:#1e2c4f;
@@ -1170,5 +1216,54 @@
         font-weight:600;background:#fff;color:#5d6880;
     }
     #{{ $sid }}-stage .bk-seg-b.is-on{background:#d8b25f;color:#1e2c4f;}
+
+    /* ── The menu, tidied (owner, 2026-10-24) ──────────────────────────────
+       Every row carries an icon tile like the group rows above it, sections
+       are named, the padlock is a card at the top, and the board's look folds
+       away. Plain CSS for the same prebuilt-bundle reason as above. */
+    #{{ $sid }}-stage .bk-menu .bk-menu-head{margin:10px 10px 4px;}
+    #{{ $sid }}-stage .bk-menu > .bk-menu-head:first-child{margin-top:2px;}
+    #{{ $sid }}-stage .bk-sec{border-top:1px solid #eef1f6;margin-top:8px;padding-top:2px;}
+    #{{ $sid }}-stage .bk-menu > .bk-sec:first-child{border-top:none;margin-top:0;}
+    #{{ $sid }}-stage .bk-menu-row{padding:6px 8px;gap:10px;}
+    #{{ $sid }}-stage .bk-ico{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;flex-shrink:0;
+        background:#eef1f6;color:#1e2c4f;font-size:.85rem;}
+    #{{ $sid }}-stage .bk-menu-row.is-gold .bk-ico{background:#fdf6e6;color:#8a6d20;}
+    #{{ $sid }}-stage .bk-menu-sub{font-size:.7rem;font-weight:600;color:#5d6880;margin:8px 2px 5px;}
+    #{{ $sid }}-stage .bk-fold-body{padding:0 4px 4px;}
+    #{{ $sid }}-stage .bk-fold-body .bk-seg{margin-bottom:4px;}
+    #{{ $sid }}-stage .bk-fold-body .bk-menu-row{margin-top:6px;}
+    #{{ $sid }}-stage .bk-chev{color:#97a1b4;font-size:.75rem;transition:transform .15s ease;}
+    #{{ $sid }}-stage .bk-chev.is-open{transform:rotate(180deg);}
+    /* A switch: the knob rides to the trailing end when on (RTL follows). */
+    #{{ $sid }}-stage .bk-sw{width:34px;height:20px;border-radius:999px;background:#d5dae3;flex-shrink:0;
+        display:flex;align-items:center;justify-content:flex-start;padding:2px;transition:background .15s ease;}
+    #{{ $sid }}-stage .bk-sw > span{width:16px;height:16px;border-radius:50%;background:#fff;
+        box-shadow:0 1px 2px rgba(0,0,0,.25);}
+    #{{ $sid }}-stage .bk-sw.is-on{background:#16a34a;justify-content:flex-end;}
+    /* The padlock card: amber while the board is shut, green once it is open. */
+    #{{ $sid }}-stage .bk-lockcard{display:flex;align-items:center;gap:10px;width:100%;text-align:start;
+        padding:10px 12px;border:none;border-bottom:1px solid #f3e3bf;cursor:pointer;font-family:inherit;
+        background:#fff8e8;color:#1e2c4f;}
+    #{{ $sid }}-stage .bk-lockcard .bk-ico{background:#f59e0b;color:#fff;}
+    #{{ $sid }}-stage .bk-lockcard.is-open{background:#ecfdf3;border-bottom-color:#c9f0d8;}
+    #{{ $sid }}-stage .bk-lockcard.is-open .bk-ico{background:#16a34a;}
+    #{{ $sid }}-stage .bk-lockcard-t{display:block;font-size:.82rem;font-weight:700;}
+    /* The board's arrange banner, as a small pill (owner, 2026-10-24: the
+       full-width yellow bar was "too long and not nice"). The how-to sentence
+       goes; what stays is what is needed — "Holding <name>, tap a slot" while
+       somebody is being moved, and the way back to declaring results. */
+    #{{ $sid }}-stage .bk-banner{left:auto;right:auto;inset-inline-start:.75rem;inset-inline-end:auto;
+        width:auto;max-width:calc(100% - 1.5rem);padding:4px 4px 4px 12px;border-radius:999px;gap:8px;font-size:11px;}
+    #{{ $sid }}-stage .bk-banner > span:first-of-type{display:none !important;}
+
+    /* The group rows the division-groups component draws above this menu, brought onto
+       the same rhythm: same inset, same tile, same weight. */
+    #{{ $sid }}-stage [role="menu"] > button[role="menuitem"]{padding:6px 20px;font-size:.82rem;}
+    #{{ $sid }}-stage [role="menu"] > button[role="menuitem"] > span:first-child{width:30px;height:30px;border-radius:8px;}
+    #{{ $sid }}-stage [role="menu"] > button[role="menuitem"] .font-bold{font-weight:500;color:#1e2c4f;}
+    #{{ $sid }}-stage [role="menu"] > div.border-b{padding-inline:20px;}
+    #{{ $sid }}-stage .bk-menu a.bk-menu-row{text-decoration:none;}
+    #{{ $sid }}-stage .bk-lockcard-s{display:block;font-size:.68rem;color:#5d6880;line-height:1.3;margin-top:1px;}
 
 </style>

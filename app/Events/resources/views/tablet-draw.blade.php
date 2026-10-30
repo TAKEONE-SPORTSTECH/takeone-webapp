@@ -53,7 +53,7 @@
          dark mode (Dark Reader, Android force-dark) repainted this page and its
          division menu in inverted colours. darkreader-lock is that extension's
          own documented opt-out. --}}
-    <meta name="color-scheme" content="light">
+    <meta name="color-scheme" content="only light">
     <meta name="darkreader-lock">
     <style>html { color-scheme: only light; }</style>
     <title>{{ __('events::events.tablet_draw_button') }} · {{ $title }}</title>

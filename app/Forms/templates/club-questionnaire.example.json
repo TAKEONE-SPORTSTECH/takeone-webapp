@@ -1,0 +1,814 @@
+[
+ {
+  "q1": {
+   "active-members": 140,
+   "coaches": 4,
+   "admin-staff": 1,
+   "branches": 1,
+   "years-open": 7,
+   "classes-week": 18
+  },
+  "q2": [
+   "taekwondo",
+   "fitness-gym"
+  ],
+  "q2__other": "Kids self-defence",
+  "q3": [
+   "kids-under-12",
+   "teens-12-17",
+   "families-siblings"
+  ],
+  "q4": [
+   "paper-notebook",
+   "excel-google-sheets",
+   "whatsapp-groups",
+   "instagram"
+  ],
+  "q5": "Tried a gym app last year — too complicated for parents,\nno Arabic, charged per member. Stopped after 2 months.",
+  "q6": "The owner, at night after classes. Wife helps with payments.",
+  "q7": [
+   "walk-in",
+   "whatsapp",
+   "instagram-tiktok",
+   "friend-referral"
+  ],
+  "q8": [
+   "name-phone",
+   "date-of-birth",
+   "cpr-id-copy",
+   "guardian-details",
+   "emergency-contact"
+  ],
+  "q9": "free-trial",
+  "q9__note": "one class, then they must pay",
+  "q10": 4,
+  "q11": "our-staff",
+  "q12": "Yes if he can approve each one first. Worried about fake\nnames and parents who never pay after registering.",
+  "q13": [
+   "paper-list",
+   "coach-remembers"
+  ],
+  "q14": "monthly-fee",
+  "q15": "sometimes",
+  "q15__note": "Kids 5–7 class is full, no list kept",
+  "q16": "He doesn’t notice until the parent stops paying.\nBy then the child already left. \"We lose them quietly.\"",
+  "q17": "yes",
+  "q17__note": "every summer + Ramadan — no way to record it",
+  "q18": "Voice note in the WhatsApp group. Half the parents miss it.",
+  "q19": [
+   "cash",
+   "benefitpay",
+   "bank-transfer"
+  ],
+  "q20": "on-request",
+  "q21__note": "\"2–3 hours every week\"",
+  "q21": 5,
+  "q22": [
+   "sibling-discount",
+   "registration-fee",
+   "uniform-fee"
+  ],
+  "q23": [
+   "rent",
+   "coach-salaries",
+   "equipment",
+   "competition-fees"
+  ],
+  "q24": "per-class",
+  "q25": "Who has NOT paid this month. Today: scrolls BenefitPay\nscreenshots in WhatsApp and ticks the notebook.",
+  "q26": [
+   "payment-reminders",
+   "schedule-changes",
+   "cancelled-class",
+   "belt-tests",
+   "holidays"
+  ],
+  "q27": "whatsapp",
+  "q28": "both",
+  "q29": 4,
+  "q30": "Payment reminders to parents who already paid in cash.",
+  "q31": "yes",
+  "q31__note": "every 3 months",
+  "q32": "Head coach decides who is ready, 10 BD fee, certificates\nprinted in a shop in Riffa, belts ordered from Dubai.",
+  "q33": [
+   "belt-level",
+   "attendance-history",
+   "medals-results",
+   "coach-notes"
+  ],
+  "q34": 5,
+  "q35": "sometimes",
+  "q36": "no",
+  "q37": [
+   "collecting-entries-fees",
+   "weights-categories"
+  ],
+  "q38": 3,
+  "q39": "Taekwondo federation — entry list in Excel + copies of CPR.",
+  "q40": [
+   "owner",
+   "coaches",
+   "parents"
+  ],
+  "q41": "Coaches: attendance + belt notes only.\nNever see fees or who paid. Cannot delete members.",
+  "q42": "single-owner",
+  "q43": "yes",
+  "q43__note": "doboks + belts only",
+  "q44": [
+   "iphone",
+   "tablet-at-reception"
+  ],
+  "q45": [
+   "moving-old-data",
+   "parents-won-t-use-it"
+  ],
+  "q46": "monthly",
+  "q47": "15–25 BD a month if it really stops the chasing.",
+  "obs1": "Register = blue notebook + Excel on his phone. Two lists never match.",
+  "obs2": "Showed a paper form — half the fields empty. Copies CPR by photo on WhatsApp.",
+  "obs3": "Attendance sheet for October had 3 classes missing. Coach \"forgot\".",
+  "obs4": "Asked \"how many owe you now?\" — took 6 minutes, answer \"around 20\".",
+  "obs5": "5 WhatsApp groups. Owner answers ~40 messages a day.",
+  "obs6": "Grading sheet is a Word file. No history of who passed when.",
+  "obs8": "Strong on privacy: \"the money is between me and the parent\".",
+  "obs9": "Uses his phone in Arabic. Wife uses English.",
+  "grid": {
+   "f01": "must",
+   "f02": "must",
+   "f03": "nice",
+   "f04": "must",
+   "f05": "must",
+   "f06": "must",
+   "f07": "nice",
+   "f08": "must",
+   "f09": "must",
+   "f10": "nice",
+   "f11": "must",
+   "f12": "nice",
+   "f13": "must",
+   "f14": "must",
+   "f15": "nice",
+   "f16": "nice",
+   "f17": "no",
+   "f18": "nice",
+   "f19": "must",
+   "f20": "must",
+   "f21": "nice",
+   "f22": "no"
+  },
+  "top5": [
+   "f05",
+   "f08",
+   "f04",
+   "f09",
+   "f13"
+  ],
+  "grid_other": "Reminder when a belt test is due",
+  "speak1": "Knowing who paid without opening WhatsApp.\n\"If I could see one red list of who owes me, I would sleep.\"",
+  "speak2": "Last Ramadan: 30 kids paused, nobody wrote it down.\nAfter Eid he charged 6 families who had paused — they were angry,\none family left. He paid back by hand.",
+  "speak3": "Parents: \"why did I get the reminder, I paid\".\n\"When is my son’s belt test?\" — asked again and again.",
+  "speak4": "Parent opens the app, sees: paid ✓, next class, belt, attendance.\nHe only gets a message when something needs HIM.",
+  "speak5": "Ask about the coaches’ pay — calculating per class at month end\ntakes him a full evening.",
+  "free": "— Lost about 1 in 10 kids last year \"quietly\" — no follow-up.\n— Will NOT use anything that sends parents messages he can’t control.\n— Sibling discount is done in his head — every month a different number.\n— Wants the coach to mark attendance on the tablet at the door.\n— Federation entry list took 2 evenings in Excel.\n— Would pay yearly if the first month proves it works.\n«أبي شي بسيط، الوالدين ما يبون تطبيق معقد»\n— Likes that Arabic + English sit side by side.\n— Asked if he can import his Excel list — 140 names.",
+  "sum_pains": "1. Chasing payments (2–3 h / week, never sure who paid)\n2. Pauses / freezes not recorded → wrong charges\n3. Attendance on paper → kids drop out unnoticed",
+  "sum_quote": "\"If I could see one red list of who owes me, I would sleep.\"",
+  "sum_missing": "Freeze / pause · sibling discount · coach pay per class ·\nbelt-test reminders",
+  "sum_next": "Show him a demo with his own Excel list — week of 10 Nov",
+  "score_interest": 5,
+  "score_tech": 3,
+  "score_urgency": 4,
+  "pilot": "yes",
+  "followup": "10 / 11",
+  "cover_club": "Falcon Kicks Taekwondo (sample)",
+  "cover_person": "Owner & head coach",
+  "cover_area": "Riffa",
+  "cover_interviewer": "Visitor A",
+  "consent": true,
+  "_mode": "visit",
+  "_lang": "en",
+  "_days_ago": 13
+ },
+ {
+  "cover_club": "Karate club C02 (example)",
+  "cover_area": "Muharraq",
+  "consent": true,
+  "q1": {
+   "active-members": 220,
+   "branches": 2
+  },
+  "q2": [
+   "karate"
+  ],
+  "grid": {
+   "f01": "nice",
+   "f02": "must",
+   "f03": "must",
+   "f04": "must",
+   "f05": "must",
+   "f06": "nice",
+   "f07": "nice",
+   "f08": "must",
+   "f09": "must",
+   "f10": "nice",
+   "f11": "nice",
+   "f12": "no",
+   "f13": "no",
+   "f14": "must",
+   "f15": "nice",
+   "f16": "nice",
+   "f17": "no",
+   "f18": "must",
+   "f19": "no",
+   "f20": "must",
+   "f21": "must",
+   "f22": "must"
+  },
+  "top5": [
+   "f05",
+   "f02",
+   "f09",
+   "f03",
+   "f04"
+  ],
+  "q47": "30 BD a month",
+  "pilot": "yes",
+  "q10": 4,
+  "q21": 5,
+  "q29": 5,
+  "q34": 4,
+  "q38": 3,
+  "q19": [
+   "bank-transfer"
+  ],
+  "_mode": "visit",
+  "_lang": "ar",
+  "_days_ago": 12
+ },
+ {
+  "cover_club": "Swimming club C03 (example)",
+  "cover_area": "Isa Town",
+  "consent": true,
+  "q1": {
+   "active-members": 310,
+   "branches": 1
+  },
+  "q2": [
+   "swimming"
+  ],
+  "grid": {
+   "f01": "must",
+   "f02": "nice",
+   "f03": "must",
+   "f04": "must",
+   "f05": "must",
+   "f06": "no",
+   "f07": "no",
+   "f08": "nice",
+   "f09": "must",
+   "f10": "nice",
+   "f11": "must",
+   "f12": "must",
+   "f13": "must",
+   "f14": "nice",
+   "f15": "must",
+   "f16": "no",
+   "f17": "no",
+   "f18": "no",
+   "f19": "nice",
+   "f20": "must",
+   "f21": "no",
+   "f22": "no"
+  },
+  "top5": [
+   "f13",
+   "f05",
+   "f04",
+   "f09",
+   "f03"
+  ],
+  "q47": "45 BD a month",
+  "pilot": "yes",
+  "q10": 4,
+  "q21": 3,
+  "q29": 4,
+  "q34": 5,
+  "q38": 2,
+  "q19": [
+   "card-machine"
+  ],
+  "_mode": "visit",
+  "_lang": "en",
+  "_days_ago": 12
+ },
+ {
+  "cover_club": "Jiu-Jitsu club C04 (example)",
+  "cover_area": "Saar",
+  "consent": true,
+  "q1": {
+   "active-members": 60,
+   "branches": 1
+  },
+  "q2": [
+   "jiu-jitsu"
+  ],
+  "grid": {
+   "f01": "must",
+   "f02": "must",
+   "f03": "must",
+   "f04": "must",
+   "f05": "must",
+   "f06": "must",
+   "f07": "must",
+   "f08": "nice",
+   "f09": "must",
+   "f10": "no",
+   "f11": "nice",
+   "f12": "nice",
+   "f13": "must",
+   "f14": "must",
+   "f15": "no",
+   "f16": "must",
+   "f17": "nice",
+   "f18": "must",
+   "f19": "nice",
+   "f20": "no",
+   "f21": "nice",
+   "f22": "no"
+  },
+  "top5": [
+   "f05",
+   "f04",
+   "f02",
+   "f13",
+   "f01"
+  ],
+  "q47": "20 BD a month",
+  "pilot": "yes",
+  "q10": 4,
+  "q21": 5,
+  "q29": 3,
+  "q34": 4,
+  "q38": 5,
+  "q19": [
+   "benefitpay",
+   "cash"
+  ],
+  "_mode": "visit",
+  "_lang": "en",
+  "_days_ago": 10
+ },
+ {
+  "cover_club": "Football club C05 (example)",
+  "cover_area": "Manama",
+  "consent": true,
+  "q1": {
+   "active-members": 400,
+   "branches": 3
+  },
+  "q2": [
+   "football"
+  ],
+  "grid": {
+   "f01": "must",
+   "f02": "must",
+   "f03": "nice",
+   "f04": "must",
+   "f05": "must",
+   "f06": "must",
+   "f07": "must",
+   "f08": "must",
+   "f09": "must",
+   "f10": "nice",
+   "f11": "nice",
+   "f12": "nice",
+   "f13": "must",
+   "f14": "no",
+   "f15": "nice",
+   "f16": "nice",
+   "f17": "no",
+   "f18": "no",
+   "f19": "nice",
+   "f20": "must",
+   "f21": "must",
+   "f22": "must"
+  },
+  "top5": [
+   "f05",
+   "f20",
+   "f13",
+   "f01",
+   "f08"
+  ],
+  "q47": "60 BD a month",
+  "pilot": "no",
+  "q10": 2,
+  "q21": 5,
+  "q29": 5,
+  "q34": 3,
+  "q38": 2,
+  "q19": [
+   "cash"
+  ],
+  "_mode": "visit",
+  "_lang": "ar",
+  "_days_ago": 9
+ },
+ {
+  "cover_club": "Gymnastics club C06 (example)",
+  "cover_area": "Hamad Town",
+  "consent": true,
+  "q1": {
+   "active-members": 180,
+   "branches": 1
+  },
+  "q2": [
+   "gymnastics"
+  ],
+  "grid": {
+   "f01": "nice",
+   "f02": "nice",
+   "f03": "nice",
+   "f04": "must",
+   "f05": "must",
+   "f06": "no",
+   "f07": "nice",
+   "f08": "must",
+   "f09": "must",
+   "f10": "no",
+   "f11": "must",
+   "f12": "must",
+   "f13": "must",
+   "f14": "no",
+   "f15": "must",
+   "f16": "no",
+   "f17": "no",
+   "f18": "nice",
+   "f19": "must",
+   "f20": "must",
+   "f21": "no",
+   "f22": "no"
+  },
+  "top5": [
+   "f13",
+   "f05",
+   "f08",
+   "f11",
+   "f20"
+  ],
+  "q47": "35 BD a month",
+  "pilot": "yes",
+  "q10": 2,
+  "q21": 3,
+  "q29": 4,
+  "q34": 4,
+  "q38": 3,
+  "q19": [
+   "bank-transfer",
+   "cash"
+  ],
+  "_mode": "visit",
+  "_lang": "en",
+  "_days_ago": 8
+ },
+ {
+  "cover_club": "Taekwondo club C07 (example)",
+  "cover_area": "Sitra",
+  "consent": true,
+  "q1": {
+   "active-members": 90,
+   "branches": 1
+  },
+  "q2": [
+   "taekwondo"
+  ],
+  "grid": {
+   "f01": "must",
+   "f02": "must",
+   "f03": "nice",
+   "f04": "must",
+   "f05": "must",
+   "f06": "must",
+   "f07": "must",
+   "f08": "must",
+   "f09": "nice",
+   "f10": "must",
+   "f11": "must",
+   "f12": "must",
+   "f13": "no",
+   "f14": "must",
+   "f15": "must",
+   "f16": "no",
+   "f17": "no",
+   "f18": "must",
+   "f19": "nice",
+   "f20": "no",
+   "f21": "nice",
+   "f22": "no"
+  },
+  "top5": [
+   "f05",
+   "f08",
+   "f06",
+   "f02",
+   "f11"
+  ],
+  "q47": "10 BD a month",
+  "pilot": "yes",
+  "q10": 2,
+  "q21": 4,
+  "q29": 5,
+  "q34": 5,
+  "q38": 4,
+  "q19": [
+   "bank-transfer"
+  ],
+  "_mode": "visit",
+  "_lang": "en",
+  "_days_ago": 7
+ },
+ {
+  "cover_club": "Boxing / Muay Thai club C08 (example)",
+  "cover_area": "Juffair",
+  "consent": true,
+  "q1": {
+   "active-members": 75,
+   "branches": 1
+  },
+  "q2": [
+   "boxing-muay-thai"
+  ],
+  "grid": {
+   "f01": "must",
+   "f02": "nice",
+   "f03": "nice",
+   "f04": "must",
+   "f05": "must",
+   "f06": "must",
+   "f07": "nice",
+   "f08": "must",
+   "f09": "must",
+   "f10": "must",
+   "f11": "must",
+   "f12": "must",
+   "f13": "must",
+   "f14": "must",
+   "f15": "must",
+   "f16": "no",
+   "f17": "must",
+   "f18": "nice",
+   "f19": "must",
+   "f20": "must",
+   "f21": "nice",
+   "f22": "no"
+  },
+  "top5": [
+   "f13",
+   "f05",
+   "f08",
+   "f11",
+   "f20"
+  ],
+  "q47": "15 BD a month",
+  "pilot": "no",
+  "q10": 3,
+  "q21": 5,
+  "q29": 3,
+  "q34": 3,
+  "q38": 3,
+  "q19": [
+   "benefitpay",
+   "cash"
+  ],
+  "_mode": "visit",
+  "_lang": "ar",
+  "_days_ago": 5
+ },
+ {
+  "cover_club": "Karate club C09 (example)",
+  "cover_area": "Budaiya",
+  "consent": true,
+  "q1": {
+   "active-members": 55,
+   "branches": 1
+  },
+  "q2": [
+   "karate"
+  ],
+  "grid": {
+   "f01": "no",
+   "f02": "nice",
+   "f03": "must",
+   "f04": "nice",
+   "f05": "nice",
+   "f06": "nice",
+   "f07": "must",
+   "f08": "nice",
+   "f09": "must",
+   "f10": "nice",
+   "f11": "must",
+   "f12": "nice",
+   "f13": "must",
+   "f14": "must",
+   "f15": "must",
+   "f16": "must",
+   "f17": "nice",
+   "f18": "no",
+   "f19": "must",
+   "f20": "must",
+   "f21": "nice",
+   "f22": "no"
+  },
+  "top5": [
+   "f13",
+   "f09",
+   "f11",
+   "f20",
+   "f15"
+  ],
+  "q47": "15 BD a month",
+  "pilot": "no",
+  "q10": 4,
+  "q21": 5,
+  "q29": 2,
+  "q34": 4,
+  "q38": 3,
+  "q19": [
+   "benefitpay",
+   "cash"
+  ],
+  "_mode": "visit",
+  "_lang": "en",
+  "_days_ago": 4
+ },
+ {
+  "cover_club": "Fitness / Gym club C10 (example)",
+  "cover_area": "Zallaq",
+  "consent": true,
+  "q1": {
+   "active-members": 260,
+   "branches": 2
+  },
+  "q2": [
+   "fitness-gym"
+  ],
+  "grid": {
+   "f01": "nice",
+   "f02": "must",
+   "f03": "must",
+   "f04": "nice",
+   "f05": "must",
+   "f06": "must",
+   "f07": "nice",
+   "f08": "must",
+   "f09": "must",
+   "f10": "nice",
+   "f11": "nice",
+   "f12": "nice",
+   "f13": "must",
+   "f14": "no",
+   "f15": "must",
+   "f16": "no",
+   "f17": "no",
+   "f18": "nice",
+   "f19": "must",
+   "f20": "must",
+   "f21": "nice",
+   "f22": "must"
+  },
+  "top5": [
+   "f13",
+   "f02",
+   "f08",
+   "f05",
+   "f20"
+  ],
+  "q47": "45 BD a month",
+  "pilot": "yes",
+  "q10": 2,
+  "q21": 3,
+  "q29": 4,
+  "q34": 3,
+  "q38": 1,
+  "q19": [
+   "bank-transfer",
+   "benefitpay",
+   "cash"
+  ],
+  "_mode": "visit",
+  "_lang": "en",
+  "_days_ago": 3
+ },
+ {
+  "cover_club": "Judo club C11 (example)",
+  "cover_area": "Seef",
+  "consent": true,
+  "q1": {
+   "active-members": 45,
+   "branches": 1
+  },
+  "q2": [
+   "judo"
+  ],
+  "grid": {
+   "f01": "must",
+   "f02": "nice",
+   "f03": "must",
+   "f04": "no",
+   "f05": "nice",
+   "f06": "must",
+   "f07": "must",
+   "f08": "must",
+   "f09": "must",
+   "f10": "must",
+   "f11": "must",
+   "f12": "must",
+   "f13": "must",
+   "f14": "must",
+   "f15": "nice",
+   "f16": "nice",
+   "f17": "nice",
+   "f18": "no",
+   "f19": "nice",
+   "f20": "must",
+   "f21": "nice",
+   "f22": "nice"
+  },
+  "top5": [
+   "f13",
+   "f09",
+   "f20",
+   "f08",
+   "f11"
+  ],
+  "q47": "10 BD a month",
+  "pilot": "no",
+  "q10": 3,
+  "q21": 4,
+  "q29": 3,
+  "q34": 5,
+  "q38": 4,
+  "q19": [
+   "bank-transfer"
+  ],
+  "_mode": "visit",
+  "_lang": "ar",
+  "_days_ago": 1
+ },
+ {
+  "cover_club": "Swimming club C12 (example)",
+  "cover_area": "Aali",
+  "consent": true,
+  "q1": {
+   "active-members": 120,
+   "branches": 1
+  },
+  "q2": [
+   "swimming"
+  ],
+  "grid": {
+   "f01": "must",
+   "f02": "nice",
+   "f03": "must",
+   "f04": "nice",
+   "f05": "must",
+   "f06": "must",
+   "f07": "must",
+   "f08": "must",
+   "f09": "no",
+   "f10": "nice",
+   "f11": "nice",
+   "f12": "must",
+   "f13": "must",
+   "f14": "no",
+   "f15": "must",
+   "f16": "must",
+   "f17": "must",
+   "f18": "must",
+   "f19": "must",
+   "f20": "must",
+   "f21": "must",
+   "f22": "no"
+  },
+  "top5": [
+   "f05",
+   "f13",
+   "f20",
+   "f08",
+   "f07"
+  ],
+  "q47": "20 BD a month",
+  "pilot": "no",
+  "q10": 2,
+  "q21": 4,
+  "q29": 2,
+  "q34": 4,
+  "q38": 1,
+  "q19": [
+   "bank-transfer",
+   "cash"
+  ],
+  "_mode": "visit",
+  "_lang": "en",
+  "_days_ago": 0
+ }
+]

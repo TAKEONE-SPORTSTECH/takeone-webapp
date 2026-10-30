@@ -2,6 +2,7 @@
 
 namespace App\Federations\Notifications;
 
+use App\Support\Mail\RetriesDelivery;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -16,6 +17,7 @@ use Illuminate\Notifications\Notification;
  */
 class FederationResetPassword extends Notification implements ShouldQueue
 {
+    use RetriesDelivery; // waits and tries again — App\Support\Mail\RetriesDelivery
     use Queueable;
 
     public function __construct(public string $token) {}

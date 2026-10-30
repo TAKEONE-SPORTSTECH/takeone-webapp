@@ -108,7 +108,7 @@
                      menu: the console, the QR, share, and sign out. --}}
                 @if(($console ?? null) !== false)
                     <a href="{{ $console ?? route('events.public.manage', $e['key']) }}" role="menuitem" class="bk-menu-row no-underline">
-                        <i class="bi bi-gear"></i>
+                        <span class="bk-ico"><i class="bi bi-gear"></i></span>
                         <span>{{ __('events::events.public_manage_title') }}</span>
                     </a>
                 @endif
@@ -121,19 +121,19 @@
                     :label="__('events::events.band_qr')"
                     button-class="bk-menu-row">
                     <x-slot:trigger>
-                        <i class="bi bi-qr-code"></i>
+                        <span class="bk-ico"><i class="bi bi-qr-code"></i></span>
                         <span>{{ __('events::events.band_qr') }}</span>
                     </x-slot:trigger>
                 </x-qr-code>
                 <button type="button" role="menuitem" class="bk-menu-row" @click="menu = false; share()">
-                    <i class="bi bi-share-fill"></i>
+                    <span class="bk-ico"><i class="bi bi-share-fill"></i></span>
                     <span>{{ __('events::events.public_share') }}</span>
                 </button>
                 @if(($signedIn ?? auth()->check()) && ($posterPublic ?? true))
                     <form method="POST" action="{{ route('events.public.sign-out', ['event' => $e['key']]) }}" style="margin:0;">
                         @csrf
                         <button type="submit" role="menuitem" class="bk-menu-row" style="color: hsl(0 72% 45%);">
-                            <i class="bi bi-box-arrow-right"></i>
+                            <span class="bk-ico" style="background:hsl(0 86% 97%);color:hsl(0 72% 45%);"><i class="bi bi-box-arrow-right"></i></span>
                             <span>{{ __('events::events.band_sign_out') }}</span>
                         </button>
                     </form>

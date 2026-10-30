@@ -339,6 +339,13 @@ Route::post('/reset-password', [\App\Members\Auth\NewPasswordController::class, 
 Route::get('/email/verify', function (\Illuminate\Http\Request $request) {
     if ($request->user()->hasVerifiedEmail()) {
         $intended = session()->pull('url.intended', \App\Support\Landing::url($request));
+        // Just confirmed by the emailed link: it said where to go (TakeNote's sign-up sends people back
+        // to TakeNote), and that must win over the default landing — on another device there is no
+        // url.intended. Only ever an address on this site.
+        $fromLink = session('verified') ? (string) session('verified_link_intended') : '';
+        if ($fromLink !== '' && str_starts_with($fromLink, rtrim(url('/'), '/').'/')) {
+            $intended = $fromLink;
+        }
         session()->forget('club.context');
 
         return redirect($intended);
@@ -375,7 +382,8 @@ Route::get('/email/verify/{id}/{hash}', function (\Illuminate\Http\Request $requ
     // The page will auto-redirect them to the app after 3 seconds.
     return redirect()->route('verification.notice')
         ->with('verified', true)
-        ->with('verified_intended', $intended);
+        ->with('verified_intended', $intended)
+        ->with('verified_link_intended', (string) $request->query('intended')); // only what the signed link itself named
 })->middleware(['signed'])->name('verification.verify');
 
 Route::post('/email/verification-notification', function (\Illuminate\Http\Request $request) {

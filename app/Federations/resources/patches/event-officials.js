@@ -319,9 +319,24 @@
       return pdf(token, {bundle: C.bundle.replace('xtypex', token), download: C.download.replace('xtypex', token)})();
     };
     const chosenOf = map => Object.keys(map || {}).filter(k => map[k]);
-    const chip = (label, onClick, primary, off) => ({label, onClick, disabled: off,
-      style: this.cssToObj('height:30px;padding:0 12px;border-radius:8px;font-family:inherit;font-size:.72rem;font-weight:700;cursor:' + (off ? 'default' : 'pointer') + ';opacity:' + (off ? '.5' : '1') + ';'
-        + (primary ? 'border:0;color:#1e2c4f;background:linear-gradient(100deg,#edcd85,#d0a854)' : 'border:1px solid #d5dae3;color:#1e2c4f;background:#fff'))});
+    // The ticked officials' badges (owner, 2026-10-29): badges keep no certificate
+    // records, so the chosen set is remembered by holder and printed as its own bundle.
+    const badgeSel = (cfg, holders) => async () => {
+      if (busy || !cfg || !cfg.selection || !cfg.bundle || !holders.length) return;
+      this.setState({printBusy: 'badge-sel'}); note('badge-sel', 'Choosing\u2026', 'busy');
+      let token;
+      try { token = (await call('POST', cfg.selection, {type: cfg.type, holders})).type; }
+      catch (e) { note('badge-sel', e.message, 'err'); this.setState({printBusy: null}); return; }
+      this.setState({printBusy: null});
+      return pdf(token, {bundle: cfg.bundle.replace('xtypex', token), download: cfg.download.replace('xtypex', token)})();
+    };
+    const offBadgeCfg = {selection: M.badgeSelection, bundle: M.badgeBundle, download: M.badgeDownload, type: 'official_badge'};
+    const regBadgeCfg = {selection: M.participantBadgeSelection, bundle: M.participantBadgeBundle, download: M.participantBadgeDownload, type: 'participant_badge'};
+    // An action is a row of the printable's submenu (owner, 2026-10-29), not a button
+    // chip: its icon says what it does — design, issue or download.
+    const chip = (label, onClick, primary, off, sub) => ({label, onClick, disabled: off, sub: sub || '',
+      icon: /^Issu/.test(label) ? '✓' : /^(Download|Making)/.test(label) ? '⇣' : '✎',
+      style: this.cssToObj('display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:0;border-radius:9px;background:transparent;font-family:inherit;text-align:left;box-sizing:border-box;cursor:' + (off ? 'default' : 'pointer') + ';opacity:' + (off ? '.5' : '1'))});
     const rowCss = this.cssToObj('display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;padding:10px 12px;border-radius:9px;background:#fff;box-sizing:border-box;border-bottom:1px solid #f4f6f9');
     const noteCss = n => this.cssToObj('font-size:.7rem;color:' + (n && n.tone === 'err' ? '#b4483c' : n && n.tone === 'ok' ? '#2f7d4f' : '#6b7689'));
     const busyLabel = (key, prefix, idle, during) => busy && busy === key && notes[key] && notes[key].text.indexOf(prefix) === 0 ? during : idle;
@@ -379,26 +394,80 @@
           onPdf: pdf(pdfKey, urls), pdfStyle: btn(false),
           hasStatus: false};
       }
-      if (jd) {
-        label = jd.label + ' printables';
-        const goTo = u => () => { this.setState({printOpen: null}); if (u) window.location.assign(u + (u.indexOf('?') < 0 ? '?' : '&') + 'back=' + back()); };
-        items.length = 0;
-        items.push(
-          {label: jd.label + ' — badge', hint: jd.hasBadge ? 'Its own design.' : 'Prints the general officials’ badge until it has its own.', hintStyle: noteCss(null), onClick: () => {}, style: rowCss,
-            actions: [chip(jd.hasBadge ? 'Design ✓' : 'Design', goTo(jd.badge), false, !!busy)]},
-          {label: jd.label + ' — certificate', hint: jd.hasCertificate ? 'Its own design.' : 'Prints the general officials’ certificate until it has its own.', hintStyle: noteCss(null), onClick: () => {}, style: rowCss,
-            actions: [chip(jd.hasCertificate ? 'Design ✓' : 'Design', goTo(jd.certificate), false, !!busy)]},
-          {label: 'Issue and print', hint: 'Issuing and the PDFs cover every official, each on their own job’s design — on the All tab.', hintStyle: noteCss(null), actions: [], onClick: () => {},
-            style: this.cssToObj('display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;padding:10px 12px;box-sizing:border-box;background:#f7f8fb;border-radius:9px;margin-top:4px')});
-      } else if ((M.jobDesigns || []).length) {
+      // Two rows, badge and certificate, the same on All and on a job's tab (owner,
+      // 2026-10-29). Every action follows the ticks: the chosen officials when any
+      // are ticked, otherwise the whole tab — everyone on All, that job's people on its tab.
+      const picked = st.offEv === sel.id ? chosenOf(st.offSel) : [];
+      const nPick = picked.length;
+      const jobHolders = group ? (group.people || []).map(p => p.holder).filter(Boolean) : [];
+      const goTo = u => () => { this.setState({printOpen: null}); if (u) window.location.assign(u + (u.indexOf('?') < 0 ? '?' : '&') + 'back=' + back()); };
+      const whom = jd ? 'every ' + jd.label + ' official' : 'every official';
+      if (jd) label = jd.label + ' printables';
+      items.length = 0;
+      const badgeKey = jd ? 'official_badge.' + jd.key : 'officials-badges';
+      const badgeUrls = jd ? (jd.badgePdf || P.officials) : P.officials;
+      const badgeActs = [jd
+        ? chip('Design', goTo(jd.badge), false, !!busy, jd.hasBadge ? 'Its own design ✓' : 'Uses the general badge until it has its own')
+        : chip('Design', go(M.designBadges, null), false, !!busy, 'The general design')];
+      // Issue badges (owner, 2026-10-29): each official is notified and can open their own.
+      if (M.badgeIssue) {
+        const issueBadges = async () => {
+          if (busy) return;
+          this.setState({printBusy: 'badge-issue'}); note('badge-issue', 'Issuing badges\u2026', 'busy');
+          try { const j = await call('POST', M.badgeIssue, nPick ? {holders: picked} : (jd ? {job: jd.key} : {})); note('badge-issue', j.message || 'Issued.', 'ok'); }
+          catch (e) { note('badge-issue', e.message, 'err'); }
+          this.setState({printBusy: null});
+        };
+        badgeActs.push(chip(busy === 'badge-issue' ? 'Issuing\u2026' : (nPick ? 'Issue ' + nPick + ' chosen badges' : 'Issue badges'), issueBadges, true, !!busy || (!!jd && !jobHolders.length),
+          (nPick ? 'Sends the ticked officials theirs' : 'Sends ' + whom + ' theirs') + ' \u2014 only those not sent yet'));
+      }
+      if (nPick && M.badgeSelection) badgeActs.push(chip(busyLabel('badge-sel', 'Making', 'Download ' + nPick + ' chosen badges', 'Making PDF…'), badgeSel(offBadgeCfg, picked), false, !!busy, 'The officials ticked in the list'));
+      else if (badgeUrls) badgeActs.push(chip(busyLabel(badgeKey, 'Making', 'Download badges', 'Making PDF…'), pdf(badgeKey, badgeUrls), false, !!busy, 'For ' + whom + ', four to an A4 sheet'));
+      if (jd || M.designBadges) items.push({label: (jd ? jd.label + ' ' : 'Officials’ ') + 'badge', hint: 'A6 identity cards', hintStyle: noteCss(null), actions: badgeActs, onClick: () => {}, style: rowCss});
+      if (C && (jd || M.designCertificates)) {
+        const certKey = jd ? 'official_thanks.' + jd.key : 'official_thanks';
+        const certActs = [jd
+          ? chip('Design', goTo(jd.certificate), false, !!busy, jd.hasCertificate ? 'Its own design ✓' : 'Uses the general certificate until it has its own')
+          : chip('Design', go(M.designCertificates, 'official_thanks'), false, !!busy, 'The general design')];
+        const issuing = busy === 'official_thanks';
+        if (nPick) {
+          certActs.push(chip(issuing ? 'Issuing…' : 'Issue to ' + nPick + ' chosen', issueTo('official_thanks', picked), true, !!busy, 'Those who have none yet'),
+            chip(busy && String(busy).indexOf('.sel-') > 0 ? 'Making PDF…' : 'Download ' + nPick + ' chosen', pdfOf('official_thanks', picked), false, !!busy, 'Their issued certificates in one PDF'));
+        } else {
+          certActs.push(chip(issuing ? 'Issuing…' : 'Issue certificates', jd ? issueTo('official_thanks', jobHolders) : issue('official_thanks'), true, !!busy || (!!jd && !jobHolders.length), 'To ' + whom + ' who has none yet'),
+            chip(busy === certKey ? 'Making PDF…' : 'Download certificates', pdf(certKey, {bundle: C.bundle.replace('xtypex', certKey), download: C.download.replace('xtypex', certKey)}), false, !!busy, 'Every issued one, in one PDF'));
+        }
+        items.push({label: (jd ? jd.label + ' ' : 'Officials’ ') + 'certificate', hint: 'Thanks for helping make the event a success', hintStyle: noteCss(null), actions: certActs, onClick: () => {}, style: rowCss});
+      }
+      if (!jd && (M.jobDesigns || []).length) {
         items.push({label: 'A job’s own designs', hint: 'Choose a job tab — Team manager, Referee… — and open Printables there.', hintStyle: noteCss(null), actions: [], onClick: () => {},
           style: this.cssToObj('display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;padding:10px 12px;box-sizing:border-box;background:#f7f8fb;border-radius:9px;margin-top:4px')});
       }
     }
+    // Ticked competitors get their badges too — the same option the officials have.
+    // It follows the ticks like everything else: the chosen replace "everyone".
+    if (who === 'participants' && regChosen.length && M.participantBadgeSelection && items[0] && items[0].actions) {
+      if (items[0].actions.length > 1) items[0].actions.pop();
+      items[0].actions.push(chip(busyLabel('badge-sel', 'Making', 'Download ' + regChosen.length + ' chosen badges', 'Making PDF\u2026'), badgeSel(regBadgeCfg, regChosen), false, !!busy));
+    }
+    // Each printable is a row opening its own submenu to the side (owner, 2026-10-29):
+    // hover or click shows its actions; a note (no actions) stays a plain line.
     const open = st.printOpen === who;
+    const subAt = open && st.printSub != null ? st.printSub : null;
+    items.forEach((it, i) => {
+      it.hasSub = !!(it.actions && it.actions.length);
+      it.isNote = !it.hasSub;
+      it.subOpen = it.hasSub && subAt === i;
+      it.onHover = () => { if ((this.state || {}).printSub !== (it.hasSub ? i : null)) this.setState({printSub: it.hasSub ? i : null}); };
+      it.onOpen = e => { if (e && e.stopPropagation) e.stopPropagation(); this.setState({printSub: it.subOpen ? null : i}); };
+      if (it.hasSub) {
+        it.style = this.cssToObj('display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:0;border-radius:9px;font-family:inherit;text-align:left;cursor:pointer;box-sizing:border-box;background:' + (it.subOpen ? '#fdf6e6' : '#fff'));
+        it.subStyle = this.cssToObj('position:absolute;top:-6px;left:calc(100% + 6px);z-index:47;width:260px;padding:6px;background:#fff;border:1px solid #eef1f6;border-radius:14px;box-shadow:0 18px 40px rgba(30,44,79,.16);animation:rise .14s cubic-bezier(.22,.68,.35,1) both');
+      }
+    });
     return {
       any: items.length > 0, items, open,
-      onToggle: e => { if (e && e.stopPropagation) e.stopPropagation(); this.setState({printOpen: open ? null : who}); },
+      onToggle: e => { if (e && e.stopPropagation) e.stopPropagation(); this.setState({printOpen: open ? null : who, printSub: null}); },
       onClose: () => { if (!busy) this.setState({printOpen: null}); },
       stop: e => { if (e && e.stopPropagation) e.stopPropagation(); },
       // In the officials' Job row it sits among the tabs, so it takes their pill shape.

@@ -8,7 +8,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta name="color-scheme" content="light">
+    <meta name="color-scheme" content="only light">
     @foreach ($styles as $href)
         <link rel="stylesheet" href="{{ $href }}">
     @endforeach

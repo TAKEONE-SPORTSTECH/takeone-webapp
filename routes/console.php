@@ -8,6 +8,10 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+// Email can never again fail silently for months (28 Oct 2026): check it can be sent, tell the
+// super-admins in the app when that changes, and put failed emails back once it works (App\Support\Mail).
+Schedule::command('mail:health')->everyFifteenMinutes()->withoutOverlapping();
+Schedule::command('mail:retry-failed')->hourly()->withoutOverlapping();
 Schedule::command('subscriptions:send-expiry-reminders')->dailyAt('00:00');
 Schedule::command('subscriptions:send-expired-notices')->dailyAt('00:05');
 Schedule::command('expenses:process-recurring')->dailyAt('00:00');
@@ -44,6 +48,12 @@ Schedule::command('takeone:backup')
     ->dailyAt('03:30')
     ->withoutOverlapping()
     ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('Nightly backup FAILED — restore capability is compromised.'));
+// Margin / TakeNote: the Bin keeps a note 30 days, then it goes for good with every
+// picture, recording and drawing in it; uploads taken out of every note go a day
+// later. After the nightly backup, so the last copy of anything is always in one.
+Schedule::command('devboard:sweep --apply')->dailyAt('04:30')->withoutOverlapping();
+// TakeNote cards' reminders ("1 hour before it is due"): to the card's people and its watchers, once.
+Schedule::command('devboard:remind')->everyMinute()->withoutOverlapping();
 Schedule::command('goals:daily-encouragement')->dailyAt('09:00');
 // Ranks & grading reminders — each sent once; a no-op while RANKS_ENABLED is off.
 Schedule::command('ranks:reminders')->dailyAt('08:00')->withoutOverlapping();

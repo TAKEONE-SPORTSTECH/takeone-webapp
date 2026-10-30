@@ -1,0 +1,34 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="color-scheme" content="only dark"><meta name="darkreader-lock">
+<title>Boutcam framing guide — sample</title>
+<style>
+@font-face{font-family:Barlow;font-weight:700;src:url(/fonts/designer/barlow-condensed/BarlowCondensed-Bold.ttf)}
+@font-face{font-family:Barlow;font-weight:400;src:url(/fonts/designer/barlow-condensed/BarlowCondensed-Regular.ttf)}
+:root{color-scheme:only dark}*{box-sizing:border-box}
+body{margin:0;background:#0b0d14;color:#e9e6e0;font-family:Barlow,sans-serif;padding:20px 16px 60px}
+h1{font-size:26px;margin:0 0 4px;letter-spacing:.06em}p{color:#9aa3b5;margin:0 0 14px;max-width:900px}
+.row{display:flex;align-items:center;gap:12px;margin:0 0 12px;max-width:1150px}
+.frame{max-width:1150px;aspect-ratio:16/9;position:relative;overflow:hidden;border-radius:10px;container-type:inline-size;
+ background:radial-gradient(70% 60% at 50% 55%,#2a4f8f 0%,#1b3566 45%,#0d1a33 100%)}
+.scale{position:absolute;top:0;left:0;width:1150px;height:647px;transform-origin:top left;transform:scale(calc(100cqw / 1150px))}
+.box{position:absolute;background:rgba(0,0,0,.25);border:1.5px dashed rgba(255,255,255,.55);display:flex;align-items:center;justify-content:center;
+ font-weight:700;font-size:13px;letter-spacing:.2em;color:rgba(255,255,255,.85)}
+.clear{position:absolute;border:2px dashed rgba(240,194,74,.9);display:flex;justify-content:center;align-items:flex-start;padding-top:8px;
+ font-weight:700;font-size:13px;letter-spacing:.2em;color:#edcd85}
+.fighters{position:absolute;left:44%;top:46%;font-size:60px;transform:translateX(-50%)}
+</style></head><body>
+<h1>FRAMING GUIDE (CAMERA VIEW)</h1>
+<p>What boutcam shows over the live camera picture while you set up the tripod, when <b>Framing guide</b> is on in camera settings. The grey boxes are where a sent video puts the score bar, the event and the live scoring; keep the fighters inside the gold box. It moves with the score-bar slider and is never recorded.</p>
+<div class="row"><span style="font-size:13px;letter-spacing:.16em">LOWER</span><input id="lift" type="range" min="4" max="240" value="18" style="flex:1;accent-color:#f0c24a"><span style="font-size:13px;letter-spacing:.16em">HIGHER</span></div>
+<div class="frame"><div class="scale">
+ <div class="box" style="left:22px;top:16px;width:578px;height:58px">EVENT</div>
+ <div class="box" style="left:934px;top:30px;width:190px;height:100px">LIVE SCORING</div>
+ <div id="clear" class="clear" style="left:26px;top:84px;width:1098px">KEEP THE FIGHT IN HERE</div>
+ <div id="bar" class="box" style="left:26px;width:1098px">SCORE BAR</div>
+ <div class="fighters">🥋&nbsp;&nbsp;&nbsp;🥋</div>
+</div></div>
+<script>
+const H=647,r=document.getElementById('lift'),b=document.getElementById('bar'),c=document.getElementById('clear');
+function put(){const L=+r.value,top=H-(L+125);b.style.top=top+'px';b.style.height=(L+125-L)+'px';c.style.height=Math.max(0,top-8-84)+'px';}
+r.addEventListener('input',put);put();
+</script></body></html>

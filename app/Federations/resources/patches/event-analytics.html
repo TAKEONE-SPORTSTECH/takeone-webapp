@@ -1,0 +1,346 @@
+        <!-- Analytics (event-analytics.js) — the competition report's statistics & analytics, live. Read-only. -->
+        <sc-if value="{{ an.empty }}" hint-placeholder-val="{{ false }}">
+          <section style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:40px 24px;text-align:center;box-shadow:0 14px 40px rgba(30,44,79,.1)">
+            <div style="width:56px;height:56px;margin:0 auto 14px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(135deg,#1e2c4f,#2c3f6e);color:#edcd85"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M7 15l4-4 3 3 5-6"></path></svg></div>
+            <div style="font-size:.95rem;font-weight:700;color:#1e2c4f">Statistics &amp; analytics</div>
+            <div style="margin-top:6px;font-size:.82rem;color:#6b7689">{{ an.msg }}</div>
+            <sc-if value="{{ an.retry }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ an.onRetry }}" style="margin-top:14px;height:38px;padding:0 16px;border-radius:11px;border:1px solid #caa14f;background:#fff;color:#8a6d20;font-family:inherit;font-size:.8rem;font-weight:700;cursor:pointer" style-hover="background:#fdf6e6">Try again</button></sc-if>
+          </section>
+        </sc-if>
+        <sc-if value="{{ an.loading }}" hint-placeholder-val="{{ false }}">
+          <section aria-busy="true" style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:40px 24px;text-align:center;box-shadow:0 14px 40px rgba(30,44,79,.1)">
+            <div style="width:34px;height:34px;margin:0 auto 12px;border-radius:50%;border:3px solid #eef1f6;border-top-color:#d8b25f"></div>
+            <div style="font-size:.82rem;color:#6b7689">Reading the mats’ officiating log…</div>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{ an.has }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-direction:column;gap:18px">
+
+          <!-- Header band -->
+          <section style="position:relative;overflow:hidden;border-radius:18px;padding:22px clamp(18px,2.4vw,28px);color:#fff;background:linear-gradient(135deg,#1e2c4f,#2c3f6e);box-shadow:0 14px 40px rgba(30,44,79,.18)">
+            <span aria-hidden="true" style="position:absolute;right:-10px;top:0;bottom:0;width:180px;opacity:.14;background:repeating-linear-gradient(115deg,#d8b25f 0 6px,transparent 6px 16px)"></span>
+            <div style="position:relative;display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap">
+              <div>
+                <div style="font-size:.66rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#edcd85">{{ an.eyebrow }}</div>
+                <h3 style="margin:4px 0 0;font-size:1.25rem;font-weight:800">Statistics &amp; analytics</h3>
+                <div style="margin-top:4px;font-size:.76rem;color:rgba(255,255,255,.75)">Every figure is read from the draw and the officiating log the mats wrote — nothing typed in.</div>
+              </div>
+              <sc-if value="{{ an.refreshing }}" hint-placeholder-val="{{ false }}"><span role="status" style="display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;background:rgba(255,255,255,.14);font-size:.68rem;font-weight:700"><span style="width:7px;height:7px;border-radius:50%;background:#edcd85"></span>Updating</span></sc-if>
+            </div>
+          </section>
+
+          <!-- KPIs -->
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(max(150px,calc(25% - 9px)),1fr));gap:12px">
+            <sc-for list="{{ an.kpis }}" as="k" hint-placeholder-count="8">
+              <div style="{{ k.style }}"><span aria-hidden="true" style="{{ k.bar }}"></span>
+                <div style="font-size:1.6rem;font-weight:900;line-height:1.05;font-variant-numeric:tabular-nums">{{ k.value }}<sc-if value="{{ k.hasUnit }}" hint-placeholder-val="{{ false }}"><small style="margin-left:3px;font-size:.8rem;font-weight:800;opacity:.7">{{ k.unit }}</small></sc-if></div>
+                <div style="{{ k.labelStyle }}">{{ k.label }}</div>
+              </div>
+            </sc-for>
+          </div>
+
+          <!-- 1 · In numbers -->
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:18px">
+            <section style="background:#fff;border-radius:18px;border:1px solid #e9edf3;padding:18px;box-shadow:0 12px 32px rgba(30,44,79,.06)">
+              <div style="font-size:.64rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#8a6d20">In numbers</div>
+              <h4 style="margin:3px 0 14px;font-size:.95rem;font-weight:700;color:#1e2c4f">Athletes</h4>
+              <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+                <div style="{{ an.athletes.ring }}"><div style="width:86px;height:86px;border-radius:50%;background:#fff;display:grid;place-content:center;text-align:center"><b style="font-size:1.5rem;font-weight:900;color:#1e2c4f;line-height:1">{{ an.athletes.big }}</b><span style="font-size:.56rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#8a93a8">{{ an.athletes.small }}</span></div></div>
+                <div style="flex:1;min-width:140px;display:flex;flex-direction:column;gap:8px">
+                  <sc-for list="{{ an.athletes.rows }}" as="r" hint-placeholder-count="2"><div style="display:flex;align-items:center;gap:8px;font-size:.8rem;color:#1e2c4f"><span style="{{ r.dot }}"></span><span style="flex:1">{{ r.label }}</span><b>{{ r.value }}</b><span style="width:40px;text-align:right;color:#6b7689">{{ r.pct }}</span></div></sc-for>
+                </div>
+              </div>
+            </section>
+            <section style="background:#fff;border-radius:18px;border:1px solid #e9edf3;padding:18px;box-shadow:0 12px 32px rgba(30,44,79,.06)">
+              <div style="font-size:.64rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#8a6d20">Male · Female</div>
+              <h4 style="margin:3px 0 14px;font-size:.95rem;font-weight:700;color:#1e2c4f">Entries by age group</h4>
+              <sc-for list="{{ an.ages }}" as="a" hint-placeholder-count="4">
+                <div style="display:grid;grid-template-columns:minmax(80px,30%) 1fr auto;align-items:center;gap:10px;margin-bottom:8px;font-size:.78rem;color:#1e2c4f">
+                  <span style="font-weight:600;overflow-wrap:anywhere">{{ a.label }}</span>
+                  <span style="height:12px;background:#f4f6fa;border-radius:999px;overflow:hidden"><span style="{{ a.track }}"><i style="{{ a.m }}"></i><i style="{{ a.f }}"></i></span></span>
+                  <span style="font-variant-numeric:tabular-nums;color:#6b7689;white-space:nowrap">{{ a.value }}</span>
+                </div>
+              </sc-for>
+            </section>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:18px">
+            <section style="background:#fff;border-radius:18px;border:1px solid #e9edf3;padding:18px;box-shadow:0 12px 32px rgba(30,44,79,.06)">
+              <h4 style="margin:0 0 14px;font-size:.95rem;font-weight:700;color:#1e2c4f">Athletes by nation</h4>
+              <sc-for list="{{ an.nations }}" as="r" hint-placeholder-count="5">
+                <div style="display:grid;grid-template-columns:minmax(100px,38%) 1fr auto;align-items:center;gap:10px;margin-bottom:8px;font-size:.78rem;color:#1e2c4f">
+                  <span style="display:flex;align-items:center;gap:7px;min-width:0"><sc-if value="{{ r.hasFlag }}" hint-placeholder-val="{{ true }}"><img src="{{ r.flag }}" alt="" style="width:18px;height:13.5px;flex:none;border-radius:2px;box-shadow:0 0 0 1px rgba(30,44,79,.12);object-fit:cover"></sc-if><span style="font-weight:600;overflow-wrap:anywhere">{{ r.label }}</span></span>
+                  <span style="height:10px;background:#f4f6fa;border-radius:999px;overflow:hidden"><span style="{{ r.fill }}"></span></span>
+                  <b style="font-variant-numeric:tabular-nums">{{ r.value }}</b>
+                </div>
+              </sc-for>
+            </section>
+            <section style="background:#fff;border-radius:18px;border:1px solid #e9edf3;padding:18px;box-shadow:0 12px 32px rgba(30,44,79,.06)">
+              <h4 style="margin:0 0 14px;font-size:.95rem;font-weight:700;color:#1e2c4f">Athletes by club</h4>
+              <sc-for list="{{ an.clubsTop }}" as="r" hint-placeholder-count="5">
+                <div style="display:grid;grid-template-columns:minmax(100px,38%) 1fr auto;align-items:center;gap:10px;margin-bottom:8px;font-size:.78rem;color:#1e2c4f">
+                  <span style="display:flex;align-items:center;gap:7px;min-width:0"><sc-if value="{{ r.hasLogo }}" hint-placeholder-val="{{ true }}"><img src="{{ r.logo }}" alt="" style="width:20px;height:20px;flex:none;object-fit:contain"></sc-if><span style="font-weight:600;overflow-wrap:anywhere">{{ r.label }}</span></span>
+                  <span style="height:10px;background:#f4f6fa;border-radius:999px;overflow:hidden"><span style="{{ r.fill }}"></span></span>
+                  <b style="font-variant-numeric:tabular-nums">{{ r.value }}</b>
+                </div>
+              </sc-for>
+            </section>
+          </div>
+
+          <sc-if value="{{ an.noBouts }}" hint-placeholder-val="{{ false }}">
+            <section style="padding:22px;border-radius:18px;background:#f7f8fb;border:1px dashed #d5dbe5;text-align:center;font-size:.84rem;color:#6b7689">No bout has been finished on the mats yet — how bouts are won, time on the mat, discipline and the stars appear here as the competition runs.</section>
+          </sc-if>
+
+          <sc-if value="{{ an.bouts }}" hint-placeholder-val="{{ true }}">
+          <!-- 2 · How bouts are won -->
+          <section style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:clamp(16px,2vw,24px);box-shadow:0 14px 40px rgba(30,44,79,.1)">
+            <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+              <div><div style="font-size:.64rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#8a6d20">Scoring</div><h4 style="margin:3px 0 0;font-size:1.02rem;font-weight:700;color:#1e2c4f">How bouts are won</h4></div>
+              <div style="text-align:right"><b style="font-size:1.4rem;font-weight:900;color:#1e2c4f">{{ an.pointsPerBout }}</b><div style="font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6b7689">Points a bout</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:18px;margin-bottom:18px">
+              <div style="padding:16px;border-radius:14px;background:#fafbfd;border:1px solid #eef1f6">
+                <div style="font-size:.8rem;font-weight:700;color:#1e2c4f;margin-bottom:12px">How they were decided</div>
+                <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+                  <div style="{{ an.reasons.ring }}"><div style="width:86px;height:86px;border-radius:50%;background:#fff;display:grid;place-content:center;text-align:center"><b style="font-size:1.5rem;font-weight:900;color:#1e2c4f;line-height:1">{{ an.reasons.big }}</b><span style="font-size:.56rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#8a93a8">{{ an.reasons.small }}</span></div></div>
+                  <div style="flex:1;min-width:150px;display:flex;flex-direction:column;gap:7px">
+                    <sc-for list="{{ an.reasons.rows }}" as="r" hint-placeholder-count="4"><div style="display:flex;align-items:center;gap:8px;font-size:.78rem;color:#1e2c4f"><span style="{{ r.dot }}"></span><span style="flex:1">{{ r.label }}</span><b>{{ r.value }}</b><span style="width:40px;text-align:right;color:#6b7689">{{ r.pct }}</span></div></sc-for>
+                  </div>
+                </div>
+              </div>
+              <div style="padding:16px;border-radius:14px;background:#fafbfd;border:1px solid #eef1f6">
+                <div style="font-size:.8rem;font-weight:700;color:#1e2c4f;margin-bottom:12px">Every score, by type</div>
+                <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+                  <div style="{{ an.tech.ring }}"><div style="width:86px;height:86px;border-radius:50%;background:#fff;display:grid;place-content:center;text-align:center"><b style="font-size:1.5rem;font-weight:900;color:#1e2c4f;line-height:1">{{ an.tech.big }}</b><span style="font-size:.56rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#8a93a8">{{ an.tech.small }}</span></div></div>
+                  <div style="flex:1;min-width:150px;display:flex;flex-direction:column;gap:7px">
+                    <sc-for list="{{ an.tech.rows }}" as="r" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:8px;font-size:.78rem;color:#1e2c4f"><span style="{{ r.dot }}"></span><span style="flex:1">{{ r.label }}</span><b>{{ r.value }}</b><span style="width:40px;text-align:right;color:#6b7689">{{ r.pct }}</span></div></sc-for>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="padding:16px;border-radius:14px;background:#fafbfd;border:1px solid #eef1f6;margin-bottom:18px">
+              <div style="font-size:.8rem;font-weight:700;color:#1e2c4f;margin-bottom:12px">Score types by age group <span style="font-weight:500;color:#6b7689">· share of each group’s scores</span></div>
+              <sc-for list="{{ an.techByAge }}" as="a" hint-placeholder-count="4">
+                <div style="display:grid;grid-template-columns:minmax(90px,26%) 1fr auto;align-items:center;gap:10px;margin-bottom:8px;font-size:.78rem;color:#1e2c4f">
+                  <span style="display:flex;align-items:center;gap:7px;font-weight:600;min-width:0"><span style="{{ a.dot }}"></span><span style="overflow-wrap:anywhere">{{ a.label }}</span></span>
+                  <span style="display:flex;height:14px;border-radius:999px;overflow:hidden;background:#eef1f6"><sc-for list="{{ a.parts }}" as="p" hint-placeholder-count="3"><i title="{{ p.title }}" style="{{ p.style }}"></i></sc-for></span>
+                  <span style="font-variant-numeric:tabular-nums;color:#6b7689;white-space:nowrap">{{ a.value }}</span>
+                </div>
+              </sc-for>
+              <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px"><sc-for list="{{ an.techLegend }}" as="l" hint-placeholder-count="3"><span style="display:inline-flex;align-items:center;gap:6px;font-size:.7rem;color:#6b7689"><span style="{{ l.dot }}"></span>{{ l.label }}</span></sc-for></div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:18px">
+              <div style="padding:16px;border-radius:14px;background:#fafbfd;border:1px solid #eef1f6">
+                <div style="font-size:.8rem;font-weight:700;color:#1e2c4f;margin-bottom:12px">Winning margins <span style="font-weight:500;color:#6b7689">· points apart</span></div>
+                <div style="display:flex;align-items:flex-end;gap:6px;height:160px">
+                  <sc-for list="{{ an.margins }}" as="c" hint-placeholder-count="6"><div style="flex:1;min-width:0;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px"><span style="font-size:.68rem;font-weight:800;color:#1e2c4f">{{ c.v }}</span><span style="{{ c.bar }}"></span></div></sc-for>
+                </div>
+                <div style="display:flex;gap:6px;margin-top:6px;border-top:1px solid #e3e7ee;padding-top:6px"><sc-for list="{{ an.margins }}" as="c" hint-placeholder-count="6"><span style="flex:1;min-width:0;text-align:center;font-size:.64rem;font-weight:700;color:#6b7689">{{ c.x }}</span></sc-for></div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <sc-for list="{{ an.insights }}" as="i" hint-placeholder-count="3">
+                  <div style="display:flex;gap:10px;padding:12px 14px;border-radius:12px;background:#fbf6e8;border:1px solid #efdfb6">
+                    <span aria-hidden="true" style="width:6px;flex:none;border-radius:3px;background:#d8b25f"></span>
+                    <div style="font-size:.78rem;line-height:1.5;color:#4a5470"><b style="color:#1e2c4f">{{ i.head }}</b> — {{ i.text }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </section>
+
+          <!-- 3 · Time on the mat -->
+          <section style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:clamp(16px,2vw,24px);box-shadow:0 14px 40px rgba(30,44,79,.1)">
+            <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+              <div><div style="font-size:.64rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#8a6d20">Time</div><h4 style="margin:3px 0 0;font-size:1.02rem;font-weight:700;color:#1e2c4f">Time on the mat</h4></div>
+              <sc-if value="{{ an.hasDay }}" hint-placeholder-val="{{ true }}"><div style="display:flex;gap:18px;text-align:right">
+                <div><b style="font-size:1.25rem;font-weight:900;color:#1e2c4f">{{ an.firstBout }}</b><div style="font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6b7689">First bout</div></div>
+                <div><b style="font-size:1.25rem;font-weight:900;color:#1e2c4f">{{ an.lastBell }}</b><div style="font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6b7689">Last bell</div></div>
+              </div></sc-if>
+            </div>
+            <div style="padding:16px;border-radius:14px;background:#fafbfd;border:1px solid #eef1f6;margin-bottom:18px">
+              <div style="font-size:.8rem;font-weight:700;color:#1e2c4f;margin-bottom:12px">When in the bout the points land <span style="font-weight:500;color:#6b7689">· share of the regulation time</span></div>
+              <div style="display:flex;align-items:flex-end;gap:6px;height:170px">
+                <sc-for list="{{ an.phase }}" as="c" hint-placeholder-count="10"><div style="flex:1;min-width:0;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px"><span style="font-size:.68rem;font-weight:800;color:#1e2c4f">{{ c.v }}</span><span style="{{ c.bar }}"></span></div></sc-for>
+              </div>
+              <div style="display:flex;gap:6px;margin-top:6px;border-top:1px solid #e3e7ee;padding-top:6px"><sc-for list="{{ an.phase }}" as="c" hint-placeholder-count="10"><span style="flex:1;min-width:0;text-align:center;font-size:.6rem;font-weight:700;color:#6b7689;overflow-wrap:anywhere">{{ c.x }}</span></sc-for></div>
+              <div style="display:flex;gap:10px;margin-top:12px;padding:12px 14px;border-radius:12px;background:#fbf6e8;border:1px solid #efdfb6"><span aria-hidden="true" style="width:6px;flex:none;border-radius:3px;background:#d8b25f"></span><div style="font-size:.78rem;line-height:1.5;color:#4a5470"><b style="color:#1e2c4f">{{ an.lastSeconds }}</b> — {{ an.lastSecondsText }}</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,200px),1fr));gap:12px;margin-bottom:18px">
+              <sc-for list="{{ an.timeKpis }}" as="k" hint-placeholder-count="3">
+                <div style="{{ k.style }}"><span aria-hidden="true" style="{{ k.bar }}"></span>
+                  <div style="font-size:1.5rem;font-weight:900;line-height:1.05;font-variant-numeric:tabular-nums">{{ k.value }}<sc-if value="{{ k.hasUnit }}" hint-placeholder-val="{{ false }}"><small style="margin-left:3px;font-size:.8rem;font-weight:800;opacity:.7">{{ k.unit }}</small></sc-if></div>
+                  <div style="{{ k.labelStyle }}">{{ k.label }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="padding:16px;border-radius:14px;background:#fafbfd;border:1px solid #eef1f6;overflow-x:auto">
+              <div style="font-size:.8rem;font-weight:700;color:#1e2c4f;margin-bottom:12px">The day, bout by bout <span style="font-weight:500;color:#6b7689">· coloured by age group</span></div>
+              <div style="min-width:560px">
+                <sc-for list="{{ an.mats }}" as="m" hint-placeholder-count="2">
+                  <div style="display:grid;grid-template-columns:96px 1fr;align-items:center;gap:12px;margin-bottom:8px">
+                    <div><b style="font-size:.86rem;font-weight:900;color:#1e2c4f">{{ m.mat }}</b><div style="font-size:.62rem;color:#6b7689">{{ m.sub }}</div></div>
+                    <div style="position:relative;height:40px;border-radius:8px;background:#eef1f6;overflow:hidden"><sc-for list="{{ m.blocks }}" as="b" hint-placeholder-count="12"><i title="{{ b.title }}" style="{{ b.style }}"></i></sc-for></div>
+                  </div>
+                </sc-for>
+                <div style="display:grid;grid-template-columns:96px 1fr;gap:12px"><span></span><div style="position:relative;height:16px"><sc-for list="{{ an.hours }}" as="h" hint-placeholder-count="8"><span style="{{ h.style }}">{{ h.label }}</span></sc-for></div></div>
+                <div style="display:grid;grid-template-columns:96px 1fr;gap:12px;margin-top:10px;align-items:end">
+                  <span style="font-size:.6rem;font-weight:800;letter-spacing:.1em;color:#6b7689">BOUTS / HOUR</span>
+                  <div style="display:flex;align-items:flex-end;gap:4px;height:80px"><sc-for list="{{ an.perHour }}" as="c" hint-placeholder-count="8"><div title="{{ c.x }}:00" style="flex:1;min-width:0;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px"><span style="font-size:.62rem;font-weight:800;color:#1e2c4f">{{ c.v }}</span><span style="{{ c.bar }}"></span></div></sc-for></div>
+                </div>
+              </div>
+              <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:12px"><sc-for list="{{ an.ageLegend }}" as="l" hint-placeholder-count="4"><span style="display:inline-flex;align-items:center;gap:6px;font-size:.7rem;color:#6b7689"><span style="{{ l.dot }}"></span>{{ l.label }}</span></sc-for></div>
+              <sc-if value="{{ an.hasExhibitions }}" hint-placeholder-val="{{ false }}"><div style="margin-top:10px;font-size:.72rem;color:#6b7689">{{ an.exhibitions }}</div></sc-if>
+            </div>
+          </section>
+
+          <!-- 4 · Discipline & corners -->
+          <section style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:clamp(16px,2vw,24px);box-shadow:0 14px 40px rgba(30,44,79,.1)">
+            <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+              <div><div style="font-size:.64rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#8a6d20">Discipline</div><h4 style="margin:3px 0 0;font-size:1.02rem;font-weight:700;color:#1e2c4f">Discipline &amp; corners</h4></div>
+              <div style="display:flex;gap:18px;text-align:right">
+                <div><b style="font-size:1.25rem;font-weight:900;color:#1e2c4f">{{ an.foulsTotal }}</b><div style="font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6b7689">Fouls</div></div>
+                <div><b style="font-size:1.25rem;font-weight:900;color:#1e2c4f">{{ an.foulsPerBout }}</b><div style="font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6b7689">A bout</div></div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:18px;margin-bottom:18px">
+              <div style="padding:16px;border-radius:14px;background:#fafbfd;border:1px solid #eef1f6">
+                <div style="font-size:.8rem;font-weight:700;color:#1e2c4f;margin-bottom:12px">Fouls by level</div>
+                <div style="display:flex;align-items:flex-end;gap:8px;height:150px">
+                  <sc-for list="{{ an.fouls }}" as="c" hint-placeholder-count="5"><div style="flex:1;min-width:0;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px"><span style="font-size:.68rem;font-weight:800;color:#1e2c4f">{{ c.v }}</span><span style="{{ c.bar }}"></span></div></sc-for>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:6px;border-top:1px solid #e3e7ee;padding-top:6px"><sc-for list="{{ an.fouls }}" as="c" hint-placeholder-count="5"><span style="flex:1;min-width:0;text-align:center;font-size:.62rem;font-weight:700;color:#6b7689;overflow-wrap:anywhere">{{ c.x }}</span></sc-for></div>
+              </div>
+              <div style="padding:16px;border-radius:14px;background:#fafbfd;border:1px solid #eef1f6">
+                <div style="font-size:.8rem;font-weight:700;color:#1e2c4f;margin-bottom:12px">Fouls a bout, by age group</div>
+                <sc-for list="{{ an.foulsByAge }}" as="r" hint-placeholder-count="4">
+                  <div style="display:grid;grid-template-columns:minmax(90px,30%) 1fr auto;align-items:center;gap:10px;margin-bottom:8px;font-size:.78rem;color:#1e2c4f">
+                    <span style="font-weight:600;overflow-wrap:anywhere">{{ r.label }}</span>
+                    <span style="height:10px;background:#eef1f6;border-radius:999px;overflow:hidden"><span style="{{ r.fill }}"></span></span>
+                    <b style="font-variant-numeric:tabular-nums">{{ r.value }}</b>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="padding:16px;border-radius:14px;background:#fafbfd;border:1px solid #eef1f6;margin-bottom:18px">
+              <div style="font-size:.8rem;font-weight:700;color:#1e2c4f;margin-bottom:12px">Red against blue <span style="font-weight:500;color:#6b7689">· bouts won from each corner</span></div>
+              <div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:6px;font-size:.62rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase"><span style="color:#dc2626">Aka · red</span><span style="color:#2563eb">Ao · blue</span></div>
+              <div style="display:flex;height:44px;border-radius:12px;overflow:hidden;color:#fff;font-weight:900;font-size:.95rem;white-space:nowrap;font-variant-numeric:tabular-nums">
+                <div style="{{ an.akaStyle }}"><span>{{ an.aka }}</span></div>
+                <div style="{{ an.aoStyle }}"><span style="margin-left:auto">{{ an.ao }}</span></div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,180px),1fr));gap:12px;margin-top:14px">
+                <sc-for list="{{ an.cornerKpis }}" as="k" hint-placeholder-count="3">
+                  <div style="{{ k.style }}"><span aria-hidden="true" style="{{ k.bar }}"></span>
+                    <div style="font-size:1.5rem;font-weight:900;line-height:1.05;font-variant-numeric:tabular-nums">{{ k.value }}<sc-if value="{{ k.hasUnit }}" hint-placeholder-val="{{ false }}"><small style="margin-left:4px;font-size:.8rem;font-weight:800;opacity:.7">{{ k.unit }}</small></sc-if></div>
+                    <div style="{{ k.labelStyle }}">{{ k.label }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="font-size:.8rem;font-weight:700;color:#1e2c4f;margin-bottom:12px">Bouts to remember</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:14px">
+              <sc-for list="{{ an.highlights }}" as="h" hint-placeholder-count="4">
+                <article style="border-radius:14px;overflow:hidden;border:1px solid #e3e7ee;background:#fff">
+                  <header style="display:flex;align-items:center;gap:8px;padding:8px 14px;background:#1e2c4f;color:#fff;font-size:.64rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase"><span style="width:7px;height:7px;border-radius:50%;background:#d8b25f"></span>{{ h.label }}<span style="margin-left:auto;color:#c9d0e2">{{ h.no }}</span></header>
+                  <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;padding:12px 14px 6px">
+                    <div onClick="{{ h.a.onOpen }}" style="{{ h.a.link }}"><div style="display:flex;align-items:center;gap:6px;min-width:0;font-size:.8rem;font-weight:800;color:#1e2c4f"><span style="width:4px;height:30px;flex:none;border-radius:2px;background:#dc2626"></span><sc-if value="{{ h.a.hasFlag }}" hint-placeholder-val="{{ true }}"><img src="{{ h.a.flag }}" alt="" style="width:18px;height:13.5px;flex:none;border-radius:2px;object-fit:cover"></sc-if><span style="overflow-wrap:anywhere">{{ h.a.name }}</span></div></div>
+                    <div style="font-size:1.5rem;font-weight:900;color:#1e2c4f;white-space:nowrap;font-variant-numeric:tabular-nums">{{ h.score }}</div>
+                    <div onClick="{{ h.b.onOpen }}" style="{{ h.b.link }}"><div style="display:flex;flex-direction:row-reverse;align-items:center;gap:6px;min-width:0;text-align:right;font-size:.8rem;font-weight:800;color:#1e2c4f"><span style="width:4px;height:30px;flex:none;border-radius:2px;background:#2563eb"></span><sc-if value="{{ h.b.hasFlag }}" hint-placeholder-val="{{ true }}"><img src="{{ h.b.flag }}" alt="" style="width:18px;height:13.5px;flex:none;border-radius:2px;object-fit:cover"></sc-if><span style="overflow-wrap:anywhere">{{ h.b.name }}</span></div></div>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;gap:10px;padding:0 14px 10px;font-size:.68rem;color:#6b7689;font-weight:600"><span>{{ h.division }}</span><span style="white-space:nowrap">{{ h.round }}</span></div>
+                </article>
+              </sc-for>
+            </div>
+          </section>
+
+          <!-- 5 · Stars -->
+          <sc-if value="{{ an.hasStars }}" hint-placeholder-val="{{ true }}">
+          <section style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:clamp(16px,2vw,24px);box-shadow:0 14px 40px rgba(30,44,79,.1)">
+            <div style="margin-bottom:16px"><div style="font-size:.64rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#8a6d20">Points scored across every bout</div><h4 style="margin:3px 0 0;font-size:1.02rem;font-weight:700;color:#1e2c4f">Stars of the event</h4></div>
+            <div style="border-radius:14px;border:1px solid #eef1f6;overflow:hidden;margin-bottom:18px">
+              <sc-for list="{{ an.topScorers }}" as="r" hint-placeholder-count="8">
+                <div onClick="{{ r.onOpen }}" style="{{ r.link }}" style-hover="background:#faf7ef">
+                  <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;padding:10px 14px;border-bottom:1px solid #f1f3f7">
+                    <span style="{{ r.rankStyle }}">{{ r.rank }}</span>
+                    <span style="{{ r.face }}"></span>
+                    <div style="flex:1 1 160px;min-width:0"><div style="display:flex;align-items:center;gap:6px;font-size:.84rem;font-weight:800;color:#1e2c4f"><sc-if value="{{ r.hasFlag }}" hint-placeholder-val="{{ true }}"><img src="{{ r.flag }}" alt="" style="width:18px;height:13.5px;flex:none;border-radius:2px;object-fit:cover"></sc-if><span style="overflow-wrap:anywhere">{{ r.name }}</span></div><div style="font-size:.66rem;font-weight:700;text-transform:uppercase;color:#6b7689;overflow-wrap:anywhere">{{ r.club }}</div></div>
+                    <div style="flex:1 1 260px;display:grid;grid-template-columns:minmax(0,1fr) 56px 48px;align-items:center;gap:12px">
+                    <div style="display:flex;align-items:center;gap:8px"><span style="flex:1;height:8px;border-radius:999px;background:#f0f2f7;overflow:hidden"><span style="{{ r.fill }}"></span></span><b style="font-size:1rem;font-weight:900;color:#1e2c4f">{{ r.points }}</b></div>
+                    <div style="text-align:center"><b style="font-size:.95rem;font-weight:900;color:#1e2c4f">{{ r.won }}</b><div style="font-size:.54rem;font-weight:800;letter-spacing:.1em;color:#8a93a8">WON</div></div>
+                    <div style="text-align:center"><b style="font-size:.95rem;font-weight:900;color:#1e2c4f">{{ r.ippon }}</b><div style="font-size:.54rem;font-weight:800;letter-spacing:.1em;color:#8a93a8">IPPON</div></div>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:18px">
+              <div style="padding:16px;border-radius:14px;background:#fafbfd;border:1px solid #eef1f6">
+                <div style="font-size:.8rem;font-weight:700;color:#1e2c4f;margin-bottom:8px">Ippon specialists</div>
+                <sc-if value="{{ an.hasIppon }}" hint-placeholder-val="{{ true }}">
+                <sc-for list="{{ an.ipponMasters }}" as="r" hint-placeholder-count="5">
+                  <div onClick="{{ r.onOpen }}" style="{{ r.link }}"><div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #eef1f6"><span style="{{ r.face }}"></span><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:6px;font-size:.8rem;font-weight:800;color:#1e2c4f"><sc-if value="{{ r.hasFlag }}" hint-placeholder-val="{{ true }}"><img src="{{ r.flag }}" alt="" style="width:18px;height:13.5px;flex:none;border-radius:2px;object-fit:cover"></sc-if><span style="overflow-wrap:anywhere">{{ r.name }}</span></div><div style="font-size:.64rem;font-weight:700;text-transform:uppercase;color:#6b7689;overflow-wrap:anywhere">{{ r.club }}</div></div><b style="font-size:1.25rem;font-weight:900;color:#a8862f">{{ r.value }}</b></div></div>
+                </sc-for>
+                </sc-if>
+              </div>
+              <div style="padding:16px;border-radius:14px;background:#fafbfd;border:1px solid #eef1f6">
+                <div style="font-size:.8rem;font-weight:700;color:#1e2c4f;margin-bottom:8px">Unbeaten</div>
+                <sc-if value="{{ an.hasUnbeaten }}" hint-placeholder-val="{{ true }}">
+                <sc-for list="{{ an.unbeaten }}" as="r" hint-placeholder-count="5">
+                  <div onClick="{{ r.onOpen }}" style="{{ r.link }}"><div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #eef1f6"><span style="{{ r.face }}"></span><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:6px;font-size:.8rem;font-weight:800;color:#1e2c4f"><sc-if value="{{ r.hasFlag }}" hint-placeholder-val="{{ true }}"><img src="{{ r.flag }}" alt="" style="width:18px;height:13.5px;flex:none;border-radius:2px;object-fit:cover"></sc-if><span style="overflow-wrap:anywhere">{{ r.name }}</span></div><div style="font-size:.64rem;font-weight:700;text-transform:uppercase;color:#6b7689;overflow-wrap:anywhere">{{ r.club }}</div></div><b style="font-size:1.25rem;font-weight:900;color:#a8862f">{{ r.value }}</b></div></div>
+                </sc-for>
+                </sc-if>
+              </div>
+            </div>
+          </section>
+          </sc-if>
+          </sc-if>
+
+          <!-- 6 · Club performance -->
+          <sc-if value="{{ an.hasPerf }}" hint-placeholder-val="{{ true }}">
+          <section style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:clamp(16px,2vw,24px);box-shadow:0 14px 40px rgba(30,44,79,.1)">
+            <div style="margin-bottom:16px"><div style="font-size:.64rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#8a6d20">Bouts, wins, points and medals</div><h4 style="margin:3px 0 0;font-size:1.02rem;font-weight:700;color:#1e2c4f">Club performance</h4></div>
+            <div style="overflow-x:auto;border-radius:14px;border:1px solid #eef1f6">
+              <div style="min-width:820px">
+                <div style="display:grid;grid-template-columns:minmax(200px,1fr) 70px 60px 56px 140px 90px 40px 40px 40px 80px;gap:10px;align-items:center;padding:10px 14px;background:#f7f8fb;font-size:.62rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#6b7689">
+                  <span>Club</span><span style="text-align:center">Athletes</span><span style="text-align:center">Bouts</span><span style="text-align:center">Won</span><span>Win rate</span><span style="text-align:center">Points</span><span style="text-align:center;color:#8a6d20">G</span><span style="text-align:center;color:#5b6579">S</span><span style="text-align:center;color:#8f5a35">B</span><span style="text-align:center">Per athlete</span>
+                </div>
+                <sc-for list="{{ an.perf }}" as="r" hint-placeholder-count="6">
+                  <div style="display:grid;grid-template-columns:minmax(200px,1fr) 70px 60px 56px 140px 90px 40px 40px 40px 80px;gap:10px;align-items:center;padding:10px 14px;border-top:1px solid #f1f3f7;font-size:.8rem;color:#1e2c4f;font-variant-numeric:tabular-nums">
+                    <span style="display:flex;align-items:center;gap:8px;min-width:0;font-weight:700"><sc-if value="{{ r.hasLogo }}" hint-placeholder-val="{{ true }}"><img src="{{ r.logo }}" alt="" style="width:24px;height:24px;flex:none;object-fit:contain"></sc-if><sc-if value="{{ r.noLogo }}" hint-placeholder-val="{{ false }}"><span style="width:24px;height:24px;flex:none"></span></sc-if><span style="overflow-wrap:anywhere">{{ r.name }}</span></span>
+                    <span style="text-align:center">{{ r.athletes }}</span><span style="text-align:center">{{ r.bouts }}</span><span style="text-align:center">{{ r.wins }}</span>
+                    <span style="display:flex;align-items:center;gap:6px"><span style="flex:1;height:8px;border-radius:999px;background:#eef1f6;overflow:hidden"><span style="{{ r.rateFill }}"></span></span><b style="font-size:.74rem">{{ r.rate }}</b></span>
+                    <span style="text-align:center;white-space:nowrap"><b>{{ r.pf }}</b><span style="color:#6b7689"> – {{ r.pa }}</span></span>
+                    <span style="{{ r.gs }}"><span style="display:block;text-align:center">{{ r.g }}</span></span><span style="{{ r.ss }}"><span style="display:block;text-align:center">{{ r.s }}</span></span><span style="{{ r.bs }}"><span style="display:block;text-align:center">{{ r.b }}</span></span>
+                    <span style="text-align:center;font-weight:700">{{ r.per }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="margin-top:8px;font-size:.7rem;color:#6b7689">Bouts, wins and points come from the officiating log of every bout fought; a bye is not a bout. Points are scored – conceded.</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:18px;margin-top:18px">
+              <div style="padding:16px;border-radius:14px;background:#fafbfd;border:1px solid #eef1f6">
+                <div style="font-size:.8rem;font-weight:700;color:#1e2c4f;margin-bottom:12px">Medals per athlete <span style="font-weight:500;color:#6b7689">· how well each club converted</span></div>
+                <sc-for list="{{ an.efficiency }}" as="r" hint-placeholder-count="5">
+                  <div style="display:grid;grid-template-columns:minmax(100px,40%) 1fr auto;align-items:center;gap:10px;margin-bottom:8px;font-size:.78rem;color:#1e2c4f">
+                    <span style="display:flex;align-items:center;gap:7px;min-width:0"><sc-if value="{{ r.hasLogo }}" hint-placeholder-val="{{ true }}"><img src="{{ r.logo }}" alt="" style="width:20px;height:20px;flex:none;object-fit:contain"></sc-if><span style="font-weight:600;overflow-wrap:anywhere">{{ r.label }}</span></span>
+                    <span style="height:10px;background:#eef1f6;border-radius:999px;overflow:hidden"><span style="{{ r.fill }}"></span></span>
+                    <b style="font-variant-numeric:tabular-nums">{{ r.value }}</b>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="padding:16px;border-radius:14px;background:#fafbfd;border:1px solid #eef1f6">
+                <div style="font-size:.8rem;font-weight:700;color:#1e2c4f;margin-bottom:12px">Win rate <span style="font-weight:500;color:#6b7689">· bouts won of bouts fought</span></div>
+                <sc-for list="{{ an.winRate }}" as="r" hint-placeholder-count="5">
+                  <div style="display:grid;grid-template-columns:minmax(100px,40%) 1fr auto;align-items:center;gap:10px;margin-bottom:8px;font-size:.78rem;color:#1e2c4f">
+                    <span style="display:flex;align-items:center;gap:7px;min-width:0"><sc-if value="{{ r.hasLogo }}" hint-placeholder-val="{{ true }}"><img src="{{ r.logo }}" alt="" style="width:20px;height:20px;flex:none;object-fit:contain"></sc-if><span style="font-weight:600;overflow-wrap:anywhere">{{ r.label }}</span></span>
+                    <span style="height:10px;background:#eef1f6;border-radius:999px;overflow:hidden"><span style="{{ r.fill }}"></span></span>
+                    <b style="font-variant-numeric:tabular-nums">{{ r.value }}</b>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </section>
+          </sc-if>
+
+        </div>
+        </sc-if>

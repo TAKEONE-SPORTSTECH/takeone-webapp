@@ -24,11 +24,13 @@ use Illuminate\Support\Collection;
  *   • a block's length is the organiser's, because no draw can imply how long
  *     a medal ceremony takes.
  *
- * Status is read from the CLOCK here. That is the honest answer before an
- * event starts and a decent one during it, but it is only half the truth: a
- * stage really ends when its last bout is scored. Reading that from the
- * scoreboard is a separate, later step — when it lands it overrides `status`
- * here, and nothing else about this class changes.
+ * Status is read from the CLOCK before anything has been fought. Once bouts
+ * have been timed on the day, the MATS are the truth (owner, 2026-10-25: "make
+ * it realistic — it's impossible to be way beyond the expected when the actual
+ * is way less"): a division that has run shows when it really ran, the one on
+ * the mat its real start plus what is left at the pace the day is actually
+ * keeping, and everything after it flows from there (withActuals). The plan's
+ * own guesses — the bout length, the turnaround — then step aside.
  *
  * Self-contained and read-only: it writes nothing, and every caller (the
  * organiser's board, the public page, the event console) gets the same rows.
@@ -37,6 +39,9 @@ class RunSheet
 {
     /** Minutes between one part ending and the next beginning. */
     public const TURNAROUND = 6;
+
+    /** A division's own podium, presented at the mat once its final is decided. */
+    public const AWARDING_MINUTES = 5;
 
     /** What a bout takes when the event has not said. */
     public const DEFAULT_BOUT_MINUTES = 5;
@@ -48,6 +53,9 @@ class RunSheet
      */
     /** Bouts per division and part, for the slot being worked out (BoutPart::counts). */
     private array $partCounts = [];
+
+    /** @var list<int> divisions a medal ceremony for everyone awards (RunOrder::awardedTogether) */
+    private array $awardedTogether = [];
 
     public function rows(ClubEvent $event, int $day = 1, ?Carbon $now = null): array
     {
@@ -80,6 +88,7 @@ class RunSheet
 
         $bouts = $this->boutCounts($event);
         $this->partCounts = BoutPart::counts($event->id);
+        $this->awardedTogether = app(RunOrder::class)->awardedTogether($event->id);
         $entrants = $this->entrantCounts($event);
         $boutMinutes = (int) ($event->minutes_per_match ?: self::DEFAULT_BOUT_MINUTES);
 
@@ -139,6 +148,7 @@ class RunSheet
             ];
         }
 
+        $rows = $this->withActuals($event, $slots, $rows, $day, $now, $boutMinutes);
         $rows = $this->withSessions($event, $slots, $rows, $day);
 
         return $this->withStatus($event, $rows, $day, $now);
@@ -306,6 +316,14 @@ class RunSheet
         foreach ($rows as $i => $row) {
             $status = 'upcoming';
 
+            // What the mats say outranks what the clock says (withActuals).
+            if (isset($row['actual_status'])) {
+                $rows[$i]['status'] = $row['actual_status'];
+                unset($rows[$i]['actual_status']);
+
+                continue;
+            }
+
             if ($state === 'after') {
                 $status = 'done';
             } elseif ($state === 'during') {
@@ -320,6 +338,227 @@ class RunSheet
         }
 
         return $rows;
+    }
+
+    /**
+     * A division's podium at the mat: a few minutes, not a ceremony's — and
+     * nothing when a medal ceremony for everyone awards it later in the day.
+     */
+    private function awarding(EventRunSlot $slot): int
+    {
+        if (! $slot->parts || ! in_array(BoutPart::AWARDING, $slot->parts, true)) {
+            return 0;
+        }
+        if (in_array((int) $slot->category_id, $this->awardedTogether, true)) {
+            return 0;
+        }
+
+        // Placed on the day as its own part, it is a ceremony; at the end of the
+        // division's own bouts, it is a podium at the mat.
+        return array_intersect($slot->parts, BoutPart::ALL) === []
+            ? (int) (EventRunSlot::DEFAULT_DURATIONS[EventRunSlot::KIND_CEREMONY] ?? 15)
+            : self::AWARDING_MINUTES;
+    }
+
+    /**
+     * The day as the mats have actually run it.
+     *
+     * Nothing changes until a bout has been timed on this day — before that
+     * the plan is all there is. After it:
+     *  · a division whose bouts are all decided shows its real first start and
+     *    last bell, and is done;
+     *  · a division under way shows its real start, and ends after what is
+     *    left of it at the day's own pace (no earlier than now);
+     *  · every part not yet begun flows from the latest of those — never
+     *    before now on the day — at that pace. A pinned part keeps its time.
+     * The pace is measured, not assumed: the average time a bout took on the
+     * mat plus the typical changeover between bouts (pauses longer than half
+     * an hour — a break, a ceremony — are not changeovers).
+     */
+    private function withActuals(ClubEvent $event, Collection $slots, array $rows, int $day, ?Carbon $now, int $boutMinutes): array
+    {
+        $timed = $this->boutTimes($event, $day);
+        if ($timed === []) {
+            return $rows;
+        }
+
+        $tz = self::timezone($event);
+        $now = ($now ?? Carbon::now())->copy()->setTimezone($tz);
+        $date = $event->date ? Carbon::parse($event->date->toDateString(), $tz)->addDays($day - 1)->startOfDay() : null;
+        $nowMin = $date && $now->isSameDay($date) ? $now->hour * 60 + $now->minute : null;
+
+        $pace = $this->pace($timed) ?? (float) $boutMinutes;
+        $tally = $this->tally($event, $day);
+
+        $cursor = min(array_column($timed, 'start'));
+        foreach ($rows as $i => $row) {
+            $slot = $slots[$i];
+
+            if ($slot->isDivision() && $slot->category_id) {
+                $parts = array_values(array_intersect($slot->parts ?: BoutPart::ALL, BoutPart::ALL));
+                $mine = array_filter($timed, fn ($t) => $t['cat'] === (int) $slot->category_id && in_array($t['part'], $parts, true));
+                $total = $decided = 0;
+                foreach ($parts as $p) {
+                    $total += $tally[$slot->category_id][$p]['total'] ?? 0;
+                    $decided += $tally[$slot->category_id][$p]['decided'] ?? 0;
+                }
+                $awarding = $this->awarding($slot);
+
+                if ($mine !== [] || ($total > 0 && $decided >= $total)) {
+                    $start = $mine ? min(array_column($mine, 'start')) : $cursor;
+                    $lastBell = $mine ? max(array_filter(array_column($mine, 'end'), 'is_int') ?: [$start]) : $start;
+
+                    if ($decided >= $total) {
+                        $end = $lastBell;
+                        $status = 'done';
+                    } else {
+                        $end = (int) ceil(max($lastBell, $nowMin ?? 0) + ($total - $decided) * $pace + $awarding);
+                        $status = 'now';
+                    }
+                    $rows[$i] = ['starts_at' => $start, 'ends_at' => $end, 'duration' => max(0, $end - $start),
+                        'actual' => true, 'actual_status' => $status] + $rows[$i];
+                    $cursor = max($cursor, $end);
+
+                    continue;
+                }
+
+                $duration = $total > 0 ? (int) ceil($total * $pace) + $awarding : $row['duration'];
+            } else {
+                $duration = $row['duration'];
+            }
+
+            $start = $slot->pinned_at !== null ? (int) $slot->pinned_at : max($cursor, $nowMin ?? 0);
+            $rows[$i] = ['starts_at' => $start, 'ends_at' => $start + $duration, 'duration' => $duration, 'actual' => false] + $rows[$i];
+            $cursor = max($cursor, $start + $duration);
+        }
+
+        return $rows;
+    }
+
+    /**
+     * When each bout of the day really started and finished, in minutes after
+     * the day's local midnight — from the mats' officiating log, or for a bout
+     * fought as an exhibition and linked to it, from that exhibition.
+     *
+     * @return list<array{cat: int, part: string, court: string, start: int, end: ?int}>
+     */
+    private function boutTimes(ClubEvent $event, int $day): array
+    {
+        if (! $event->date) {
+            return [];
+        }
+        $tz = self::timezone($event);
+        $from = Carbon::parse($event->date->toDateString(), $tz)->addDays($day - 1)->startOfDay();
+        $to = $from->copy()->addDay();
+        $min = function ($utc) use ($tz, $from): int {
+            $t = Carbon::parse((string) $utc, 'UTC')->setTimezone($tz);
+
+            return (int) round(($t->getTimestamp() - $from->getTimestamp()) / 60);
+        };
+
+        $bouts = EventMatch::where('event_id', $event->id)->whereNotNull('category_id')
+            ->get(['id', 'category_id', 'round', 'court', 'day'])->keyBy('id');
+
+        $log = \Illuminate\Support\Facades\DB::table('event_match_events')
+            ->where('event_id', $event->id)->whereNotNull('match_id')
+            ->whereIn('command', ['load', 'start', 'finish'])
+            ->whereBetween('occurred_at', [$from->copy()->utc()->format('Y-m-d H:i:s'), $to->copy()->utc()->format('Y-m-d H:i:s')])
+            ->orderBy('occurred_at')
+            ->get(['match_id', 'command', 'occurred_at']);
+
+        // The attempt that counted: a bout loaded (or tried) early and fought
+        // later is timed from its last load, as the analytics replay it.
+        $times = [];
+        foreach ($log->groupBy('match_id') as $id => $rows) {
+            $loadAt = $clockAt = $start = $end = null;
+            foreach ($rows as $e) {
+                if ($e->command === 'load') {
+                    $loadAt = $e->occurred_at;
+                    $clockAt = null;
+                } elseif ($e->command === 'start') {
+                    $clockAt ??= $e->occurred_at;
+                } else {
+                    $start = $clockAt ?? $loadAt;
+                    $end = $e->occurred_at;
+                }
+            }
+            $start ??= $clockAt ?? $loadAt;
+            if ($start) {
+                $times[(int) $id] = [$min($start), $end ? $min($end) : null];
+            }
+        }
+
+        // A bout fought as an exhibition and linked to the draw ran when the exhibition did.
+        if (\Illuminate\Support\Facades\Schema::hasColumn('event_exhibition_bouts', 'linked_match_id')) {
+            foreach (\Illuminate\Support\Facades\DB::table('event_exhibition_bouts')->where('event_id', $event->id)
+                ->where('status', 'linked')->whereNotNull('linked_match_id')
+                ->whereBetween('created_at', [$from->copy()->utc()->format('Y-m-d H:i:s'), $to->copy()->utc()->format('Y-m-d H:i:s')])
+                ->get(['linked_match_id', 'created_at', 'finished_at']) as $x) {
+                $times[(int) $x->linked_match_id] ??= [$min($x->created_at), $x->finished_at ? $min($x->finished_at) : null];
+            }
+        }
+
+        $out = [];
+        foreach ($times as $id => [$start, $end]) {
+            $b = $bouts->get($id);
+            if (! $b || ((int) ($b->day ?: 1)) !== $day) {
+                continue;
+            }
+            $out[] = ['cat' => (int) $b->category_id, 'part' => BoutPart::of($b->round), 'court' => (string) $b->court,
+                'start' => $start, 'end' => $end !== null && $end >= $start ? $end : null];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Minutes a bout really costs the day: the average time on the mat plus
+     * the typical (median) changeover between one bout and the next on the
+     * same mat. Null until three bouts have run — too little to measure.
+     */
+    private function pace(array $timed): ?float
+    {
+        $done = array_values(array_filter($timed, fn ($t) => $t['end'] !== null));
+        if (count($done) < 3) {
+            return null;
+        }
+
+        $wall = array_sum(array_map(fn ($t) => $t['end'] - $t['start'], $done)) / count($done);
+
+        $gaps = [];
+        foreach (collect($done)->groupBy('court') as $mat) {
+            $mat = $mat->sortBy('start')->values();
+            for ($k = 1; $k < $mat->count(); $k++) {
+                $g = $mat[$k]['start'] - $mat[$k - 1]['end'];
+                if ($g >= 0 && $g < 30) {
+                    $gaps[] = $g;
+                }
+            }
+        }
+        sort($gaps);
+        $gap = $gaps ? $gaps[intdiv(count($gaps), 2)] : 0;
+
+        return max(1.0, $wall + $gap);
+    }
+
+    /**
+     * Contested bouts per division and part, and how many of them are decided.
+     *
+     * @return array<int, array<string, array{total: int, decided: int}>>
+     */
+    private function tally(ClubEvent $event, int $day): array
+    {
+        $out = [];
+        foreach (EventMatch::where('event_id', $event->id)->whereNotNull('category_id')
+            ->whereNotNull('a_name')->where('a_name', '!=', '')
+            ->whereNotNull('b_name')->where('b_name', '!=', '')
+            ->get(['category_id', 'round', 'winner', 'won_by_bye']) as $m) {
+            $p = BoutPart::of($m->round);
+            $out[$m->category_id][$p]['total'] = ($out[$m->category_id][$p]['total'] ?? 0) + 1;
+            $out[$m->category_id][$p]['decided'] = ($out[$m->category_id][$p]['decided'] ?? 0) + ($m->winner ? 1 : 0);
+        }
+
+        return $out;
     }
 
     /** The timezone the event's clock times are written in: its host's, else the app's. */
@@ -357,10 +596,7 @@ class RunSheet
             $count = array_sum(array_map(fn ($p) => $byPart[$p] ?? 0, $slot->parts));
             $bouts = array_intersect($slot->parts, BoutPart::ALL) !== [] ? max(1, $count) * $boutMinutes + self::TURNAROUND : 0;
 
-            // The division's awarding takes a ceremony's time.
-            $awarding = in_array(BoutPart::AWARDING, $slot->parts, true)
-                ? (int) (EventRunSlot::DEFAULT_DURATIONS[EventRunSlot::KIND_CEREMONY] ?? 15)
-                : 0;
+            $awarding = $this->awarding($slot);
 
             return max(1, $bouts + $awarding);
         }

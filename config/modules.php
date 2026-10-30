@@ -103,6 +103,14 @@ return [
         \App\Duplicates\Duplicates::class,
 
         /*
+         * Margin, the development board: the owner and their assistant capture
+         * ideas (notes, marked-up photos, sketches) and move them through a
+         * pipeline. Private to devboard_members — see app/DevBoard. Off unless
+         * DEVBOARD_ENABLED.
+         */
+        \App\DevBoard\DevBoard::class,
+
+        /*
          * The operator's own vertical: the super-admin's room, the global
          * activity directory, platform-wide settings, and the commands that
          * back up, reset a baseline or seed a demo. Last, because it is about

@@ -3,6 +3,7 @@
 namespace App\Members\Mail;
 
 use App\Members\Models\User;
+use App\Support\Mail\RetriesDelivery;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -12,6 +13,7 @@ use Illuminate\Queue\SerializesModels;
 
 class WizardOtpMail extends Mailable implements ShouldQueue
 {
+    use RetriesDelivery; // waits and tries again — App\Support\Mail\RetriesDelivery
     use Queueable, SerializesModels;
 
     public string $code;

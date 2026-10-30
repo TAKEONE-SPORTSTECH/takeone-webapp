@@ -153,7 +153,104 @@ class FederationCompetitionReport
         }
         $host = $event->host();
 
-        // Places won, per entry, from the podiums the Results tab shows.
+        [$placed, $podiumPeople] = $this->placed($b);
+        $clubPages = $this->results->clubPagesFor($event, $placed, $viewer);
+        $clubs = collect($clubPages)->flatten(1)->reject(fn ($c) => $c['continued'])->values()->all();
+
+        ['nations' => $nations, 'people' => $people, 'gender' => $gender, 'ages' => $ages, 'perf' => $perf]
+            = $this->tally($event, $b, $stats, $clubs, $podiumPeople);
+
+        // ── Pages of the front matter's tables ───────────────────────────
+        $medalTables = [
+            ['kind' => 'clubs', 'title' => 'Medal table — clubs', 'rows' => array_values(array_filter($clubs, fn ($c) => ! $c['none']))],
+            ['kind' => 'nations', 'title' => 'Medal table — nations', 'rows' => $nations],
+        ];
+
+        return [
+            'title' => (string) ($event->title ?: $fe->name),
+            'host' => (string) ($host->name ?? ''),
+            'hostLogo' => ($logo = $host->logo) ? $this->pdf->dataUri($logo, $viewer, original: true, maxPx: 320) : null,
+            'date' => $event->date ? \App\Support\Cldr::dayMonth($event->date).' '.$event->date->format('Y') : '',
+            'coverImage' => $this->cover->imageDataUri($event),
+            'cover' => $cover,
+            'team' => $cover['team'] ?? [],
+            'medalPages' => $this->tablePages($medalTables),
+            'clubPages' => $clubPages,
+            'clubs' => $clubs,
+            'nations' => $nations,
+            'divisionPages' => $this->divisionPages($cover['groups'] ?? []),
+            'stats' => $stats,
+            'gender' => $gender,
+            'ages' => $ages,
+            'athletes' => $people->count(),
+            'perfPages' => array_chunk($perf, self::PERF_ROWS) ?: [[]],
+            'podiums' => count(array_filter($b['cats'], fn ($c) => $c['podium'] !== [])),
+            'divisionCount' => count($divisions),
+            'flagCss' => 'file://'.public_path('images/flags/flag-icons.css'),
+            'generatedAt' => now($event->zone())->format('j M Y, H:i'),
+            'silhouette' => 'file://'.public_path(is_file(public_path('images/avatars/male.jpg')) ? 'images/avatars/male.jpg' : 'images/avatars/male.svg'),
+        ];
+    }
+
+    /**
+     * The report's statistics & analytics part, for the federation event's
+     * Analytics tab (owner, 2026-10-25: "the same statistic and analytics
+     * section … on the federation event tab"). The same figures the printed
+     * report draws — one FederationBoutAnalytics reading, one tally — shaped
+     * for a browser: faces and crests stay addresses (each authorises itself),
+     * times are minutes after local midnight, and no registration id leaves.
+     * Null when the event has no draw yet.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function analytics(FederationEvent $fe, ClubEvent $event, User $viewer): ?array
+    {
+        $b = $this->brackets->of($fe, withEntry: true);
+        if (! $b || ($b['cats'] ?? []) === []) {
+            return null;
+        }
+        $stats = $this->analytics->for($event, $b);
+        [$placed, $podiumPeople] = $this->placed($b);
+        $clubs = collect($this->pdf->clubPages($event, $placed, $viewer, inlineLogos: false))
+            ->flatten(1)->reject(fn ($c) => $c['continued'])->values()->all();
+        $t = $this->tally($event, $b, $stats, $clubs, $podiumPeople);
+
+        $person = fn (?array $p) => $p ? array_intersect_key($p, array_flip(['name', 'club', 'photo', 'profile', 'iso', 'flag', 'logo'])) : null;
+        $row = fn (array $r) => ['person' => $person($r['person'] ?? null)] + array_intersect_key($r, array_flip(['points', 'ippon', 'bouts', 'wins', 'conceded']));
+        $min = fn ($t) => $t ? (int) $t->format('H') * 60 + (int) $t->format('i') : null;
+
+        $out = array_diff_key($stats, array_flip(['entries', 'topScorers', 'ipponMasters', 'unbeaten', 'highlights', 'mats', 'day']));
+        $out['topScorers'] = array_map($row, $stats['topScorers']);
+        $out['ipponMasters'] = array_map($row, $stats['ipponMasters']);
+        $out['unbeaten'] = array_map($row, $stats['unbeaten']);
+        $out['highlights'] = array_map(fn ($h) => ['A' => $person($h['A'] ?? null), 'B' => $person($h['B'] ?? null)]
+            + array_intersect_key($h, array_flip(['no', 'sa', 'sb', 'division', 'round', 'fight'])), $stats['highlights']);
+        $out['mats'] = array_map(fn ($m) => ['mat' => $m['mat'], 'bouts' => $m['bouts'], 'fight' => $m['fight'], 'changeover' => $m['changeover'],
+            'from' => $min($m['from']), 'to' => $min($m['to']),
+            'blocks' => array_map(fn ($bk) => ['from' => $min($bk['from']), 'to' => $min($bk['to']), 'age' => $bk['age'], 'no' => $bk['no']], $m['blocks'])], $stats['mats']);
+        $out['day'] = ['from' => $min($stats['day']['from']), 'to' => $min($stats['day']['to'])];
+
+        return [
+            'stats' => $out,
+            'athletes' => $t['people']->count(),
+            'gender' => $t['gender'],
+            'ages' => $t['ages'],
+            'nations' => array_map(fn ($n) => array_intersect_key($n, array_flip(['iso', 'name', 'athletes', 'medals'])) + ['flag' => $n['iso'] ? Flag::url($n['iso']) : null], $t['nations']),
+            'clubs' => array_map(fn ($c) => ['name' => $c['name'], 'logo' => $c['logo'], 'count' => $c['count'], 'medals' => $c['medals']],
+                array_values(array_filter($clubs, fn ($c) => ! $c['none']))),
+            'perf' => array_map(fn ($p) => array_diff_key($p, ['none' => 1]), $t['perf']),
+            'divisions' => count($b['cats']),
+        ];
+    }
+
+    /**
+     * Places won, per entry, from the podiums the Results tab shows — and
+     * every podium person, for the nations' medal count.
+     *
+     * @return array{0: array<int, list<int>>, 1: list<array<string, mixed>>}
+     */
+    private function placed(array $b): array
+    {
         $placed = [];
         $podiumPeople = [];
         foreach ($b['cats'] as $c) {
@@ -164,9 +261,18 @@ class FederationCompetitionReport
                 }
             }
         }
-        $clubPages = $this->results->clubPagesFor($event, $placed, $viewer);
-        $clubs = collect($clubPages)->flatten(1)->reject(fn ($c) => $c['continued'])->values()->all();
 
+        return [$placed, $podiumPeople];
+    }
+
+    /**
+     * The participation and club-performance figures, shared by the printed
+     * report and the federation event's Analytics tab — one rule for both.
+     *
+     * @return array{nations: list<array<string, mixed>>, people: \Illuminate\Support\Collection, gender: array<string, int>, ages: array<string, array<string, int>>, perf: list<array<string, mixed>>}
+     */
+    private function tally(ClubEvent $event, array $b, array $stats, array $clubs, array $podiumPeople): array
+    {
         // ── Medal table by nation ─────────────────────────────────────────
         $regs = ClubEventRegistration::where('event_id', $event->id)->where('role', 'participant')
             ->with(['user:id,nationality,gender,birthdate', 'representingTenant:id,country'])->get();
@@ -234,36 +340,7 @@ class FederationCompetitionReport
         $perf = collect($perf)->reject(fn ($p) => $p['none'])
             ->sortBy(fn ($p) => [-$p['medals'][1], -$p['medals'][2], -$p['medals'][3], -$p['wins'], $p['name']])->values()->all();
 
-        // ── Pages of the front matter's tables ───────────────────────────
-        $medalTables = [
-            ['kind' => 'clubs', 'title' => 'Medal table — clubs', 'rows' => array_values(array_filter($clubs, fn ($c) => ! $c['none']))],
-            ['kind' => 'nations', 'title' => 'Medal table — nations', 'rows' => $nations],
-        ];
-
-        return [
-            'title' => (string) ($event->title ?: $fe->name),
-            'host' => (string) ($host->name ?? ''),
-            'hostLogo' => ($logo = $host->logo) ? $this->pdf->dataUri($logo, $viewer, original: true, maxPx: 320) : null,
-            'date' => $event->date ? \App\Support\Cldr::dayMonth($event->date).' '.$event->date->format('Y') : '',
-            'coverImage' => $this->cover->imageDataUri($event),
-            'cover' => $cover,
-            'team' => $cover['team'] ?? [],
-            'medalPages' => $this->tablePages($medalTables),
-            'clubPages' => $clubPages,
-            'clubs' => $clubs,
-            'nations' => $nations,
-            'divisionPages' => $this->divisionPages($cover['groups'] ?? []),
-            'stats' => $stats,
-            'gender' => $gender,
-            'ages' => $ages,
-            'athletes' => $people->count(),
-            'perfPages' => array_chunk($perf, self::PERF_ROWS) ?: [[]],
-            'podiums' => count(array_filter($b['cats'], fn ($c) => $c['podium'] !== [])),
-            'divisionCount' => count($divisions),
-            'flagCss' => 'file://'.public_path('images/flags/flag-icons.css'),
-            'generatedAt' => now($event->zone())->format('j M Y, H:i'),
-            'silhouette' => 'file://'.public_path(is_file(public_path('images/avatars/male.jpg')) ? 'images/avatars/male.jpg' : 'images/avatars/male.svg'),
-        ];
+        return compact('nations', 'people', 'gender', 'ages', 'perf');
     }
 
     /**

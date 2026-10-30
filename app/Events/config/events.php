@@ -234,6 +234,12 @@ return [
      */
     'live_move' => (bool) env('EVENT_LIVE_MOVE', false),
 
+    // After the draw is re-arranged mid-event (a bye becoming a bout, a bout
+    // becoming a bye, an exhibition linked to an unnumbered bout), the mat is
+    // numbered again from 1 in an order that reads right — fought bouts
+    // included (owner, 2026-10-24). App\Events\Support\Tournament\MatNumbering.
+    'renumber_mats' => (bool) env('EVENT_RENUMBER_MATS', false),
+
     /*
      | Free edit on the draw desk (App\Events\Support\Tournament\FreeEdit): the
      | organiser writes one bout — corners, winner, scores — exactly as it
@@ -242,6 +248,14 @@ return [
      | EVENT_FREE_EDIT=true, then config:cache.
      */
     'free_edit' => (bool) env('EVENT_FREE_EDIT', false),
+
+    /*
+     | The draw tidies itself after any hand edit (Tournament\DrawRepair): a
+     | lone fighter nothing can join takes their bye, a winner fills an empty
+     | next corner, a bye drops its number. Once the competition has started,
+     | plain knockouts only. EVENT_DRAW_SELF_REPAIR=true, then config:cache.
+     */
+    'draw_self_repair' => (bool) env('EVENT_DRAW_SELF_REPAIR', false),
 
     /*
      | Does editing the draw on a tablet need the event's PIN?

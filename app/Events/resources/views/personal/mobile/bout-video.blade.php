@@ -8452,6 +8452,26 @@ window._comment = {
                     </div>
 
                     <div class="mrv-pane mrv-pane-flush is-on" data-mrv-panel="match">
+                        {{-- The bout as a file for WhatsApp & co — score bar burned in,
+                             points as chapters (App\Media\BoutShare). --}}
+                        @if(! empty($angles) && app(\App\Media\BoutShare::class)->enabled())
+                            <x-bout-share-sheet :event="$e['key']" :match-no="$bout['match_no']" :color="$e['color']"
+                                :heading="($bout['a']['name'] ?: '—').' vs '.($bout['b']['name'] ?: '—')"
+                                :duration="$duration" />
+                        @endif
+                        {{-- The bout's stat sheet as a PDF (App\Media\BoutStats) — only when there is one.
+                             The app saves it to the phone's Downloads (the shell's download listener). --}}
+                        @if(! empty($stats_pdf_url))
+                            <a href="{{ $stats_pdf_url }}" id="statsPdfRow"
+                               style="display:flex;align-items:center;gap:12px;width:calc(100% - 32px);margin:10px 16px 4px;padding:12px 14px;background:#12151b;border:1px solid #1c212a;border-radius:14px;color:#e8eaed;text-decoration:none;-webkit-tap-highlight-color:transparent">
+                                <span style="width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:#fff;font-size:17px;flex:none;background:linear-gradient(150deg, #16213d, #16213db0)"><i class="bi bi-bar-chart-fill" style="color:#d8b25f"></i></span>
+                                <span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1">
+                                    <span style="font-size:15px;font-weight:700">{{ __('events::events.bout_stats_pdf') }}</span>
+                                    <span style="font-size:12px;color:#8a93a1">{{ __('events::events.bout_stats_pdf_hint') }}</span>
+                                </span>
+                                <i class="bi bi-download" style="color:#6b7482"></i>
+                            </a>
+                        @endif
                         @include('events::personal.mobile.partials.bout-match-card')
                     </div>
 

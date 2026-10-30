@@ -31,8 +31,14 @@ class HtmlSanitizer
 
     private const COLOUR = '/^(#[0-9a-f]{3,8}|rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(,\s*(0|1|0?\.\d+)\s*)?\))$/i';
 
-    public static function clean(?string $html): ?string
+    /**
+     * @param  array<string, string[]>  $extra  further tags (=> their attributes) one caller allows on top of
+     *                                          the shared list — e.g. a note's tables. Empty for everyone else.
+     */
+    public static function clean(?string $html, array $extra = []): ?string
     {
+        $allowed = $extra ? array_merge(self::ALLOWED, $extra) : self::ALLOWED;
+
         if ($html === null || trim($html) === '') {
             return null;
         }
@@ -81,14 +87,14 @@ class HtmlSanitizer
                 }
             }
 
-            if (! array_key_exists($tag, self::ALLOWED)) {
+            if (! array_key_exists($tag, $allowed)) {
                 self::unwrap($el); // keep the text, drop the tag
 
                 continue;
             }
 
             $style = self::safeStyle($el->getAttribute('style'));
-            $allowedAttrs = self::ALLOWED[$tag];
+            $allowedAttrs = $allowed[$tag];
             foreach (iterator_to_array($el->attributes ?? []) as $attr) {
                 if (! in_array(strtolower($attr->name), $allowedAttrs, true)) {
                     $el->removeAttribute($attr->name);

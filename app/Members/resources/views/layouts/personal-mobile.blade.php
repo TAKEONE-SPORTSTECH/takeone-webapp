@@ -196,6 +196,21 @@
                     <i class="bi bi-chevron-right text-xs text-muted-foreground/60"></i>
                 </a>
                 @endif
+                @if(\App\Ui\NewUi::mode() === 'preview' && \App\Ui\NewUi::canPreview() && ! \App\Ui\NewUi::active())
+                <form method="POST" action="{{ route('me.new-ui.on') }}">
+                    @csrf
+                    <button type="submit" class="m-press w-full text-start flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
+                        <i class="bi bi-stars text-lg w-5 text-center"></i><span class="flex-1">{{ __('ui::messages.new_design') }}</span>
+                        <i class="bi bi-chevron-right text-xs text-muted-foreground/60"></i>
+                    </button>
+                </form>
+                @endif
+                @if(\App\DevBoard\Support\BoardAccess::linkFor(Auth::user()))
+                <a href="{{ route('me.margin') }}" class="m-press flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
+                    <i class="bi bi-vector-pen text-lg w-5 text-center"></i><span class="flex-1">{{ __('devboard::messages.nav') }}</span>
+                    <i class="bi bi-chevron-right text-xs text-muted-foreground/60"></i>
+                </a>
+                @endif
 
                 {{-- Session actions --}}
                 <div class="border-t border-border mt-4 pt-3">

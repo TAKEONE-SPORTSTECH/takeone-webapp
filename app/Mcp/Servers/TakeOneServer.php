@@ -32,7 +32,9 @@ use App\Mcp\Tools\EventCertificateBundleTool;
 use App\Mcp\Tools\EventBadgesTool;
 use App\Mcp\Tools\RevokeCertificateTool;
 use App\Mcp\Tools\ListMyCertificatesTool;
+use App\Mcp\Tools\GetFormResultsTool;
 use App\Mcp\Tools\ListDuplicateFindingsTool;
+use App\Mcp\Tools\ListFormsTool;
 use App\Mcp\Tools\ResolveDuplicateFindingTool;
 use App\Mcp\Tools\ListEventFeatureRequestsTool;
 use App\Mcp\Tools\AddWorkHistoryTool;
@@ -51,6 +53,8 @@ use App\Mcp\Tools\EnrollMembersTool;
 use App\Mcp\Tools\EnterEventAthletesTool;
 use App\Mcp\Tools\GetClubTool;
 use App\Mcp\Tools\GetBoutVideoTool;
+use App\Mcp\Tools\ShareBoutVideoTool;
+use App\Mcp\Tools\BoutStatsTool;
 use App\Mcp\Tools\GetBjjScoreboardTool;
 use App\Mcp\Tools\GetEventBracketTool;
 use App\Mcp\Tools\GetEventReadinessTool;
@@ -63,6 +67,8 @@ use App\Mcp\Tools\ListCourtScreensTool;
 use App\Mcp\Tools\ListEventDocumentsTool;
 use App\Mcp\Tools\ListEventPhotosTool;
 use App\Mcp\Tools\ListEventExhibitionsTool;
+use App\Mcp\Tools\LinkEventExhibitionTool;
+use App\Mcp\Tools\UnlinkEventExhibitionTool;
 use App\Mcp\Tools\ListEventPeopleTool;
 use App\Mcp\Tools\ListEventsTool;
 use App\Mcp\Tools\ListEventVideosTool;
@@ -137,12 +143,16 @@ class TakeOneServer extends Server
         ListEventDocumentsTool::class,
         ListEventPhotosTool::class,
         ListEventExhibitionsTool::class,
+        LinkEventExhibitionTool::class,
+        UnlinkEventExhibitionTool::class,
         ListEventPeopleTool::class,
         EnterEventAthletesTool::class,
         GetBjjScoreboardTool::class,
         GetEventBracketTool::class,
         ListEventVideosTool::class,
         GetBoutVideoTool::class,
+        ShareBoutVideoTool::class,
+        BoutStatsTool::class,
         GetEventReadinessTool::class,
         ListBjjMatchEventsTool::class,
         ListCourtScreensTool::class,
@@ -192,6 +202,8 @@ class TakeOneServer extends Server
         RevokeCertificateTool::class,
         ListMyCertificatesTool::class,
         ListDuplicateFindingsTool::class,
+        ListFormsTool::class,
+        GetFormResultsTool::class,
         ResolveDuplicateFindingTool::class,
     ];
 

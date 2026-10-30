@@ -260,7 +260,14 @@ class FederationPlatformEntries
         if ($scale !== null && \App\Events\Support\BodyWeight::spread($ev->id, $user->id) && $registration) {
             $registration->refresh();
         }
-        if ($registration && \App\Events\Support\EventStreams::many($ev)) {
+        // Once the event has started (or is over) the draw is the record of what
+        // happened: this sync runs on every dashboard save — editing somebody's
+        // nationality included — and must never place a stray entry or create
+        // a division then. On 2026-10-26 it did, on a finished championship.
+        $settled = $ev->hasStarted() || $ev->hasEnded();
+        if ($settled) {
+            // nothing: divisions are fixed
+        } elseif ($registration && \App\Events\Support\EventStreams::many($ev)) {
             $this->streams($ev, $user, $types, $scale ?? (float) $row->weight, $actor);
         } elseif ($registration && ! $registration->category_id) {
             app(\App\Events\Support\CategorySystems::class)->placeCreating($ev, $registration);

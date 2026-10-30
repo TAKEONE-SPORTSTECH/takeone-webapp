@@ -282,6 +282,16 @@ class ManageController extends Controller
             'holders' => ['required_without:uuids', 'array', 'max:2000'],
             'holders.*' => ['string', 'max:200'],
         ]);
+        // Badges are pages, not certificate records: a chosen set is the officials
+        // themselves (EventBadges::pageSelection), never approved certificates.
+        if ($provider instanceof \App\Certificates\Contracts\PrintsPages && method_exists($provider, 'pageSelection')) {
+            $ids = $provider->pageSelection($model, $data['holders'] ?? []);
+            if ($ids === []) {
+                return response()->json(['success' => false, 'message' => __('cert::messages.selection_none')], 422);
+            }
+
+            return response()->json(['success' => true, 'type' => $bundles->remember($provider, $model, $data['type'], $ids), 'count' => count($ids)]);
+        }
         $issued = Engine::model()::query()->forContext($model)->where('type', $data['type'])->where('status', 'approved')->orderBy('id');
         if (! empty($data['uuids'])) {
             $ids = $issued->whereIn('uuid', $data['uuids'])->pluck('id')->map(fn ($id) => (int) $id)->all();

@@ -49,7 +49,7 @@
                   <sc-for list="{{ ro.stats }}" as="t" hint-placeholder-count="4">
                     <div style="{{ t.style }}" onClick="{{ t.onClick }}">
                       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span style="font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:#6b7689;font-weight:600">{{ t.k }}</span><sc-if value="{{ t.canEdit }}" hint-placeholder-val="{{ false }}"><span style="font-size:.66rem;font-weight:700;color:#8a6d20;background:#fdf6e6;border:1px solid #e8d3a0;border-radius:999px;padding:2px 9px">{{ t.editLabel }}</span></sc-if></div>
-                      <div style="display:flex;align-items:baseline;gap:7px;flex-wrap:wrap"><span style="{{ t.vStyle }}">{{ t.v }}</span><sc-if value="{{ t.extra }}" hint-placeholder-val="{{ false }}"><span style="font-size:.64rem;font-weight:700;color:#fff;background:#b45309;border-radius:6px;padding:1px 6px">{{ t.extra }}</span></sc-if></div>
+                      <div style="display:flex;align-items:baseline;gap:7px;flex-wrap:wrap"><span style="{{ t.vStyle }}">{{ t.v }}</span><sc-if value="{{ t.extra }}" hint-placeholder-val="{{ false }}"><span style="{{ t.extraStyle }}">{{ t.extra }}</span></sc-if></div>
                       <sc-if value="{{ t.sub }}" hint-placeholder-val="{{ false }}"><div style="font-size:.7rem;color:#6b7689">{{ t.sub }}</div></sc-if>
                     </div>
                   </sc-for>

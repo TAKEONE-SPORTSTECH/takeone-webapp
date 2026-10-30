@@ -28,6 +28,7 @@
     <a href="{{ route('security.show') }}"><i class="bi bi-shield-lock"></i>{{ __('nav.layouts_app_security') }}</a>
     <a href="{{ route('me.settings') }}"><i class="bi bi-gear"></i>{{ __('nav.account_settings') }}</a>
     @if($au->isSuperAdmin())<a href="{{ route('admin.platform.index') }}"><i class="bi bi-shield-check"></i>{{ __('nav.admin_panel') }}</a>@endif
+    @if(\App\DevBoard\Support\BoardAccess::linkFor($au))<a href="{{ route('me.margin') }}"><i class="bi bi-vector-pen"></i>{{ __('devboard::messages.nav') }}</a>@endif
     @if(\App\Ui\NewUi::mode() === 'preview' && \App\Ui\NewUi::canPreview())
         <form method="POST" action="{{ route('me.new-ui.off') }}">@csrf<button type="submit"><i class="bi bi-arrow-counterclockwise"></i>{{ __('ui::messages.classic_design') }}</button></form>
     @endif

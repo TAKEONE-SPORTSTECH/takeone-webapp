@@ -7,7 +7,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="robots" content="noindex">
-    <meta name="color-scheme" content="light">
+    <meta name="color-scheme" content="only light">
     <meta name="darkreader-lock">
     <style>html { color-scheme: only light; }</style>
     <meta name="csrf-token" content="{{ csrf_token() }}">

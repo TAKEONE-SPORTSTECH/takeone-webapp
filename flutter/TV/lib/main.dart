@@ -47,7 +47,7 @@ void main() async {
   // until the phone was locked and woken, leaving the bottom of every screen
   // cut off (2026-09-27). The page also repairs this itself
   // (resources/views/partials/viewport-guard); this removes the cause.
-  if (Device.isApp) {
+  if (Device.isPocket) {
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   }
 
@@ -62,7 +62,7 @@ class TakeOneScreen extends StatelessWidget {
     return MaterialApp(
       // Both builds are called the same thing on the device: this machine IS
       // the screen, and a person handed one does not care which APK it is.
-      title: Device.isApp ? 'TAKEONE' : 'Screen',
+      title: Device.isNote ? 'TakeNote' : (Device.isApp ? 'TAKEONE' : 'Screen'),
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
@@ -80,6 +80,8 @@ class TakeOneScreen extends StatelessWidget {
       home: switch (Device.kind) {
         DeviceKind.cam => const _CameraHome(),
         DeviceKind.app => const AppShell(),
+        // TakeNote is the member app's shell, opened on the notebook.
+        DeviceKind.note => const AppShell(),
         _ => const Wall(),
       },
     );

@@ -9,9 +9,19 @@
                   <div onClick="{{ ec.design.onClose }}" style="position:fixed;inset:0;z-index:45"></div>
                   <div role="menu" onClick="{{ ec.design.stop }}" style="position:absolute;top:46px;left:0;z-index:46;min-width:320px;max-width:min(380px,calc(100vw - 2rem));padding:6px;background:#fff;border:1px solid #eef1f6;border-radius:14px;box-shadow:0 18px 40px rgba(30,44,79,.16);animation:rise .18s cubic-bezier(.22,.68,.35,1) both">
                     <sc-for list="{{ ec.design.items }}" as="i" hint-placeholder-count="1">
-                      <div role="group" aria-label="{{ i.label }}" style="{{ i.style }}"><span style="font-size:.82rem;font-weight:700;color:#1e2c4f">{{ i.label }}</span><span role="status" style="{{ i.hintStyle }}">{{ i.hint }}</span>
-                        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><sc-for list="{{ i.actions }}" as="a" hint-placeholder-count="3"><button type="button" role="menuitem" onClick="{{ a.onClick }}" aria-disabled="{{ a.disabled }}" style="{{ a.style }}">{{ a.label }}</button></sc-for></div>
-                      </div>
+                      <div style="position:relative" onMouseEnter="{{ i.onHover }}">
+                          <sc-if value="{{ i.hasSub }}" hint-placeholder-val="{{ false }}">
+                            <button type="button" role="menuitem" aria-haspopup="menu" aria-expanded="{{ i.subOpen }}" onClick="{{ i.onOpen }}" style="{{ i.style }}" style-hover="background:#fdf6e6"><span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0"><span style="font-size:.82rem;font-weight:700;color:#1e2c4f">{{ i.label }}</span><span style="{{ i.hintStyle }}">{{ i.hint }}</span></span><span aria-hidden="true" style="flex:none;font-size:1rem;color:#8a6d20">&#8250;</span></button>
+                            <sc-if value="{{ i.subOpen }}" hint-placeholder-val="{{ false }}">
+                              <div role="menu" aria-label="{{ i.label }}" style="{{ i.subStyle }}">
+                                <sc-for list="{{ i.actions }}" as="a" hint-placeholder-count="3"><button type="button" role="menuitem" onClick="{{ a.onClick }}" aria-disabled="{{ a.disabled }}" style="{{ a.style }}" style-hover="background:#fdf6e6"><span aria-hidden="true" style="width:16px;flex:none;text-align:center;color:#b08a3a;font-weight:700">{{ a.icon }}</span><span style="display:flex;flex-direction:column;gap:1px;min-width:0"><span style="font-size:.8rem;font-weight:700;color:#1e2c4f">{{ a.label }}</span><span style="font-size:.68rem;color:#6b7689">{{ a.sub }}</span></span></button></sc-for>
+                              </div>
+                            </sc-if>
+                          </sc-if>
+                          <sc-if value="{{ i.isNote }}" hint-placeholder-val="{{ false }}">
+                            <div role="note" style="{{ i.style }}"><span style="font-size:.82rem;font-weight:700;color:#1e2c4f">{{ i.label }}</span><span style="{{ i.hintStyle }}">{{ i.hint }}</span></div>
+                          </sc-if>
+                        </div>
                     </sc-for>
                   </div>
                 </sc-if>

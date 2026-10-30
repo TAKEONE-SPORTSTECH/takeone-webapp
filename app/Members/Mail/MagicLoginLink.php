@@ -3,6 +3,7 @@
 namespace App\Members\Mail;
 
 use App\Members\Models\User;
+use App\Support\Mail\RetriesDelivery;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -13,6 +14,7 @@ use Illuminate\Support\Facades\URL;
 
 class MagicLoginLink extends Mailable implements ShouldQueue
 {
+    use RetriesDelivery; // waits and tries again — App\Support\Mail\RetriesDelivery
     use Queueable, SerializesModels;
 
     public User $user;

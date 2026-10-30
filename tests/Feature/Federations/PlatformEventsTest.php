@@ -155,6 +155,29 @@ class PlatformEventsTest extends TestCase
     }
 
     /**
+     * A dashboard save after the event has started — editing somebody's
+     * nationality, say — runs this sync too. It must never place a stray entry
+     * or create a division then: the draw is the record (2026-10-26).
+     */
+    public function test_a_started_event_s_divisions_are_never_touched_by_the_sync(): void
+    {
+        $fe = $this->fedEvent();
+        $a = $this->clubEntry($fe);
+        $ev = app(FederationPlatformEvent::class)->sync($fe);
+        $reg = ClubEventRegistration::where('event_id', $ev->id)->where('user_id', $a['user']->id)->first();
+        $this->assertNotNull($reg->category_id);
+
+        $ev->forceFill(['started_at' => now()])->save();
+        $reg->forceFill(['category_id' => null, 'category_source' => null])->save();
+        $divisions = \App\Events\Models\EventCategory::where('event_id', $ev->id)->count();
+
+        app(FederationPlatformEntries::class)->sync($fe->fresh());
+
+        $this->assertNull($reg->fresh()->category_id);
+        $this->assertSame($divisions, \App\Events\Models\EventCategory::where('event_id', $ev->id)->count());
+    }
+
+    /**
      * Removed in the CONSOLE (not on the dashboard): the federation's row and
      * every figure follow, and re-entering brings both back — the dashboard
      * used to keep counting an athlete the event no longer had (2026-10-08).

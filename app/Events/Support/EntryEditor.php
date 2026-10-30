@@ -9,6 +9,7 @@ use App\Members\Models\UserRelationship;
 use App\Events\Models\ClubEvent;
 use App\Events\Models\ClubEventRegistration;
 use App\Events\Models\EventCategory;
+use App\Events\Models\EventExhibitionBout;
 use App\Events\Models\EventMatch;
 use App\Events\Models\EventClub;
 use App\Sports\Combat\BeltRank;
@@ -852,6 +853,11 @@ class EntryEditor
      * Scoped by COMPETITOR ID, never by the old name: two athletes can share a
      * name, and matching on the string would rename the wrong one. Entries the
      * draw never placed simply match nothing.
+     *
+     * Two more copies follow the same way (28 Oct 2026 — a bronze medallist kept
+     * his old spelling under the bracket after the bouts had been corrected):
+     * the division's PODIUM (`event_categories.podium`, the medallists' names,
+     * written when the division is decided) and the side EXHIBITION bouts.
      */
     public function restampName(ClubEvent $event, int $userId, string $name): void
     {
@@ -871,7 +877,30 @@ class EntryEditor
             EventMatch::where('event_id', $event->id)
                 ->whereIn($side.'_competitor_id', $entryIds)
                 ->update([$side.'_name' => $name]);
+            EventExhibitionBout::where('event_id', $event->id)
+                ->whereIn($side.'_registration_id', $entryIds)
+                ->update([$side.'_name' => $name]);
         }
+
+        $ids = $entryIds->map(fn ($id) => (int) $id)->all();
+        EventCategory::where('event_id', $event->id)->whereNotNull('podium')->get(['id', 'podium'])
+            ->each(function (EventCategory $category) use ($ids, $name) {
+                $podium = $category->podium;
+                if (! is_array($podium)) {
+                    return;
+                }
+                $hit = false;
+                foreach ($podium as $i => $row) {
+                    if (is_array($row) && in_array((int) ($row['competitor_id'] ?? 0), $ids, true) && ($row['name'] ?? null) !== $name) {
+                        $podium[$i]['name'] = $name;
+                        $hit = true;
+                    }
+                }
+                if ($hit) {
+                    $category->podium = $podium;
+                    $category->save();
+                }
+            });
     }
 
     /* ==================== Telling everyone ==================== */

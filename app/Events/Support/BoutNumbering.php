@@ -67,7 +67,7 @@ class BoutNumbering
     }
 
     /** Every screen that prints a bout number re-reads: brackets, the wall, the mats. Best-effort. */
-    private function announce(ClubEvent $event): void
+    public function announce(ClubEvent $event): void
     {
         rescue(function () use ($event) {
             $type = app(EventTypeRegistry::class)->for($event);

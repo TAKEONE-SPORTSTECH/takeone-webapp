@@ -431,7 +431,8 @@
     const longDay = !!(sheet && rows.length && (nextDay || dur > 14 * 60));
     const tile = warn => css('background:#fff;border-radius:14px;padding:12px 14px;border-top:3px solid ' + (warn ? '#b45309' : '#d8b25f') + ';box-shadow:0 8px 24px rgba(30,44,79,.06);min-width:0');
     const stats = sheet && rows.length ? [
-      {k: 'Starts', v: clean(sheet.starts_label) || fmt(startMin), extra: '', vStyle: css('font-size:1.2rem;font-weight:800;margin-top:2px'),
+      // Once bouts have run it reads the real start; the plan stays beneath it.
+      {k: 'Starts', v: clean(sheet.starts_label) || fmt(startMin), extra: sheet.started && sheet.planned_starts_label ? 'planned ' + clean(sheet.planned_starts_label) : '', vStyle: css('font-size:1.2rem;font-weight:800;margin-top:2px'),
         // When the day starts is the organiser's to set (owner, 2026-10-16): tap the tile.
         canEdit: manage && !!doors.start, editLabel: '✎ Change',
         style: manage && doors.start ? Object.assign({}, tile(false), css('cursor:pointer')) : tile(false),
@@ -440,6 +441,8 @@
       {k: 'On the mats', v: totalBouts + ' bouts', extra: '', sub: mats.length + (mats.length === 1 ? ' mat' : ' mats') + ' · ' + rows.filter(r => r.kind === 'division').length + ' divisions', style: tile(false), vStyle: css('font-size:1.2rem;font-weight:800;margin-top:2px')},
       {k: 'Lunch', v: sheet.event_break ? clean(sheet.event_break.starts_label) + ' – ' + clean(sheet.event_break.ends_label) : 'None', extra: '', style: tile(false), vStyle: css('font-size:1.2rem;font-weight:800;margin-top:2px')},
     ] : [];
+    // A warning (+1 day) is orange; a plain note (the planned start) is grey.
+    stats.forEach(t => { t.extraStyle = css('font-size:.64rem;font-weight:700;border-radius:6px;padding:1px 6px;' + (t.k === 'Starts' ? 'color:#6b7689;background:#f1f3f7' : 'color:#fff;background:#b45309')); });
     const matCount = Math.max(1, mats.length);
     const projections = longDay ? [1, 2, 3].map(k => ({key: k, label: (matCount + k) + ' mats → about ' + fmt(startMin + Math.ceil(dur * matCount / (matCount + k)))})) : [];
 

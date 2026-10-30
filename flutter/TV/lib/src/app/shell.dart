@@ -246,6 +246,18 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     }
   }
 
+  Future<bool> _ensureMicrophonePermission() async {
+    try {
+      return await const MethodChannel('bh.takeone/app')
+              .invokeMethod<bool>('ensureMicrophonePermission') ??
+          false;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
+      return true;
+    }
+  }
+
   /// The phone's back button walks the page history first, and only leaves the
   /// app once there is nothing left to go back to.
   Future<bool> _onWillPop() async {
@@ -348,6 +360,20 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                                 .contains(PermissionResourceType.CAMERA_AND_MICROPHONE);
 
                     if (wantsCamera && !await _ensureCameraPermission()) {
+                      return PermissionResponse(
+                        resources: request.resources,
+                        action: PermissionResponseAction.DENY,
+                      );
+                    }
+
+                    // The same for the microphone: a voice note or a video
+                    // would otherwise record silence and say nothing.
+                    final wantsMic =
+                        request.resources.contains(PermissionResourceType.MICROPHONE) ||
+                            request.resources
+                                .contains(PermissionResourceType.CAMERA_AND_MICROPHONE);
+
+                    if (wantsMic && !await _ensureMicrophonePermission()) {
                       return PermissionResponse(
                         resources: request.resources,
                         action: PermissionResponseAction.DENY,

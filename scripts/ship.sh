@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+#
+# Ship it: staging → production in one command.
+#
+#   scripts/ship.sh "commit message"     commit what is here, push, deploy
+#   scripts/ship.sh --dry-run            say what would happen, change nothing
+#   scripts/ship.sh                      nothing to commit? ship what is pushed
+#
+# The staging box is where the code is written, so it is the SOURCE of a
+# release, never a deploy target. This script:
+#   1. checks the production runner is online (else nothing is pushed),
+#   2. refuses secrets and personal documents (the GitHub repo is PUBLIC),
+#   3. commits everything here and pushes the current branch,
+#   4. fast-forwards main to it — never a force push, never a merge,
+#   5. runs the Deploy workflow (backup → code archive → maintenance →
+#      sync → migrate → caches → site check) and waits for the result.
+#
+# Nothing on this box is deleted or reset by it.
+
+set -euo pipefail
+
+REPO=TAKEONE-SPORTSTECH/takeone-webapp
+cd "$(dirname "$0")/.."
+
+dry=0
+msg=""
+for arg in "$@"; do
+    case "$arg" in
+        --dry-run) dry=1 ;;
+        -*) echo "Unknown option: $arg" >&2; exit 2 ;;
+        *) msg="$arg" ;;
+    esac
+done
+
+say()  { printf '\n\033[1m%s\033[0m\n' "$*"; }
+fail() { printf '\n\033[31m✗ %s\033[0m\n' "$*" >&2; exit 1; }
+
+branch=$(git rev-parse --abbrev-ref HEAD)
+[ "$branch" = "HEAD" ] && fail "Detached HEAD — check out a branch first."
+
+# ── 1. Production runner ────────────────────────────────────────────────
+say "Checking the production runner"
+online=$(gh api "repos/$REPO/actions/runners" \
+    --jq '[.runners[] | select(.status=="online") | select(any(.labels[]; .name=="production"))] | length')
+[ "$online" -ge 1 ] || fail "No production runner is online, so a deploy would only queue and time out. Nothing was pushed."
+echo "  online"
+
+# ── 2. What would be committed, and is any of it unsafe to publish ──────
+changes=$(git status --porcelain --untracked-files=all)
+if [ -n "$changes" ]; then
+    say "Changes to commit: $(echo "$changes" | wc -l) files"
+    files=$(echo "$changes" | cut -c4- | sed 's/^"\(.*\)"$/\1/; s/.* -> //')
+
+    risky=$(echo "$files" | grep -E \
+        '(^|/)\.env($|\.)|\.sqlite|\.jks$|\.keystore$|keystore\.properties$|\.pem$|\.key$|\.api-key$|(^|/)id_(rsa|ed25519)|^drafts/.*\.(pdf|docx?|xlsx?|zip|jpe?g|png|heic)$' \
+        | grep -v '^\.env\.example$' || true)
+    [ -z "$risky" ] || fail "These look like secrets or personal documents, and the repository is PUBLIC:
+$(echo "$risky" | sed 's/^/    /')
+Add them to .gitignore (or move them out of the project), then ship again. Nothing was committed."
+
+    secrets=$(git diff HEAD -U0 2>/dev/null | grep -E '^\+' \
+        | grep -E 'sk-ant-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{30,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY' || true)
+    [ -z "$secrets" ] || fail "A changed line looks like an API key or private key. Nothing was committed."
+
+    [ -n "$msg" ] || fail "There are uncommitted changes — give a commit message: scripts/ship.sh \"what changed\""
+else
+    say "Nothing to commit — shipping what is already on $branch"
+fi
+
+# ── 3. main must be an ancestor, so main only ever moves forward ────────
+git fetch -q origin
+if ! git merge-base --is-ancestor origin/main HEAD; then
+    fail "main has commits that $branch does not (git log HEAD..origin/main). Merge main into $branch first. Nothing was pushed."
+fi
+
+if [ "$dry" = 1 ]; then
+    say "Dry run — would commit, push $branch, fast-forward main by $(git rev-list --count origin/main..HEAD) commit(s) plus the new one, and run Deploy."
+    exit 0
+fi
+
+# ── 4. Commit and push ──────────────────────────────────────────────────
+if [ -n "$changes" ]; then
+    say "Committing"
+    git add -A
+    git commit -q -m "$msg"
+    git log --oneline -1
+fi
+
+say "Pushing $branch and fast-forwarding main"
+git push -q origin "HEAD:refs/heads/$branch"
+git push -q origin HEAD:main
+echo "  main is now $(git rev-parse --short HEAD)"
+
+# ── 5. Deploy and wait ──────────────────────────────────────────────────
+say "Starting the production deploy"
+before=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+gh workflow run Deploy --repo "$REPO" --ref main
+run=""
+for _ in $(seq 1 20); do
+    run=$(gh run list --repo "$REPO" --workflow Deploy --limit 1 \
+        --json databaseId,createdAt --jq ".[] | select(.createdAt >= \"$before\") | .databaseId")
+    [ -n "$run" ] && break
+    sleep 3
+done
+[ -n "$run" ] || fail "The deploy did not start. Check: gh run list --workflow Deploy"
+
+echo "  https://github.com/$REPO/actions/runs/$run"
+if gh run watch "$run" --repo "$REPO" --exit-status --interval 10 > /dev/null; then
+    say "✓ Shipped. takeone.bh is running $(git rev-parse --short HEAD)."
+else
+    gh run view "$run" --repo "$REPO" --log-failed | tail -40 || true
+    fail "The deploy failed (log above). The site may be in maintenance mode; the run log says where the backup and code archive are."
+fi

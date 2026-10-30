@@ -1,0 +1,65 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      TakeNote — the notebook as its own app (bh.takeone.note).
+
+      The member app's shell (lib/src/app/shell.dart), opened straight on
+      /me/takenote and installed under its own name and icon. A pocket app:
+      status bar, rotation and back button stay, nothing is pinned on.
+
+      Permissions are exactly what the notebook uses: the network, the camera
+      (photos and videos), the microphone (voice notes and a video's sound).
+      No location, no notifications service and no self-update yet: those
+      arrive with the steps that need them. Hardware is required="false" so it
+      installs on any phone.
+    -->
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+
+    <!-- Saving a downloaded file into Downloads needs this only on Android 9 and older. -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+
+    <application
+        android:label="TakeNote"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="false">
+
+        <!-- One WebView and nothing else: Skia gets out of its way (see the member app). -->
+        <meta-data android:name="io.flutter.embedding.android.EnableImpeller" android:value="false" />
+
+        <meta-data android:name="bh.takeone.variant" android:value="note" />
+        <meta-data android:name="bh.takeone.baseUrl" android:value="__TAKEONE_BASE_URL__" />
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+</manifest>

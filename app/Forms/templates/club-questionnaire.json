@@ -1,0 +1,2051 @@
+{
+ "title": "What does your club really need?",
+ "title_ar": "ما الذي يحتاجه ناديك فعلاً؟",
+ "description": "A conversation with club owners, managers and coaches about how the club runs today, what hurts, and what would make the work easier.",
+ "description_ar": "حوار مع ملاك الأندية ومديريها ومدربيها عن طريقة إدارة النادي اليوم، وما يُتعبهم، وما الذي يجعل العمل أسهل.",
+ "type": "survey",
+ "settings": {
+  "layout": "paged",
+  "bilingual": true,
+  "interviewer": true,
+  "successMessage": "Thank you for your time.",
+  "successMessage_ar": "شكراً لوقتكم.",
+  "analysis": {
+   "grid": "grid",
+   "must": "must",
+   "nice": "nice",
+   "note": "What TAKEONE has today for each feature, and the work to close the gap (1 small · 2 medium · 3 large). Assessed 26 Oct 2026 from the club admin.",
+   "status": {
+    "f01": [
+     "exists",
+     1
+    ],
+    "f02": [
+     "exists",
+     1
+    ],
+    "f03": [
+     "exists",
+     1
+    ],
+    "f04": [
+     "partial",
+     2
+    ],
+    "f05": [
+     "partial",
+     1
+    ],
+    "f06": [
+     "exists",
+     1
+    ],
+    "f07": [
+     "exists",
+     1
+    ],
+    "f08": [
+     "missing",
+     2
+    ],
+    "f09": [
+     "missing",
+     1
+    ],
+    "f10": [
+     "missing",
+     2
+    ],
+    "f11": [
+     "exists",
+     1
+    ],
+    "f12": [
+     "missing",
+     2
+    ],
+    "f13": [
+     "partial",
+     2
+    ],
+    "f14": [
+     "partial",
+     3
+    ],
+    "f15": [
+     "partial",
+     2
+    ],
+    "f16": [
+     "exists",
+     1
+    ],
+    "f17": [
+     "exists",
+     1
+    ],
+    "f18": [
+     "exists",
+     1
+    ],
+    "f19": [
+     "exists",
+     1
+    ],
+    "f20": [
+     "partial",
+     2
+    ],
+    "f21": [
+     "exists",
+     1
+    ],
+    "f22": [
+     "exists",
+     1
+    ]
+   }
+  }
+ },
+ "schema": {
+  "pages": [
+   {
+    "id": "visit",
+    "title": "The visit",
+    "title_ar": "الزيارة",
+    "private": true,
+    "intro": "Who you met, and where. Only the TAKEONE team sees this page.",
+    "intro_ar": "من قابلت وأين. هذه الصفحة يراها فريق تيك ون فقط.",
+    "fields": [
+     {
+      "key": "cover_club",
+      "type": "text",
+      "label": "Club name",
+      "label_ar": "اسم النادي",
+      "required": true,
+      "id": "cover_club"
+     },
+     {
+      "key": "cover_person",
+      "type": "text",
+      "label": "Person interviewed · role",
+      "label_ar": "الشخص · الصفة",
+      "id": "cover_person"
+     },
+     {
+      "key": "cover_phone",
+      "type": "phone",
+      "label": "Phone / WhatsApp",
+      "label_ar": "الهاتف / واتساب",
+      "id": "cover_phone"
+     },
+     {
+      "key": "cover_area",
+      "type": "text",
+      "label": "Area / branch",
+      "label_ar": "المنطقة / الفرع",
+      "id": "cover_area"
+     },
+     {
+      "key": "cover_interviewer",
+      "type": "text",
+      "label": "Interviewer",
+      "label_ar": "المحاور",
+      "id": "cover_interviewer"
+     },
+     {
+      "key": "consent",
+      "type": "checkbox",
+      "required": true,
+      "label": "The club agrees that TAKEONE may keep these notes to design its product and may contact them again. Nothing is published under the club’s name.",
+      "label_ar": "يوافق النادي على احتفاظ تيك ون بهذه الملاحظات لتصميم منتجها، وعلى التواصل معه لاحقاً. لا يُنشر شيء باسم النادي.",
+      "id": "consent"
+     }
+    ]
+   },
+   {
+    "id": "s1",
+    "title": "The Club Today",
+    "title_ar": "النادي اليوم",
+    "intro": "A quick picture of who they are, so every later answer has context.",
+    "intro_ar": "صورة سريعة عن النادي، حتى تكون لكل إجابة لاحقة سياقها.",
+    "fields": [
+     {
+      "key": "q1",
+      "label": "The club in numbers",
+      "label_ar": "النادي بالأرقام",
+      "type": "numbers",
+      "rows": [
+       {
+        "value": "active-members",
+        "label": "Active members",
+        "label_ar": "الأعضاء النشطون"
+       },
+       {
+        "value": "coaches",
+        "label": "Coaches",
+        "label_ar": "المدربون"
+       },
+       {
+        "value": "admin-staff",
+        "label": "Admin staff",
+        "label_ar": "الإداريون"
+       },
+       {
+        "value": "branches",
+        "label": "Branches",
+        "label_ar": "الفروع"
+       },
+       {
+        "value": "years-open",
+        "label": "Years open",
+        "label_ar": "سنوات العمل"
+       },
+       {
+        "value": "classes-week",
+        "label": "Classes / week",
+        "label_ar": "الحصص أسبوعياً"
+       }
+      ],
+      "id": "q1"
+     },
+     {
+      "key": "q2",
+      "label": "Which sports or activities do you offer?",
+      "label_ar": "ما الرياضات أو الأنشطة التي تقدمونها؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "taekwondo",
+        "label": "Taekwondo",
+        "label_ar": "تايكوندو"
+       },
+       {
+        "value": "karate",
+        "label": "Karate",
+        "label_ar": "كاراتيه"
+       },
+       {
+        "value": "jiu-jitsu",
+        "label": "Jiu-Jitsu",
+        "label_ar": "جوجيتسو"
+       },
+       {
+        "value": "judo",
+        "label": "Judo",
+        "label_ar": "جودو"
+       },
+       {
+        "value": "boxing-muay-thai",
+        "label": "Boxing / Muay Thai",
+        "label_ar": "ملاكمة / مواي تاي"
+       },
+       {
+        "value": "football",
+        "label": "Football",
+        "label_ar": "كرة القدم"
+       },
+       {
+        "value": "swimming",
+        "label": "Swimming",
+        "label_ar": "سباحة"
+       },
+       {
+        "value": "fitness-gym",
+        "label": "Fitness / Gym",
+        "label_ar": "لياقة / صالة"
+       },
+       {
+        "value": "gymnastics",
+        "label": "Gymnastics",
+        "label_ar": "جمباز"
+       }
+      ],
+      "other": true,
+      "id": "q2"
+     },
+     {
+      "key": "q3",
+      "label": "Who are your members mostly?",
+      "label_ar": "من هم غالبية أعضائكم؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "kids-under-12",
+        "label": "Kids under 12",
+        "label_ar": "أطفال دون 12"
+       },
+       {
+        "value": "teens-12-17",
+        "label": "Teens 12–17",
+        "label_ar": "مراهقون 12–17"
+       },
+       {
+        "value": "adults",
+        "label": "Adults",
+        "label_ar": "بالغون"
+       },
+       {
+        "value": "women-only-classes",
+        "label": "Women-only classes",
+        "label_ar": "حصص للنساء فقط"
+       },
+       {
+        "value": "competitive-athletes",
+        "label": "Competitive athletes",
+        "label_ar": "رياضيون تنافسيون"
+       },
+       {
+        "value": "families-siblings",
+        "label": "Families / siblings",
+        "label_ar": "عائلات / إخوة"
+       }
+      ],
+      "other": false,
+      "id": "q3"
+     },
+     {
+      "key": "q4",
+      "label": "What do you use today to run the club?",
+      "label_ar": "ماذا تستخدمون اليوم لإدارة النادي؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "paper-notebook",
+        "label": "Paper / notebook",
+        "label_ar": "ورق / دفتر"
+       },
+       {
+        "value": "excel-google-sheets",
+        "label": "Excel / Google Sheets",
+        "label_ar": "إكسل / جداول جوجل"
+       },
+       {
+        "value": "whatsapp-groups",
+        "label": "WhatsApp groups",
+        "label_ar": "مجموعات واتساب"
+       },
+       {
+        "value": "instagram",
+        "label": "Instagram",
+        "label_ar": "إنستغرام"
+       },
+       {
+        "value": "other-club-software",
+        "label": "Other club software",
+        "label_ar": "برنامج إدارة آخر"
+       },
+       {
+        "value": "accounting-software",
+        "label": "Accounting software",
+        "label_ar": "برنامج محاسبة"
+       }
+      ],
+      "other": true,
+      "id": "q4"
+     },
+     {
+      "key": "q5",
+      "label": "If you use other software: what is it, what do you like, and why might you leave it?",
+      "label_ar": "إن كنتم تستخدمون برنامجاً آخر: ما هو، وما الذي يعجبكم فيه، ولماذا قد تتركونه؟",
+      "type": "textarea",
+      "rows": 3,
+      "id": "q5"
+     },
+     {
+      "key": "q6",
+      "label": "Who actually does the daily admin work — the owner, a coach, a receptionist?",
+      "label_ar": "من يقوم فعلياً بالعمل الإداري اليومي — المالك، مدرب، أم موظف استقبال؟",
+      "type": "textarea",
+      "rows": 2,
+      "id": "q6"
+     },
+     {
+      "key": "obs1",
+      "type": "note",
+      "private": true,
+      "label": "Interviewer observations",
+      "label_ar": "ملاحظات المحاور",
+      "help": "Ask to see their member list or register — how they keep it tells you more than any answer.",
+      "help_ar": "اطلب رؤية سجل الأعضاء — طريقة حفظه تخبرك أكثر من أي إجابة.",
+      "id": "obs1"
+     }
+    ]
+   },
+   {
+    "id": "s2",
+    "title": "Joining & Registration",
+    "title_ar": "الانضمام والتسجيل",
+    "intro": "From the first phone call to the first class — where do people get lost?",
+    "intro_ar": "من أول اتصال إلى أول حصة — أين يتعثر الناس؟",
+    "fields": [
+     {
+      "key": "q7",
+      "label": "How do new members usually find and contact you?",
+      "label_ar": "كيف يجدكم الأعضاء الجدد عادةً ويتواصلون معكم؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "walk-in",
+        "label": "Walk in",
+        "label_ar": "زيارة مباشرة"
+       },
+       {
+        "value": "phone-call",
+        "label": "Phone call",
+        "label_ar": "اتصال هاتفي"
+       },
+       {
+        "value": "whatsapp",
+        "label": "WhatsApp",
+        "label_ar": "واتساب"
+       },
+       {
+        "value": "instagram-tiktok",
+        "label": "Instagram / TikTok",
+        "label_ar": "إنستغرام / تيك توك"
+       },
+       {
+        "value": "friend-referral",
+        "label": "Friend referral",
+        "label_ar": "توصية من صديق"
+       },
+       {
+        "value": "school-company",
+        "label": "School / company",
+        "label_ar": "مدرسة / شركة"
+       },
+       {
+        "value": "google-maps",
+        "label": "Google Maps",
+        "label_ar": "خرائط جوجل"
+       }
+      ],
+      "other": true,
+      "id": "q7"
+     },
+     {
+      "key": "q8",
+      "label": "What do you collect when someone joins?",
+      "label_ar": "ما الذي تجمعونه عند انضمام عضو؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "name-phone",
+        "label": "Name & phone",
+        "label_ar": "الاسم والهاتف"
+       },
+       {
+        "value": "date-of-birth",
+        "label": "Date of birth",
+        "label_ar": "تاريخ الميلاد"
+       },
+       {
+        "value": "cpr-id-copy",
+        "label": "CPR / ID copy",
+        "label_ar": "نسخة البطاقة الشخصية"
+       },
+       {
+        "value": "photo",
+        "label": "Photo",
+        "label_ar": "صورة"
+       },
+       {
+        "value": "medical-info",
+        "label": "Medical info",
+        "label_ar": "معلومات طبية"
+       },
+       {
+        "value": "guardian-details",
+        "label": "Guardian details",
+        "label_ar": "بيانات ولي الأمر"
+       },
+       {
+        "value": "signed-waiver",
+        "label": "Signed waiver",
+        "label_ar": "إقرار موقّع"
+       },
+       {
+        "value": "emergency-contact",
+        "label": "Emergency contact",
+        "label_ar": "جهة اتصال للطوارئ"
+       }
+      ],
+      "other": true,
+      "id": "q8"
+     },
+     {
+      "key": "q9",
+      "label": "Do you offer a free or paid trial class?",
+      "label_ar": "هل تقدمون حصة تجريبية مجانية أو مدفوعة؟",
+      "type": "radio",
+      "options": [
+       {
+        "value": "free-trial",
+        "label": "Free trial",
+        "label_ar": "تجربة مجانية"
+       },
+       {
+        "value": "paid-trial",
+        "label": "Paid trial",
+        "label_ar": "تجربة مدفوعة"
+       },
+       {
+        "value": "no-trial",
+        "label": "No trial",
+        "label_ar": "لا يوجد"
+       }
+      ],
+      "note": true,
+      "id": "q9"
+     },
+     {
+      "key": "q10",
+      "label": "How painful is registering a new member today?",
+      "label_ar": "ما مدى صعوبة تسجيل عضو جديد اليوم؟",
+      "type": "scale",
+      "min": 1,
+      "max": 5,
+      "low": "Easy",
+      "low_ar": "سهل",
+      "high": "Very painful",
+      "high_ar": "مرهق جداً",
+      "note": true,
+      "id": "q10"
+     },
+     {
+      "key": "q11",
+      "label": "Who usually registers a child — the parent, or your staff on their behalf?",
+      "label_ar": "من يسجّل الطفل عادةً — ولي الأمر أم موظفوكم نيابةً عنه؟",
+      "type": "radio",
+      "options": [
+       {
+        "value": "parent",
+        "label": "Parent",
+        "label_ar": "ولي الأمر"
+       },
+       {
+        "value": "our-staff",
+        "label": "Our staff",
+        "label_ar": "موظفونا"
+       },
+       {
+        "value": "both",
+        "label": "Both",
+        "label_ar": "كلاهما"
+       }
+      ],
+      "note": true,
+      "id": "q11"
+     },
+     {
+      "key": "q12",
+      "label": "Would you let parents register themselves online or by QR code? What worries you about it?",
+      "label_ar": "هل تسمحون لأولياء الأمور بالتسجيل بأنفسهم عبر الإنترنت أو رمز QR؟ ما الذي يقلقكم في ذلك؟",
+      "type": "textarea",
+      "rows": 3,
+      "id": "q12"
+     },
+     {
+      "key": "obs2",
+      "type": "note",
+      "private": true,
+      "label": "Interviewer observations",
+      "label_ar": "ملاحظات المحاور",
+      "help": "Ask them to walk you through the last new member who joined, step by step.",
+      "help_ar": "اطلب منهم أن يشرحوا خطوة بخطوة كيف انضم آخر عضو جديد.",
+      "id": "obs2"
+     }
+    ]
+   },
+   {
+    "id": "s3",
+    "title": "Classes, Schedule & Attendance",
+    "title_ar": "الحصص والجدول والحضور",
+    "intro": "The heartbeat of the club: who trains, when, with whom — and who stopped coming.",
+    "intro_ar": "نبض النادي: من يتدرب، ومتى، ومع من — ومن توقف عن الحضور.",
+    "fields": [
+     {
+      "key": "q13",
+      "label": "How do you take attendance?",
+      "label_ar": "كيف تسجّلون الحضور؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "we-don-t",
+        "label": "We don't",
+        "label_ar": "لا نسجّله"
+       },
+       {
+        "value": "paper-list",
+        "label": "Paper list",
+        "label_ar": "قائمة ورقية"
+       },
+       {
+        "value": "spreadsheet",
+        "label": "Spreadsheet",
+        "label_ar": "جدول بيانات"
+       },
+       {
+        "value": "app-card-scan",
+        "label": "App / card scan",
+        "label_ar": "تطبيق / مسح بطاقة"
+       },
+       {
+        "value": "coach-remembers",
+        "label": "Coach remembers",
+        "label_ar": "المدرب يتذكر"
+       }
+      ],
+      "other": true,
+      "id": "q13"
+     },
+     {
+      "key": "q14",
+      "label": "How do you sell training?",
+      "label_ar": "كيف تبيعون التدريب؟",
+      "type": "radio",
+      "options": [
+       {
+        "value": "monthly-fee",
+        "label": "Monthly fee",
+        "label_ar": "اشتراك شهري"
+       },
+       {
+        "value": "term-season",
+        "label": "Term / season",
+        "label_ar": "فصل / موسم"
+       },
+       {
+        "value": "class-packs",
+        "label": "Class packs",
+        "label_ar": "باقة حصص"
+       },
+       {
+        "value": "per-session",
+        "label": "Per session",
+        "label_ar": "بالحصة"
+       },
+       {
+        "value": "mixed",
+        "label": "Mixed",
+        "label_ar": "مزيج"
+       }
+      ],
+      "note": true,
+      "id": "q14"
+     },
+     {
+      "key": "q15",
+      "label": "Do classes fill up? Do you keep a waiting list?",
+      "label_ar": "هل تمتلئ الحصص؟ هل لديكم قائمة انتظار؟",
+      "type": "radio",
+      "options": [
+       {
+        "value": "yes",
+        "label": "Yes",
+        "label_ar": "نعم"
+       },
+       {
+        "value": "no",
+        "label": "No",
+        "label_ar": "لا"
+       },
+       {
+        "value": "sometimes",
+        "label": "Sometimes",
+        "label_ar": "أحياناً"
+       }
+      ],
+      "note": true,
+      "id": "q15"
+     },
+     {
+      "key": "q16",
+      "label": "When a member misses classes for weeks, how do you notice — and what do you do?",
+      "label_ar": "عندما يغيب عضو لأسابيع، كيف تلاحظون ذلك — وماذا تفعلون؟",
+      "type": "textarea",
+      "rows": 3,
+      "id": "q16"
+     },
+     {
+      "key": "q17",
+      "label": "Do members ask to freeze or pause (travel, injury, Ramadan, exams)?",
+      "label_ar": "هل يطلب الأعضاء تجميد الاشتراك (سفر، إصابة، رمضان، امتحانات)؟",
+      "type": "radio",
+      "options": [
+       {
+        "value": "yes",
+        "label": "Yes",
+        "label_ar": "نعم"
+       },
+       {
+        "value": "no",
+        "label": "No",
+        "label_ar": "لا"
+       },
+       {
+        "value": "sometimes",
+        "label": "Sometimes",
+        "label_ar": "أحياناً"
+       }
+      ],
+      "note": true,
+      "id": "q17"
+     },
+     {
+      "key": "q18",
+      "label": "What happens when a coach is absent or a class is cancelled? How are members told?",
+      "label_ar": "ماذا يحدث عند غياب المدرب أو إلغاء حصة؟ كيف يُبلَّغ الأعضاء؟",
+      "type": "textarea",
+      "rows": 2,
+      "id": "q18"
+     },
+     {
+      "key": "obs3",
+      "type": "note",
+      "private": true,
+      "label": "Interviewer observations",
+      "label_ar": "ملاحظات المحاور",
+      "help": "Watch a class start if you can. How is attendance actually taken?",
+      "help_ar": "شاهد بداية حصة إن أمكن. كيف يُسجَّل الحضور فعلياً؟",
+      "id": "obs3"
+     }
+    ]
+   },
+   {
+    "id": "s4",
+    "title": "Fees, Payments & Money",
+    "title_ar": "الرسوم والمدفوعات والمال",
+    "intro": "Where the club lives or dies. Listen for chasing, forgetting and arguing.",
+    "intro_ar": "هنا يعيش النادي أو يتعثر. انتبه لكلمات المطاردة والنسيان والخلاف.",
+    "fields": [
+     {
+      "key": "q19",
+      "label": "How do members pay you?",
+      "label_ar": "كيف يدفع الأعضاء لكم؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "cash",
+        "label": "Cash",
+        "label_ar": "نقداً"
+       },
+       {
+        "value": "benefitpay",
+        "label": "BenefitPay",
+        "label_ar": "بنفت باي"
+       },
+       {
+        "value": "bank-transfer",
+        "label": "Bank transfer",
+        "label_ar": "تحويل بنكي"
+       },
+       {
+        "value": "card-machine",
+        "label": "Card machine",
+        "label_ar": "جهاز البطاقات"
+       },
+       {
+        "value": "cheque",
+        "label": "Cheque",
+        "label_ar": "شيك"
+       },
+       {
+        "value": "online-link",
+        "label": "Online link",
+        "label_ar": "رابط دفع"
+       }
+      ],
+      "other": true,
+      "id": "q19"
+     },
+     {
+      "key": "q20",
+      "label": "Do you send invoices or receipts?",
+      "label_ar": "هل ترسلون فواتير أو إيصالات؟",
+      "type": "radio",
+      "options": [
+       {
+        "value": "always",
+        "label": "Always",
+        "label_ar": "دائماً"
+       },
+       {
+        "value": "on-request",
+        "label": "On request",
+        "label_ar": "عند الطلب"
+       },
+       {
+        "value": "never",
+        "label": "Never",
+        "label_ar": "أبداً"
+       }
+      ],
+      "note": true,
+      "id": "q20"
+     },
+     {
+      "key": "q21",
+      "label": "How much time goes into chasing late payments?",
+      "label_ar": "كم من الوقت يذهب في مطاردة المتأخرين عن الدفع؟",
+      "type": "scale",
+      "min": 1,
+      "max": 5,
+      "low": "Almost none",
+      "low_ar": "لا يُذكر",
+      "high": "Hours every week",
+      "high_ar": "ساعات أسبوعياً",
+      "note": true,
+      "id": "q21"
+     },
+     {
+      "key": "q22",
+      "label": "Which of these do you offer?",
+      "label_ar": "أيٌّ مما يلي تقدمونه؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "sibling-discount",
+        "label": "Sibling discount",
+        "label_ar": "خصم الإخوة"
+       },
+       {
+        "value": "installments",
+        "label": "Installments",
+        "label_ar": "دفع بالتقسيط"
+       },
+       {
+        "value": "registration-fee",
+        "label": "Registration fee",
+        "label_ar": "رسوم تسجيل"
+       },
+       {
+        "value": "uniform-fee",
+        "label": "Uniform fee",
+        "label_ar": "رسوم الزي"
+       },
+       {
+        "value": "refunds",
+        "label": "Refunds",
+        "label_ar": "استرداد"
+       },
+       {
+        "value": "scholarships",
+        "label": "Scholarships",
+        "label_ar": "منح / إعفاءات"
+       },
+       {
+        "value": "corporate-school-deals",
+        "label": "Corporate / school deals",
+        "label_ar": "عروض للشركات / المدارس"
+       }
+      ],
+      "other": true,
+      "id": "q22"
+     },
+     {
+      "key": "q23",
+      "label": "Which expenses would you like to track?",
+      "label_ar": "ما المصاريف التي تودون متابعتها؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "rent",
+        "label": "Rent",
+        "label_ar": "الإيجار"
+       },
+       {
+        "value": "coach-salaries",
+        "label": "Coach salaries",
+        "label_ar": "رواتب المدربين"
+       },
+       {
+        "value": "equipment",
+        "label": "Equipment",
+        "label_ar": "المعدات"
+       },
+       {
+        "value": "utilities",
+        "label": "Utilities",
+        "label_ar": "الخدمات"
+       },
+       {
+        "value": "competition-fees",
+        "label": "Competition fees",
+        "label_ar": "رسوم البطولات"
+       },
+       {
+        "value": "marketing",
+        "label": "Marketing",
+        "label_ar": "التسويق"
+       }
+      ],
+      "other": true,
+      "id": "q23"
+     },
+     {
+      "key": "q24",
+      "label": "How are coaches paid?",
+      "label_ar": "كيف يُدفع للمدربين؟",
+      "type": "radio",
+      "options": [
+       {
+        "value": "fixed-salary",
+        "label": "Fixed salary",
+        "label_ar": "راتب ثابت"
+       },
+       {
+        "value": "per-class",
+        "label": "Per class",
+        "label_ar": "بالحصة"
+       },
+       {
+        "value": "of-members",
+        "label": "% of members",
+        "label_ar": "نسبة من الأعضاء"
+       },
+       {
+        "value": "volunteer",
+        "label": "Volunteer",
+        "label_ar": "تطوع"
+       },
+       {
+        "value": "mixed",
+        "label": "Mixed",
+        "label_ar": "مزيج"
+       }
+      ],
+      "note": true,
+      "id": "q24"
+     },
+     {
+      "key": "q25",
+      "label": "At the end of the month, what number do you most want to see — and how do you get it today?",
+      "label_ar": "في نهاية الشهر، ما الرقم الذي تريدون رؤيته أكثر — وكيف تحصلون عليه اليوم؟",
+      "type": "textarea",
+      "rows": 3,
+      "id": "q25"
+     },
+     {
+      "key": "obs4",
+      "type": "note",
+      "private": true,
+      "label": "Interviewer observations",
+      "label_ar": "ملاحظات المحاور",
+      "help": "Ask: \"How many members owe you money right now?\" — and note how long it took to answer.",
+      "help_ar": "اسأل: «كم عضواً عليه مبالغ لكم الآن؟» — ولاحظ كم استغرقهم الجواب.",
+      "id": "obs4"
+     }
+    ]
+   },
+   {
+    "id": "s5",
+    "title": "Communication with Members & Parents",
+    "title_ar": "التواصل مع الأعضاء وأولياء الأمور",
+    "intro": "Most clubs run on WhatsApp. Find out what that costs them.",
+    "intro_ar": "معظم الأندية تعمل عبر واتساب. اكتشف كم يكلّفهم ذلك.",
+    "fields": [
+     {
+      "key": "q26",
+      "label": "What do you most often need to tell members?",
+      "label_ar": "ما أكثر ما تحتاجون لإبلاغ الأعضاء به؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "payment-reminders",
+        "label": "Payment reminders",
+        "label_ar": "تذكير بالدفع"
+       },
+       {
+        "value": "schedule-changes",
+        "label": "Schedule changes",
+        "label_ar": "تغيير الجدول"
+       },
+       {
+        "value": "cancelled-class",
+        "label": "Cancelled class",
+        "label_ar": "إلغاء حصة"
+       },
+       {
+        "value": "events-competitions",
+        "label": "Events / competitions",
+        "label_ar": "فعاليات / بطولات"
+       },
+       {
+        "value": "belt-tests",
+        "label": "Belt tests",
+        "label_ar": "اختبارات الأحزمة"
+       },
+       {
+        "value": "holidays",
+        "label": "Holidays",
+        "label_ar": "العطل"
+       },
+       {
+        "value": "child-progress",
+        "label": "Child progress",
+        "label_ar": "تقدّم الطفل"
+       }
+      ],
+      "other": true,
+      "id": "q26"
+     },
+     {
+      "key": "q27",
+      "label": "Preferred channel for the club to reach members:",
+      "label_ar": "القناة المفضلة لتواصل النادي مع الأعضاء:",
+      "type": "radio",
+      "options": [
+       {
+        "value": "whatsapp",
+        "label": "WhatsApp",
+        "label_ar": "واتساب"
+       },
+       {
+        "value": "app-notification",
+        "label": "App notification",
+        "label_ar": "إشعار التطبيق"
+       },
+       {
+        "value": "sms",
+        "label": "SMS",
+        "label_ar": "رسالة نصية"
+       },
+       {
+        "value": "email",
+        "label": "Email",
+        "label_ar": "بريد إلكتروني"
+       }
+      ],
+      "note": true,
+      "id": "q27"
+     },
+     {
+      "key": "q28",
+      "label": "Language you need for messages and screens:",
+      "label_ar": "اللغة المطلوبة للرسائل والشاشات:",
+      "type": "radio",
+      "options": [
+       {
+        "value": "arabic",
+        "label": "Arabic",
+        "label_ar": "العربية"
+       },
+       {
+        "value": "english",
+        "label": "English",
+        "label_ar": "الإنجليزية"
+       },
+       {
+        "value": "both",
+        "label": "Both",
+        "label_ar": "كلتاهما"
+       },
+       {
+        "value": "other",
+        "label": "Other",
+        "label_ar": "أخرى"
+       }
+      ],
+      "note": true,
+      "id": "q28"
+     },
+     {
+      "key": "q29",
+      "label": "How often do parents ask \"how is my child doing?\"",
+      "label_ar": "كم مرة يسأل أولياء الأمور «كيف حال ابني؟»",
+      "type": "scale",
+      "min": 1,
+      "max": 5,
+      "low": "Rarely",
+      "low_ar": "نادراً",
+      "high": "Constantly",
+      "high_ar": "باستمرار",
+      "note": true,
+      "id": "q29"
+     },
+     {
+      "key": "q30",
+      "label": "What would you never want the system to send automatically?",
+      "label_ar": "ما الذي لا تريدون أبداً أن يرسله النظام تلقائياً؟",
+      "type": "textarea",
+      "rows": 2,
+      "id": "q30"
+     },
+     {
+      "key": "obs5",
+      "type": "note",
+      "private": true,
+      "label": "Interviewer observations",
+      "label_ar": "ملاحظات المحاور",
+      "help": "Ask how many WhatsApp groups they run, and how many messages a day the owner answers.",
+      "help_ar": "اسأل كم مجموعة واتساب لديهم، وكم رسالة يرد عليها المالك يومياً.",
+      "id": "obs5"
+     }
+    ]
+   },
+   {
+    "id": "s6",
+    "title": "Progress, Belts & Achievements",
+    "title_ar": "التقدّم والأحزمة والإنجازات",
+    "intro": "What keeps a member coming back is seeing themselves get better.",
+    "intro_ar": "ما يُبقي العضو مستمراً هو أن يرى نفسه يتحسن.",
+    "fields": [
+     {
+      "key": "q31",
+      "label": "Do you run belt tests or gradings?",
+      "label_ar": "هل تقيمون اختبارات أحزمة أو ترفيع؟",
+      "type": "radio",
+      "options": [
+       {
+        "value": "yes",
+        "label": "Yes",
+        "label_ar": "نعم"
+       },
+       {
+        "value": "no",
+        "label": "No",
+        "label_ar": "لا"
+       },
+       {
+        "value": "sometimes",
+        "label": "Sometimes",
+        "label_ar": "أحياناً"
+       }
+      ],
+      "note": true,
+      "id": "q31"
+     },
+     {
+      "key": "q32",
+      "label": "How does a grading work, start to finish? (who decides, fees, scoring, certificates)",
+      "label_ar": "كيف يجري الاختبار من البداية للنهاية؟ (من يقرر، الرسوم، التقييم، الشهادات)",
+      "type": "textarea",
+      "rows": 3,
+      "id": "q32"
+     },
+     {
+      "key": "q33",
+      "label": "What would you like to track for each member?",
+      "label_ar": "ما الذي تودون متابعته لكل عضو؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "belt-level",
+        "label": "Belt / level",
+        "label_ar": "الحزام / المستوى"
+       },
+       {
+        "value": "attendance-history",
+        "label": "Attendance history",
+        "label_ar": "سجل الحضور"
+       },
+       {
+        "value": "fitness-tests",
+        "label": "Fitness tests",
+        "label_ar": "اختبارات لياقة"
+       },
+       {
+        "value": "weight",
+        "label": "Weight",
+        "label_ar": "الوزن"
+       },
+       {
+        "value": "medals-results",
+        "label": "Medals & results",
+        "label_ar": "الميداليات والنتائج"
+       },
+       {
+        "value": "coach-notes",
+        "label": "Coach notes",
+        "label_ar": "ملاحظات المدرب"
+       },
+       {
+        "value": "goals",
+        "label": "Goals",
+        "label_ar": "الأهداف"
+       },
+       {
+        "value": "videos",
+        "label": "Videos",
+        "label_ar": "مقاطع فيديو"
+       }
+      ],
+      "other": true,
+      "id": "q33"
+     },
+     {
+      "key": "q34",
+      "label": "How valuable would a progress report for parents be?",
+      "label_ar": "ما قيمة تقرير تقدّم يُرسل لأولياء الأمور؟",
+      "type": "scale",
+      "min": 1,
+      "max": 5,
+      "low": "Not useful",
+      "low_ar": "غير مفيد",
+      "high": "Extremely",
+      "high_ar": "مفيد جداً",
+      "note": true,
+      "id": "q34"
+     },
+     {
+      "key": "obs6",
+      "type": "note",
+      "private": true,
+      "label": "Interviewer observations",
+      "label_ar": "ملاحظات المحاور",
+      "help": "If they hold belt tests, ask to see a grading sheet or certificate.",
+      "help_ar": "إن كانوا يقيمون اختبارات أحزمة، اطلب رؤية ورقة التقييم أو الشهادة.",
+      "id": "obs6"
+     }
+    ]
+   },
+   {
+    "id": "s7",
+    "title": "Competitions & Events",
+    "title_ar": "البطولات والفعاليات",
+    "intro": "Entering tournaments, hosting them, and everything in between.",
+    "intro_ar": "المشاركة في البطولات واستضافتها، وكل ما بينهما.",
+    "fields": [
+     {
+      "key": "q35",
+      "label": "Do you take members to competitions?",
+      "label_ar": "هل تشاركون بأعضائكم في البطولات؟",
+      "type": "radio",
+      "options": [
+       {
+        "value": "often",
+        "label": "Often",
+        "label_ar": "كثيراً"
+       },
+       {
+        "value": "sometimes",
+        "label": "Sometimes",
+        "label_ar": "أحياناً"
+       },
+       {
+        "value": "never",
+        "label": "Never",
+        "label_ar": "أبداً"
+       }
+      ],
+      "note": true,
+      "id": "q35"
+     },
+     {
+      "key": "q36",
+      "label": "Do you host your own events (tournaments, open days, camps)?",
+      "label_ar": "هل تستضيفون فعالياتكم الخاصة (بطولات، أيام مفتوحة، معسكرات)؟",
+      "type": "radio",
+      "options": [
+       {
+        "value": "yes",
+        "label": "Yes",
+        "label_ar": "نعم"
+       },
+       {
+        "value": "no",
+        "label": "No",
+        "label_ar": "لا"
+       },
+       {
+        "value": "sometimes",
+        "label": "Sometimes",
+        "label_ar": "أحياناً"
+       }
+      ],
+      "note": true,
+      "id": "q36"
+     },
+     {
+      "key": "q37",
+      "label": "What is hardest about competition days?",
+      "label_ar": "ما الأصعب في أيام البطولات؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "collecting-entries-fees",
+        "label": "Collecting entries & fees",
+        "label_ar": "جمع التسجيلات والرسوم"
+       },
+       {
+        "value": "weights-categories",
+        "label": "Weights & categories",
+        "label_ar": "الأوزان والفئات"
+       },
+       {
+        "value": "the-draw-brackets",
+        "label": "The draw / brackets",
+        "label_ar": "القرعة / الجداول"
+       },
+       {
+        "value": "scoring",
+        "label": "Scoring",
+        "label_ar": "التحكيم والنقاط"
+       },
+       {
+        "value": "running-order",
+        "label": "Running order",
+        "label_ar": "ترتيب النزالات"
+       },
+       {
+        "value": "results-certificates",
+        "label": "Results & certificates",
+        "label_ar": "النتائج والشهادات"
+       },
+       {
+        "value": "filming-bouts",
+        "label": "Filming bouts",
+        "label_ar": "تصوير النزالات"
+       }
+      ],
+      "other": true,
+      "id": "q37"
+     },
+     {
+      "key": "q38",
+      "label": "How much would members value videos of their own bouts?",
+      "label_ar": "ما مدى تقدير الأعضاء لمقاطع فيديو لنزالاتهم؟",
+      "type": "scale",
+      "min": 1,
+      "max": 5,
+      "low": "Not at all",
+      "low_ar": "لا يهم",
+      "high": "A lot",
+      "high_ar": "كثيراً",
+      "note": true,
+      "id": "q38"
+     },
+     {
+      "key": "q39",
+      "label": "Which federation or body do you deal with, and what do they ask you for?",
+      "label_ar": "مع أي اتحاد أو جهة تتعاملون، وماذا يطلبون منكم؟",
+      "type": "textarea",
+      "rows": 2,
+      "id": "q39"
+     },
+     {
+      "key": "obs7",
+      "type": "note",
+      "private": true,
+      "label": "Interviewer observations",
+      "label_ar": "ملاحظات المحاور",
+      "help": "Ask about the last tournament they entered: how long did the entry list take?",
+      "help_ar": "اسأل عن آخر بطولة شاركوا فيها: كم استغرق إعداد قائمة المشاركين؟",
+      "id": "obs7"
+     }
+    ]
+   },
+   {
+    "id": "s8",
+    "title": "Staff, Roles & Ownership",
+    "title_ar": "الموظفون والصلاحيات والملكية",
+    "intro": "Who may see what, who may change what — and who signs off on money.",
+    "intro_ar": "من يرى ماذا، ومن يغيّر ماذا — ومن يعتمد الأمور المالية.",
+    "fields": [
+     {
+      "key": "q40",
+      "label": "Who should be able to use the system?",
+      "label_ar": "من يجب أن يستخدم النظام؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "owner",
+        "label": "Owner",
+        "label_ar": "المالك"
+       },
+       {
+        "value": "partners",
+        "label": "Partners",
+        "label_ar": "الشركاء"
+       },
+       {
+        "value": "manager",
+        "label": "Manager",
+        "label_ar": "المدير"
+       },
+       {
+        "value": "coaches",
+        "label": "Coaches",
+        "label_ar": "المدربون"
+       },
+       {
+        "value": "receptionist",
+        "label": "Receptionist",
+        "label_ar": "الاستقبال"
+       },
+       {
+        "value": "accountant",
+        "label": "Accountant",
+        "label_ar": "المحاسب"
+       },
+       {
+        "value": "parents",
+        "label": "Parents",
+        "label_ar": "أولياء الأمور"
+       },
+       {
+        "value": "members",
+        "label": "Members",
+        "label_ar": "الأعضاء"
+       }
+      ],
+      "other": true,
+      "id": "q40"
+     },
+     {
+      "key": "q41",
+      "label": "What should coaches be allowed to do — and NOT do? (e.g. see fees, edit members, take payments)",
+      "label_ar": "ما المسموح للمدربين — وما غير المسموح؟ (مثل رؤية الرسوم، تعديل الأعضاء، استلام المدفوعات)",
+      "type": "textarea",
+      "rows": 3,
+      "id": "q41"
+     },
+     {
+      "key": "q42",
+      "label": "More than one owner or branch?",
+      "label_ar": "أكثر من مالك أو فرع؟",
+      "type": "radio",
+      "options": [
+       {
+        "value": "single-owner",
+        "label": "Single owner",
+        "label_ar": "مالك واحد"
+       },
+       {
+        "value": "partners",
+        "label": "Partners",
+        "label_ar": "شركاء"
+       },
+       {
+        "value": "several-branches",
+        "label": "Several branches",
+        "label_ar": "عدة فروع"
+       },
+       {
+        "value": "both",
+        "label": "Both",
+        "label_ar": "كلاهما"
+       }
+      ],
+      "note": true,
+      "id": "q42"
+     },
+     {
+      "key": "q43",
+      "label": "Do you sell uniforms, equipment or merchandise?",
+      "label_ar": "هل تبيعون الزي أو المعدات أو منتجات النادي؟",
+      "type": "radio",
+      "options": [
+       {
+        "value": "yes",
+        "label": "Yes",
+        "label_ar": "نعم"
+       },
+       {
+        "value": "no",
+        "label": "No",
+        "label_ar": "لا"
+       },
+       {
+        "value": "sometimes",
+        "label": "Sometimes",
+        "label_ar": "أحياناً"
+       }
+      ],
+      "note": true,
+      "id": "q43"
+     },
+     {
+      "key": "obs8",
+      "type": "note",
+      "private": true,
+      "label": "Interviewer observations",
+      "label_ar": "ملاحظات المحاور",
+      "help": "Ask: \"Is there anything a coach should NEVER be able to see?\"",
+      "help_ar": "اسأل: «هل هناك ما لا ينبغي للمدرب أن يراه أبداً؟»",
+      "id": "obs8"
+     }
+    ]
+   },
+   {
+    "id": "s9",
+    "title": "Devices, Trust & Priorities",
+    "title_ar": "الأجهزة والثقة والأولويات",
+    "intro": "What they will actually use, what would stop them, and what matters most.",
+    "intro_ar": "ما سيستخدمونه فعلاً، وما قد يمنعهم، وما الأهم لديهم.",
+    "fields": [
+     {
+      "key": "q44",
+      "label": "Which devices would you use to run the club?",
+      "label_ar": "ما الأجهزة التي ستستخدمونها لإدارة النادي؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "iphone",
+        "label": "iPhone",
+        "label_ar": "آيفون"
+       },
+       {
+        "value": "android-phone",
+        "label": "Android phone",
+        "label_ar": "هاتف أندرويد"
+       },
+       {
+        "value": "tablet-at-reception",
+        "label": "Tablet at reception",
+        "label_ar": "جهاز لوحي في الاستقبال"
+       },
+       {
+        "value": "laptop-pc",
+        "label": "Laptop / PC",
+        "label_ar": "حاسوب"
+       },
+       {
+        "value": "tv-screen-in-the-hall",
+        "label": "TV screen in the hall",
+        "label_ar": "شاشة في القاعة"
+       }
+      ],
+      "other": false,
+      "id": "q44"
+     },
+     {
+      "key": "q45",
+      "label": "What would make you hesitate to move to a new system?",
+      "label_ar": "ما الذي قد يجعلكم تترددون في الانتقال لنظام جديد؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "price",
+        "label": "Price",
+        "label_ar": "السعر"
+       },
+       {
+        "value": "time-to-set-up",
+        "label": "Time to set up",
+        "label_ar": "وقت الإعداد"
+       },
+       {
+        "value": "moving-old-data",
+        "label": "Moving old data",
+        "label_ar": "نقل البيانات القديمة"
+       },
+       {
+        "value": "staff-training",
+        "label": "Staff training",
+        "label_ar": "تدريب الموظفين"
+       },
+       {
+        "value": "data-privacy",
+        "label": "Data privacy",
+        "label_ar": "خصوصية البيانات"
+       },
+       {
+        "value": "parents-won-t-use-it",
+        "label": "Parents won’t use it",
+        "label_ar": "أولياء الأمور لن يستخدموه"
+       },
+       {
+        "value": "internet-at-the-club",
+        "label": "Internet at the club",
+        "label_ar": "الإنترنت في النادي"
+       }
+      ],
+      "other": true,
+      "id": "q45"
+     },
+     {
+      "key": "q46",
+      "label": "How would you prefer to pay for a system like this?",
+      "label_ar": "كيف تفضّلون الدفع مقابل نظام كهذا؟",
+      "type": "radio",
+      "options": [
+       {
+        "value": "monthly",
+        "label": "Monthly",
+        "label_ar": "شهرياً"
+       },
+       {
+        "value": "yearly",
+        "label": "Yearly",
+        "label_ar": "سنوياً"
+       },
+       {
+        "value": "per-member",
+        "label": "Per member",
+        "label_ar": "لكل عضو"
+       },
+       {
+        "value": "one-time",
+        "label": "One-time",
+        "label_ar": "مرة واحدة"
+       }
+      ],
+      "note": true,
+      "id": "q46"
+     },
+     {
+      "key": "q47",
+      "label": "Roughly what monthly amount would feel fair — if it saved you real time?",
+      "label_ar": "ما المبلغ الشهري الذي ترونه عادلاً تقريباً — إن وفّر عليكم وقتاً حقيقياً؟",
+      "type": "textarea",
+      "rows": 1,
+      "id": "q47"
+     },
+     {
+      "key": "obs9",
+      "type": "note",
+      "private": true,
+      "label": "Interviewer observations",
+      "label_ar": "ملاحظات المحاور",
+      "help": "Notice which phone the owner carries and whether they use apps in Arabic or English.",
+      "help_ar": "لاحظ أي هاتف يستخدمه المالك، وهل يستخدم التطبيقات بالعربية أم بالإنجليزية.",
+      "id": "obs9"
+     }
+    ]
+   },
+   {
+    "id": "priorities",
+    "title": "What matters most",
+    "title_ar": "ما الأهم لديكم",
+    "intro": "One answer per line, then pick the five that matter most.",
+    "intro_ar": "إجابة واحدة لكل سطر، ثم اختر الخمسة الأهم.",
+    "fields": [
+     {
+      "key": "grid",
+      "type": "grid",
+      "required": true,
+      "label": "For each one: must have, nice to have, or not needed?",
+      "label_ar": "لكل ميزة: ضرورية، جيدة، أم غير مطلوبة؟",
+      "rows": [
+       {
+        "value": "f01",
+        "label": "Online & QR self-registration",
+        "label_ar": "التسجيل الذاتي عبر الإنترنت ورمز QR"
+       },
+       {
+        "value": "f02",
+        "label": "Family accounts (one parent, many children)",
+        "label_ar": "حسابات عائلية (ولي أمر واحد لعدة أبناء)"
+       },
+       {
+        "value": "f03",
+        "label": "Packages, class schedule & capacity",
+        "label_ar": "الباقات وجدول الحصص والسعة"
+       },
+       {
+        "value": "f04",
+        "label": "Attendance check-in (QR / tablet)",
+        "label_ar": "تسجيل الحضور (QR / جهاز لوحي)"
+       },
+       {
+        "value": "f05",
+        "label": "Automatic payment reminders",
+        "label_ar": "تذكير تلقائي بالدفع"
+       },
+       {
+        "value": "f06",
+        "label": "Upload proof of payment, admin approves",
+        "label_ar": "رفع إثبات الدفع واعتماد الإدارة"
+       },
+       {
+        "value": "f07",
+        "label": "Invoices & receipts",
+        "label_ar": "الفواتير والإيصالات"
+       },
+       {
+        "value": "f08",
+        "label": "Freeze / pause a subscription",
+        "label_ar": "تجميد / إيقاف الاشتراك مؤقتاً"
+       },
+       {
+        "value": "f09",
+        "label": "Sibling & special discounts",
+        "label_ar": "خصومات الإخوة والعروض الخاصة"
+       },
+       {
+        "value": "f10",
+        "label": "Installment plans",
+        "label_ar": "خطط الدفع بالتقسيط"
+       },
+       {
+        "value": "f11",
+        "label": "Income, expenses & monthly report",
+        "label_ar": "الإيرادات والمصاريف والتقرير الشهري"
+       },
+       {
+        "value": "f12",
+        "label": "Coach pay / per-class payroll",
+        "label_ar": "رواتب المدربين / الدفع بالحصة"
+       },
+       {
+        "value": "f13",
+        "label": "WhatsApp notifications",
+        "label_ar": "إشعارات واتساب"
+       },
+       {
+        "value": "f14",
+        "label": "Belt tests & grading certificates",
+        "label_ar": "اختبارات الأحزمة وشهادات الترفيع"
+       },
+       {
+        "value": "f15",
+        "label": "Progress reports for parents",
+        "label_ar": "تقارير تقدّم لأولياء الأمور"
+       },
+       {
+        "value": "f16",
+        "label": "Tournament entry & brackets",
+        "label_ar": "التسجيل في البطولات والقرعة"
+       },
+       {
+        "value": "f17",
+        "label": "Bout video & highlights",
+        "label_ar": "فيديو النزالات وأبرز اللقطات"
+       },
+       {
+        "value": "f18",
+        "label": "Club shop (uniforms, equipment)",
+        "label_ar": "متجر النادي (زي، معدات)"
+       },
+       {
+        "value": "f19",
+        "label": "Staff roles & permissions",
+        "label_ar": "أدوار الموظفين وصلاحياتهم"
+       },
+       {
+        "value": "f20",
+        "label": "Member app in Arabic",
+        "label_ar": "تطبيق الأعضاء بالعربية"
+       },
+       {
+        "value": "f21",
+        "label": "Public club page & gallery",
+        "label_ar": "صفحة النادي العامة والمعرض"
+       },
+       {
+        "value": "f22",
+        "label": "Several branches in one account",
+        "label_ar": "عدة فروع في حساب واحد"
+       }
+      ],
+      "columns": [
+       {
+        "value": "must",
+        "label": "Must",
+        "label_ar": "ضرورية"
+       },
+       {
+        "value": "nice",
+        "label": "Nice",
+        "label_ar": "جيدة"
+       },
+       {
+        "value": "no",
+        "label": "No need",
+        "label_ar": "غير لازمة"
+       }
+      ],
+      "id": "grid"
+     },
+     {
+      "key": "top5",
+      "type": "rank",
+      "max": 5,
+      "from": "grid",
+      "fromValue": "must",
+      "rows": [
+       {
+        "value": "f01",
+        "label": "Online & QR self-registration",
+        "label_ar": "التسجيل الذاتي عبر الإنترنت ورمز QR"
+       },
+       {
+        "value": "f02",
+        "label": "Family accounts (one parent, many children)",
+        "label_ar": "حسابات عائلية (ولي أمر واحد لعدة أبناء)"
+       },
+       {
+        "value": "f03",
+        "label": "Packages, class schedule & capacity",
+        "label_ar": "الباقات وجدول الحصص والسعة"
+       },
+       {
+        "value": "f04",
+        "label": "Attendance check-in (QR / tablet)",
+        "label_ar": "تسجيل الحضور (QR / جهاز لوحي)"
+       },
+       {
+        "value": "f05",
+        "label": "Automatic payment reminders",
+        "label_ar": "تذكير تلقائي بالدفع"
+       },
+       {
+        "value": "f06",
+        "label": "Upload proof of payment, admin approves",
+        "label_ar": "رفع إثبات الدفع واعتماد الإدارة"
+       },
+       {
+        "value": "f07",
+        "label": "Invoices & receipts",
+        "label_ar": "الفواتير والإيصالات"
+       },
+       {
+        "value": "f08",
+        "label": "Freeze / pause a subscription",
+        "label_ar": "تجميد / إيقاف الاشتراك مؤقتاً"
+       },
+       {
+        "value": "f09",
+        "label": "Sibling & special discounts",
+        "label_ar": "خصومات الإخوة والعروض الخاصة"
+       },
+       {
+        "value": "f10",
+        "label": "Installment plans",
+        "label_ar": "خطط الدفع بالتقسيط"
+       },
+       {
+        "value": "f11",
+        "label": "Income, expenses & monthly report",
+        "label_ar": "الإيرادات والمصاريف والتقرير الشهري"
+       },
+       {
+        "value": "f12",
+        "label": "Coach pay / per-class payroll",
+        "label_ar": "رواتب المدربين / الدفع بالحصة"
+       },
+       {
+        "value": "f13",
+        "label": "WhatsApp notifications",
+        "label_ar": "إشعارات واتساب"
+       },
+       {
+        "value": "f14",
+        "label": "Belt tests & grading certificates",
+        "label_ar": "اختبارات الأحزمة وشهادات الترفيع"
+       },
+       {
+        "value": "f15",
+        "label": "Progress reports for parents",
+        "label_ar": "تقارير تقدّم لأولياء الأمور"
+       },
+       {
+        "value": "f16",
+        "label": "Tournament entry & brackets",
+        "label_ar": "التسجيل في البطولات والقرعة"
+       },
+       {
+        "value": "f17",
+        "label": "Bout video & highlights",
+        "label_ar": "فيديو النزالات وأبرز اللقطات"
+       },
+       {
+        "value": "f18",
+        "label": "Club shop (uniforms, equipment)",
+        "label_ar": "متجر النادي (زي، معدات)"
+       },
+       {
+        "value": "f19",
+        "label": "Staff roles & permissions",
+        "label_ar": "أدوار الموظفين وصلاحياتهم"
+       },
+       {
+        "value": "f20",
+        "label": "Member app in Arabic",
+        "label_ar": "تطبيق الأعضاء بالعربية"
+       },
+       {
+        "value": "f21",
+        "label": "Public club page & gallery",
+        "label_ar": "صفحة النادي العامة والمعرض"
+       },
+       {
+        "value": "f22",
+        "label": "Several branches in one account",
+        "label_ar": "عدة فروع في حساب واحد"
+       }
+      ],
+      "label": "Your top 5, most important first",
+      "label_ar": "أهم خمسة لديكم، الأهم أولاً",
+      "help": "Tap in order. Tap again to remove.",
+      "help_ar": "اضغط بالترتيب. اضغط مرة أخرى للإزالة.",
+      "id": "top5"
+     },
+     {
+      "key": "grid_other",
+      "type": "text",
+      "label": "Something missing from this list?",
+      "label_ar": "شيء غير موجود في القائمة؟",
+      "id": "grid_other"
+     }
+    ]
+   },
+   {
+    "id": "speak",
+    "title": "Speak your mind",
+    "title_ar": "قل رأيك بحرية",
+    "intro": "In your own words. These only start the conversation.",
+    "intro_ar": "بكلماتكم. هذه الأسئلة لبدء الحديث فقط.",
+    "fields": [
+     {
+      "key": "speak1",
+      "type": "textarea",
+      "rows": 4,
+      "label": "If you could fix ONE thing about running your club tomorrow, what would it be?",
+      "label_ar": "لو استطعت إصلاح شيء واحد في إدارة ناديك غداً، ماذا سيكون؟",
+      "id": "speak1"
+     },
+     {
+      "key": "speak2",
+      "type": "textarea",
+      "rows": 4,
+      "label": "Tell me about the worst week you had running the club. What went wrong?",
+      "label_ar": "حدّثني عن أسوأ أسبوع مرّ عليك في إدارة النادي. ما الذي حدث؟",
+      "id": "speak2"
+     },
+     {
+      "key": "speak3",
+      "type": "textarea",
+      "rows": 4,
+      "label": "What do parents and members complain about most?",
+      "label_ar": "ما أكثر ما يشتكي منه أولياء الأمور والأعضاء؟",
+      "id": "speak3"
+     },
+     {
+      "key": "speak4",
+      "type": "textarea",
+      "rows": 4,
+      "label": "What would a “dream system” do for you that nothing does today?",
+      "label_ar": "ماذا سيفعل لك «النظام المثالي» مما لا يفعله شيء اليوم؟",
+      "id": "speak4"
+     },
+     {
+      "key": "speak5",
+      "type": "textarea",
+      "rows": 4,
+      "label": "Is there anything we did not ask that we should have?",
+      "label_ar": "هل هناك شيء لم نسأل عنه وكان ينبغي أن نسأل؟",
+      "id": "speak5"
+     },
+     {
+      "key": "free",
+      "type": "textarea",
+      "rows": 8,
+      "label": "Anything else, in their own words",
+      "label_ar": "أي شيء آخر، بكلماتهم",
+      "id": "free"
+     }
+    ]
+   },
+   {
+    "id": "summary",
+    "title": "Visit summary",
+    "title_ar": "ملخص الزيارة",
+    "private": true,
+    "intro": "After the visit. Only the TAKEONE team sees this page.",
+    "intro_ar": "بعد الزيارة. هذه الصفحة يراها فريق تيك ون فقط.",
+    "fields": [
+     {
+      "key": "sum_pains",
+      "type": "textarea",
+      "rows": 4,
+      "label": "The three biggest pains you heard",
+      "label_ar": "أكبر ثلاث مشكلات سمعتها",
+      "id": "sum_pains"
+     },
+     {
+      "key": "sum_quote",
+      "type": "textarea",
+      "rows": 2,
+      "label": "Their best quote, word for word",
+      "label_ar": "أفضل عبارة قالوها، حرفياً",
+      "id": "sum_quote"
+     },
+     {
+      "key": "sum_missing",
+      "type": "textarea",
+      "rows": 3,
+      "label": "Features they asked for that we don’t have",
+      "label_ar": "ميزات طلبوها وليست لدينا",
+      "id": "sum_missing"
+     },
+     {
+      "key": "sum_next",
+      "type": "text",
+      "label": "Next step agreed",
+      "label_ar": "الخطوة التالية المتفق عليها",
+      "id": "sum_next"
+     },
+     {
+      "key": "score_interest",
+      "type": "scale",
+      "min": 1,
+      "max": 5,
+      "label": "Interest",
+      "label_ar": "الاهتمام",
+      "low": "Low",
+      "low_ar": "منخفض",
+      "high": "High",
+      "high_ar": "مرتفع",
+      "id": "score_interest"
+     },
+     {
+      "key": "score_tech",
+      "type": "scale",
+      "min": 1,
+      "max": 5,
+      "label": "Comfort with technology",
+      "label_ar": "الراحة مع التقنية",
+      "low": "Low",
+      "low_ar": "منخفض",
+      "high": "High",
+      "high_ar": "مرتفع",
+      "id": "score_tech"
+     },
+     {
+      "key": "score_urgency",
+      "type": "scale",
+      "min": 1,
+      "max": 5,
+      "label": "Urgency",
+      "label_ar": "مدى الإلحاح",
+      "low": "Low",
+      "low_ar": "منخفض",
+      "high": "High",
+      "high_ar": "مرتفع",
+      "id": "score_urgency"
+     },
+     {
+      "key": "pilot",
+      "type": "radio",
+      "label": "Pilot club?",
+      "label_ar": "نادٍ تجريبي؟",
+      "options": [
+       {
+        "value": "yes",
+        "label": "Yes",
+        "label_ar": "نعم"
+       },
+       {
+        "value": "no",
+        "label": "No",
+        "label_ar": "لا"
+       }
+      ],
+      "id": "pilot"
+     },
+     {
+      "key": "followup",
+      "type": "text",
+      "label": "Follow-up date",
+      "label_ar": "موعد المتابعة",
+      "id": "followup"
+     }
+    ]
+   }
+  ]
+ }
+}

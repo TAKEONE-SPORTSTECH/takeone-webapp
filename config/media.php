@@ -95,4 +95,28 @@ return [
     'max_clip_bytes' => (int) env('MEDIA_MAX_CLIP_BYTES', 8 * 1024 * 1024 * 1024),
     'max_chunk_bytes' => (int) env('MEDIA_MAX_CHUNK_BYTES', 8 * 1024 * 1024),
 
+    /*
+    | A bout rendered for sending (App\Media\BoutShare) — WhatsApp and every
+    | other app that will never have the bout page's player. The score bar is
+    | burned into the picture, the points become chapters, and the file is cut
+    | down to what a phone can send and play: H.264 (WhatsApp re-compresses
+    | anything else, which would throw away the quality kept here), at most
+    | 1080p and 30 fps, capped bitrate, fast-start.
+    |
+    | Two kinds: the whole bout, and the highlights (each scoring moment with
+    | `before`/`after` seconds around it, overlapping windows merged).
+    |
+    | OFF by default (RULE #1). MEDIA_SHARE_EXPORT=true, then config:cache.
+    */
+    'share_export' => [
+        'enabled' => (bool) env('MEDIA_SHARE_EXPORT', false),
+        'max_height' => 1080,
+        'fps' => 30,
+        'crf' => 25,
+        'bitrate' => '3500k',
+        'maxrate' => '4500k',
+        'highlight_before' => 6,
+        'highlight_after' => 3,
+    ],
+
 ];

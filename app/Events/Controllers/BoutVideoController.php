@@ -140,6 +140,12 @@ class BoutVideoController extends Controller
              * verbatim — only the values change.
              */
             'play' => $this->playPayload($event, $match, $timeline, $notes, $angles),
+            // The bout's stat sheet (statsPdf) — offered only when the mat
+            // logged something to read and the PDF engine is installed, so the
+            // control never leads to a 404.
+            'stats_pdf_url' => \App\Events\Support\BracketPdf::available() && app(\App\Media\BoutStats::class)->for($match) !== null
+                ? route('me.events.bout.stats.pdf', ['event' => $event->uuid, 'matchNo' => $matchNo])
+                : null,
         ]);
     }
 
@@ -474,6 +480,116 @@ class BoutVideoController extends Controller
     }
 
     /* ──────────────────────────────────────────────────────────────────────
+     | Sending the bout out — WhatsApp and every other app (App\Media\BoutShare)
+     ────────────────────────────────────────────────────────────────────── */
+
+    /**
+     * Where the file for this bout stands. Cheap, starts nothing.
+     *
+     * Same door as watching: whoever may watch this bout may send it — they can
+     * already screen-record the page, and the file carries nothing the page
+     * does not show them.
+     */
+    public function shareStatus(Request $request, ClubEvent $event, int $matchNo, string $kind): JsonResponse
+    {
+        [$match, $media, $msb, $duration] = $this->shareSubject($event, $matchNo, $kind);
+        $share = app(\App\Media\BoutShare::class);
+
+        return response()->json($this->sharePayload($event, $match, $kind, $msb, $duration, $share->status($media, $kind, $msb)));
+    }
+
+    /** Ask for the file. Idempotent — a made or making file is answered as it stands. */
+    public function shareRequest(Request $request, ClubEvent $event, int $matchNo, string $kind): JsonResponse
+    {
+        [$match, $media, $msb, $duration] = $this->shareSubject($event, $matchNo, $kind);
+        $share = app(\App\Media\BoutShare::class);
+        $me = Auth::user();
+
+        $status = $share->request($media, $kind, $msb, $share->title($msb, (string) $event->title), [
+            'event' => $event->uuid,
+            'match_no' => $match->match_no,
+            'user_id' => $me->id,
+        ]);
+
+        // Footage leaving the platform is worth a line in the trail: who, which
+        // bout, which cut.
+        rescue(fn () => activity()
+            ->performedOn($event)
+            ->causedBy($me)
+            ->withProperties(['match_no' => $matchNo, 'kind' => $kind])
+            ->log('bout_video_shared'), null, false);
+
+        return response()->json($this->sharePayload($event, $match, $kind, $msb, $duration, $status));
+    }
+
+    /** The finished file, through the same check as everything else here. */
+    public function shareFile(Request $request, ClubEvent $event, int $matchNo, string $kind)
+    {
+        [$match, $media, $msb] = $this->shareSubject($event, $matchNo, $kind);
+        $share = app(\App\Media\BoutShare::class);
+
+        $path = $share->file($media, $kind, $msb);
+        abort_if($path === null, 404);
+
+        return response()->download($path, $share->filename($msb, $kind, $match->match_no), [
+            'Content-Type' => 'video/mp4',
+            'Cache-Control' => 'private, no-store',
+        ]);
+    }
+
+    /**
+     * The bout, its footage and its score bar — or a 404 for anything the
+     * viewer may not have, the feature being off, or nothing to send.
+     *
+     * @return array{0: EventMatch, 1: \App\Media\Models\MediaFile, 2: array, 3: int}
+     */
+    private function shareSubject(ClubEvent $event, int $matchNo, string $kind): array
+    {
+        $share = app(\App\Media\BoutShare::class);
+        abort_unless($share->enabled(), 404);
+
+        $match = $this->boutOr404($event, $matchNo);
+        abort_unless($this->mayWatch($event, $match, Auth::user()), 404);
+
+        $recording = $this->film->recordings($match)->first();
+        $media = $recording?->mediaFile;
+        abort_if($media === null, 404);
+
+        // The same scoreboard the page draws, from the Media module's public
+        // builder — so the MCP and these doors hash one identical payload.
+        $msb = app(\App\Media\BoutScoreboard::class)->for($event, $match, $recording);
+        $angles = $this->film->angles($match);
+        $duration = (int) ($angles[0]['duration'] ?? $media->duration_seconds ?? 0);
+
+        abort_unless($share->possible($kind, $msb, $duration), 404);
+
+        return [$match, $media, $msb, $duration];
+    }
+
+    /** What the page's send sheet needs — never a path, only doors that re-check. */
+    private function sharePayload(ClubEvent $event, EventMatch $match, string $kind, array $msb, int $duration, array $status): array
+    {
+        $share = app(\App\Media\BoutShare::class);
+        $params = ['event' => $event->uuid, 'matchNo' => $match->match_no, 'kind' => $kind];
+
+        return [
+            'success' => true,
+            'kind' => $kind,
+            'state' => $status['state'],
+            'bytes' => $status['bytes'],
+            'error' => $status['state'] === 'failed' ? __('events::events.bout_share_failed') : null,
+            'file' => $status['state'] === 'ready' ? route('me.events.bout.video.share.file', $params) : null,
+            'filename' => $share->filename($msb, $kind, $match->match_no),
+            'message' => $share->message(
+                $msb,
+                $share->title($msb, (string) $event->title),
+                $duration,
+                route('me.events.bout.video', ['event' => $event->uuid, 'matchNo' => $match->match_no]),
+            ),
+        ];
+    }
+
+    /* ──────────────────────────────────────────────────────────────────────
      | Coach notes
      ────────────────────────────────────────────────────────────────────── */
 
@@ -766,6 +882,87 @@ class BoutVideoController extends Controller
             'uuid' => $comment->uuid,
             'liked' => ! $existing,
             'likes' => $comment->likes()->count(),
+        ]);
+    }
+
+    /* ──────────────────────────────────────────────────────────────────────
+     | The bout's stat sheet, as a PDF
+     ────────────────────────────────────────────────────────────────────── */
+
+    /**
+     * One bout's statistics (App\Media\BoutStats) as a two-page PDF in the
+     * competition report's analytics dress. Whoever may WATCH the bout may
+     * download its sheet — it says nothing the bout page and its highlights
+     * bar do not already show. Faces only where the athlete chose to show
+     * theirs; pictures are read through FileAccess for this viewer.
+     */
+    public function statsPdf(Request $request, ClubEvent $event, int $matchNo)
+    {
+        $me = Auth::user();
+        $match = $this->boutOr404($event, $matchNo);
+
+        abort_unless($this->mayWatch($event, $match, $me), 404);
+        abort_unless(\App\Events\Support\BracketPdf::available(), 404);
+
+        $stats = app(\App\Media\BoutStats::class)->for($match);
+
+        abort_if($stats === null, 404);
+
+        $pdf = app(\App\Events\Support\BracketPdf::class);
+        $sport = $this->sports->get($event->sport);
+        $labels = $sport?->cornerLabels() ?? ['red' => __('events::events.corner_red'), 'blue' => __('events::events.corner_blue')];
+        $host = $event->host();
+
+        $corners = [];
+        foreach (['a', 'b'] as $side) {
+            $reg = $side === 'a' ? $match->competitorA : $match->competitorB;
+            $user = $reg?->user;
+            $colour = $side === 'a' ? ($match->a_corner === 'blue' ? 'blue' : 'red') : ($match->b_corner === 'red' ? 'red' : 'blue');
+            $club = $reg?->competingClub();
+            $silhouette = in_array(strtolower((string) $user?->gender), ['f', 'female'], true) ? 'female' : 'male';
+            $corners[$colour] = [
+                'label' => $labels[$colour] ?? ucfirst($colour),
+                'name' => (string) $match->{$side.'_name'},
+                'club' => $club?->club_name,
+                'logo' => $club?->logo ? $pdf->dataUri(file_url($club->logo), $me, maxPx: 120) : null,
+                'iso' => \App\Support\Flag::iso2($reg?->countryCode() ?: $match->{$side.'_country'}),
+                'face' => ($user?->profile_picture && $user->profile_picture_is_public)
+                    ? $pdf->dataUri(file_url($user->profile_picture), $me, maxPx: 300)
+                    : null,
+                'fallback' => 'file://'.public_path(is_file(public_path("images/avatars/{$silhouette}.jpg"))
+                    ? "images/avatars/{$silhouette}.jpg"
+                    : "images/avatars/{$silhouette}.svg"),
+            ];
+        }
+
+        $values = [];
+        foreach ([1, 2, 3, 4] as $n) {
+            $values[$n] = ($sport?->scoreLabel($n) ?: $n.' pt').' ('.$n.')';
+        }
+
+        $heading = collect([
+            $match->match_no !== null ? 'Match '.$match->match_no : null,
+            BoutStage::label($match),
+        ])->filter()->implode(' · ');
+
+        $html = view('media::stats.bout-pdf', [
+            'stats' => $stats,
+            'corners' => $corners,
+            'values' => $values,
+            'heading' => $heading ?: 'Bout',
+            'title' => collect([$event->title, $match->category?->name])->filter()->implode(' · '),
+            'host' => (string) ($host->name ?? ''),
+            'date' => $event->date ? \App\Support\Cldr::dayMonth($event->date).' '.$event->date->format('Y') : '',
+            'hostLogo' => ($logo = $host->logo) ? $pdf->dataUri(file_url($logo), $me, original: true, maxPx: 320) : null,
+            'flagCss' => 'file://'.public_path('images/flags/flag-icons.css'),
+        ])->render();
+
+        $name = \Illuminate\Support\Str::slug(($event->title ?: 'bout').'-match-'.($match->match_no ?? $match->id).'-stats') ?: 'bout-stats';
+
+        return response($pdf->render($html), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$name.'.pdf"',
+            'Cache-Control' => 'private, no-store',
         ]);
     }
 

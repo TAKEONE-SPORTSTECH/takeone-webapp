@@ -288,6 +288,27 @@
       return;
     }
 
+    // The platform's photo guide or VS layout changed (Settings → Photo guide
+    // / VS screen; App\Scoreboard\Support\{PhotoGuide,VsLayout}). Patched in
+    // place on whatever this page is — a wall screen moves the competitors'
+    // details, a console redraws its crop guide and VS previews — so a bout
+    // on screen is never interrupted. Numbers only, checked before use.
+    if (msg.action === 'look') {
+      var num = function (v, lo, hi) { v = parseFloat(v); return isFinite(v) ? Math.min(hi, Math.max(lo, v)) : null; };
+      var vs = msg.vs || {}, b = num(vs.info_bottom, 0, 700), k = num(vs.info_scale, 0.5, 1.3);
+      if (b !== null && k !== null) {
+        var layers = Array.prototype.slice.call(document.querySelectorAll('.vsprev:not([data-own])'));
+        var wall = document.getElementById('vs');
+        if (wall) layers.push(wall);
+        layers.forEach(function (el) { el.style.setProperty('--vs-info-bottom', b + 'px'); el.style.setProperty('--vs-info-scale', k); });
+      }
+      if (vs.show_stats !== undefined && document.getElementById('vs')) {
+        document.getElementById('vs').setAttribute('data-stats', +vs.show_stats ? '1' : '0');
+      }
+      if (msg.guide && window.PhotoGuide && typeof window.PhotoGuide.apply === 'function') window.PhotoGuide.apply(msg.guide);
+      return;
+    }
+
     if (msg.action === 'paired' || msg.action === 'unpaired' || msg.action === 'reload') {
       // Never throw a scoring table's page away mid-bout to fix a screen
       // across the hall — the console re-reads itself instead.

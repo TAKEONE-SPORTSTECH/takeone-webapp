@@ -12,7 +12,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 {{-- Our own light page: never let a browser, WebView or extension force-darken it (see layouts/tailwind). --}}
-<meta name="color-scheme" content="light">
+<meta name="color-scheme" content="only light">
 <meta name="darkreader-lock">
 <style>html { color-scheme: only light; }</style>
 <title>{{ $title }} · Competition report</title>

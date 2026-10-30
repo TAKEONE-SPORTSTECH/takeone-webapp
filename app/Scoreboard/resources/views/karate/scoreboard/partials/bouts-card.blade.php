@@ -10,6 +10,9 @@
       MEMBER        type a name or a club, get every bout they are in
       ARCADE        pick a competitor on each side; the console finds the bout
                     the DRAW already has between them — it never invents one
+      EXHIBITIONS   organisers only: every exhibition fought here, the draw
+                    bouts each could really have been, and the link that files
+                    its result into one (App\Events\Support\ExhibitionLink)
 
     Shared by every Karate console (the five styles and the default), so it is
     written once here rather than six times. Read-only end to end: the three
@@ -88,6 +91,122 @@
   #bouts .arcfight:disabled{cursor:not-allowed;}
   #bouts .arcsay{font-size:19px;color:var(--faint);text-align:center;line-height:1.35;}
 
+  /* Exhibitions — each fought exhibition, with the draw bouts it could be.
+     One card each: a status rail down the leading edge, the fight drawn the
+     way the board draws it (AKA · score · AO), the bouts it could become,
+     then the card's actions in a footer. Every button is one .exbtn. */
+  #bouts .exbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex-shrink:0;}
+  #bouts .exbar .bhint{flex:1;min-width:0;}
+  #bouts .excard{--exind:128px;position:relative;flex-shrink:0;display:flex;flex-direction:column;gap:14px;
+          background:linear-gradient(180deg,#141726 0%,#10121c 100%);border:1px solid var(--line-2);
+          border-radius:16px;padding:18px 22px 18px 28px;
+          box-shadow:0 8px 24px rgba(0,0,0,.28);transition:border-color .15s ease;}
+  #bouts .excard::before{content:'';position:absolute;left:-1px;top:-1px;bottom:-1px;width:7px;
+          border-radius:16px 0 0 16px;background:var(--line-2);}
+  #bouts .excard.st-go::before{background:var(--gold);}
+  #bouts .excard.st-ok::before{background:var(--green);}
+  #bouts .excard.st-live::before{background:var(--aka-ink);}
+  #bouts .excard.open{border-color:rgba(255,225,53,.55);}
+  #bouts .exhead{display:grid;grid-template-columns:110px minmax(0,1fr) auto;align-items:center;gap:18px;}
+  #bouts .excode{font-family:'Anton',sans-serif;font-size:34px;color:var(--gold);line-height:1;}
+  #bouts .excode small{display:block;font-family:'Inter',system-ui,sans-serif;font-size:14px;color:var(--faint);
+          letter-spacing:.06em;margin-top:6px;}
+  /* The fight as a scoreboard strip: AKA left, the score plate, AO right. */
+  #bouts .expair{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:stretch;
+          background:var(--inset);border:1px solid var(--line);border-radius:12px;overflow:hidden;min-width:0;}
+  #bouts .exside{display:flex;align-items:center;gap:12px;padding:12px 18px;min-width:0;font-size:25px;
+          color:var(--muted);}
+  #bouts .exside.a{justify-content:flex-end;text-align:right;box-shadow:inset 5px 0 0 var(--aka);}
+  #bouts .exside.b{box-shadow:inset -5px 0 0 var(--ao);}
+  #bouts .exside .nm{overflow-wrap:anywhere;min-width:0;}
+  #bouts .exside.won{color:var(--text);font-weight:700;}
+  #bouts .exwin{width:28px;height:28px;border-radius:50%;flex:0 0 auto;display:inline-flex;align-items:center;
+          justify-content:center;font-size:16px;font-weight:800;color:#fff;}
+  #bouts .exside.a .exwin{background:var(--aka);}
+  #bouts .exside.b .exwin{background:var(--ao);}
+  #bouts .exscore{display:flex;align-items:center;gap:12px;padding:0 22px;background:var(--ink);white-space:nowrap;
+          border-left:1px solid var(--line);border-right:1px solid var(--line);
+          font-family:'Anton',sans-serif;font-size:34px;line-height:1;}
+  #bouts .exscore .a{color:var(--aka-ink);}
+  #bouts .exscore .b{color:var(--ao-ink);}
+  #bouts .exscore .sep{color:var(--faint);font-size:24px;}
+  #bouts .exchip{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:700;letter-spacing:.12em;
+          text-transform:uppercase;border-radius:999px;padding:6px 14px;white-space:nowrap;
+          background:var(--fill-alt);color:var(--muted);border:1px solid var(--line);}
+  #bouts .exchip::before{content:'';width:8px;height:8px;border-radius:50%;background:currentColor;flex:0 0 auto;}
+  #bouts .exchip.go{background:rgba(255,225,53,.12);color:var(--gold);border-color:rgba(255,225,53,.35);}
+  #bouts .exchip.ok{background:rgba(122,229,130,.12);color:var(--green);border-color:rgba(122,229,130,.35);}
+  #bouts .exchip.bad{background:rgba(255,107,120,.12);color:var(--aka-ink);border-color:rgba(255,107,120,.35);}
+  /* Rows of the "choose any bout" list — the whole row is the button. */
+  #bouts .excand{display:grid;grid-template-columns:92px minmax(0,1fr) auto;align-items:center;gap:16px;width:100%;
+          text-align:left;font-family:inherit;color:var(--text);cursor:pointer;
+          background:var(--inset);border:1px solid var(--line);border-radius:12px;padding:10px 14px 10px 10px;
+          font-size:21px;transition:border-color .14s ease,background .14s ease;}
+  #bouts .excand:hover:not(:disabled){border-color:var(--gold);}
+  #bouts .excand.arm{border-color:var(--gold);background:rgba(255,225,53,.06);}
+  #bouts .excand:disabled{opacity:.5;cursor:not-allowed;}
+  #bouts .excand .no{font-family:'Anton',sans-serif;font-size:24px;color:var(--gold);text-align:center;
+          background:var(--fill-alt);border:1px solid var(--line-2);border-radius:10px;padding:8px 0;}
+  #bouts .excand .who{min-width:0;color:var(--text);overflow-wrap:anywhere;}
+  #bouts .excand .who small{display:block;font-size:15px;color:var(--faint);letter-spacing:.04em;margin-top:3px;}
+  #bouts .excand .vs, #bouts .exitem .vs{color:var(--faint);font-size:15px;letter-spacing:.12em;
+          text-transform:uppercase;margin:0 10px;}
+  /* The card's one Actions menu. */
+  #bouts .excard.menu{z-index:5;}
+  #bouts .exend{display:flex;align-items:center;gap:12px;}
+  #bouts .exmenu{position:relative;}
+  #bouts .exmenubtn{min-width:0;gap:12px;}
+  #bouts .exmenubtn .chev{font-family:'Inter',system-ui,sans-serif;font-size:16px;transition:transform .15s ease;}
+  #bouts .exmenubtn.on{border-color:var(--gold);}
+  #bouts .exmenubtn.on .chev{transform:rotate(180deg);}
+  #bouts .expanel{position:absolute;right:0;top:calc(100% + 8px);z-index:40;width:760px;max-height:520px;overflow-y:auto;
+          display:flex;flex-direction:column;gap:2px;padding:8px;background:#151827;border:1px solid var(--line-2);
+          border-radius:14px;box-shadow:0 22px 50px rgba(0,0,0,.6);animation:exdrop .14s ease-out;}
+  #bouts .expanel.up{top:auto;bottom:calc(100% + 8px);}
+  @keyframes exdrop{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:none;}}
+  #bouts .exitem{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:none;border:none;
+          border-radius:10px;padding:12px 14px;color:var(--text);font-size:21px;font-family:inherit;cursor:pointer;}
+  #bouts .exitem:hover:not(:disabled){background:var(--fill);}
+  #bouts .exitem:disabled{opacity:.45;cursor:not-allowed;}
+  #bouts .exitem .lbl{flex:1;min-width:0;overflow-wrap:anywhere;}
+  #bouts .exitem .lbl small{display:block;font-size:15px;color:var(--faint);letter-spacing:.03em;margin-top:3px;}
+  #bouts .exitem .no{font-family:'Anton',sans-serif;font-weight:400;color:var(--gold);margin-right:14px;}
+  #bouts .exitem .arr{color:var(--muted);font-size:20px;}
+  #bouts .exitem.danger{color:var(--aka-ink);}
+  #bouts .exitem.danger:hover:not(:disabled){background:rgba(255,107,120,.1);}
+  #bouts .exrule{height:1px;background:var(--line-2);margin:6px 8px;}
+  #bouts .exinfo{font-size:17px;line-height:1.4;color:var(--second);padding:10px 14px;}
+  /* One action armed: say what it does, then Cancel / Confirm. */
+  #bouts .exconfirm{display:flex;align-items:center;gap:18px;margin-left:var(--exind);padding:12px 12px 12px 18px;
+          background:rgba(255,225,53,.07);border:1px solid rgba(255,225,53,.4);border-radius:12px;
+          animation:exdrop .14s ease-out;}
+  #bouts .exconfirm.danger{background:rgba(255,59,71,.08);border-color:rgba(255,107,120,.45);}
+  #bouts .exconfirm .msg{flex:1;min-width:0;font-size:18px;line-height:1.4;color:var(--text);}
+  #bouts .exconfirm .acts{display:flex;gap:10px;flex:0 0 auto;}
+  @media (prefers-reduced-motion: reduce){#bouts .expanel,#bouts .exconfirm{animation:none;}}
+  /* One button family for the whole tab: same height, same type. */
+  #bouts .exbtn{display:inline-flex;align-items:center;justify-content:center;gap:10px;height:50px;min-width:140px;
+          padding:0 22px;border-radius:10px;cursor:pointer;white-space:nowrap;
+          font-family:'Anton',sans-serif;font-size:19px;letter-spacing:.1em;text-transform:uppercase;
+          background:var(--fill);color:var(--text);border:1px solid var(--line-2);
+          transition:background .14s ease,color .14s ease,border-color .14s ease,filter .14s ease;}
+  #bouts .exbtn:hover:not(:disabled){border-color:var(--gold);}
+  #bouts .exbtn.primary{background:var(--gold);color:#000;border-color:transparent;}
+  #bouts .exbtn.primary:hover:not(:disabled){filter:brightness(1.08);}
+  #bouts .exbtn.ghost{background:transparent;color:var(--second);}
+  #bouts .exbtn.ghost:hover:not(:disabled){color:var(--text);}
+  #bouts .exbtn.danger{background:transparent;color:var(--aka-ink);border-color:rgba(255,107,120,.5);}
+  #bouts .exbtn.danger:hover:not(:disabled){border-color:var(--aka-ink);background:rgba(255,107,120,.08);}
+  #bouts .exbtn.danger.arm{background:var(--alarm);color:#fff;border-color:transparent;}
+  #bouts .exbtn:disabled{opacity:.4;cursor:not-allowed;}
+  #bouts .expick{display:flex;flex-direction:column;gap:8px;margin-left:var(--exind);}
+  #bouts .expick .bfind{font-size:21px;padding:10px 14px;}
+  #bouts .expicklist{display:flex;flex-direction:column;gap:6px;max-height:420px;overflow-y:auto;padding-right:6px;}
+  #bouts .exnote{font-size:18px;line-height:1.4;color:var(--second);margin-left:var(--exind);background:var(--inset);
+          border:1px solid var(--line);border-left:3px solid var(--line-2);border-radius:10px;padding:10px 14px;}
+  #bouts .exnote.warn{color:var(--gold);border-left-color:var(--gold);}
+  #bouts .exnote.bad{color:#ff7a7a;border-left-color:#ff7a7a;}
+
   /* Players — a list, then one person's sheet: photo left, facts right. */
   #bouts .plrowbtn{display:flex;align-items:center;gap:14px;text-align:left;background:var(--ink);
           color:var(--text);border:1px solid var(--line);border-radius:12px;padding:10px 16px;
@@ -103,6 +222,70 @@
   #bouts .pltitle{font-family:'Anton',sans-serif;font-size:30px;letter-spacing:.04em;color:var(--text);
           min-width:0;overflow-wrap:anywhere;flex-shrink:0;}
   #bouts .plrowbtn[aria-current="true"]{border-color:var(--gold);background:var(--fill);}
+  /* A player's weight class: a gold chip; on the sheet the division's full name rides beside it. */
+  #bouts .plclasses{display:flex;flex-wrap:wrap;gap:6px;flex-shrink:0;}
+  #bouts .plclass{display:inline-flex;align-items:center;gap:10px;border-radius:999px;padding:4px 12px;
+          background:rgba(255,225,53,.12);border:1px solid rgba(255,225,53,.4);color:var(--gold);white-space:nowrap;
+          font-family:'Inter',system-ui,sans-serif;font-size:16px;letter-spacing:0;}
+  #bouts .plclass b{font-family:'Anton',sans-serif;font-weight:400;font-size:18px;letter-spacing:.04em;}
+  #bouts .plclass span{color:var(--text);font-size:16px;white-space:normal;}
+  #bouts .pltitle .plclasses{font-family:'Inter',system-ui,sans-serif;}
+  #bouts .plclass.go{cursor:pointer;transition:background .14s ease,border-color .14s ease;}
+  #bouts .plclass.go:hover{background:rgba(255,225,53,.22);border-color:var(--gold);}
+  /* A player's weight classes, as cards under the name: the class big, the
+     division's full name and bounds beside it, Move / Remove on the card, and
+     one dashed card that adds another. Signed-in organisers only. */
+  #bouts .plright{position:relative;}
+  #bouts .wcstrip{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;font-family:'Inter',system-ui,sans-serif;letter-spacing:0;}
+  #bouts .wccard{position:relative;display:flex;align-items:center;gap:16px;min-width:340px;max-width:100%;
+          background:linear-gradient(180deg,#171a2b 0%,#111320 100%);border:1px solid var(--line-2);border-radius:14px;
+          padding:10px 12px 10px 22px;box-shadow:0 6px 18px rgba(0,0,0,.28);transition:border-color .15s ease,background .15s ease;
+          animation:exdrop .14s ease-out;}
+  #bouts .wccard::before{content:'';position:absolute;left:-1px;top:-1px;bottom:-1px;width:6px;border-radius:14px 0 0 14px;background:var(--gold);}
+  #bouts .wccard .w{font-family:'Anton',sans-serif;font-size:30px;line-height:1;color:var(--gold);white-space:nowrap;}
+  #bouts .wccard .n{min-width:0;flex:1;font-size:17px;font-weight:600;color:var(--text);overflow-wrap:anywhere;}
+  #bouts .wccard .n small{display:block;font-size:14px;font-weight:400;color:var(--faint);margin-top:3px;}
+  #bouts .wccard .acts{display:flex;gap:8px;flex:0 0 auto;}
+  #bouts .wccard .exbtn{height:44px;min-width:0;padding:0 16px;font-size:16px;}
+  #bouts .wccard.arm{border-color:rgba(255,107,120,.6);background:rgba(255,59,71,.08);}
+  #bouts .wccard.arm::before{background:var(--aka-ink);}
+  #bouts .wccard.busy{opacity:.55;pointer-events:none;}
+  #bouts .wcadd{display:inline-flex;align-items:center;gap:12px;min-height:66px;padding:0 22px;border-radius:14px;cursor:pointer;
+          background:transparent;border:2px dashed rgba(255,225,53,.45);color:var(--gold);
+          font-family:'Anton',sans-serif;font-size:19px;letter-spacing:.1em;text-transform:uppercase;transition:background .14s ease,border-color .14s ease;}
+  #bouts .wcadd:hover:not(:disabled){background:rgba(255,225,53,.08);border-color:var(--gold);}
+  #bouts .wcadd:disabled{opacity:.4;cursor:not-allowed;}
+  #bouts .wcadd .plus{font-size:28px;line-height:1;}
+  #bouts .wcnone{display:flex;align-items:center;font-size:18px;color:var(--aka-ink);padding:0 6px;}
+  /* The picker covers the sheet: every division, the fits first. */
+  #bouts .wcpick{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;gap:14px;
+          background:linear-gradient(180deg,#141726 0%,#0e1019 100%);border:1px solid var(--line-2);border-radius:20px;
+          padding:22px 26px;box-shadow:0 22px 60px rgba(0,0,0,.6);animation:exdrop .16s ease-out;}
+  #bouts .wcpick .head{display:flex;align-items:center;gap:16px;flex-shrink:0;}
+  #bouts .wcpick .head h4{margin:0;flex:1;min-width:0;font-family:'Anton',sans-serif;font-weight:400;font-size:30px;
+          letter-spacing:.04em;color:var(--text);overflow-wrap:anywhere;}
+  #bouts .wcpick .head h4 small{display:block;font-family:'Inter',system-ui,sans-serif;font-size:17px;letter-spacing:0;color:var(--faint);margin-top:4px;}
+  #bouts .wcopts{flex:1;min-height:0;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));
+          gap:10px;align-content:start;padding-right:8px;}
+  #bouts .wcopt{position:relative;display:flex;flex-direction:column;gap:4px;text-align:left;cursor:pointer;font-family:inherit;
+          background:var(--inset);border:1px solid var(--line);border-radius:12px;padding:12px 16px 12px 18px;color:var(--text);
+          transition:border-color .14s ease,background .14s ease;}
+  #bouts .wcopt:hover:not(:disabled){border-color:var(--gold);}
+  #bouts .wcopt:disabled{cursor:not-allowed;}
+  #bouts .wcopt .w{font-family:'Anton',sans-serif;font-size:26px;line-height:1.05;color:var(--gold);}
+  #bouts .wcopt .nm{font-size:17px;font-weight:600;overflow-wrap:anywhere;}
+  #bouts .wcopt .dt{font-size:14px;color:var(--faint);}
+  #bouts .wcopt .why{font-size:14px;color:#ff9a9a;}
+  #bouts .wcopt .tag{position:absolute;top:10px;right:12px;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+          border-radius:999px;padding:3px 10px;background:rgba(122,229,130,.12);color:var(--green);border:1px solid rgba(122,229,130,.35);}
+  #bouts .wcopt.out{opacity:.62;}
+  #bouts .wcopt.out .tag{background:rgba(255,107,120,.1);color:var(--aka-ink);border-color:rgba(255,107,120,.35);}
+  #bouts .wcopt.here{opacity:.45;}
+  #bouts .wcopt.here .tag{background:var(--fill-alt);color:var(--muted);border-color:var(--line);}
+  #bouts .wcopt[aria-pressed="true"]{border-color:var(--gold);background:rgba(255,225,53,.08);box-shadow:inset 0 0 0 1px var(--gold);}
+  #bouts .wcpick .foot{display:flex;align-items:center;gap:14px;flex-shrink:0;}
+  #bouts .wcpick .foot .msg{flex:1;min-width:0;font-size:18px;line-height:1.4;color:var(--second);}
+  @media (prefers-reduced-motion: reduce){#bouts .wccard,#bouts .wcpick{animation:none;}}
   /* A crest is a transparent PNG: shown bare on a checker, never on a tile. */
   #bouts .cllogo{width:200px;height:200px;border-radius:14px;border:2px dashed var(--line-2);cursor:pointer;
           background-color:var(--ink);background-position:center;background-size:contain;background-repeat:no-repeat;}
@@ -291,6 +474,10 @@
         @endif
         <button type="button" class="btab" role="tab" data-btab="arcade" aria-selected="false"
                 aria-controls="bpaneArcade">{{ __('scoreboard::karate_messages.ctl_tab_arcade') }}</button>
+        @if (! empty($exhibitionsUrl))
+        <button type="button" class="btab" role="tab" data-btab="exhibitions" aria-selected="false"
+                aria-controls="bpaneExhibitions">{{ __('scoreboard::karate_messages.ctl_tab_ex') }}<span class="n" id="btabExCount" hidden></span></button>
+        @endif
       </div>
 
       <button data-close="bouts" class="mclose">✕</button>
@@ -346,6 +533,8 @@
 
       <div id="plEdit" class="bpane" hidden>
         <div id="plTitle" class="pltitle"></div>
+        {{-- Their weight classes, as cards — add, move, remove (signed-in organisers). --}}
+        <div id="plClasses" class="wcstrip" hidden></div>
 
         {{-- One card: the face on the left, two sections on the right — who
              they are, and what they compete as. Fields keep their natural
@@ -355,6 +544,7 @@
           <div class="plphotocol">
             <button type="button" id="plPhoto" class="plphoto" aria-label="{{ __('scoreboard::karate_messages.pl_photo') }}"></button>
             <button type="button" id="plPhotoBtn" class="plbtn">{{ __('scoreboard::karate_messages.pl_photo') }}</button>
+            <button type="button" id="plVsBtn" class="plbtn" hidden style="color:var(--gold);border-color:rgba(255,225,53,.45);">{{ __('scoreboard::karate_messages.pl_vs_btn') }}</button>
             <div class="plwhy" id="plWhy-photo"></div>
           </div>
 
@@ -446,6 +636,8 @@
           <button type="button" id="plSave" class="plsave" disabled>{{ __('scoreboard::karate_messages.pl_save') }}</button>
         </div>
       </div>
+      {{-- Choosing a weight class to add them to, or to move one to. --}}
+      <div id="plClassPick" class="wcpick" hidden></div>
       </div>{{-- .plright --}}
       </div>{{-- .plsplit --}}
     </div>
@@ -549,6 +741,51 @@
         </div>
       </div>
     </div>
+
+    @if (! empty($exhibitionsUrl))
+    {{-- EXHIBITIONS — link a fought exhibition to the draw bout it really was. --}}
+    <div class="bpane" id="bpaneExhibitions" role="tabpanel" hidden>
+      <div class="exbar">
+        <div id="exSay" class="bhint"></div>
+        <button type="button" class="plseg" data-exf="open" aria-pressed="true">{{ __('scoreboard::karate_messages.ctl_ex_filter_open') }}</button>
+        <button type="button" class="plseg" data-exf="linked" aria-pressed="false">{{ __('scoreboard::karate_messages.ctl_ex_filter_linked') }}</button>
+        <button type="button" class="plseg" data-exf="all" aria-pressed="false">{{ __('scoreboard::karate_messages.ctl_ex_filter_all') }}</button>
+      </div>
+      <div id="exList" class="bscroll"></div>
+    </div>
+    @endif
+  </div>
+</div>
+
+{{-- ── A person's photo on the VS screen ─────────────────────────────────
+     Moved and zoomed over the ORIGINAL picture, never cropped — the cropper
+     edits the photo itself, this only says how the VS screen places it
+     (App\Scoreboard\Models\PhotoVsFrame). The preview is the shared
+     partials/vs-preview: the mat's own panel at its own pixels. --}}
+<div id="vf" hidden class="scrim" style="z-index:26;background:rgba(0,0,0,.72);">
+  <div class="modal" style="width:1420px;gap:18px;">
+    <div class="mhead">
+      <div id="vfTitle" class="mtitle" style="color:var(--gold);font-size:26px;"></div>
+      <button type="button" id="vfClose" class="mclose">✕</button>
+    </div>
+    <div style="font-size:17px;color:var(--second);line-height:1.4;">{{ __('scoreboard::karate_messages.vf_hint') }}</div>
+    <div style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:26px;align-items:start;">
+      {{-- The VS screen itself, this person in the red corner; a clear layer
+           over it takes the drag, so the page underneath stays the wall's. --}}
+      <div id="vfStage" style="position:relative;">
+        @include('scoreboard::karate.scoreboard.partials.vs-live', ['frameId' => 'vfLive', 'w' => 1000])
+        <div id="vfDrag" style="position:absolute;inset:0;cursor:grab;touch-action:none;user-select:none;"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <label style="display:flex;flex-direction:column;gap:8px;background:var(--inset);border:1px solid var(--line);border-radius:12px;padding:14px 16px;">
+          <span style="font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;">{{ __('scoreboard::karate_messages.vf_zoom') }} <b id="vfZoomVal" style="font-family:'Anton',sans-serif;font-weight:400;font-size:20px;color:var(--gold);"></b></span>
+          <input id="vfZoom" type="range" min="1" max="3" step="0.01" value="1" style="width:100%;accent-color:#ffe135;">
+        </label>
+        <button type="button" id="vfReset" style="font-size:16px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-radius:10px;padding:11px 16px;cursor:pointer;background:transparent;color:var(--muted);border:1px solid var(--line-2);">{{ __('scoreboard::karate_messages.pg_reset') }}</button>
+        <button type="button" id="vfSave" style="font-size:18px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-radius:12px;padding:14px 18px;cursor:pointer;background:var(--green);color:#000;border:none;">{{ __('scoreboard::karate_messages.vf_save') }}</button>
+        <div id="vfSay" style="font-size:16px;color:var(--muted);min-height:22px;"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -575,6 +812,29 @@
       'pl_none' => __('scoreboard::karate_messages.pl_none'),
       'pl_reading' => __('scoreboard::karate_messages.ctl_reading_draw'),
       'pl_failed' => __('scoreboard::karate_messages.ctl_draw_failed'),
+      'wc_none' => __('scoreboard::karate_messages.pl_wc_none'),
+      'wc_add' => __('scoreboard::karate_messages.pl_wc_add'),
+      'wc_move' => __('scoreboard::karate_messages.pl_wc_move'),
+      'wc_remove' => __('scoreboard::karate_messages.pl_wc_remove'),
+      'wc_remove_confirm' => __('scoreboard::karate_messages.pl_wc_remove_confirm'),
+      'wc_remove_hint' => __('scoreboard::karate_messages.pl_wc_remove_hint'),
+      'wc_cancel' => __('scoreboard::karate_messages.pl_wc_cancel'),
+      'wc_add_title' => __('scoreboard::karate_messages.pl_wc_add_title'),
+      'wc_move_title' => __('scoreboard::karate_messages.pl_wc_move_title'),
+      'wc_find' => __('scoreboard::karate_messages.pl_wc_find'),
+      'wc_find_none' => __('scoreboard::karate_messages.pl_wc_find_none'),
+      'wc_here' => __('scoreboard::karate_messages.pl_wc_here'),
+      'wc_fits' => __('scoreboard::karate_messages.pl_wc_fits'),
+      'wc_outside' => __('scoreboard::karate_messages.pl_wc_outside'),
+      'wc_outside_say' => __('scoreboard::karate_messages.pl_wc_outside_say'),
+      'wc_add_go' => __('scoreboard::karate_messages.pl_wc_add_go'),
+      'wc_move_go' => __('scoreboard::karate_messages.pl_wc_move_go'),
+      'wc_add_say' => __('scoreboard::karate_messages.pl_wc_add_say'),
+      'wc_move_say' => __('scoreboard::karate_messages.pl_wc_move_say'),
+      'wc_added' => __('scoreboard::karate_messages.pl_wc_added'),
+      'wc_moved' => __('scoreboard::karate_messages.pl_wc_moved'),
+      'wc_removed' => __('scoreboard::karate_messages.pl_wc_removed'),
+      'wc_failed' => __('scoreboard::karate_messages.pl_wc_failed'),
       'pl_saving' => __('scoreboard::karate_messages.pl_saving'),
       'pl_unattached' => __('scoreboard::karate_messages.pl_unattached'),
       'pl_bad_dob' => __('scoreboard::karate_messages.pl_bad_dob'),
@@ -589,6 +849,38 @@
       'cl_no_athletes' => __('scoreboard::karate_messages.cl_no_athletes'),
       'cl_one' => __('scoreboard::karate_messages.cl_one'),
       'cl_many' => __('scoreboard::karate_messages.cl_many'),
+      'ex_matched' => __('scoreboard::karate_messages.ctl_ex_matched'),
+      'ex_none' => __('scoreboard::karate_messages.ctl_ex_none'),
+      'ex_none_here' => __('scoreboard::karate_messages.ctl_ex_none_here'),
+      'ex_st_done' => __('scoreboard::karate_messages.ctl_ex_st_done'),
+      'ex_st_running' => __('scoreboard::karate_messages.ctl_ex_st_running'),
+      'ex_st_abandoned' => __('scoreboard::karate_messages.ctl_ex_st_abandoned'),
+      'ex_st_linked' => __('scoreboard::karate_messages.ctl_ex_st_linked'),
+      'ex_exact' => __('scoreboard::karate_messages.ctl_ex_exact'),
+      'ex_seat' => __('scoreboard::karate_messages.ctl_ex_seat'),
+      'ex_no_fit' => __('scoreboard::karate_messages.ctl_ex_no_fit'),
+      'ex_unfinished' => __('scoreboard::karate_messages.ctl_ex_unfinished'),
+      'ex_link' => __('scoreboard::karate_messages.ctl_ex_link'),
+      'ex_confirm' => __('scoreboard::karate_messages.ctl_ex_confirm'),
+      'ex_confirm_hint' => __('scoreboard::karate_messages.ctl_ex_confirm_hint'),
+      'ex_linking' => __('scoreboard::karate_messages.ctl_ex_linking'),
+      'ex_recorded' => __('scoreboard::karate_messages.ctl_ex_recorded'),
+      'ex_other_winner' => __('scoreboard::karate_messages.ctl_ex_other_winner'),
+      'ex_draw_score' => __('scoreboard::karate_messages.ctl_ex_draw_score'),
+      'ex_confirm_recorded' => __('scoreboard::karate_messages.ctl_ex_confirm_recorded'),
+      'ex_disagree_hint' => __('scoreboard::karate_messages.ctl_ex_disagree_hint'),
+      'ex_on_draw' => __('scoreboard::karate_messages.ctl_ex_on_draw'),
+      'ex_actions' => __('scoreboard::karate_messages.ctl_ex_actions'),
+      'ex_cancel' => __('scoreboard::karate_messages.ctl_ex_cancel'),
+      'ex_unlink' => __('scoreboard::karate_messages.ctl_ex_unlink'),
+      'ex_unlink_confirm' => __('scoreboard::karate_messages.ctl_ex_unlink_confirm'),
+      'ex_unlink_hint' => __('scoreboard::karate_messages.ctl_ex_unlink_hint'),
+      'ex_pick_open' => __('scoreboard::karate_messages.ctl_ex_pick_open'),
+      'ex_pick_close' => __('scoreboard::karate_messages.ctl_ex_pick_close'),
+      'ex_pick_find' => __('scoreboard::karate_messages.ctl_ex_pick_find'),
+      'ex_pick_hint' => __('scoreboard::karate_messages.ctl_ex_pick_hint'),
+      'ex_attach' => __('scoreboard::karate_messages.ctl_ex_attach'),
+      'ex_confirm_attach' => __('scoreboard::karate_messages.ctl_ex_confirm_attach'),
   ];
 @endphp
 <script>
@@ -621,6 +913,16 @@ window.KarateBoutsCard = window.KarateBoutsCard || function (o) {
   var GEO_URL = @json($geoCountryUrl ?? null);
   // The Clubs tab — organisers only.
   var CLUBS_URL = @json($clubsUrl ?? null);
+  // The Exhibitions tab — organisers only, and only while exhibitions exist.
+  var EX_URL = @json($exhibitionsUrl ?? null);
+  // The organiser's draw page, opened in LINK MODE for one exhibition.
+  var EX_DRAW_URL = @json($exhibitionDrawUrl ?? null);
+  // The console's own draw door (signed in: the event's draw, which opens on
+  // ?category=; a table: its tablet draw). A weight-class chip opens it there.
+  var PL_DRAW_URL = @json($drawUrl ?? null);
+  // The platform's doors for a player's weight classes (person · members ·
+  // move) — the signed-in organiser's console only; null makes them read-only.
+  var CLASS_DOORS = @json($classDoors ?? null);
   var T = @json($boutsCardWords);
 
   function text(id, v) { var e = el(id); if (e) e.textContent = v; }
@@ -725,7 +1027,7 @@ window.KarateBoutsCard = window.KarateBoutsCard || function (o) {
   // Where the operator was — tab and open weight class — kept per mat so a
   // reload or a reopen lands them back where they were. Never sent anywhere.
   var MEM_KEY = 'karate.bouts.' + MAT;
-  var BOUT_TABS = ['arranged', 'division', 'member', 'clubs', 'arcade'];
+  var BOUT_TABS = ['arranged', 'division', 'member', 'clubs', 'arcade', 'exhibitions'];
 
   function memRead() {
     try {
@@ -918,10 +1220,43 @@ window.KarateBoutsCard = window.KarateBoutsCard || function (o) {
 
   function plFacts(p) {
     var bits = [];
-    if (p.divisions && p.divisions.length) bits.push(p.divisions.join(' · '));
+    // The weight class has its own chip (plClasses); without one, the old line.
+    if (!(p.classes && p.classes.length) && p.divisions && p.divisions.length) bits.push(p.divisions.join(' · '));
     if (p.age) bits.push(p.age + 'y');
     if (p.weight) bits.push((Math.round(p.weight * 10) / 10) + ' kg');
     return bits.join('  ·  ');
+  }
+
+  // The divisions a player is in: a gold chip per weight class, the
+  // division's full name in its title — or, `full`, written out beside it.
+  function plClasses(p, full) {
+    var box = document.createElement('span');
+    box.className = 'plclasses';
+    (p.classes || []).forEach(function (c) {
+      // On the sheet a real button; in a list row (itself a button) a span
+      // that keeps its tap from opening the player.
+      var chip = document.createElement(full && PL_DRAW_URL ? 'button' : 'span');
+      chip.className = 'plclass' + (PL_DRAW_URL ? ' go' : '');
+      chip.title = c.name;
+      if (PL_DRAW_URL && c.id) {
+        if (full) chip.type = 'button';
+        chip.onclick = function (e) {
+          e.stopPropagation();
+          window.location.href = PL_DRAW_URL + (PL_DRAW_URL.indexOf('?') === -1 ? '?' : '&') + 'category=' + encodeURIComponent(c.id);
+        };
+      }
+      var w = document.createElement('b');
+      w.textContent = c.weight || c.name;
+      chip.appendChild(w);
+      if (full && c.weight) {
+        var n = document.createElement('span');
+        n.textContent = c.name;
+        chip.appendChild(n);
+      }
+      if (PL_DRAW_URL && c.id) chip.appendChild(document.createTextNode('↗'));
+      box.appendChild(chip);
+    });
+    return box;
   }
 
   function paintPlayers() {
@@ -934,7 +1269,8 @@ window.KarateBoutsCard = window.KarateBoutsCard || function (o) {
     var q = fold(el('plFind') ? el('plFind').value : '').trim();
     var rows = PL.filter(function (p) {
       return !q || fold(p.name).indexOf(q) !== -1 || fold(p.club).indexOf(q) !== -1
-        || fold((p.divisions || []).join(' ')).indexOf(q) !== -1;
+        || fold((p.divisions || []).join(' ')).indexOf(q) !== -1
+        || fold((p.classes || []).map(function (c) { return c.name; }).join(' ')).indexOf(q) !== -1;
     });
     if (!rows.length) { boutsEmpty(host, T.pl_none); return; }
 
@@ -946,6 +1282,7 @@ window.KarateBoutsCard = window.KarateBoutsCard || function (o) {
       var cell = o.competitorCell(p.name, p.club, p.flag, p.photo, p.fallback, colour, false);
       cell.style.flex = '1';
       row.appendChild(cell);
+      if (p.classes && p.classes.length) row.appendChild(plClasses(p, false));
       var f = document.createElement('span');
       f.style.cssText = 'font-size:16px;color:var(--muted);text-align:right;max-width:42%;overflow-wrap:anywhere;';
       f.textContent = plFacts(p);
@@ -957,8 +1294,266 @@ window.KarateBoutsCard = window.KarateBoutsCard || function (o) {
     });
   }
 
+  /* ── A player's weight classes ───────────────────────────────────────
+     Cards under the name. Add and Move open a picker over the sheet listing
+     every division with whether this person fits it — judged by the server
+     (the participant card's enrolment sheet), never here. Writes go through
+     the platform's own doors: the division's members (add / remove) and
+     LiveMove (move — the bracket keeps its shape). Each re-reads the list. */
+  var WC_PERSON = '00000000-0000-4000-8000-000000000000', WC_DIVISION = '987654321';
+  var wcArm = null, wcPick = null, wcBusy = false;
+
+  function wcNode(tag, cls, txt) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (txt != null) n.textContent = txt;
+    return n;
+  }
+
+  function wcBtn(cls, label, fn) {
+    var b = wcNode('button', 'exbtn' + (cls ? ' ' + cls : ''), label);
+    b.type = 'button';
+    b.onclick = fn;
+    return b;
+  }
+
+  // "-45 kg" out of a division's name or bounds, as the cards print it.
+  function wcWeight(s) {
+    var m = String(s || '').match(/[+\-\u2212]\s?\d+(?:\.\d+)?\s?kg/i);
+    return m ? m[0] : null;
+  }
+
+  function plPaintClasses(p) {
+    var host = el('plClasses');
+    host.hidden = false;
+    host.textContent = '';
+    (p.classes || []).forEach(function (c) {
+      var armed = wcArm === c.registration;
+      var card = wcNode('div', 'wccard' + (armed ? ' arm' : '') + (wcBusy ? ' busy' : ''));
+      card.appendChild(wcNode('span', 'w', c.weight || '—'));
+      var n = wcNode('span', 'n', c.name);
+      if (armed) n.appendChild(wcNode('small', null, T.wc_remove_hint));
+      card.appendChild(n);
+      var acts = wcNode('span', 'acts');
+      if (armed) {
+        acts.appendChild(wcBtn('ghost', T.wc_cancel, function () { wcArm = null; paintEditor(); }));
+        acts.appendChild(wcBtn('danger arm', T.wc_remove_confirm, function () { wcRemove(p, c); }));
+      } else {
+        if (CLASS_DOORS.move) acts.appendChild(wcBtn('', T.wc_move, function () { wcOpen(p, c); }));
+        acts.appendChild(wcBtn('danger', T.wc_remove, function () { wcArm = c.registration; paintEditor(); }));
+      }
+      card.appendChild(acts);
+      host.appendChild(card);
+    });
+    if (!(p.classes || []).length) host.appendChild(wcNode('span', 'wcnone', T.wc_none));
+    var add = wcNode('button', 'wcadd');
+    add.type = 'button';
+    add.disabled = wcBusy;
+    add.appendChild(wcNode('span', 'plus', '+'));
+    add.appendChild(document.createTextNode(T.wc_add));
+    add.onclick = function () { wcOpen(p, null); };
+    host.appendChild(add);
+  }
+
+  function wcOpen(p, from) {
+    wcArm = null;
+    wcPick = { p: p, from: from, groups: null, entry: null, note: '', chosen: null, state: 'loading' };
+    wcPaintPick();
+    fetch(CLASS_DOORS.person.replace(WC_PERSON, encodeURIComponent(p.uuid)), { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        if (!wcPick || wcPick.p !== p) return;
+        if (!j || !j.groups) { wcPick.state = 'failed'; wcPaintPick(); return; }
+        wcPick.groups = j.groups; wcPick.entry = j.entry; wcPick.note = j.note || ''; wcPick.state = 'ready';
+        wcPaintPick();
+      })
+      .catch(function () { if (wcPick && wcPick.p === p) { wcPick.state = 'failed'; wcPaintPick(); } });
+  }
+
+  function wcClose() {
+    wcPick = null;
+    var h = el('plClassPick');
+    if (!h) return;
+    h.hidden = true;
+    h.textContent = '';
+  }
+
+  function wcPaintPick() {
+    var host = el('plClassPick');
+    if (!wcPick) { wcClose(); return; }
+    var k = wcPick;
+    host.hidden = false;
+    host.textContent = '';
+
+    var head = wcNode('div', 'head');
+    var h = wcNode('h4', null, k.from ? T.wc_move_title.replace(':weight', k.from.weight || k.from.name) : T.wc_add_title);
+    var who = [k.p.name];
+    if (k.p.weight) who.push((Math.round(k.p.weight * 10) / 10) + ' kg');
+    if (k.p.age) who.push(k.p.age + 'y');
+    h.appendChild(wcNode('small', null, who.join('  ·  ')));
+    head.appendChild(h);
+    head.appendChild(wcBtn('ghost', T.wc_cancel, wcClose));
+    host.appendChild(head);
+
+    var find = document.createElement('input');
+    find.type = 'search';
+    find.className = 'bfind';
+    find.autocomplete = 'off';
+    find.spellcheck = false;
+    find.placeholder = T.wc_find;
+    host.appendChild(find);
+
+    var list = wcNode('div', 'wcopts');
+    host.appendChild(list);
+
+    var foot = wcNode('div', 'foot');
+    var msg = wcNode('div', 'msg', k.note);
+    msg.id = 'wcSay';
+    foot.appendChild(msg);
+    var go = wcBtn('primary', k.from ? T.wc_move_go : T.wc_add_go, wcCommit);
+    go.id = 'wcGo';
+    go.disabled = true;
+    foot.appendChild(go);
+    host.appendChild(foot);
+
+    if (k.state !== 'ready') { boutsEmpty(list, k.state === 'failed' ? T.pl_failed : T.pl_reading); return; }
+    find.addEventListener('input', function () { wcFill(list, find.value); });
+    wcFill(list, '');
+    setTimeout(function () { try { find.focus(); } catch (e) {} }, 0);
+  }
+
+  function wcFill(list, q) {
+    var k = wcPick;
+    list.textContent = '';
+    q = fold(q).trim();
+    // The fits first, then the rest, then the ones they are already in.
+    var rank = function (g) { return g.enrolled ? 2 : (g.compatible ? 0 : 1); };
+    var rows = k.groups.filter(function (g) {
+      return !q || fold(g.label).indexOf(q) !== -1 || fold(g.detail || '').indexOf(q) !== -1;
+    }).map(function (g, i) { return [g, i]; }).sort(function (a, b) {
+      return rank(a[0]) - rank(b[0]) || a[1] - b[1];
+    });
+    if (!rows.length) { boutsEmpty(list, T.wc_find_none); return; }
+
+    rows.forEach(function (x) {
+      var g = x[0];
+      var b = wcNode('button', 'wcopt' + (g.enrolled ? ' here' : (g.compatible ? '' : ' out')));
+      b.type = 'button';
+      b.disabled = g.enrolled || wcBusy;
+      b.setAttribute('aria-pressed', k.chosen === g.id ? 'true' : 'false');
+      b.appendChild(wcNode('span', 'tag', g.enrolled ? T.wc_here : (g.compatible ? T.wc_fits : T.wc_outside)));
+      var w = wcWeight(g.label) || wcWeight(g.detail);
+      if (w) b.appendChild(wcNode('span', 'w', w));
+      b.appendChild(wcNode('span', 'nm', g.label));
+      if (g.detail) b.appendChild(wcNode('span', 'dt', g.detail));
+      if (g.reason && !g.enrolled) b.appendChild(wcNode('span', 'why', g.reason));
+      b.onclick = function () {
+        k.chosen = g.id;
+        list.querySelectorAll('.wcopt').forEach(function (o2) { o2.setAttribute('aria-pressed', 'false'); });
+        b.setAttribute('aria-pressed', 'true');
+        wcSayChoice();
+      };
+      list.appendChild(b);
+    });
+  }
+
+  function wcChosen() {
+    var k = wcPick;
+    return k && k.groups ? k.groups.filter(function (g) { return g.id === k.chosen; })[0] : null;
+  }
+
+  // What Confirm will do, said before it is pressed.
+  function wcSayChoice() {
+    var k = wcPick, g = wcChosen(), say = el('wcSay');
+    if (!g) return;
+    var line = (k.from ? T.wc_move_say.replace(':from', k.from.name) : T.wc_add_say)
+      .replace(':who', k.p.name).replace(':to', g.label);
+    if (!g.compatible && g.reason) line += ' ' + T.wc_outside_say.replace(':why', g.reason);
+    if (k.note) line += ' ' + k.note;
+    say.style.color = g.compatible ? '' : 'var(--gold)';
+    say.textContent = line;
+    el('wcGo').disabled = wcBusy;
+  }
+
+  function wcSend(method, url, body) {
+    return fetch(url, {
+      method: method,
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken() },
+      credentials: 'same-origin',
+      body: JSON.stringify(body),
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (d) {
+        if (!r.ok || !d.success) {
+          var msg = d.message || T.wc_failed;
+          if (d.errors) { var f = Object.keys(d.errors)[0]; if (f) msg = d.errors[f][0]; }
+          throw new Error(msg);
+        }
+        return d;
+      });
+    });
+  }
+
+  function wcCommit() {
+    var k = wcPick, g = wcChosen();
+    if (!k || !g || wcBusy) return;
+    wcBusy = true;
+    el('wcGo').disabled = true;
+    var say = el('wcSay');
+    say.style.color = '';
+    say.textContent = T.pl_saving;
+    var req = k.from
+      ? wcSend('POST', CLASS_DOORS.move, { entry: k.from.registration, to: g.id })
+      : wcSend('PUT', CLASS_DOORS.members.replace(WC_DIVISION, g.id), { add: [k.entry] });
+    req.then(function (d) {
+      wcBusy = false;
+      wcClose();
+      wcDone(k.p.uuid, (k.from ? T.wc_moved : T.wc_added).replace(':name', g.label));
+    }).catch(function (err) {
+      wcBusy = false;
+      if (wcPick !== k) return;
+      say.style.color = 'var(--aka-ink)';
+      say.textContent = err.message;
+      el('wcGo').disabled = false;
+    });
+  }
+
+  function wcRemove(p, c) {
+    if (wcBusy) return;
+    wcBusy = true;
+    paintEditor();
+    wcSend('PUT', CLASS_DOORS.members.replace(WC_DIVISION, c.id), { remove: [c.registration] })
+      .then(function () {
+        wcBusy = false;
+        wcArm = null;
+        wcDone(p.uuid, T.wc_removed.replace(':name', c.name));
+      })
+      .catch(function (err) {
+        wcBusy = false;
+        paintEditor();
+        var say = el('plSay'); say.style.color = 'var(--aka-ink)'; say.textContent = err.message;
+      });
+  }
+
+  // Re-read the list (the classes and the rows behind them moved), then
+  // repaint this person — reopened if the row they were opened by is gone.
+  function wcDone(uuid, message) {
+    catStale();
+    fetch(PLAYERS_URL, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        if (j && j.players) PL = j.players;
+        paintPlayers();
+        var me = (PL || []).filter(function (x) { return x.uuid === uuid; })[0];
+        if (me && me.registration !== plOpen) plOpenPlayer(me.registration);
+        else if (plData) paintEditor();
+        var say = el('plSay'); say.style.color = 'var(--green)'; say.textContent = message;
+      })
+      .catch(function () { paintPlayers(); });
+  }
+
   function plShowIndex() {
     plOpen = null; plData = null;
+    wcArm = null; wcClose(); el('plClasses').hidden = true;
     el('plEdit').hidden = true;
     el('plEmpty').hidden = false;
     paintPlayers();
@@ -967,6 +1562,9 @@ window.KarateBoutsCard = window.KarateBoutsCard || function (o) {
   function plOpenPlayer(id) {
     plOpen = id;
     ddOpen = null;
+    wcClose();
+    wcArm = null;
+    el('plClasses').hidden = true;
     el('plEmpty').hidden = true;
     el('plEdit').hidden = false;
     // The chosen row lights up; the list stays where the operator left it.
@@ -1007,12 +1605,23 @@ window.KarateBoutsCard = window.KarateBoutsCard || function (o) {
   function paintEditor() {
     var j = plData, p = j.player, d = plDraft;
     text('plTitle', p.name || '');
+    // Which division(s) they are in, under the name — read from the list row.
+    var listed = (PL || []).filter(function (x) { return x.registration === plOpen; })[0];
+    if (CLASS_DOORS && listed && listed.uuid) {
+      plPaintClasses(listed);
+    } else if (listed && listed.classes && listed.classes.length) {
+      var cls = plClasses(listed, true);
+      cls.style.marginTop = '8px';
+      el('plTitle').appendChild(cls);
+    }
 
     // Photo
     var ph = el('plPhoto');
     ph.style.backgroundImage = 'url("' + (p.photo || p.fallback) + '")';
     ph.style.opacity = p.photo ? '1' : '.6';
     el('plPhoto').disabled = el('plPhotoBtn').disabled = !editable('photo');
+    // Framing for the VS screen: only when there is a photo the VS screen shows, and only for whoever may change it.
+    el('plVsBtn').hidden = !(editable('photo') && p.vs_photo);
 
     // Why a field is locked, beside it.
     ['photo', 'name', 'club', 'nationality', 'birthdate', 'gender', 'weight', 'belt_colour'].forEach(function (f) {
@@ -1513,9 +2122,105 @@ window.KarateBoutsCard = window.KarateBoutsCard || function (o) {
     plSend(c);
   }
 
+  /* ── A person's photo on the VS screen (PhotoVsFrame) ──────────────────
+     Zoom and a focal point over the original: background-size {z*100}% auto
+     at {x}% {y}% on the mat's 1075x1080 panel — zoom 1 at 50% 12% is the
+     panel's own framing. Dragging moves the PICTURE under the finger, so the
+     focal point moves the other way, by the share of the overflow dragged. */
+  var vf = null, vfLive = null;
+  function vfPaint() {
+    if (vfLive) vfLive.send({ aka: { vs_frame: { z: vf.z, x: vf.x, y: vf.y } } });
+    el('vfZoom').value = vf.z;
+    el('vfZoomVal').textContent = Math.round(vf.z * 100) + '%';
+  }
+  function vfSay(msg, tone) {
+    var s2 = el('vfSay');
+    s2.textContent = msg || '';
+    s2.style.color = tone === 'ok' ? 'var(--green)' : (tone === 'bad' ? 'var(--aka-ink)' : 'var(--muted)');
+  }
+  function vfOpen() {
+    var p = plData && plData.player;
+    if (!p || !p.vs_photo) return;
+    var f = p.vs_frame || {};
+    vf = { id: plOpen, url: p.vs_photo, ratio: 4 / 3,
+           z: isFinite(+f.z) ? +f.z : 1, x: isFinite(+f.x) ? +f.x : 50, y: isFinite(+f.y) ? +f.y : 12 };
+    // The real shape of the photo, so a drag moves it by the right amount.
+    var probe = new Image();
+    probe.onload = function () { if (vf && probe.naturalWidth) vf.ratio = probe.naturalHeight / probe.naturalWidth; };
+    probe.src = vf.url;
+    el('vfTitle').textContent = @json(__('scoreboard::karate_messages.pl_vs_btn')) + ' — ' + (p.name || '');
+    vfSay('');
+    // The VS screen with THIS person in the red corner (their real name,
+    // club, flag and photo), then their framing on top.
+    if (!vfLive && window.VsLive) vfLive = window.VsLive(el('vfLive'));
+    if (vfLive) { vfLive.reset(); vfLive.load('reg=' + encodeURIComponent(vf.id)); }
+    vfPaint();
+    el('vf').hidden = false;
+  }
+  (function () {
+    var stage = el('vfDrag'), drag = null;
+    if (!stage) return;
+    stage.addEventListener('pointerdown', function (e) {
+      if (!vf) return;
+      drag = { x: e.clientX, y: e.clientY };
+      try { stage.setPointerCapture(e.pointerId); } catch (err) {}
+      stage.style.cursor = 'grabbing';
+    });
+    stage.addEventListener('pointermove', function (e) {
+      if (!drag || !vf) return;
+      // Screen px per VS-screen px: the preview is the whole 1920-wide wall.
+      var r = el('vfLive').getBoundingClientRect(), k = r.width / 1920;
+      var ox = 1075 * vf.z - 1075, oy = 1075 * vf.z * vf.ratio - 1080;       // how far the photo overhangs
+      if (ox > 0.5) vf.x = Math.min(100, Math.max(0, vf.x - (e.clientX - drag.x) / k / ox * 100));
+      if (oy > 0.5) vf.y = Math.min(100, Math.max(0, vf.y - (e.clientY - drag.y) / k / oy * 100));
+      drag = { x: e.clientX, y: e.clientY };
+      vfPaint();
+      vfSay(@json(__('scoreboard::karate_messages.pg_unsaved')));
+    });
+    ['pointerup', 'pointercancel'].forEach(function (ev) {
+      stage.addEventListener(ev, function () { drag = null; stage.style.cursor = 'grab'; });
+    });
+    el('vfZoom').addEventListener('input', function () {
+      if (!vf) return;
+      vf.z = Math.min(3, Math.max(1, parseFloat(this.value) || 1));
+      vfPaint();
+      vfSay(@json(__('scoreboard::karate_messages.pg_unsaved')));
+    });
+    el('vfReset').addEventListener('click', function () {
+      if (!vf) return;
+      vf.z = 1; vf.x = 50; vf.y = 12;
+      vfPaint();
+      vfSay(@json(__('scoreboard::karate_messages.pg_unsaved')));
+    });
+    el('vfClose').addEventListener('click', function () { el('vf').hidden = true; vf = null; });
+    el('vfSave').addEventListener('click', function () {
+      if (!vf || !PLAYERS_URL) return;
+      var btn = this, id = vf.id, isDefault = vf.z === 1 && vf.x === 50 && vf.y === 12;
+      btn.disabled = true;
+      fetch(PLAYERS_URL + '/' + id + '/vs-frame', {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken() },
+        credentials: 'same-origin',
+        body: JSON.stringify(isDefault ? { reset: true } : { zoom: vf.z, x: vf.x, y: vf.y }),
+      })
+        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; }); })
+        .then(function (x) {
+          btn.disabled = false;
+          if (!x.ok || !x.d.success) { vfSay((x.d && x.d.message) || @json(__('scoreboard::karate_messages.pg_failed')), 'bad'); return; }
+          if (plData && plData.player && plOpen === id) plData.player.vs_frame = x.d.frame;
+          el('vf').hidden = true;
+          vf = null;
+          var say = el('plSay'); say.style.color = 'var(--green)'; say.textContent = x.d.message || '';
+        })
+        .catch(function () { btn.disabled = false; vfSay(@json(__('scoreboard::karate_messages.pg_failed')), 'bad'); });
+    });
+  })();
+
   function plPhoto() {
     if (!editable('photo') || typeof window.__karateCropFor !== 'function') return;
     var p = plData.player;
+    // For the cropper's VS preview: this entry, in the red corner.
+    window.__cropReg = plOpen; window.__cropSide = 'aka';
     window.__karateCropFor({
       title: p.name || '',
       colour: p.gender === 'Female' ? '#ff6fae' : '#5aa9ff',
@@ -1523,6 +2228,26 @@ window.KarateBoutsCard = window.KarateBoutsCard || function (o) {
         plSend({ photo: dataUrl }, function () { var c = el('crop'); if (c) c.hidden = true; });
       },
     });
+    // Open on the photo they already have, so it can just be re-framed. It
+    // goes in through the cropper's own file input — the same path a picked
+    // file takes, in every console style — and Upload still swaps it.
+    if (p.photo) plCropCurrent(p.photo, plOpen);
+  }
+
+  function plCropCurrent(url, id) {
+    fetch(url, { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.blob() : null; })
+      .then(function (b) {
+        var input = el('cropFile'), box = el('crop');
+        // Still open, still this player, nothing picked meanwhile.
+        if (!b || !/^image\//.test(b.type) || !input || !box || box.hidden || plOpen !== id
+            || (input.files && input.files.length)) return;
+        var dt = new DataTransfer();
+        dt.items.add(new File([b], 'current.' + (b.type.split('/')[1] || 'jpg'), { type: b.type }));
+        input.files = dt.files;
+        input.dispatchEvent(new Event('change'));
+      })
+      .catch(function () {});
   }
 
     /* ── Arcade ────────────────────────────────────────────────────────── */
@@ -1716,9 +2441,436 @@ window.KarateBoutsCard = window.KarateBoutsCard || function (o) {
     paintArcVerdict();
   }
 
+  /* ── Exhibitions → the draw ──────────────────────────────────────────
+     Every exhibition fought at this event and the draw bouts each one could
+     really have been (App\Events\Support\ExhibitionLink, server-side — this
+     only draws what it is handed). Linking files the exhibition's result into
+     that bout: two taps, the second one naming the bout. */
+  var EX = null, exState = 'idle', exFilter = 'open', exArmed = null, exBusy = false;
+  // The "choose any bout" picker: which exhibition it is open on, and its query.
+  var exPick = null;
+  // Which card's Actions menu is open (an exhibition uuid), if any.
+  var exMenu = null;
+  document.addEventListener('pointerdown', function (e) {
+    if (exMenu && !(e.target.closest && e.target.closest('#bouts .exmenu'))) { exMenu = null; paintExhibitions(true); }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && exMenu) { exMenu = null; paintExhibitions(true); }
+  });
+
+  function exLoad(force) {
+    if (!EX_URL) return;
+    if (exState === 'loading' || (exState === 'ready' && !force)) { paintExhibitions(); return; }
+    exState = 'loading';
+    paintExhibitions();
+    fetch(EX_URL, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        if (!j || !j.exhibitions) { exState = 'failed'; paintExhibitions(); return; }
+        EX = j; exState = 'ready'; paintExhibitions();
+      })
+      .catch(function () { exState = 'failed'; paintExhibitions(); });
+  }
+
+  function exCount() {
+    var n = el('btabExCount');
+    if (!n) return;
+    var k = EX ? EX.matched : 0;
+    n.textContent = k ? String(k) : '';
+    n.hidden = !k;
+  }
+
+  function exSay(msg, tone) {
+    var say = el('exSay');
+    if (!say) return;
+    say.style.color = tone === 'bad' ? '#ff7a7a' : (tone === 'ok' ? 'var(--green)' : (tone === 'warn' ? 'var(--gold)' : ''));
+    say.textContent = msg || '';
+  }
+
+  function exNode(tag, cls, txt) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (txt != null) n.textContent = txt;
+    return n;
+  }
+
+  function paintExhibitions(keepSay) {
+    var host = el('exList');
+    if (!host) return;
+    exCount();
+    document.querySelectorAll('#bpaneExhibitions [data-exf]').forEach(function (b) {
+      b.setAttribute('aria-pressed', b.getAttribute('data-exf') === exFilter ? 'true' : 'false');
+    });
+
+    host.textContent = '';
+    if (exState === 'loading' || exState === 'idle') { boutsEmpty(host, T.reading_draw); return; }
+    if (exState === 'failed') { boutsEmpty(host, T.draw_failed); return; }
+
+    var all = EX.exhibitions || [];
+    if (!keepSay) exSay(all.length ? T.ex_matched.replace(':n', EX.matched) : '');
+    if (!all.length) { boutsEmpty(host, T.ex_none); return; }
+
+    var rows = all.filter(function (x) {
+      if (exFilter === 'linked') return x.status === 'linked';
+      if (exFilter === 'open') return x.status === 'done';
+      return true;
+    });
+    // To link: the ones the draw can take first — that is what the tab is for.
+    if (exFilter === 'open') rows.sort(function (p, q) { return (q.candidates.length ? 1 : 0) - (p.candidates.length ? 1 : 0); });
+    if (!rows.length) { boutsEmpty(host, T.ex_none_here); return; }
+
+    rows.forEach(function (x) { host.appendChild(exCard(x)); });
+
+    // An open menu that would run past the list's bottom opens upward.
+    var pn = host.querySelector('.expanel');
+    if (pn) {
+      var hr = host.getBoundingClientRect(), pr = pn.getBoundingClientRect();
+      var btn = pn.parentNode.getBoundingClientRect();
+      if (pr.bottom > hr.bottom && btn.top - hr.top > pr.height) pn.classList.add('up');
+    }
+  }
+
+  // "Name  VS  Name" for a bout row, the VS set small and faint.
+  function exVs(host, a, b) {
+    host.appendChild(document.createTextNode(a || '?'));
+    host.appendChild(exNode('span', 'vs', 'vs'));
+    host.appendChild(document.createTextNode(b || '?'));
+    return host;
+  }
+
+  function exKind(m) {
+    return m.kind === 'exact' ? T.ex_exact : (m.kind === 'recorded' ? T.ex_recorded : T.ex_seat);
+  }
+
+  // Arm one action on one card. The card then shows ONE confirm bar saying
+  // what will happen; nothing is sent until Confirm.
+  function exArm(x, a) {
+    a.ex = x.uuid;
+    exArmed = a;
+    exMenu = null;
+    paintExhibitions(true);
+  }
+
+  function exCard(x) {
+    var rail = x.status === 'linked' ? ' st-ok'
+      : (x.status === 'running' ? ' st-live' : (x.status === 'done' && x.candidates.length ? ' st-go' : ''));
+    var c = exNode('div', 'excard' + rail + (exArmed && exArmed.ex === x.uuid ? ' open' : '')
+      + (exMenu === x.uuid ? ' menu' : ''));
+
+    var head = exNode('div', 'exhead');
+    var code = exNode('div', 'excode', x.code);
+    var when = '';
+    try { when = x.fought_at ? new Date(x.fought_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''; } catch (e) {}
+    code.appendChild(exNode('small', null, (x.court || '') + (when ? ' · ' + when : '')));
+    head.appendChild(code);
+
+    // AKA · score · AO, the winner lit and marked in their corner's colour.
+    var pair = exNode('div', 'expair');
+    var sa = exNode('div', 'exside a' + (x.winner === 'a' ? ' won' : ''));
+    if (x.winner === 'a') sa.appendChild(exNode('span', 'exwin', '✓'));
+    sa.appendChild(exNode('span', 'nm', x.a.name || '—'));
+    var score = exNode('div', 'exscore');
+    score.appendChild(exNode('span', 'a', x.a.score == null ? '–' : x.a.score));
+    score.appendChild(exNode('span', 'sep', ':'));
+    score.appendChild(exNode('span', 'b', x.b.score == null ? '–' : x.b.score));
+    var sb = exNode('div', 'exside b' + (x.winner === 'b' ? ' won' : ''));
+    sb.appendChild(exNode('span', 'nm', x.b.name || '—'));
+    if (x.winner === 'b') sb.appendChild(exNode('span', 'exwin', '✓'));
+    pair.appendChild(sa); pair.appendChild(score); pair.appendChild(sb);
+    head.appendChild(pair);
+
+    var chip;
+    if (x.status === 'linked' && x.linked) {
+      chip = exNode('span', 'exchip ok', T.ex_st_linked.replace(':no', x.linked.number == null ? '—' : x.linked.number)
+        .replace(':round', x.linked.round || x.linked.division || ''));
+    } else if (x.status === 'done') {
+      chip = exNode('span', 'exchip' + (x.candidates.length ? ' go' : ''), T.ex_st_done);
+    } else {
+      chip = exNode('span', 'exchip', x.status === 'running' ? T.ex_st_running : T.ex_st_abandoned);
+    }
+    var end = exNode('div', 'exend');
+    end.appendChild(chip);
+    var menu = exMenuFor(x);
+    if (menu) end.appendChild(menu);
+    head.appendChild(end);
+    c.appendChild(head);
+
+    if (exArmed && exArmed.ex === x.uuid) c.appendChild(exConfirmBar(x));
+    if (x.status === 'running') c.appendChild(exNode('div', 'exnote', T.ex_unfinished));
+    if (exPick && exPick.ex === x.uuid) c.appendChild(exPicker(x));
+    return c;
+  }
+
+  /*
+   * The card's one Actions menu: the draw bouts this exhibition could be,
+   * then "pick it on the draw" and "choose any bout"; or, once linked, Unlink.
+   */
+  function exMenuFor(x) {
+    if (x.status === 'running') return null;
+    var open = exMenu === x.uuid;
+    var wrap = exNode('div', 'exmenu');
+    var btn = exNode('button', 'exbtn exmenubtn' + (open ? ' on' : ''));
+    btn.type = 'button';
+    btn.disabled = exBusy;
+    btn.setAttribute('aria-haspopup', 'menu');
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    btn.appendChild(exNode('span', null, T.ex_actions));
+    btn.appendChild(exNode('span', 'chev', '▾'));
+    btn.onclick = function () { exMenu = open ? null : x.uuid; paintExhibitions(true); };
+    wrap.appendChild(btn);
+    if (!open) return wrap;
+
+    var panel = exNode('div', 'expanel');
+    panel.setAttribute('role', 'menu');
+    function item(label, sub, tag, tone, disabled, go, title) {
+      var it = exNode('button', 'exitem' + (tone ? ' ' + tone : ''));
+      it.type = 'button';
+      it.setAttribute('role', 'menuitem');
+      it.disabled = !!disabled || exBusy;
+      if (title) it.title = title;
+      var main = exNode('span', 'lbl');
+      if (typeof label === 'string') main.textContent = label; else main.appendChild(label);
+      if (sub) main.appendChild(exNode('small', null, sub));
+      it.appendChild(main);
+      if (tag) it.appendChild(tag);
+      it.onclick = go;
+      panel.appendChild(it);
+    }
+
+    if (x.status === 'linked') {
+      item(T.ex_unlink, null, null, 'danger', false, function () {
+        exArm(x, { match: 'unlink', act: 'unlink', tone: 'danger', label: T.ex_unlink_confirm,
+          hint: T.ex_unlink_hint.replace(':code', x.code).replace(':no', x.linked && x.linked.number != null ? x.linked.number : '—') });
+      });
+    } else {
+      var cands = x.status === 'done' ? x.candidates : [];
+      cands.forEach(function (m) {
+        var blocked = m.kind === 'recorded' && !m.agrees;
+        var no = m.number == null ? '—' : m.number;
+        var lbl = exNode('span');
+        lbl.appendChild(exNode('b', 'no', '#' + no));
+        exVs(lbl, m.a, m.b);
+        var sub = [m.round, m.division, m.court];
+        // What the draw already says — so the organiser can check it against
+        // what the exhibition scored before linking.
+        if (m.kind === 'recorded' && m.recorded) {
+          var r = m.recorded;
+          sub.push(T.ex_draw_score.replace(':score', (r.a == null ? '–' : r.a) + ' : ' + (r.b == null ? '–' : r.b)
+            + ' (' + (r.winner === 'a' ? (m.a || 'A') : (m.b || 'B')) + ' ✓' + (r.reason ? ', ' + r.reason : '') + ')'));
+        }
+        var tag = exNode('span', 'exchip ' + (blocked ? 'bad' : (m.kind === 'seat' ? 'go' : 'ok')),
+          blocked ? T.ex_other_winner : exKind(m));
+        // A bout chosen here opens the draw with THAT bout selected, so it is
+        // confirmed where it sits; with no draw to open, it is confirmed here.
+        item(lbl, sub.filter(Boolean).join(' · '), tag, null, blocked, function () {
+          if (EX_DRAW_URL) { exOpenDraw(x, m.division_id, m.id); return; }
+          var hint = m.kind === 'recorded' ? T.ex_confirm_recorded : T.ex_confirm_hint;
+          var sc = m.swap ? (x.b.score + ' : ' + x.a.score) : (x.a.score + ' : ' + x.b.score);
+          exArm(x, { match: m.id, act: 'link', m: m, label: T.ex_confirm,
+            hint: hint.replace(':code', x.code).replace(':no', no).replace(':score', sc) });
+        }, blocked ? T.ex_disagree_hint : null);
+      });
+      if (!cands.length) panel.appendChild(exNode('div', 'exinfo', x.status === 'done' ? T.ex_no_fit : T.ex_unfinished));
+      panel.appendChild(exNode('div', 'exrule'));
+
+      // The draw itself — tap the bout there, say yes or no.
+      if (EX_DRAW_URL) {
+        item(T.ex_on_draw, null, exNode('span', 'arr', '↗'), null, false, function () { exOpenDraw(x, x.division_id, null); });
+      }
+      var picking = exPick && exPick.ex === x.uuid;
+      item(picking ? T.ex_pick_close : T.ex_pick_open, null, null, null, false, function () {
+        exPick = picking ? null : { ex: x.uuid, q: '', fresh: true };
+        exArmed = null;
+        exMenu = null;
+        paintExhibitions(true);
+        if (exPick) catLoad(function () { paintExhibitions(true); });
+      });
+    }
+    wrap.appendChild(panel);
+    return wrap;
+  }
+
+  // The organiser's draw page in LINK MODE for one exhibition — on one
+  // division, and with one bout already selected when `bout` is given.
+  function exOpenDraw(x, division, bout) {
+    var q = ['link_exhibition=' + encodeURIComponent(x.uuid), 'mat=' + encodeURIComponent(MAT)];
+    if (division) q.push('division=' + encodeURIComponent(division));
+    if (bout) q.push('bout=' + encodeURIComponent(bout));
+    window.location.href = EX_DRAW_URL + (EX_DRAW_URL.indexOf('?') === -1 ? '?' : '&') + q.join('&');
+  }
+
+  function exConfirmBar(x) {
+    var a = exArmed;
+    var danger = a.tone === 'danger';
+    var bar = exNode('div', 'exconfirm' + (danger ? ' danger' : ''));
+    bar.appendChild(exNode('div', 'msg', a.hint));
+    var acts = exNode('div', 'acts');
+    var no = exNode('button', 'exbtn ghost', T.ex_cancel);
+    no.type = 'button';
+    no.disabled = exBusy;
+    no.onclick = function () { exArmed = null; paintExhibitions(true); };
+    var yes = exNode('button', 'exbtn ' + (danger ? 'danger arm' : 'primary'), exBusy ? T.ex_linking : a.label);
+    yes.type = 'button';
+    yes.disabled = exBusy;
+    yes.onclick = function () {
+      if (a.act === 'unlink') exUnlink(x);
+      else if (a.act === 'attach') exLink(x, { id: a.match }, true);
+      else exLink(x, a.m);
+    };
+    acts.appendChild(no); acts.appendChild(yes);
+    bar.appendChild(acts);
+    return bar;
+  }
+
+  /*
+   * Any bout of the draw, chosen by hand. A bout the system already offered
+   * links as above; any other is ATTACHED only — the exhibition, its video and
+   * its score log become that bout's, and the draw itself is not changed.
+   */
+  function exPicker(x) {
+    var box = exNode('div', 'expick');
+    var input = document.createElement('input');
+    input.type = 'search'; input.className = 'bfind'; input.autocomplete = 'off'; input.spellcheck = false;
+    input.placeholder = T.ex_pick_find; input.setAttribute('aria-label', T.ex_pick_find);
+    input.value = exPick.q;
+    var hint = exNode('div', 'bhint', T.ex_pick_hint);
+    hint.style.fontSize = '16px';
+    var list = exNode('div', 'expicklist');
+    box.appendChild(input); box.appendChild(hint); box.appendChild(list);
+
+    var t = null;
+    input.addEventListener('input', function () {
+      clearTimeout(t);
+      t = setTimeout(function () { exPick.q = input.value; paintPickList(x, list); }, 140);
+    });
+    paintPickList(x, list);
+    if (exPick.fresh) {
+      exPick.fresh = false;
+      setTimeout(function () { try { input.focus(); } catch (e) {} }, 0);
+    }
+    return box;
+  }
+
+  function paintPickList(x, host) {
+    if (catNotReady(host)) return;
+    host.textContent = '';
+
+    var q = fold(exPick ? exPick.q : '').trim();
+    var num = q.replace(/^#/, '');
+    var offered = {};
+    (x.candidates || []).forEach(function (m) { offered[m.id] = m; });
+
+    var rows = CAT.bouts.filter(function (b) {
+      if (!q) return true;
+      if (/^\d+$/.test(num)) return String(b.number) === num;
+      return boutNames(b).concat([fold(b.division), fold(b.stage)]).some(function (n) { return n.indexOf(q) !== -1; });
+    }).slice(0, 60);
+
+    if (!rows.length) { boutsEmpty(host, T.find_none); return; }
+
+    rows.forEach(function (b) {
+      var nm = function (id, n) { var r = id != null ? CAT.roster[String(id)] : null; return n || (r && r.name) || '?'; };
+      var known = offered[b.id];
+      var blocked = !!(known && known.kind === 'recorded' && !known.agrees);
+      var armed = exArmed && exArmed.ex === x.uuid && exArmed.match === b.id;
+      // The whole row is the button: tap it, then Confirm on the card.
+      var row = exNode('button', 'excand pick' + (armed ? ' arm' : '') + (blocked ? ' off' : ''));
+      row.type = 'button';
+      row.disabled = exBusy || blocked;
+      if (blocked) row.title = T.ex_disagree_hint;
+      row.appendChild(exNode('span', 'no', '#' + (b.number == null ? '—' : b.number)));
+      var who = exVs(exNode('span', 'who'), nm(b.a, b.a_name), nm(b.b, b.b_name));
+      who.appendChild(exNode('small', null, [b.stage, b.division, b.court, b.done ? '✓' : ''].filter(Boolean).join(' · ')));
+      row.appendChild(who);
+      row.appendChild(exNode('span', 'exchip ' + (known ? 'ok' : ''), known ? exKind(known) : T.ex_attach));
+      row.onclick = function () {
+        var no = b.number == null ? '—' : b.number;
+        exArm(x, known
+          ? { match: b.id, act: 'link', m: known, label: T.ex_confirm, hint: T.ex_confirm_hint.replace(':code', x.code).replace(':no', no) }
+          : { match: b.id, act: 'attach', label: T.ex_confirm, hint: T.ex_confirm_attach.replace(':code', x.code).replace(':no', no) });
+      };
+      host.appendChild(row);
+    });
+  }
+
+  function exUnlink(x) {
+    if (exBusy) return;
+    exBusy = true;
+    exSay(T.ex_linking);
+    paintExhibitions(true);
+
+    fetch(EX_URL + '/' + encodeURIComponent(x.uuid) + '/unlink', {
+      method: 'POST',
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken() },
+      credentials: 'same-origin',
+      body: '{}',
+    })
+      .then(function (r) { return r.json().catch(function () { return {}; }); })
+      .then(function (d) {
+        exBusy = false;
+        exArmed = null;
+        if (!d.success) { paintExhibitions(true); exSay(d.message || T.draw_failed, 'bad'); return; }
+        EX = { exhibitions: d.exhibitions, matched: d.matched };
+        exState = 'ready';
+        CAT = null;
+        catState = 'idle';
+        paintExhibitions(true);
+        exSay(d.message || '', 'ok');
+      })
+      .catch(function () {
+        exBusy = false;
+        exArmed = null;
+        paintExhibitions(true);
+        exSay(T.draw_failed, 'bad');
+      });
+  }
+
+  function exLink(x, m, attachOnly) {
+    if (exBusy) return;
+    exBusy = true;
+    exSay(T.ex_linking);
+    paintExhibitions(true);
+
+    fetch(EX_URL + '/' + encodeURIComponent(x.uuid) + '/link', {
+      method: 'POST',
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken() },
+      credentials: 'same-origin',
+      body: JSON.stringify(attachOnly ? { match_id: m.id, attach_only: true } : { match_id: m.id }),
+    })
+      .then(function (r) { return r.json().catch(function () { return {}; }); })
+      .then(function (d) {
+        exBusy = false;
+        exArmed = null;
+        if (d.success) exPick = null;
+        if (!d.success) {
+          var msg = d.message || T.draw_failed;
+          if (d.errors) { var k = Object.keys(d.errors)[0]; if (k) msg = d.errors[k][0]; }
+          paintExhibitions(true);
+          exSay(msg, 'bad');
+          // The draw may have moved under us — read the list again.
+          exLoad(true);
+          return;
+        }
+        EX = { exhibitions: d.exhibitions, matched: d.matched };
+        exState = 'ready';
+        // The bracket changed: the other tabs must not list the bout as unfought.
+        CAT = null;
+        catState = 'idle';
+        paintExhibitions(true);
+        exSay(d.message || '', 'ok');
+      })
+      .catch(function () {
+        exBusy = false;
+        exArmed = null;
+        paintExhibitions(true);
+        exSay(T.draw_failed, 'bad');
+      });
+  }
+
   /* ── Tabs ──────────────────────────────────────────────────────────── */
   var PANE = { arranged: 'bpaneArranged', division: 'bpaneDivision',
-               member: 'bpaneMember', clubs: 'bpaneClubs', arcade: 'bpaneArcade' };
+               member: 'bpaneMember', clubs: 'bpaneClubs', arcade: 'bpaneArcade',
+               exhibitions: 'bpaneExhibitions' };
 
   function catRepaint() {
     if (boutsTab === 'division') paintDivisions();
@@ -1727,7 +2879,8 @@ window.KarateBoutsCard = window.KarateBoutsCard || function (o) {
   }
 
   function show(name) {
-    if (!PANE[name] || (name === 'member' && !PLAYERS_URL) || (name === 'clubs' && !CLUBS_URL)) name = 'arranged';
+    if (!PANE[name] || (name === 'member' && !PLAYERS_URL) || (name === 'clubs' && !CLUBS_URL)
+        || (name === 'exhibitions' && !EX_URL)) name = 'arranged';
     boutsTab = name;
     memWrite({ tab: name });
 
@@ -1740,6 +2893,7 @@ window.KarateBoutsCard = window.KarateBoutsCard || function (o) {
     if (name === 'arranged') { paintArranged(); return; }
     if (name === 'member') { plLoad(); return; }
     if (name === 'clubs') { clLoad(); return; }
+    if (name === 'exhibitions') { exLoad(true); return; }
     catLoad(catRepaint);
   }
 
@@ -1751,6 +2905,9 @@ window.KarateBoutsCard = window.KarateBoutsCard || function (o) {
   function catStale() {
     CAT = null;
     catState = 'idle';
+    // A result just landed: which exhibitions the draw can still take moved too.
+    if (EX_URL && exState === 'ready') exState = 'idle';
+    if (isOpen() && boutsTab === 'exhibitions') { exLoad(true); return; }
     if (isOpen() && boutsTab !== 'arranged') catLoad(catRepaint);
   }
 
@@ -1810,6 +2967,14 @@ window.KarateBoutsCard = window.KarateBoutsCard || function (o) {
       wEl.value = wEl.value.replace(/[^\d.]/g, '');
       if (plDraft) { plDraft.weight = wEl.value; paintEditorLight(); }
     });
+    // Exhibitions tab wiring.
+    document.querySelectorAll('#bpaneExhibitions [data-exf]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        exFilter = b.getAttribute('data-exf');
+        exArmed = null;
+        paintExhibitions();
+      });
+    });
     // Clubs tab wiring.
     debounced('clFind', paintClubs);
     if (el('clName')) el('clName').addEventListener('input', function () { if (clDraft) { clDraft.name = this.value; el('clSave').disabled = !clChanged(); } });
@@ -1862,6 +3027,7 @@ window.KarateBoutsCard = window.KarateBoutsCard || function (o) {
     if (el('plSave')) el('plSave').addEventListener('click', plSave);
     if (el('plPhoto')) el('plPhoto').addEventListener('click', plPhoto);
     if (el('plPhotoBtn')) el('plPhotoBtn').addEventListener('click', plPhoto);
+    if (el('plVsBtn')) el('plVsBtn').addEventListener('click', vfOpen);
     debounced('arrFind', paintArranged);
     debounced('arcFindA', function () { paintArcSide('a'); });
     debounced('arcFindB', function () { paintArcSide('b'); });
@@ -1876,6 +3042,8 @@ window.KarateBoutsCard = window.KarateBoutsCard || function (o) {
     open: function () {
       card().hidden = false;
       show(boutsTab);
+      // The tab's count, even when the card opens on another tab.
+      if (EX_URL && exState === 'idle' && boutsTab !== 'exhibitions') exLoad();
     },
     /** The console's state or queue changed. */
     paint: function () {

@@ -426,7 +426,7 @@
         {{-- The camera tab only exists when this door was given the camera
              addresses — a console with no camera surface shows no camera tab,
              the same way a type with no wall boards shows no screen panel. --}}
-        @foreach (array_merge([['rules', __('scoreboard::karate_messages.ctl_tab_rules')], ['corners', __('scoreboard::karate_messages.ctl_tab_corners')], ['buttons', __('scoreboard::karate_messages.ctl_tab_points')], ['penalties', __('scoreboard::karate_messages.ctl_tab_fouls')], ['timer', __('scoreboard::karate_messages.ctl_tab_timer')], ['sounds', __('scoreboard::karate_messages.ctl_tab_sounds')]], ($cameraUrl ?? null) ? [['cameras', __('events::events.mat_cameras_tab')]] : []) as [$tab, $tabLabel])
+        @foreach (array_merge([['rules', __('scoreboard::karate_messages.ctl_tab_rules')], ['corners', __('scoreboard::karate_messages.ctl_tab_corners')], ['buttons', __('scoreboard::karate_messages.ctl_tab_points')], ['penalties', __('scoreboard::karate_messages.ctl_tab_fouls')], ['timer', __('scoreboard::karate_messages.ctl_tab_timer')], ['sounds', __('scoreboard::karate_messages.ctl_tab_sounds')]], ($cameraUrl ?? null) ? [['cameras', __('events::events.mat_cameras_tab')]] : [], ($photoGuideUrl ?? null) ? [['guide', __('scoreboard::karate_messages.ctl_tab_guide')]] : [], ($vsLayoutUrl ?? null) ? [['vs', __('scoreboard::karate_messages.ctl_tab_vs')]] : []) as [$tab, $tabLabel])
           <button class="stab" data-tab="{{ $tab }}" style="flex:1;font-size:20px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border-radius:10px;padding:12px 0;cursor:pointer;">{{ $tabLabel }}</button>
         @endforeach
       </div>
@@ -467,6 +467,16 @@
       <div class="spanel" data-panel="corners" hidden style="display:flex;flex-direction:column;gap:12px;">
         @include('scoreboard::shared.corners-panel', ['look' => $L, 'sportRedRight' => \App\Sports\Combat\CornerSide::redRight('karate'), 'perScreen' => true])
       </div>
+
+      {{-- Photo guide — where a face goes in the cropper, platform-wide (super-admin only). --}}
+      @if (! empty($photoGuideUrl))
+        @include('scoreboard::karate.scoreboard.partials.photo-guide-panel', ['look' => $L, 'photoGuideUrl' => $photoGuideUrl])
+      @endif
+
+      {{-- VS screen — where each competitor's details sit over their photo, platform-wide (super-admin only). --}}
+      @if (! empty($vsLayoutUrl))
+        @include('scoreboard::karate.scoreboard.partials.vs-layout-panel', ['look' => $L, 'vsLayoutUrl' => $vsLayoutUrl])
+      @endif
 
       {{-- Timer --}}
       <div class="spanel" data-panel="timer" hidden style="display:flex;flex-direction:column;gap:20px;">
@@ -628,6 +638,7 @@
       <div id="cropView" style="width:330px;height:440px;margin:0 auto;overflow:hidden;position:relative;background:var(--ink);border:1px solid var(--line-2);border-radius:10px;cursor:grab;touch-action:none;">
         <div id="cropImg" hidden style="position:absolute;left:0;top:0;background-repeat:no-repeat;transform-origin:center center;"></div>
         <div id="cropFrame" hidden style="position:absolute;inset:0;pointer-events:none;border:2px solid var(--gold);border-radius:10px;"></div>
+        @include('scoreboard::karate.scoreboard.partials.crop-guide')
         <div id="cropEmpty" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--faint);font-size:18px;letter-spacing:.08em;text-transform:uppercase;">
           <span style="font-size:40px;color:var(--gold);">◎</span>{{ __('scoreboard::karate_messages.ctl_crop_empty') }}
         </div>
@@ -1236,7 +1247,7 @@
     // apply something the reader is not looking at.
     var apply = el('btnApply');
     if (apply) {
-      var own = which === 'cameras' || which === 'buttons' || which === 'penalties' || which === 'corners';   // both save as they go
+      var own = which === 'cameras' || which === 'buttons' || which === 'penalties' || which === 'corners' || which === 'guide' || which === 'vs';   // both save as they go
       apply.hidden = own;
       if (apply.nextElementSibling) apply.nextElementSibling.hidden = own;
     }
@@ -1331,6 +1342,8 @@
     if (!PHOTO_BASE) { alertBar(@json(__('scoreboard::karate_messages.ctl_photo_unavailable'))); return; }
 
     cropTarget = null;
+    // For the cropper's VS preview: this corner, and no entry to look up.
+    window.__cropSide = pSide; window.__cropReg = null;
     el('cropRemove').hidden = false;
     releaseCrop();
     crop = { img: null, url: null, nw: 0, nh: 0, z: 1, r: 0, x: 0, y: 0 };

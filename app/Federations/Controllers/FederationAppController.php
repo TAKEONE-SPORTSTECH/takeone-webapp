@@ -228,16 +228,7 @@ class FederationAppController extends Controller
     {
         $this->ensureEnabled();
         abort_unless(\App\Federations\Services\FederationCompetitionReport::available(), 404);
-        $access = $this->staffAccess($request);
-
-        $q = \App\Federations\Models\FederationEvent::where('uuid', $event)->whereNotNull('club_event_id')
-            ->whereIn('federation_id', collect($this->directory->subtree($access['root']))->pluck('id'));
-        if ($access['sports'] !== []) {
-            $q->whereIn('sport', $access['sports']);
-        }
-        $fe = $q->first();
-        $ev = $fe ? \App\Events\Models\ClubEvent::whereKey($fe->club_event_id)->where('is_archived', false)->first() : null;
-        abort_unless($fe && $ev, 404);
+        [$fe, $ev] = $this->reportEvent($request, $event);
 
         @set_time_limit(240);
         @ini_set('memory_limit', '512M');
@@ -261,6 +252,48 @@ class FederationAppController extends Controller
             'Cache-Control' => 'private, no-store',
             'X-Content-Type-Options' => 'nosniff',
         ]);
+    }
+
+    /**
+     * GET /federation/analytics/{event} — the event's statistics & analytics as
+     * JSON, for its Analytics tab: the competition report's own figures
+     * (FederationCompetitionReport::analytics), served to whoever may download
+     * that report. Read-only; cached briefly per event (the figures do not
+     * depend on who reads them), since every open tab would otherwise replay
+     * the whole officiating log.
+     */
+    public function analytics(Request $request, string $event, \App\Federations\Services\FederationCompetitionReport $report): \Illuminate\Http\JsonResponse
+    {
+        $this->ensureEnabled();
+        [$fe, $ev] = $this->reportEvent($request, $event);
+
+        $data = \Illuminate\Support\Facades\Cache::remember('fed-analytics:'.$ev->id, 30,
+            fn () => $report->analytics($fe, $ev, $request->user()) ?? []);
+
+        return response()->json(['success' => true, 'analytics' => $data ?: null], 200, ['Cache-Control' => 'private, no-store']);
+    }
+
+    /**
+     * The federation event a report door may serve: in the viewer's federation
+     * tree and sport scope, on the platform and not archived. Anything else is
+     * one 404, whether it exists or not.
+     *
+     * @return array{0: \App\Federations\Models\FederationEvent, 1: \App\Events\Models\ClubEvent}
+     */
+    private function reportEvent(Request $request, string $event): array
+    {
+        $access = $this->staffAccess($request);
+
+        $q = \App\Federations\Models\FederationEvent::where('uuid', $event)->whereNotNull('club_event_id')
+            ->whereIn('federation_id', collect($this->directory->subtree($access['root']))->pluck('id'));
+        if ($access['sports'] !== []) {
+            $q->whereIn('sport', $access['sports']);
+        }
+        $fe = $q->first();
+        $ev = $fe ? \App\Events\Models\ClubEvent::whereKey($fe->club_event_id)->where('is_archived', false)->first() : null;
+        abort_unless($fe && $ev, 404);
+
+        return [$fe, $ev];
     }
 
     /** The dashboard's file address (old bookmarks) lands on the clean one. */
@@ -428,6 +461,8 @@ class FederationAppController extends Controller
             'competitionReport' => (object) (\App\Federations\Services\FederationCompetitionReport::available()
                 ? collect(array_keys((array) $brackets))->mapWithKeys(fn ($u) => [$u => route('federations.competition-report', ['event' => $u])])->all()
                 : []),
+            // The Analytics tab's door per event — the report's figures as JSON.
+            'analytics' => (object) collect(array_keys((array) $brackets))->mapWithKeys(fn ($u) => [$u => route('federations.analytics', ['event' => $u])])->all(),
             // Its cover page (FederationReportCover): what is set, and — for a
             // manager only — where to upload or remove it.
             'resultsCover' => (object) (\App\Federations\Services\FederationResultsPdf::available() && ($access['manager'] ?? false)

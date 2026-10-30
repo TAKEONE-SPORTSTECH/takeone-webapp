@@ -6,6 +6,7 @@
 #   ./build.sh tab                       # the scoring table, pointed at stage
 #   ./build.sh cam                       # a camera beside the mat
 #   ./build.sh app                       # the member's phone app
+#   ./build.sh note                      # TakeNote, the notebook as its own app
 #   ./build.sh tv  https://takeone.bh    # production
 #
 # Three APKs, one codebase. They differ in three ways and no more: the
@@ -40,7 +41,12 @@ case "$VARIANT" in
        # this build continues that series rather than restarting at Flutter's
        # default of 1 — which would be rejected as a downgrade.
        VERSION_CODE="13"; VERSION_NAME="1.12" ;;
-  *)   echo "usage: $0 {tv|tab|cam|app} [base-url]" >&2; exit 1 ;;
+  # TakeNote: the member app's shell opened on /me/takenote, under its own id,
+  # name and icon, so it sits beside the TAKEONE app rather than replacing it.
+  # Side-loaded for now; the series starts at 1.
+  note) APP_ID="bh.takeone.note"; TEMPLATE="android_note"
+       VERSION_CODE="1"; VERSION_NAME="1.0" ;;
+  *)   echo "usage: $0 {tv|tab|cam|app|note} [base-url]" >&2; exit 1 ;;
 esac
 
 if [[ ! -d android ]]; then
@@ -60,6 +66,11 @@ main="android/app/src/main"
 # BOTH variants — one product, one icon — before the variant-specific manifest
 # goes in, since that manifest is what points at them.
 cp -r android_shared_res/. "$main/res/"
+# TakeNote has its own mark. Same file names as the shared set, so the next
+# build of any other variant copies the TAKEONE icon straight back over it.
+if [[ "$VARIANT" == "note" ]]; then
+  cp -r android_note_res/. "$main/res/"
+fi
 
 # The manifest for this variant. The namespace (and so the Kotlin package, and
 # so `.MainActivity`) stays bh.takeone.tv in both builds — only the APPLICATION
@@ -69,7 +80,7 @@ cp "$TEMPLATE/AndroidManifest.xml" "$main/AndroidManifest.xml"
 # The member app's notification service runs with no Flutter engine, so it
 # cannot read a --dart-define. The host is stamped into its manifest instead,
 # from the same BASE_URL the Dart side is built with, so the two cannot drift.
-if [[ "$VARIANT" == "app" ]]; then
+if [[ "$VARIANT" == "app" || "$VARIANT" == "note" ]]; then
   sed -i "s|__TAKEONE_BASE_URL__|${BASE_URL}|g" "$main/AndroidManifest.xml"
 fi
 
@@ -89,6 +100,7 @@ flutter build apk --release \
 
 mkdir -p dist
 out="dist/takeone-screen-${VARIANT}.apk"
+[[ "$VARIANT" == "note" ]] && out="dist/takenote-${VERSION_NAME}.apk"
 mv build/app/outputs/flutter-apk/app-release.apk "$out"
 
 # MOVED, not copied. Flutter writes every variant to the same app-release.apk,

@@ -52,3 +52,9 @@ drafts/*.xlsx
 /takeone-qa/
 # Printables designer fonts (321 MB) — fetched by scripts/fetch-designer-fonts.php, not committed
 /public/fonts/designer/
+
+# Personal / third-party documents — never pushed (the repo is public)
+/drafts/Karate Tournament Entry Form (EN-AR).pdf
+/drafts/Registration Form - filled sample.pdf
+/drafts/The Gost Team Tournament Reg. Form.doc
+/drafts/id-card-reader.zip

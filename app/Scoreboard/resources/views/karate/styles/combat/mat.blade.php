@@ -261,7 +261,9 @@
   </div>
 
   {{-- ── The introduction, over the top of it ───────────────────────────── --}}
-  <div id="vs" class="layer" hidden style="z-index:12; background:radial-gradient(120% 90% at 50% 40%, #16161f 0%, #0a0a0e 65%, #050507 100%); font-family:'Barlow Condensed',sans-serif; color:#e8e6e0; overflow:hidden;">
+  {{-- The age · height · weight chip obeys the platform's VS layout (VsLayout show_stats). --}}
+  <style>#vs[data-stats="0"] .vs-stat{display:none !important;}</style>
+  <div id="vs" class="layer" hidden data-stats="{{ \App\Scoreboard\Support\VsLayout::get()['show_stats'] ? 1 : 0 }}" style="{{ \App\Scoreboard\Support\VsLayout::cssVars() }} z-index:12; background:radial-gradient(120% 90% at 50% 40%, #16161f 0%, #0a0a0e 65%, #050507 100%); font-family:'Barlow Condensed',sans-serif; color:#e8e6e0; overflow:hidden;">
     <div style="position:absolute; {{ $rr ? 'inset:0 0 0 auto; width:56%; clip-path:polygon(18% 0, 100% 0, 100% 100%, 0 100%);' : 'inset:0 auto 0 0; width:56%; clip-path:polygon(0 0, 100% 0, 82% 100%, 0 100%);' }} overflow:hidden; background:{{ $L['aka']['vsPanel'] }}; animation:{{ $rr ? 'panelR' : 'panelL' }} 0.9s cubic-bezier(0.22,1,0.36,1) both;">
       <div id="vsRedPhoto" style="position:absolute; inset:0; background-size:cover; background-position:center 12%; animation:slowDrift 18s ease-in-out infinite;"></div>
       <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient({{ $rr ? '245deg' : '115deg' }}, {{ $L['aka']['vsGlow'] }} 0%, transparent 55%);"></div>
@@ -274,7 +276,7 @@
     </div>
     <div style="position:absolute; top:-6%; bottom:-6%; left:50%; width:3px; margin-left:-1.5px; transform:rotate(10.15deg); pointer-events:none; background:linear-gradient(to bottom, transparent, rgba(253,196,54,0.9) 20%, rgba(253,196,54,0.9) 80%, transparent);background:linear-gradient(to bottom, transparent, oklch(0.85 0.16 85 / 0.9) 20%, oklch(0.85 0.16 85 / 0.9) 80%, transparent); filter:blur(1px);"></div>
 
-    <div style="position:absolute; {{ $rr ? 'right:43.2px; bottom:64.8px; display:flex; flex-direction:column; align-items:flex-end; gap:13px; z-index:6; max-width:44%; min-width:0; text-align:right;' : 'left:43.2px; bottom:64.8px; display:flex; flex-direction:column; align-items:flex-start; gap:13px; z-index:6; max-width:44%; min-width:0;' }} animation:riseUp 0.8s 0.7s cubic-bezier(0.22,1,0.36,1) both;">
+    <div style="position:absolute; {{ $rr ? 'right:43.2px; bottom:var(--vs-info-bottom, 64.8px); scale:var(--vs-info-scale, 1); transform-origin:right bottom; display:flex; flex-direction:column; align-items:flex-end; gap:13px; z-index:6; max-width:44%; min-width:0; text-align:right;' : 'left:43.2px; bottom:var(--vs-info-bottom, 64.8px); scale:var(--vs-info-scale, 1); transform-origin:left bottom; display:flex; flex-direction:column; align-items:flex-start; gap:13px; z-index:6; max-width:44%; min-width:0;' }} animation:riseUp 0.8s 0.7s cubic-bezier(0.22,1,0.36,1) both;">
       <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:{{ $L['aka']['badgeInk'] }}; background:{{ $L['aka']['badgeBg'] }}; padding:5.4px 15.1px 5.4px 18.9px;">{{ $L['aka']['badge'] }}</div>
       <div style="display:flex; align-items:center; {{ $rr ? 'gap:15.1px; flex-direction:row-reverse;' : 'gap:15.1px;' }}">
         <div id="vsRedFlag" style="width:56.2px; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:1px solid rgba(255,255,255,0.35); box-shadow:0 4px 18px rgba(0,0,0,0.6);"></div>
@@ -288,7 +290,7 @@
       <div id="vsRedChips" style="display:flex; flex-wrap:wrap; gap:9.7px; {{ $rr ? 'margin-top:5.4px; justify-content:flex-end;' : 'margin-top:5.4px;' }}"></div>
     </div>
 
-    <div style="position:absolute; {{ $rr ? 'left:43.2px; bottom:64.8px; display:flex; flex-direction:column; align-items:flex-start; gap:13px; z-index:6; max-width:44%; min-width:0;' : 'right:43.2px; bottom:64.8px; display:flex; flex-direction:column; align-items:flex-end; gap:13px; z-index:6; max-width:44%; min-width:0; text-align:right;' }} animation:riseUp 0.8s 0.85s cubic-bezier(0.22,1,0.36,1) both;">
+    <div style="position:absolute; {{ $rr ? 'left:43.2px; bottom:var(--vs-info-bottom, 64.8px); scale:var(--vs-info-scale, 1); transform-origin:left bottom; display:flex; flex-direction:column; align-items:flex-start; gap:13px; z-index:6; max-width:44%; min-width:0;' : 'right:43.2px; bottom:var(--vs-info-bottom, 64.8px); scale:var(--vs-info-scale, 1); transform-origin:right bottom; display:flex; flex-direction:column; align-items:flex-end; gap:13px; z-index:6; max-width:44%; min-width:0; text-align:right;' }} animation:riseUp 0.8s 0.85s cubic-bezier(0.22,1,0.36,1) both;">
       <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:{{ $L['ao']['badgeInk'] }}; background:{{ $L['ao']['badgeBg'] }}; padding:5.4px 15.1px 5.4px 18.9px;">{{ $L['ao']['badge'] }}</div>
       <div style="display:flex; align-items:center; {{ $rr ? 'gap:15.1px;' : 'gap:15.1px; flex-direction:row-reverse;' }}">
         <div id="vsBlueFlag" style="width:56.2px; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:1px solid rgba(255,255,255,0.35); box-shadow:0 4px 18px rgba(0,0,0,0.6);"></div>
@@ -830,11 +832,22 @@
       bg('vs' + k + 'Photo', face);
       var pel = el('vs' + k + 'Photo');
       if (pel) pel.style.opacity = (face && !c.photo) ? '.45' : '1';
+      // How THIS person's photo is placed (PhotoVsFrame) — zoomed and moved
+      // over the untouched original, never cropped. None: the panel's own
+      // cover / center 12%, reset every time because the panel is reused.
+      var fr = c.photo ? c.vs_frame : null;
+      var fz = fr ? parseFloat(fr.z) : NaN, fx = fr ? parseFloat(fr.x) : NaN, fy = fr ? parseFloat(fr.y) : NaN;
+      if (pel) {
+        var framed = isFinite(fz) && isFinite(fx) && isFinite(fy);
+        pel.style.backgroundSize = framed ? (Math.min(3, Math.max(1, fz)) * 100) + '% auto' : 'cover';
+        pel.style.backgroundPosition = framed ? Math.min(100, Math.max(0, fx)) + '% ' + Math.min(100, Math.max(0, fy)) + '%' : 'center 12%';
+      }
       var host = el('vs' + k + 'Chips');
       host.textContent = '';
       chip(host, c.record, false);
       chip(host, c.belt, true);
       chip(host, statLine(c), false);
+      if (statLine(c) && host.lastChild) host.lastChild.classList.add('vs-stat');
     });
   }
 
@@ -1028,6 +1041,9 @@
 })();
 </script>
 
+@if (! empty($vsPreview))
+@include('scoreboard::karate.scoreboard.partials.vs-preview-bridge')
+@endif
 @isset($screenLink)
 @include('scoreboard::karate.screen.partials.screen-link')
 @endisset

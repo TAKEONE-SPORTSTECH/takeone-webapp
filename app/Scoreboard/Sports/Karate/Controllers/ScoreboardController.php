@@ -85,6 +85,34 @@ class ScoreboardController extends Controller
                 ? route('karate-scoreboard.geo-country', $event->uuid, false) : null,
             'clubsUrl' => app(EventAccess::class)->canManage($event, Auth::user())
                 ? route('karate-scoreboard.clubs', $event->uuid, false) : null,
+            // The Bouts card's Exhibitions tab — link an exhibition to the draw
+            // bout it really was (App\Events\Support\ExhibitionLink). Organisers
+            // only, and only while exhibitions exist on this platform.
+            'exhibitionsUrl' => config('events.exhibitions', false) && app(EventAccess::class)->canManage($event, Auth::user())
+                ? route('karate-scoreboard.exhibitions', $event->uuid, false) : null,
+            // Link an exhibition by tapping its bout on the draw itself — the
+            // organiser's own draw page, so the signed-in door only.
+            'exhibitionDrawUrl' => config('events.exhibitions', false) && app(EventAccess::class)->canManage($event, Auth::user())
+                ? route('me.events.bracket.manage', $event->uuid) : null,
+            // Settings → Photo guide: the cropper's face guide, platform-wide,
+            // so offered to a super-admin only and only through this door.
+            'photoGuideUrl' => Auth::user()?->isSuperAdmin()
+                ? route('karate-scoreboard.photo-guide', $event->uuid, false) : null,
+            'vsLayoutUrl' => Auth::user()?->isSuperAdmin()
+                ? route('karate-scoreboard.vs-layout', $event->uuid, false) : null,
+            // The VS screen itself, as a preview for the console's editors.
+            'vsPreviewUrl' => route('karate-scoreboard.vs-preview', $event->uuid, false),
+            // The Players sheet's weight classes — add, remove, move. The
+            // platform's own doors (the participant card's enrolment sheet and
+            // LiveMove), which re-authorise every call; the signed-in door
+            // only, since those are session routes. 987654321 / __PERSON__ are
+            // placeholders the console swaps for the real division / person.
+            'classDoors' => app(EventAccess::class)->canManage($event, Auth::user()) ? [
+                'person' => route('me.events.person.divisions', [$event->uuid, '00000000-0000-4000-8000-000000000000'], false),
+                'members' => route('me.events.divisions.members', [$event->uuid, 987654321], false),
+                'move' => \App\Events\Support\Tournament\LiveMove::enabled()
+                    ? route('me.events.divisions.live-move', $event->uuid, false) : null,
+            ] : null,
             // The same panel, through the organiser's own authorisation rather
             // than a screen token: one console body, two front doors, and the
             // upload has to work through both or the feature is only there for
@@ -198,6 +226,12 @@ class ScoreboardController extends Controller
             'playersUrl' => null,
             'geoCountryUrl' => null,
             'clubsUrl' => null,
+            'exhibitionsUrl' => null,
+            'exhibitionDrawUrl' => null,
+            'photoGuideUrl' => null,
+            'vsLayoutUrl' => null,
+            'vsPreviewUrl' => null,
+            'classDoors' => null,
         ]);
     }
 
@@ -407,6 +441,161 @@ class ScoreboardController extends Controller
         return $this->playerSave($request, $event, $registration);
     }
 
+    /**
+     * The VS screen, as a preview inside the console: the event's OWN mat page
+     * (its Karate style's), frozen on the introduction — no sound, no live
+     * link, no heartbeat — with this mat's competitors, or `reg` in the red
+     * corner, or stand-ins when the mat is empty. The console's editors drive
+     * it over postMessage (partials/vs-preview-bridge), so what they show IS
+     * the wall, not a drawing of it. Framed by this site only.
+     */
+    public function vsPreview(Request $request, ClubEvent $event)
+    {
+        abort_unless($event->sport === 'karate' && $this->canScore($event), 403);
+
+        return $this->vsPreviewView($request, $event, (string) $request->query('mat', ''));
+    }
+
+    /** The same page for a paired table. A page a device draws never 404s. */
+    public function tokenVsPreview(Request $request, string $token)
+    {
+        if (! $this->canOpenControl($token)) {
+            return redirect()->route('karate-court-display.board', $token);
+        }
+        [$device, $event] = $this->controlDevice($token);
+
+        return $this->vsPreviewView($request, $event, (string) $device->court);
+    }
+
+    private function vsPreviewView(Request $request, ClubEvent $event, string $mat)
+    {
+        if ($mat === '' || ! $this->matExists($event, $mat)) {
+            $mat = (string) ($event->matches()->whereNotNull('court')->orderBy('court')->value('court') ?? '');
+        }
+        $state = $mat !== '' ? MatState::load($event, $mat)->toArray() : [];
+
+        // The introduction, and nothing that would make noise or celebrate.
+        $state['mode'] = MatState::MODE_VS;
+        $state['running'] = false;
+        $state['finished'] = false;
+        $state['lastEvent'] = null;
+
+        $reg = $request->filled('reg')
+            ? ClubEventRegistration::where('event_id', $event->id)->find((int) $request->query('reg'))
+            : null;
+        if ($reg) {
+            $state['aka'] = $this->scoringFor($event)->previewCorner($event, $reg);
+        }
+
+        $sample = fn (string $gender) => [
+            'name' => __('scoreboard::karate_messages.vs_sample_name'),
+            'club' => __('scoreboard::karate_messages.vs_sample_club'),
+            'country' => __('scoreboard::karate_messages.vs_sample_country'),
+            'flag' => 'bh', 'nationality' => 'bh', 'logo' => null, 'photo' => null, 'vs_frame' => null,
+            'fallback' => \App\Members\Support\Avatar::placeholder($gender),
+            // Sample facts, so every chip the wall can draw is drawn here too.
+            'belt' => null, 'record' => '3W – 1L', 'age' => 18, 'height' => null, 'weight' => 60,
+        ];
+        foreach (['aka' => 'male', 'ao' => 'female'] as $side => $gender) {
+            if (empty($state[$side]['name'])) {
+                $state[$side] = $sample($gender);
+            }
+        }
+
+        return response()->view(\App\Scoreboard\Sports\Karate\Styles\KarateStyles::view($event, 'mat'), [
+            'event' => $event,
+            'court' => $mat,
+            'state' => $state,
+            'redRight' => \App\Scoreboard\Sports\Karate\Mat\MatCorners::redRight($event, $mat, 'board'),
+            'look' => \App\Scoreboard\Sports\Karate\Mat\CornerLook::for($event),
+            'pinned' => 'bout',
+            'eventLogo' => $event->host()->logo,
+            'vsPreview' => true,
+        ])->header('X-Frame-Options', 'SAMEORIGIN')->header('Cache-Control', 'no-store, private');
+    }
+
+    /** A person's VS-screen framing, through the organiser's own session. */
+    public function playerVsFrame(Request $request, ClubEvent $event, int $registration): JsonResponse
+    {
+        abort_unless($event->sport === 'karate' && $this->mayManage($event), 403);
+
+        return $this->saveVsFrame($request, $event, $registration);
+    }
+
+    /** The same, through a paired table's token. */
+    public function tokenPlayerVsFrame(Request $request, string $token, int $registration): JsonResponse
+    {
+        [, $event] = $this->controlDevice($token);
+        abort_unless($this->mayManage($event), 403);
+
+        return $this->saveVsFrame($request, $event, $registration);
+    }
+
+    /**
+     * Where this person's photo sits on the VS screen — zoom and focal point
+     * over the ORIGINAL, which is never cut (App\Scoreboard\Models\
+     * PhotoVsFrame). Keyed by the photo the VS screen actually shows, by the
+     * same rule it chooses it (Mat\Scoring::corner): the entry's own photo,
+     * else the member's PUBLIC profile picture. Changing the photo is the
+     * entry editor's business and is refused here like any field the editor
+     * says this organiser may not touch.
+     */
+    private function saveVsFrame(Request $request, ClubEvent $event, int $registration): JsonResponse
+    {
+        $reg = ClubEventRegistration::where('event_id', $event->id)->with('user')->find($registration);
+        abort_unless($reg, 404);
+
+        $actor = $this->actor ?: Auth::user();
+        $perm = app(\App\Events\Support\EntryEditor::class)->permissions($event, $reg, $actor);
+        abort_unless((bool) ($perm['fields']['photo']['editable'] ?? false), 403);
+
+        $user = $reg->user;
+        $path = $reg->photo ?: (($user?->profile_picture && $user->profile_picture_is_public) ? $user->profile_picture : null);
+        if (! $path) {
+            return response()->json(['success' => false, 'message' => __('scoreboard::karate_messages.vf_no_photo')], 422);
+        }
+
+        $data = $request->validate([
+            'reset' => ['sometimes', 'boolean'],
+            'zoom' => ['required_without:reset', 'numeric', 'between:1,3'],
+            'x' => ['required_without:reset', 'numeric', 'between:0,100'],
+            'y' => ['required_without:reset', 'numeric', 'between:0,100'],
+        ]);
+
+        if (! empty($data['reset'])) {
+            \App\Scoreboard\Models\PhotoVsFrame::where('path', $path)->delete();
+        } else {
+            \App\Scoreboard\Models\PhotoVsFrame::updateOrCreate(['path' => $path], [
+                'zoom' => round((float) $data['zoom'], 3), 'pos_x' => round((float) $data['x'], 3),
+                'pos_y' => round((float) $data['y'], 3), 'updated_by' => $actor?->id,
+            ]);
+        }
+        \App\Scoreboard\Models\PhotoVsFrame::forget($path);
+
+        // Any mat showing this person now: re-read its corners and push them,
+        // so an open VS screen moves the photo without a reload.
+        foreach ($event->matches()->whereNotNull('court')->distinct()->pluck('court') as $mat) {
+            rescue(function () use ($event, $mat, $reg) {
+                $state = MatState::load($event, (string) $mat);
+                $ex = $state->exhibitionId ? \App\Events\Models\EventExhibitionBout::find($state->exhibitionId) : null;
+                $bout = $state->matchId ? \App\Events\Models\EventMatch::find($state->matchId) : null;
+                $ids = array_map('intval', array_filter([$ex?->a_registration_id, $ex?->b_registration_id, $bout?->a_competitor_id, $bout?->b_competitor_id]));
+                if (in_array((int) $reg->id, $ids, true)) {
+                    $fresh = $this->scoringFor($event)->apply($event, (string) $mat, 'refresh');
+                    ScreenChannel::notifyCourt($event, (string) $mat, ['action' => 'mat', 'state' => $fresh->toArray()]);
+                }
+            }, null, false);
+        }
+
+        \Illuminate\Support\Facades\Log::info('karate.vs-frame', ['event' => $event->uuid, 'registration' => $reg->id, 'by' => $actor?->id]);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('scoreboard::karate_messages.vf_saved'),
+            'frame' => \App\Scoreboard\Models\PhotoVsFrame::payloadFor($path),
+        ]);
+    }
+
     public function tokenPlayerUpdate(Request $request, string $token, int $registration): JsonResponse
     {
         [$device, $event] = $this->controlDevice($token);
@@ -415,12 +604,124 @@ class ScoreboardController extends Controller
         return $this->playerSave($request, $event, $registration, $device->court);
     }
 
+    /* ── Exhibitions → the draw ─────────────────────────────────────────────
+       The Bouts card's Exhibitions tab: every exhibition fought at this event,
+       the draw bouts each one could be, and the link that files it into one of
+       them (App\Events\Support\ExhibitionLink). ORGANISERS only — a link
+       writes a result into the bracket and can seat an athlete in a
+       later-round slot, which is more than a scoring official may do. */
+
+    public function exhibitions(ClubEvent $event): JsonResponse
+    {
+        abort_unless($event->sport === 'karate' && config('events.exhibitions', false) && $this->mayManage($event), 403);
+
+        return response()->json(app(\App\Events\Support\ExhibitionLink::class)->overview($event));
+    }
+
+    public function tokenExhibitions(string $token): JsonResponse
+    {
+        [, $event] = $this->controlDevice($token);
+        abort_unless(config('events.exhibitions', false) && $this->mayManage($event), 403);
+
+        return response()->json(app(\App\Events\Support\ExhibitionLink::class)->overview($event));
+    }
+
+    public function exhibitionLink(Request $request, ClubEvent $event, string $exhibition): JsonResponse
+    {
+        abort_unless($event->sport === 'karate' && config('events.exhibitions', false) && $this->mayManage($event), 403);
+
+        return $this->linkExhibition($request, $event, $exhibition);
+    }
+
+    public function tokenExhibitionLink(Request $request, string $token, string $exhibition): JsonResponse
+    {
+        [, $event] = $this->controlDevice($token);
+        abort_unless(config('events.exhibitions', false) && $this->mayManage($event), 403);
+
+        return $this->linkExhibition($request, $event, $exhibition);
+    }
+
+    public function exhibitionUnlink(ClubEvent $event, string $exhibition): JsonResponse
+    {
+        abort_unless($event->sport === 'karate' && config('events.exhibitions', false) && $this->mayManage($event), 403);
+
+        return $this->unlinkExhibition($event, $exhibition);
+    }
+
+    public function tokenExhibitionUnlink(string $token, string $exhibition): JsonResponse
+    {
+        [, $event] = $this->controlDevice($token);
+        abort_unless(config('events.exhibitions', false) && $this->mayManage($event), 403);
+
+        return $this->unlinkExhibition($event, $exhibition);
+    }
+
+    /** Undo a link made by mistake — ExhibitionLink::unlink says what it undoes. */
+    private function unlinkExhibition(ClubEvent $event, string $exhibition): JsonResponse
+    {
+        $ex = \App\Events\Models\EventExhibitionBout::where('event_id', $event->id)
+            ->where('uuid', $exhibition)->firstOrFail();
+
+        $link = app(\App\Events\Support\ExhibitionLink::class);
+
+        try {
+            $done = $link->unlink($event, $ex, $this->actor ?: Auth::user());
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'can_start_day' => $e instanceof \App\Events\Support\EventNotUnderWay,
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $done['message'],
+            'exhibition' => $done['exhibition'],
+        ] + $link->overview($event));
+    }
+
+    private function linkExhibition(Request $request, ClubEvent $event, string $exhibition): JsonResponse
+    {
+        $data = $request->validate([
+            'match_id' => ['required', 'integer', 'min:1'],
+            // A bout the organiser picked by hand: attach only, the draw untouched.
+            'attach_only' => ['sometimes', 'boolean'],
+        ]);
+
+        // Scoped to THIS event: another event's exhibition is simply not found.
+        $ex = \App\Events\Models\EventExhibitionBout::where('event_id', $event->id)
+            ->where('uuid', $exhibition)->firstOrFail();
+
+        $link = app(\App\Events\Support\ExhibitionLink::class);
+
+        try {
+            $done = $link->link($event, $ex, (int) $data['match_id'], $this->actor ?: Auth::user(), (bool) ($data['attach_only'] ?? false));
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'can_start_day' => $e instanceof \App\Events\Support\EventNotUnderWay,
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => __('scoreboard::karate_messages.ctl_ex_linked', [
+                'code' => $done['exhibition']['code'],
+                'bout' => $done['exhibition']['linked']['number'] ?? '—',
+            ]),
+            'exhibition' => $done['exhibition'],
+            'match' => $done['match'],
+        ] + $link->overview($event));
+    }
+
     /** Every participant of the event, one row per PERSON. */
     private function playersPayload(ClubEvent $event): array
     {
         $regs = ClubEventRegistration::where('event_id', $event->id)
             ->where('role', 'participant')
-            ->with(['user:id,full_name,name,gender,birthdate,profile_picture,profile_picture_is_public',
+            ->with(['user:id,uuid,full_name,name,gender,birthdate,profile_picture,profile_picture_is_public',
                 'user.memberClubs:id,club_name,country',
                 'representingTenant:id,club_name,country',
                 'category:id,name,weight_class'])
@@ -436,11 +737,36 @@ class ScoreboardController extends Controller
 
                     return $this->playerRow($r, $written[$r->id]['name'] ?? null, $written[$r->id]['country'] ?? null)
                         + ['divisions' => $rows->map(fn ($x) => $x->category?->weight_class ?: $x->category?->name)
-                            ->filter()->unique()->values()->all()];
+                            ->filter()->unique()->values()->all(),
+                            // Each division they are in, as the console shows
+                            // it: the weight class as a chip ("-45 kg"), the
+                            // division's full name beside it.
+                            // `registration` is the row that holds it — what
+                            // a remove or a move acts on.
+                            'classes' => $rows->filter(fn ($x) => $x->category)->unique('category_id')
+                                ->map(fn ($x) => ['id' => (int) $x->category->id, 'name' => (string) $x->category->name,
+                                    'weight' => $this->weightLabel($x->category->weight_class, $x->category->name),
+                                    'registration' => (int) $x->id])
+                                ->values()->all(),
+                            // The person's public key, for the enrolment sheet's
+                            // door. This payload is organisers-only (players()).
+                            'uuid' => $r->user?->uuid];
                 })
                 ->sortBy(fn ($p) => mb_strtolower((string) $p['name']))
                 ->values()->all(),
         ];
+    }
+
+    /** A weight class as read aloud: a bare "-45" gains its unit. */
+    private function weightLabel(?string $class, ?string $name = null): ?string
+    {
+        $class = trim((string) $class);
+        if ($class === '') {
+            // None stored: the "+55 kg" a division's own name ends with, if any.
+            return preg_match('/[+-]\s?\d+(?:\.\d+)?\s?kg/i', (string) $name, $m) ? $m[0] : null;
+        }
+
+        return preg_match('/^[+-]?\d+(\.\d+)?$/', $class) ? $class.' kg' : $class;
     }
 
     /** One person as the Players list and its editor read them. */
@@ -490,6 +816,10 @@ class ScoreboardController extends Controller
                 'declared_age' => $reg->declared_age ?: null,
                 'nationality' => $reg->user?->nationality ? strtoupper((string) $reg->user->nationality) : null,
                 'club_key' => $present['club']['slug'] ?? null,
+                // The VS screen's framing of the photo it shows (see saveVsFrame).
+                'vs_photo' => ($vsPath = $reg->photo ?: (($reg->user?->profile_picture && $reg->user->profile_picture_is_public) ? $reg->user->profile_picture : null))
+                    ? file_url($vsPath) : null,
+                'vs_frame' => \App\Scoreboard\Models\PhotoVsFrame::payloadFor($vsPath ?? null),
                 'club' => $present['club']['name'] ?? '',
             ]),
             'clubs' => $present['clubs'] ?? [],
@@ -667,6 +997,7 @@ class ScoreboardController extends Controller
             // The draw, on this tablet — read-only, editable under the event's
             // tablet PIN (App\Events\Support\TabletDraw). Null while off.
             'drawUrl' => \App\Events\Support\TabletDraw::enabled() ? route('tablet.draw', $token) : null,
+            'vsPreviewUrl' => route('karate-scoreboard.token-vs-preview', $token, false),
             // The whole draw for the Bouts card's tabs, through this table's token.
             'catalogueUrl' => route('karate-scoreboard.token-catalogue', $token, false),
             // The Players tab, through the table's token — only when the
@@ -677,6 +1008,8 @@ class ScoreboardController extends Controller
                 ? route('karate-scoreboard.token-geo-country', $token, false) : null,
             'clubsUrl' => app(EventAccess::class)->canManage($event, $this->actor)
                 ? route('karate-scoreboard.token-clubs', $token, false) : null,
+            'exhibitionsUrl' => config('events.exhibitions', false) && app(EventAccess::class)->canManage($event, $this->actor)
+                ? route('karate-scoreboard.token-exhibitions', $token, false) : null,
             // A paired console is a SCREEN, and the console lists it beside the
             // boards with a live dot. Commands alone would show a mat waiting
             // twenty minutes for the next bout as offline — the opposite of the
@@ -784,6 +1117,89 @@ class ScoreboardController extends Controller
      * Name and colour each corner for the whole event — every mat, screen and
      * console of it redraws. Blank fields return a corner to its style's own.
      */
+    /**
+     * The photo guide every console's cropper draws (App\Scoreboard\Support\
+     * PhotoGuide). Platform-wide, so a super-admin's only — the event in the
+     * address is just the console it was set from.
+     */
+    public function photoGuide(Request $request, ClubEvent $event): JsonResponse
+    {
+        abort_unless($event->sport === 'karate', 404);
+        abort_unless(Auth::user()?->isSuperAdmin(), 403);
+
+        $data = $request->validate([
+            'reset' => ['sometimes', 'boolean'],
+            'guide' => ['required_without:reset', 'array'],
+            'guide.*' => ['numeric', 'between:0,1'],
+        ]);
+
+        $guide = ! empty($data['reset'])
+            ? \App\Scoreboard\Support\PhotoGuide::reset()
+            : \App\Scoreboard\Support\PhotoGuide::save($data['guide']);
+
+        \Illuminate\Support\Facades\Log::info('scoreboard.photo_guide.saved', ['user' => Auth::id(), 'reset' => ! empty($data['reset'])]);
+        $this->broadcastLook($event);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('scoreboard::karate_messages.pg_saved'),
+            'guide' => $guide,
+        ]);
+    }
+
+    /**
+     * Where the VS screen puts each competitor's details (App\Scoreboard\
+     * Support\VsLayout). Platform-wide, so a super-admin's only.
+     */
+    public function vsLayout(Request $request, ClubEvent $event): JsonResponse
+    {
+        abort_unless($event->sport === 'karate', 404);
+        abort_unless(Auth::user()?->isSuperAdmin(), 403);
+
+        $data = $request->validate([
+            'layout' => ['required', 'array'],
+            'layout.info_bottom' => ['required', 'numeric', 'between:0,700'],
+            'layout.info_scale' => ['required', 'numeric', 'between:0.5,1.3'],
+            'layout.show_stats' => ['sometimes', 'boolean'],
+        ]);
+
+        $layout = \App\Scoreboard\Support\VsLayout::save($data['layout']);
+        \Illuminate\Support\Facades\Log::info('scoreboard.vs_layout.saved', ['user' => Auth::id()]);
+        $this->broadcastLook($event);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('scoreboard::karate_messages.vs_saved'),
+            'layout' => $layout,
+        ]);
+    }
+
+    /**
+     * The photo guide and the VS layout are the platform's, so a change to
+     * either goes to every Karate mat that could be showing it RIGHT NOW —
+     * each event with a wall screen paired, and the one it was set from —
+     * and every console and wall screen there patches itself in place
+     * (`look` in karate/screen/partials/screen-link; no reload, so a bout on
+     * screen is never interrupted). Anything not reached reads the new values
+     * the next time it loads. Same payload for everybody, and nothing private
+     * in it: two sets of numbers.
+     */
+    private function broadcastLook(ClubEvent $current): void
+    {
+        $message = [
+            'action' => 'look',
+            'guide' => \App\Scoreboard\Support\PhotoGuide::get(),
+            'vs' => \App\Scoreboard\Support\VsLayout::get(),
+        ];
+
+        $ids = \App\Scoreboard\Sports\Karate\HallScreen\CourtDisplayDevice::whereNull('revoked_at')
+            ->whereNotNull('court')->orderByDesc('event_id')->distinct()->limit(50)->pluck('event_id')
+            ->push($current->id)->unique();
+
+        ClubEvent::whereIn('id', $ids)->where('sport', 'karate')->get()
+            ->each(fn (ClubEvent $e) => \App\Scoreboard\Sports\Karate\HallScreen\ScreenChannel::notifyCourt($e, null, $message));
+    }
+
     public function cornerLook(Request $request, ClubEvent $event): JsonResponse
     {
         abort_unless($this->canScore($event), 403);

@@ -150,6 +150,49 @@ class EventBadges extends EventCertificates implements \App\Certificates\Contrac
         return (string) $official->badge_token;
     }
 
+    /**
+     * Issue the badges (owner, 2026-10-29): each official not yet sent theirs is notified
+     * with a link to it, and may open it from then on. The badge itself is unchanged — it
+     * is still drawn from the appointment as it stands; issuing only hands it over.
+     * `$userIds` narrows it (the ticked officials, or one job's); null is everyone.
+     *
+     * @param  list<int>|null  $userIds
+     * @return array{issued: int, already: int}
+     */
+    public function issue(ClubEvent $event, User $by, ?array $userIds = null): array
+    {
+        $issued = 0;
+        $already = 0;
+        foreach ($this->officials($event) as $o) {
+            if ($userIds !== null && ! in_array((int) $o->user_id, $userIds, true)) {
+                continue;
+            }
+            if ($o->badge_issued_at) {
+                $already++;
+
+                continue;
+            }
+            $token = $this->token($o);
+            // Past the model, like the token: handing a badge over is not a change to the
+            // appointment, so updated_at (the print-shop file's signature) must not move.
+            $claimed = \Illuminate\Support\Facades\DB::table('event_officials')->where('id', $o->id)->whereNull('badge_issued_at')->update(['badge_issued_at' => now()]);
+            if (! $claimed) {
+                $already++;
+
+                continue;
+            }
+            $issued++;
+            \App\Members\Models\UserNotification::notifyUser((int) $o->user_id, 'event_badge', __('Your official badge for :event', ['event' => $event->title]), [
+                'actor_id' => $by->id,
+                'body' => __('Open it to view, download or print your badge.'),
+                'action_url' => route('me.badges.pdf', $token),
+                'icon' => 'bi-person-badge',
+            ]);
+        }
+
+        return ['issued' => $issued, 'already' => $already];
+    }
+
     public function verifyUrl(EventOfficial $official): string
     {
         return route('badges.verify', ['token' => $this->token($official)]);
@@ -300,10 +343,10 @@ class EventBadges extends EventCertificates implements \App\Certificates\Contrac
     }
 
     /** Every official's badge, four to an A4 sheet with cut lines — the file a print shop is sent. */
-    public function sheets(ClubEvent $event, string $locale, ?callable $progress = null): string
+    public function sheets(ClubEvent $event, string $locale, ?callable $progress = null, ?string $type = null): string
     {
         if (\App\Printables\Designer::enabled()) {
-            $pages = $this->officials($event)->map(fn (EventOfficial $o) => [
+            $pages = $this->officialsFor($event, $type)->map(fn (EventOfficial $o) => [
                 $this->badgeDesign($event, $this->jobSlots($o)),
                 $this->designValues($event, $this->fields($o, $locale), $this->officialCrest($o), $o->user?->nationality, $this->officialClub($o)),
             ])->all();
@@ -312,32 +355,95 @@ class EventBadges extends EventCertificates implements \App\Certificates\Contrac
         }
         $service = app(CertificateService::class);
         $template = $this->template($event);
-        $pages = $this->officials($event)->map(fn (EventOfficial $o) => fn () => $service->renderDocument($template, $locale, $this->fields($o, $locale), $event))->all();
+        $pages = $this->officialsFor($event, $type)->map(fn (EventOfficial $o) => fn () => $service->renderDocument($template, $locale, $this->fields($o, $locale), $event))->all();
 
         return $service->bundlePages($pages, $progress);
     }
 
     /** What the badges in force depend on: who the officials are, and the design. For a bundle's name. */
-    public function signature(ClubEvent $event, string $locale): string
+    public function signature(ClubEvent $event, string $locale, ?string $type = null): string
     {
-        $o = $this->officials($event);
+        $o = $this->officialsFor($event, $type);
 
-        return substr(sha1($locale.'|'.$o->map(fn ($x) => $x->id.'@'.$x->updated_at.'@'.$x->user?->updated_at)->implode(',').'|'.$this->template($event)->updated_at.'|'.$this->designSignature($event)), 0, 16);
+        return substr(sha1($locale.'|'.(string) $type.'|'.$o->map(fn ($x) => $x->id.'@'.$x->updated_at.'@'.$x->user?->updated_at)->implode(',').'|'.$this->template($event)->updated_at.'|'.$this->designSignature($event)), 0, 16);
+    }
+
+    /**
+     * The roster one bundle prints. `official_badge` is everyone; `official_badge.<job>`
+     * is that designation only (EventCertificates::bundleRecipients does the same for the
+     * thank-you certificates), each badge still drawn on its own job's design.
+     */
+    public function officialsFor(ClubEvent $event, ?string $type = null): Collection
+    {
+        [$base, $job] = array_pad(explode('.', (string) $type, 2), 2, null);
+        $all = $this->officials($event);
+        if ($type === null || $job === null || $job === '') {
+            return $all;
+        }
+        $ids = str_starts_with($job, 'sel-')
+            ? app(\App\Certificates\Support\CertificateBundles::class)->selected($this, $event, substr($job, 4))
+            : $this->bundleRecipients($event, (string) $base, $job);
+
+        return $ids === null ? $all : $all->filter(fn (EventOfficial $o) => in_array((int) $o->user_id, $ids, true))->values();
+    }
+
+    /** A badge's holder, in the same words the federation list ticks with. */
+    public function holderKey(Model $holder): string
+    {
+        return $holder instanceof User ? 'u:'.$holder->uuid : '';
+    }
+
+    /**
+     * The ticked officials, as the ids a selection bundle is remembered by: badges
+     * keep no certificate records, so the chosen set is the officials themselves.
+     *
+     * @return list<int>
+     */
+    public function pageSelection(Model $context, array $holders): array
+    {
+        if (! $context instanceof ClubEvent || $holders === []) {
+            return [];
+        }
+        $want = array_fill_keys(array_map('strval', $holders), true);
+
+        return $this->officials($context)
+            ->filter(fn (EventOfficial $o) => $o->user && isset($want[$this->holderKey($o->user)]))
+            ->pluck('user_id')->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
+    }
+
+    /** Who a job's badge bundle covers — null when the job is not one of this event's. */
+    public function bundleRecipients(Model $context, string $type, string $job): ?array
+    {
+        if ($type !== static::TYPE || ! $context instanceof ClubEvent) {
+            return null;
+        }
+        $roles = app(OfficialRoles::class);
+        if (! array_key_exists($job, $roles->jobs($context))) {
+            return null;
+        }
+
+        return EventOfficial::where('event_id', $context->id)->get()
+            ->filter(fn (EventOfficial $o) => $roles->jobKey($context, $o) === $job)
+            ->pluck('user_id')->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
     }
 
     public function printCount(Model $context, string $type): int
     {
-        return $context instanceof ClubEvent && $type === static::TYPE ? $this->officials($context)->count() : 0;
+        if (! $context instanceof ClubEvent || explode('.', $type, 2)[0] !== static::TYPE) {
+            return 0;
+        }
+
+        return $this->officialsFor($context, $type)->count();
     }
 
     public function printSignature(Model $context, string $type): string
     {
-        return $context instanceof ClubEvent ? $this->signature($context, $this->locale($context)) : '';
+        return $context instanceof ClubEvent ? $this->signature($context, $this->locale($context), $type) : '';
     }
 
     public function printAll(Model $context, string $type, ?callable $progress = null): string
     {
-        return $context instanceof ClubEvent ? $this->sheets($context, $this->locale($context), $progress) : '';
+        return $context instanceof ClubEvent ? $this->sheets($context, $this->locale($context), $progress, $type) : '';
     }
 
     /**

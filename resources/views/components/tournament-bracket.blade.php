@@ -74,8 +74,13 @@
     // A viewer who may not arrange is never handed the arranging endpoints. The
     // endpoints authorize every call themselves — this simply keeps the page to
     // what its viewer actually needs.
-    $arrangeEndpoint = $canArrange ? $arrangeUrl : null;
-    $clearEndpoint = $canArrange ? $clearUrl : null;
+    //
+    // The organiser (canManage) gets them too: once the event has started the
+    // page-time `canArrange` is false, but the data feed can still say yes
+    // (free moves after the start), and a board with no address saved to
+    // `fetch(null)` — "Not Found".
+    $arrangeEndpoint = ($canArrange || $canManage) ? $arrangeUrl : null;
+    $clearEndpoint = ($canArrange || $canManage) ? $clearUrl : null;
 
     /* ── The DRAFT's organiser actions, as addresses ───────────────────────
 

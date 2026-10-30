@@ -54,6 +54,8 @@ import 'kit.dart';
 import 'library.dart';
 import 'link.dart';
 import 'tally.dart';
+import 'guide.dart';
+import 'parts.dart';
 import 'vault.dart';
 
 /// What sport is filmed at, and what a broadcast can actually carry.
@@ -145,11 +147,44 @@ class _StationState extends State<Station> with WidgetsBindingObserver {
   /// behaves exactly as it always did: paired means filming, and filming means
   /// live.
   bool _wantLive = true;
+
+  /// The server has no live feed (it answered 410). Nothing to retry and
+  /// nothing to tell the operator: the camera still films every bout.
+  bool _liveGone = false;
   bool _rolling = false;
   String? _fault;
 
   int _recordFps = kRecordFpsDefault;
   double _zoom = 1;
+
+  /// The picture's leveling, in degrees clockwise — set with a two-finger
+  /// twist on the viewfinder, applied wherever the footage is shown (see
+  /// Clip.tilt). Remembered, like the zoom, across bouts and restarts.
+  double _tilt = 0;
+
+  // A pinch/twist in progress: where it started, and the readout it shows.
+  double _zoomAtStart = 1;
+  double _tiltAtStart = 0;
+  DateTime _lastZoomCall = DateTime.fromMillisecondsSinceEpoch(0);
+  String? _adjusting;
+  Timer? _adjustTimer;
+
+  static const _maxZoom = 8.0;
+  static const _maxTilt = 20.0;
+
+  void _showAdjusting() {
+    _adjusting = '${_zoom.toStringAsFixed(1)}×  ·  ${_tilt >= 0 ? '+' : ''}${_tilt.toStringAsFixed(1)}°';
+    _adjustTimer?.cancel();
+    _adjustTimer = Timer(const Duration(milliseconds: 1400), () {
+      if (mounted) setState(() => _adjusting = null);
+    });
+  }
+
+  Future<void> _saveFraming() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('boutcam.zoom', _zoom);
+    await prefs.setDouble('boutcam.tilt', _tilt);
+  }
 
   // Camera settings, as the design's drawer names them.
   //
@@ -173,6 +208,86 @@ class _StationState extends State<Station> with WidgetsBindingObserver {
 
   // UI.
   bool _drawerOpen = false;
+
+  /// The framing guide over the preview: where the score bar, the event line
+  /// and the live-scoring list will sit on a sent video. Remembered; ON until
+  /// somebody turns it off, because a camera is framed once and it matters.
+  bool _guide = true;
+
+  /// The real score bar, painted for this camera's frame (ScoreBar.kt via the
+  /// `preview` call), laid over the live picture while the guide is on.
+  Uint8List? _guideBar;
+  String _guideKey = '';
+  Map<String, dynamic>? _guideMatch;
+  static const _share = MethodChannel('bh.takeone.lab/share');
+
+  /// A plan for the bar with nothing fought yet: this camera's event and mat,
+  /// and the bout loaded on the mat when there is one — so the operator frames
+  /// against the bar exactly as a sent video will carry it.
+  Map<String, dynamic> _demoPlan() {
+    final m = _guideMatch;
+    String up(String? s, String fallback) => (s == null || s.isEmpty) ? fallback : s;
+
+    return {
+      'disc': '',
+      'sub': _eventTitle ?? '',
+      'feed_title': 'Live scoring',
+      'red': {'name': up(m?['red'] as String?, 'Red corner'), 'club': 'Club', 'label': 'AKA', 'flag': ''},
+      'blue': {'name': up(m?['blue'] as String?, 'Blue corner'), 'club': 'Club', 'label': 'AO', 'flag': ''},
+      'rounds': [],
+      'states': [
+        {
+          'at': 0,
+          'score_red': 0,
+          'score_blue': 0,
+          'round': 'Round 1',
+          'feed': [
+            {'ts': '0:12', 'name': 'Yuko', 'pts': 1, 'colour': '#ff6a5e'},
+            {'ts': '0:31', 'name': 'Waza-ari', 'pts': 2, 'colour': '#6aa6ff'},
+          ],
+          'segments': List.filled(14, '#2a2724'),
+        },
+      ],
+      'tab': {
+        'match': up((m?['number'] ?? m?['id'])?.toString(), '—'),
+        'court': up(_court, 'Mat'),
+        'round': up(m?['stage'] as String?, 'Round'),
+        'division': 'Division · ages · weight',
+      },
+    };
+  }
+
+  Future<void> _paintGuide() async {
+    if (!_guide || !_ready) return;
+
+    // The frame's shape as recorded — upright when the phone is held upright.
+    final screen = MediaQuery.maybeOf(context)?.size ?? const Size(1920, 1080);
+    final (vw, vh) = FramingGuide.frameShape(screen, _renderer.videoWidth, _renderer.videoHeight);
+    final width = vh > vw ? 720 : 1280;
+    final height = (width * vh / vw).round();
+    final plan = jsonEncode(_demoPlan());
+    final key = 'camera|${plan.hashCode}';
+    final stamp = '$key|$width|$height|${_vault.lift}|${_vault.parts.join(',')}';
+
+    if (stamp == _guideKey && _guideBar != null) return;
+    _guideKey = stamp;
+
+    try {
+      final png = await _share.invokeMethod<Uint8List>('preview', {
+        'plan': plan,
+        'key': key,
+        'width': width,
+        'height': height,
+        'at': 0.0,
+        'parts': _vault.parts.where((p) => p != 'intro').toList(),
+        'lift': _vault.lift,
+      });
+      if (png != null && mounted) setState(() => _guideBar = png);
+    } catch (_) {
+      // The boxes still show where everything goes.
+      if (mounted) setState(() => _guideBar = null);
+    }
+  }
   bool _telemetryOpen = false;
 
   /// Left and right audio, 0..1, for the meters on the left edge.
@@ -235,6 +350,12 @@ class _StationState extends State<Station> with WidgetsBindingObserver {
 
   Future<void> _boot() async {
     await _renderer.initialize();
+
+    // The framing guide follows the frame's real shape once the lens reports it.
+    _renderer.onResize = () {
+      if (mounted) setState(() {});
+      unawaited(_paintGuide());
+    };
     await _readDevice();
 
     // The identity survives a restart: a camera that re-enrolled on every launch
@@ -258,6 +379,9 @@ class _StationState extends State<Station> with WidgetsBindingObserver {
     // Loaded before the first bout can start, so a clip left over from a
     // competition that ended on a dead battery is picked up on launch.
     await _vault.load();
+    _guide = prefs.getBool('boutcam.guide') ?? true;
+    _zoom = (prefs.getDouble('boutcam.zoom') ?? 1).clamp(1.0, _maxZoom);
+    _tilt = (prefs.getDouble('boutcam.tilt') ?? 0).clamp(-_maxTilt, _maxTilt);
     _vault.useToken(_token);
     _vault.start();
 
@@ -371,6 +495,13 @@ class _StationState extends State<Station> with WidgetsBindingObserver {
     // Reconcile with what the mat believes, both ways: a bout that started while
     // this app was dead, and a stop that was missed.
     final shouldRoll = config['recording'] == true;
+
+    // The bout on the mat, for the framing guide's names and number.
+    final onMat = config['match'] as Map<String, dynamic>?;
+    if (onMat != null && onMat['id'] != _guideMatch?['id']) {
+      _guideMatch = onMat;
+      unawaited(_paintGuide());
+    }
 
     if (shouldRoll && !_rolling) {
       await _startBout(match: config['match'] as Map<String, dynamic>?);
@@ -496,6 +627,8 @@ class _StationState extends State<Station> with WidgetsBindingObserver {
         _fault = silent ? 'NO MICROPHONE — FILMING WITHOUT SOUND' : null;
       });
 
+      unawaited(_paintGuide());
+
       // A mat is lit by whatever the venue has, and a white dobok on a bright
       // floor is the hardest thing a phone camera is asked to meter. Both are
       // set explicitly rather than left to the default, because a locked
@@ -521,6 +654,13 @@ class _StationState extends State<Station> with WidgetsBindingObserver {
     try {
       await Helper.setExposureMode(track, CameraExposureMode.auto).timeout(_tune);
     } catch (_) {}
+
+    // A reopened lens starts at 1×; the operator's zoom is put back.
+    if (_zoom != 1) {
+      try {
+        await Helper.setZoom(track, _zoom).timeout(_tune);
+      } catch (_) {}
+    }
 
     if (mounted) setState(() {});
   }
@@ -589,6 +729,9 @@ class _StationState extends State<Station> with WidgetsBindingObserver {
     try {
       await Helper.setZoom(track, z).timeout(_tune);
     } catch (_) {}
+
+    // Remembered: the next bout, and the camera reopening, keep this zoom.
+    unawaited(_saveFraming());
   }
 
   /// Auto · Lock · Manual, as the drawer offers them.
@@ -662,7 +805,7 @@ class _StationState extends State<Station> with WidgetsBindingObserver {
     // because this is the one door onto the wire — and the server refuses the
     // publish credential in this state anyway, so asking would only produce a
     // fault on the operator's screen for a feed nobody wants up.
-    if (!_wantLive) return;
+    if (!_wantLive || _liveGone) return;
 
     setState(() {
       _connecting = true;
@@ -670,9 +813,26 @@ class _StationState extends State<Station> with WidgetsBindingObserver {
     });
 
     try {
-      final d = await CameraApi(_token).publishToken();
+      final grant = await CameraApi(_token).publishToken();
 
-      if (d == null) throw 'no publish token';
+      if (grant.status == 410) {
+        setState(() {
+          _liveGone = true;
+          _connecting = false;
+        });
+        _note('live_not_offered');
+
+        return;
+      }
+
+      final d = grant.body;
+
+      // Anything but a whole credential is a feed that cannot start — said in
+      // words, never as the raw error a missing field throws.
+      if (grant.status != 200 || d == null || d['whip_url'] is! String || d['token'] is! String) {
+        throw 'no publish token';
+      }
+
       _streamId = d['stream'] as String?;
 
       final pc = await createPeerConnection({
@@ -718,7 +878,7 @@ class _StationState extends State<Station> with WidgetsBindingObserver {
     } catch (e) {
       setState(() {
         _connecting = false;
-        _fault = 'LIVE: $e';
+        _fault = 'LIVE FEED COULD NOT START';
       });
       _note('live_failed');
     }
@@ -842,15 +1002,23 @@ class _StationState extends State<Station> with WidgetsBindingObserver {
       final stamp = '${now.year}${_two(now.month)}${_two(now.day)}-'
           '${_two(now.hour)}${_two(now.minute)}${_two(now.second)}';
 
-      // Named for the bout, as the shipping app names it: identifiable on the
-      // phone with no app and no server.
+      // Named for the bout, and the name carries EVERYTHING: the file lands in
+      // the phone's gallery, which keeps it when the app is uninstalled, and the
+      // name is then the only record of which bout it was (ClipName reads it
+      // back). Identifiable on the phone with no app and no server.
       final label = (match?['number'] ?? match?['bout'] ?? match?['id'])?.toString();
+      final matchId = (match?['id'] as num?)?.toInt();
+      final red = match?['red'] as String?;
+      final blue = match?['blue'] as String?;
       final parts = [
         if (_court != null) 'mat-${_slug(_court!)}',
         if (_angle != null) 'angle-$_angle',
-        'bout-${label ?? _bout}',
+        'bout-${ClipName.piece(label ?? '$_bout', max: 16)}',
+        if (matchId != null) 'm$matchId',
         '${_recordFps}fps',
         stamp,
+        if (red != null && ClipName.piece(red).isNotEmpty) 'red-${ClipName.piece(red)}',
+        if (blue != null && ClipName.piece(blue).isNotEmpty) 'blue-${ClipName.piece(blue)}',
       ];
       final path = '${clips.path}/${parts.join('_')}.mp4';
 
@@ -915,12 +1083,17 @@ class _StationState extends State<Station> with WidgetsBindingObserver {
       if (bytes == 0) _fault = 'BOUT $_bout WROTE AN EMPTY FILE';
     });
 
+    // Into the phone's gallery first, so the bout outlives the app — an
+    // uninstall clears private storage and took a competition's clips once. A
+    // refusal leaves the private file as the clip; the next launch tries again.
+    final kept = (path != null && bytes > 0) ? await ClipVault.keep(path) : null;
+
     // Into the queue, and the queue is free to run again. An empty file is not
     // queued — there is nothing to send, and filing it would put a row in the
     // event's index promising a video that does not exist.
     if (path != null && bytes > 0) {
       await _vault.add(Clip(
-        path: path,
+        path: kept ?? path,
         startedAt: since ?? DateTime.now(),
         endedAt: DateTime.now(),
         bout: _bout,
@@ -935,6 +1108,7 @@ class _StationState extends State<Station> with WidgetsBindingObserver {
         bytes: bytes,
         seconds: seconds,
         fps: _recordFps,
+        tilt: _tilt,
       ));
     }
 
@@ -1146,7 +1320,7 @@ class _StationState extends State<Station> with WidgetsBindingObserver {
             Text(message.toUpperCase(), style: Cam.cap(15)),
             if (_fault != null) ...[
               const SizedBox(height: 14),
-              CamChip(text: _fault!.toUpperCase(), warning: true, pulse: true, dotColor: Cam.gold),
+              CamChip(text: _faultText, warning: true, pulse: true, dotColor: Cam.gold),
             ],
           ],
         ),
@@ -1252,6 +1426,37 @@ class _StationState extends State<Station> with WidgetsBindingObserver {
       children: [
         // ── The viewfinder ────────────────────────────────────────────────
         GestureDetector(
+          // Two fingers: pinch to zoom (the lens's own zoom, so it is in the
+          // recording), twist to level the picture. One finger keeps the
+          // tap behaviour below.
+          onScaleStart: (d) {
+            _zoomAtStart = _zoom;
+            _tiltAtStart = _tilt;
+          },
+          onScaleUpdate: (d) {
+            if (d.pointerCount < 2 || !_ready) return;
+
+            final z = (_zoomAtStart * d.scale).clamp(1.0, _maxZoom);
+            var t = (_tiltAtStart + d.rotation * 180 / math.pi).clamp(-_maxTilt, _maxTilt);
+            if (t.abs() < 0.8) t = 0; // straight is easy to find again
+
+            setState(() {
+              _zoom = z;
+              _tilt = t;
+              _showAdjusting();
+            });
+
+            // The lens is told a dozen times a second at most.
+            final now = DateTime.now();
+            if (now.difference(_lastZoomCall) > const Duration(milliseconds: 80) && _video != null) {
+              _lastZoomCall = now;
+              unawaited(Helper.setZoom(_video!, z).timeout(_tune).catchError((_) {}));
+            }
+          },
+          onScaleEnd: (_) {
+            if (_video != null) unawaited(Helper.setZoom(_video!, _zoom).timeout(_tune).catchError((_) {}));
+            unawaited(_saveFraming());
+          },
           onTapDown: (d) {
             // No picture yet: the tap means "try again", not "meter here".
             if (!_ready) {
@@ -1284,7 +1489,67 @@ class _StationState extends State<Station> with WidgetsBindingObserver {
           child: Container(
             color: Tally.navyDeep,
             child: _ready
-                ? RTCVideoView(_renderer, objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover)
+                ? Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // The whole frame while framing (see FramingGuide.contain),
+                      // the screen filled otherwise.
+                      // Leveled as every showing of this footage will be: turned
+                      // by the tilt and grown just enough to hide the corners.
+                      ClipRect(
+                        child: Transform.rotate(
+                          angle: _tilt * math.pi / 180,
+                          child: Transform.scale(
+                            scale: Clip.fillFor(_tilt, _renderer.videoHeight > 0 ? _renderer.videoWidth / _renderer.videoHeight : 16 / 9),
+                            child: RTCVideoView(
+                              _renderer,
+                              objectFit: _guide
+                                  ? RTCVideoViewObjectFit.RTCVideoViewObjectFitContain
+                                  : RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (_adjusting != null)
+                        Align(
+                          alignment: const Alignment(0, -0.55),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                            decoration: BoxDecoration(
+                              color: const Color(0xB80A0A0E),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(color: Tally.gold.withValues(alpha: 0.5)),
+                            ),
+                            child: Text(_adjusting!, style: Tally.number(14, color: Tally.goldLight, weight: FontWeight.w700)),
+                          ),
+                        ),
+                      if (_guide && _guideBar != null)
+                        IgnorePointer(
+                          child: LayoutBuilder(builder: (context, box) {
+                            final r = FramingGuide.frameIn(box.biggest, _renderer.videoWidth, _renderer.videoHeight, contain: true);
+
+                            return Stack(children: [
+                              Positioned.fromRect(
+                                rect: r,
+                                child: Image.memory(_guideBar!, fit: BoxFit.fill, gaplessPlayback: true),
+                              ),
+                            ]);
+                          }),
+                        ),
+                      if (_guide)
+                        IgnorePointer(
+                          child: CustomPaint(
+                            painter: FramingGuide(
+                              videoWidth: _renderer.videoWidth,
+                              videoHeight: _renderer.videoHeight,
+                              lift: _vault.lift,
+                              boxes: _guideBar == null,
+                              contain: true,
+                            ),
+                          ),
+                        ),
+                    ],
+                  )
                 : Center(
                     child: Text(
                       _fault == null ? 'OPENING THE CAMERA' : 'TAP TO TRY THE CAMERA AGAIN',
@@ -1400,12 +1665,28 @@ class _StationState extends State<Station> with WidgetsBindingObserver {
                 onZoom: _setZoom,
                 settingsOpen: _drawerOpen,
                 onSettings: () => setState(() => _drawerOpen = !_drawerOpen),
+                boutsBusy: _rolling,
+                boutsWaiting: _vault.waiting,
+                onBouts: () {
+                  setState(() => _drawerOpen = false);
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(builder: (_) => ClipLibrary(vault: _vault)),
+                  );
+                },
               ),
             ),
           ),
         ),
       ],
     );
+  }
+
+  /// A fault, short enough to read at a glance. An exception's own text can
+  /// run to several lines; the banner is not where a stack trace belongs.
+  String get _faultText {
+    final t = (_fault ?? '').toUpperCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+
+    return t.length > 48 ? '${t.substring(0, 47)}…' : t;
   }
 
   /// "MAT 1 · BOUT 14", or the mat and STANDBY when nothing is running.
@@ -1420,7 +1701,7 @@ class _StationState extends State<Station> with WidgetsBindingObserver {
   /// A camera fault outranks a network one: a stream that is struggling is a
   /// degraded broadcast, and a lens that will not open is no recording at all.
   String? _banner() {
-    if (_fault != null) return _fault!.toUpperCase();
+    if (_fault != null) return _faultText;
 
     final health = _health();
     if (health.calm) return null;
@@ -1546,7 +1827,7 @@ class _StationState extends State<Station> with WidgetsBindingObserver {
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
 
             FieldLabel(name: 'AUTOFOCUS', value: _focusMode.toUpperCase()),
             const SizedBox(height: 6),
@@ -1636,6 +1917,65 @@ class _StationState extends State<Station> with WidgetsBindingObserver {
                 TallySwitch(on: _grid, onChanged: (v) => setState(() => _grid = v)),
               ],
             ),
+            const SizedBox(height: 12),
+
+            // Zoom and level, as set with two fingers on the picture — kept
+            // from bout to bout; RESET is the one way back to straight and 1×.
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Zoom ${_zoom.toStringAsFixed(1)}×  ·  Level ${_tilt >= 0 ? '+' : ''}${_tilt.toStringAsFixed(1)}°',
+                    style: Tally.body(11, color: Tally.textSecondary, weight: FontWeight.w600),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () async {
+                    setState(() => _tilt = 0);
+                    await _setZoom(1);
+                    await _saveFraming();
+                  },
+                  child: Text('RESET', style: Tally.label(10, color: Tally.gold, tracking: 0.16, weight: FontWeight.w700)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Pinch the picture to zoom, twist two fingers to level it. Kept for every '
+              'bout until you change it.',
+              style: Tally.body(9.5, color: Tally.textFaint),
+            ),
+            const SizedBox(height: 12),
+
+            // Framing: where a sent video's score bar will sit, over the preview.
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Framing guide', style: Tally.body(11, color: Tally.textSecondary, weight: FontWeight.w600)),
+                TallySwitch(
+                  on: _guide,
+                  onChanged: (v) {
+                    setState(() => _guide = v);
+                    unawaited(SharedPreferences.getInstance().then((p) => p.setBool('boutcam.guide', v)));
+                    if (v) unawaited(_paintGuide());
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Shows the score bar, the event and the live scoring over the camera, '
+              'exactly where a sent video will carry them. Keep the fight inside the '
+              'gold box. Never recorded.',
+              style: Tally.body(9.5, color: Tally.textFaint),
+            ),
+            if (_guide) ...[
+              const SizedBox(height: 8),
+              BarLift(vault: _vault, onChanged: () {
+                setState(() {});
+                unawaited(_paintGuide());
+              }),
+            ],
             const SizedBox(height: 12),
 
             // OFF unless somebody turns it on. The bouts are safe on the phone

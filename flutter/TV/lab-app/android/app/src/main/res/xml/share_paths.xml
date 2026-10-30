@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    What MainActivity.send may hand to another app, and nothing more:
+    the copies made for sending (cache/share), and the recordings themselves
+    (clips/, under the app's external or internal files, or Movies/TAKEONE
+    once moved into the gallery) for a phone whose
+    video chip would not make a smaller copy.
+-->
+<paths>
+    <cache-path name="share" path="share/" />
+    <external-files-path name="clips" path="clips/" />
+    <files-path name="clips_internal" path="app_flutter/clips/" />
+    <!-- The bouts themselves once they are in the gallery. -->
+    <external-path name="gallery" path="Movies/TAKEONE/" />
+    <!-- The videos made for sending, kept in their own album (MainActivity.sentFolder). -->
+    <external-path name="sent" path="Movies/Sent bouts/" />
+</paths>

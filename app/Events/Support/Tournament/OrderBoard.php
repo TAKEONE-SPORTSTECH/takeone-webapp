@@ -76,7 +76,11 @@ class OrderBoard
         foreach ($this->courts($event, $bouts) as $court) {
             $mats[] = [
                 'court' => $court,
-                'bouts' => $bouts->where('court', $court)->values()
+                // A bye is nobody's bout to call, even one that kept its mat
+                // when an edit decided it (FreeEdit, LiveMove, DrawRepair) —
+                // the Scheduler's own byes carry none. Unnumbered, they sat
+                // at the end of the mat, so leaving them out moves no position.
+                'bouts' => $bouts->where('court', $court)->reject(fn (EventMatch $m) => $m->won_by_bye)->values()
                     ->map(fn (EventMatch $m) => $this->card($m, $divisions))->all(),
             ];
         }
@@ -414,6 +418,8 @@ class OrderBoard
         return EventMatch::where('event_id', $event->id)
             ->where('court', $court)
             ->where('day', $day)
+            // A bye that kept its mat is never numbered back into it by a drag.
+            ->where(fn ($q) => $q->where('won_by_bye', false)->orWhereNull('won_by_bye'))
             ->orderByRaw('CASE WHEN match_no IS NULL THEN 1 ELSE 0 END')
             ->orderBy('match_no')
             ->orderBy('slot')
@@ -457,7 +463,7 @@ class OrderBoard
      * @param  Collection<int, EventMatch>  $bouts
      * @return array<int, int>  bout id => number
      */
-    private function numbersFor(Collection $bouts): array
+    public function numbersFor(Collection $bouts): array
     {
         $taken = [];
         foreach ($bouts as $m) {

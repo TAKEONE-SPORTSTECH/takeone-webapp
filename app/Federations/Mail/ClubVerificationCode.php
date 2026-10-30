@@ -2,6 +2,7 @@
 
 namespace App\Federations\Mail;
 
+use App\Support\Mail\RetriesDelivery;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -11,6 +12,7 @@ use Illuminate\Queue\SerializesModels;
 /** The six-digit code a club types to open its invitation. Plain text on purpose. */
 class ClubVerificationCode extends Mailable
 {
+    use RetriesDelivery; // waits and tries again — App\Support\Mail\RetriesDelivery
     use Queueable, SerializesModels;
 
     public function __construct(public string $code, public string $clubName, public string $eventName, public ?string $link = null) {}

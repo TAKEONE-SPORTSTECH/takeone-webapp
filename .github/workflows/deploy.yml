@@ -56,6 +56,24 @@ jobs:
         working-directory: ${{ env.DEPLOY_PATH }}
         run: php artisan takeone:backup
 
+      # The backup above covers data, not code. Production has been hand-copied
+      # before, so it can hold files that are in no commit: archive the code
+      # tree as it stands, so anything the sync below replaces or deletes can
+      # be got back. Secrets and runtime data stay out of the archive (they are
+      # never touched by the sync anyway). Read back before going on.
+      - name: Archive the current code
+        working-directory: ${{ env.DEPLOY_PATH }}
+        run: |
+          archive="storage/app/backups/code-$(date +%Y%m%d-%H%M%S).tar.gz"
+          mkdir -p storage/app/backups
+          tar -czf "$archive" \
+            --exclude='./storage' --exclude='./vendor' --exclude='./node_modules' \
+            --exclude='./.git' --exclude='./database/database.sqlite*' \
+            --exclude='./.env*' --exclude='./docker/whatsapp/data' \
+            --exclude='*/.gradle' .
+          tar -tzf "$archive" > /dev/null
+          echo "Code archived to $DEPLOY_PATH/$archive ($(du -h "$archive" | cut -f1))"
+
       # Visitors see the maintenance page (not a half-copied app or a 500)
       # while files are swapped and migrations run. --retry asks browsers to
       # come back on their own.
@@ -75,11 +93,26 @@ jobs:
         # that has not been checkpointed into the main file. That is committed
         # data (production carried a 1.4 MB WAL when this was found), so the
         # deploy could silently lose the last transactions before it.
+        # Excludes are anchored with a leading slash: unanchored, 'storage/'
+        # matches a folder of that name at ANY depth (deploy gotcha #1).
+        # The P (protect) rules are files that exist only on production and
+        # are git-ignored, so --delete would otherwise remove them: .env
+        # backups, the WhatsApp container's data (its API key and database),
+        # the Android APK served for download, Gradle caches, and drafts.
+        # --checksum because size+mtime misses same-size changes such as the
+        # Vite manifest (deploy gotcha #3).
         run: |
-          rsync -a --delete \
-            --exclude='.env' \
-            --exclude='database/database.sqlite*' \
-            --exclude='storage/' \
+          rsync -a --checksum --delete --omit-dir-times \
+            --exclude='/.env' \
+            --exclude='/database/database.sqlite*' \
+            --exclude='/storage/' \
+            --filter='P /.env*' \
+            --filter='P /docker/whatsapp/data/***' \
+            --filter='P /public/app/*.apk' \
+            --filter='P .gradle/***' \
+            --filter='P /drafts/***' \
+            --filter='P /verify-skills.php' \
+            --filter='P /public/emperor-dashboard.html' \
             ./ "$DEPLOY_PATH/"
 
       - name: Migrate & cache
@@ -126,10 +159,14 @@ jobs:
         run: php artisan up
 
       # The ship only counts as done when the live site answers.
+      # Asked of Apache on this box, not https://takeone.bh: HTTPS ends on a
+      # machine in front of this one, and this box cannot reach its own public
+      # address (port 443 refused, curl 000) — so that check failed every
+      # deploy, good or bad (found 2026-10-30).
       - name: Check the live site answers
         run: |
           for path in /login /; do
-            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "https://takeone.bh$path")
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 -H 'Host: takeone.bh' "http://127.0.0.1$path")
             echo "$path -> $code"
             case "$code" in 200|302) ;; *) echo "::error::takeone.bh$path answered $code after the deploy"; exit 1 ;; esac
           done

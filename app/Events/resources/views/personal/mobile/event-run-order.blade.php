@@ -95,6 +95,8 @@
             <div class="text-end flex-shrink-0">
                 <p class="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{{ __('events::events.run_order_day_starts') }}</p>
                 <p class="text-sm font-bold text-foreground" x-text="sheet.starts_label || '—'"></p>
+                {{-- Once bouts have run the start is the real one; the plan stays beside it. --}}
+                <p class="text-[11px] text-muted-foreground" x-show="sheet.started && sheet.planned_starts_label" x-cloak>{{ __('events::events.run_order_planned') }} <span x-text="sheet.planned_starts_label"></span></p>
             </div>
         </div>
 

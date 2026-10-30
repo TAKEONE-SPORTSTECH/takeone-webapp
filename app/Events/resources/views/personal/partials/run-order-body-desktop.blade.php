@@ -198,6 +198,8 @@
                           style="background: {{ $roColor }}14; color: {{ $roColor }};"><i class="bi bi-clock"></i></span>
                     <div class="min-w-0">
                         <p class="text-lg font-black text-gray-900 leading-none" x-text="sheet.starts_label || '—'"></p>
+                        {{-- Once bouts have run the start is the real one; the plan stays beside it. --}}
+                        <p class="text-[11px] text-muted-foreground" x-show="sheet.started && sheet.planned_starts_label" x-cloak>{{ __('events::events.run_order_planned') }} <span x-text="sheet.planned_starts_label"></span></p>
                         <p class="text-[11px] text-muted-foreground mt-1">{{ __('events::events.run_order_bout_length') }} <span x-text="sheet.bout_minutes"></span> min</p>
                     </div>
                 </div>

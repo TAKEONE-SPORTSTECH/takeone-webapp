@@ -4,6 +4,7 @@ namespace App\Events\Mail;
 
 use App\Members\Models\User;
 use App\Events\Models\ClubEvent;
+use App\Support\Mail\RetriesDelivery;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -32,6 +33,7 @@ use Illuminate\Queue\SerializesModels;
  */
 class EventEntryEmail extends Mailable implements ShouldQueue
 {
+    use RetriesDelivery; // waits and tries again — App\Support\Mail\RetriesDelivery
     use Queueable, SerializesModels;
 
     /** Their entry was accepted — they are competing. */

@@ -29,6 +29,7 @@ Route::middleware(EnsureCertificatesEnabled::class)->group(function () {
 
     // Officials' badges (App\Events\Support\EventBadges): the list, and one badge by its random token.
     Route::get('/badges/for/{key}', [\App\Certificates\Controllers\BadgeController::class, 'index'])->where('key', $uuid)->name('badges.index')->middleware('throttle:60,1');
+    Route::post('/badges/for/{key}/issue', [\App\Certificates\Controllers\BadgeController::class, 'issue'])->where('key', $uuid)->name('badges.issue')->middleware('throttle:10,1');
     Route::get('/badges/{token}/image', [\App\Certificates\Controllers\BadgeController::class, 'image'])->where('token', '[A-Za-z0-9]{32}')->name('badges.image')->middleware('throttle:60,1');
     Route::get('/badges/{token}/pdf', [\App\Certificates\Controllers\BadgeController::class, 'pdf'])->where('token', '[A-Za-z0-9]{32}')->name('badges.pdf')->middleware('throttle:60,1');
 

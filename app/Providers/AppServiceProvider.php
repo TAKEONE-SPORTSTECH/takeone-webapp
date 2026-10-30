@@ -443,6 +443,14 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(12)->by('bracket-pdf|'.($request->user()?->id ?: $request->ip()));
         });
 
+        // A bout rendered for sending (App\Media\BoutShare). Each NEW request
+        // is minutes of encoding on the media queue, so it is capped per person
+        // per hour; asking again for one already made or being made costs
+        // nothing, but still counts — a script cannot use it to probe.
+        RateLimiter::for('bout-share', function (Request $request) {
+            return Limit::perHour(30)->by('bout-share|'.($request->user()?->id ?: $request->ip()));
+        });
+
         // An organiser adding an event's photographs: one picture per request,
         // so a hundred from the day go up in about a minute — its own bucket so
         // it never eats the 20/min every other upload shares.

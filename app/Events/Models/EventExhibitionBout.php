@@ -22,6 +22,9 @@ class EventExhibitionBout extends Model
 
     public const STATUS_ABANDONED = 'abandoned';
 
+    /** Filed into the draw bout it really was — see App\Events\Support\ExhibitionLink. */
+    public const STATUS_LINKED = 'linked';
+
     protected $table = 'event_exhibition_bouts';
 
     protected $fillable = [
@@ -29,11 +32,12 @@ class EventExhibitionBout extends Model
         'a_registration_id', 'b_registration_id', 'a_name', 'b_name',
         'a_score', 'b_score', 'winner', 'win_reason', 'win_note',
         'status', 'created_by', 'finished_by', 'finished_at',
+        'linked_match_id', 'linked_by', 'linked_at',
     ];
 
     protected function casts(): array
     {
-        return ['finished_at' => 'datetime'];
+        return ['finished_at' => 'datetime', 'linked_at' => 'datetime'];
     }
 
     protected static function booted(): void
@@ -56,6 +60,12 @@ class EventExhibitionBout extends Model
     public function bEntry(): BelongsTo
     {
         return $this->belongsTo(ClubEventRegistration::class, 'b_registration_id');
+    }
+
+    /** The draw bout this exhibition was linked to, once it has been. */
+    public function linkedMatch(): BelongsTo
+    {
+        return $this->belongsTo(EventMatch::class, 'linked_match_id');
     }
 
     public function creator(): BelongsTo

@@ -199,6 +199,32 @@ class EntryIdentityEditingTest extends TestCase
         $this->assertSame('Somebody Else', $bout->fresh()->b_name);
     }
 
+    public function test_a_corrected_name_reaches_the_podium_too(): void
+    {
+        // 28 Oct 2026: a bronze medallist's name was corrected, his bouts and
+        // certificate followed, and the podium under the bracket went on showing
+        // the old spelling — the podium keeps its own copy of the medallists.
+        [, $event, $entry, $athlete] = $this->scenario();
+        $category = \App\Events\Models\EventCategory::create([
+            'event_id' => $event->id,
+            'name' => 'Adult Blue -76kg',
+            'podium' => [
+                ['place' => 1, 'name' => 'The Champion', 'competitor_id' => 999999, 'country' => 'BH'],
+                ['place' => 3, 'name' => 'Mohamed Rami', 'competitor_id' => $entry->id, 'country' => 'BH'],
+            ],
+        ]);
+
+        $super = $this->createUser();
+        $this->makeSuperAdmin($super);
+        $result = app(EntryEditor::class)->apply($event, $entry, ['name' => 'Mohammed Ramadan'], $super->fresh());
+
+        $this->assertTrue($result['ok'], $result['message'] ?? '');
+        $podium = $category->fresh()->podium;
+        $this->assertSame('Mohammed Ramadan', $podium[1]['name']);
+        $this->assertSame('The Champion', $podium[0]['name'], 'somebody else on the podium is left alone');
+        $this->assertSame(3, $podium[1]['place']);
+    }
+
     public function test_an_organiser_save_is_refused_and_changes_nothing(): void
     {
         [$owner, $event, $entry, $athlete] = $this->scenario();

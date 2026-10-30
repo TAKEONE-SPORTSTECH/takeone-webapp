@@ -158,10 +158,27 @@ class FederationEventOfficials
                         'badge' => \App\Printables\Designer::url($ev, 'certificate', 'official_badge.'.$key),
                         'certificate' => \App\Printables\Designer::url($ev, 'certificate', 'official_thanks.'.$key),
                         'hasBadge' => (bool) \App\Printables\Designer::find($ev, 'certificate', 'official_badge.'.$key),
+                        // That designation's own print-shop file: its officials only, each
+                        // on its design (EventBadges::bundleRecipients).
+                        'badgePdf' => [
+                            'bundle' => route('me.certificates.bundle', ['event_badges', $ev->uuid, 'official_badge.'.$key]),
+                            'download' => route('me.certificates.bundle.download', ['event_badges', $ev->uuid, 'official_badge.'.$key]),
+                        ],
                         'hasCertificate' => (bool) \App\Printables\Designer::find($ev, 'certificate', 'official_thanks.'.$key),
                     ])->values()->all()
                     : [],
                 // The badges' print-shop PDFs (four to an A4 sheet), per kind of badge.
+                // Ticked officials' badges: remember the chosen set, then print exactly
+                // them (`official_badge.sel-<token>`), each still on their job's design.
+                // Issue the badges: each official is notified and can open their own (BadgeController::issue).
+                'badgeIssue' => config('certificates.enabled') ? route('me.badges.issue', $ev->uuid) : null,
+                'badgeSelection' => config('certificates.enabled') ? route('me.certificates.selection', ['event_badges', $ev->uuid]) : null,
+                'badgeBundle' => config('certificates.enabled') ? route('me.certificates.bundle', ['event_badges', $ev->uuid, 'xtypex']) : null,
+                'badgeDownload' => config('certificates.enabled') ? route('me.certificates.bundle.download', ['event_badges', $ev->uuid, 'xtypex']) : null,
+                // The same three for the competitors' badges (event_participant_badges).
+                'participantBadgeSelection' => config('certificates.enabled') ? route('me.certificates.selection', ['event_participant_badges', $ev->uuid]) : null,
+                'participantBadgeBundle' => config('certificates.enabled') ? route('me.certificates.bundle', ['event_participant_badges', $ev->uuid, 'xtypex']) : null,
+                'participantBadgeDownload' => config('certificates.enabled') ? route('me.certificates.bundle.download', ['event_participant_badges', $ev->uuid, 'xtypex']) : null,
                 'badgePdfs' => config('certificates.enabled') ? [
                     'officials' => ['bundle' => route('me.certificates.bundle', ['event_badges', $ev->uuid, 'official_badge']), 'download' => route('me.certificates.bundle.download', ['event_badges', $ev->uuid, 'official_badge'])],
                     'participants' => ['bundle' => route('me.certificates.bundle', ['event_participant_badges', $ev->uuid, 'participant_badge']), 'download' => route('me.certificates.bundle.download', ['event_participant_badges', $ev->uuid, 'participant_badge'])],

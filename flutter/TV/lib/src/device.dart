@@ -31,7 +31,7 @@
 ///   flutter build apk --release --dart-define=TAKEONE_DEVICE=tab
 library;
 
-enum DeviceKind { tv, tab, cam, app }
+enum DeviceKind { tv, tab, cam, app, note }
 
 class Device {
   const Device._();
@@ -47,6 +47,7 @@ class Device {
     'tab' => DeviceKind.tab,
     'cam' => DeviceKind.cam,
     'app' => DeviceKind.app,
+    'note' => DeviceKind.note,
     _ => DeviceKind.tv,
   };
 
@@ -57,8 +58,15 @@ class Device {
   /// The member's phone app. Deliberately the only variant that is not a kiosk.
   static bool get isApp => kind == DeviceKind.app;
 
-  /// Everything except the app is a machine placed in a hall and left there.
-  static bool get isKiosk => !isApp;
+  /// TakeNote: the same pocket app, opened straight on the notebook
+  /// (/me/takenote) and installed under its own name and icon.
+  static bool get isNote => kind == DeviceKind.note;
+
+  /// A phone in somebody's pocket rather than a machine on a wall.
+  static bool get isPocket => isApp || isNote;
+
+  /// Everything except the pocket apps is a machine placed in a hall and left there.
+  static bool get isKiosk => !isPocket;
 
   /// What the boot splash calls this machine, so a screen that cannot reach the
   /// server still says which build is on it.
@@ -66,6 +74,7 @@ class Device {
     DeviceKind.tab => 'TABLET',
     DeviceKind.cam => 'CAMERA',
     DeviceKind.app => 'TAKEONE',
+    DeviceKind.note => 'TAKENOTE',
     DeviceKind.tv => 'SCREEN',
   };
 }

@@ -1,0 +1,27 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="color-scheme" content="only dark"><title>VS screen embers</title>
+<style>
+@font-face{font-family:Barlow;font-weight:900;src:url(/fonts/designer/barlow-condensed/BarlowCondensed-Black.ttf)}
+body{margin:0;background:#0b0d14;color:#e9e6e0;font-family:sans-serif;padding:20px 16px}h1{font-family:Barlow;letter-spacing:.06em}p{color:#9aa3b5;max-width:900px}
+.stage{position:relative;max-width:1150px;aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:#050507}
+.red{position:absolute;inset:0 44% 0 0;background:linear-gradient(115deg,#7a2a24,#3a1412 60%);clip-path:polygon(0 0,100% 0,82% 100%,0 100%)}
+.blue{position:absolute;inset:0 0 0 44%;background:linear-gradient(245deg,#24467e,#0f1f3c 60%);clip-path:polygon(18% 0,100% 0,100% 100%,0 100%)}
+.vs{position:absolute;left:50%;top:48%;transform:translate(-50%,-50%) skewX(-11deg);font-family:Barlow;font-size:15cqw;color:#fffdf5;text-shadow:0 0 40px rgba(255,215,120,.7)}
+.stage{container-type:inline-size}canvas{position:absolute;inset:0;width:100%;height:100%}
+button{margin:12px 0;font:700 14px sans-serif;padding:8px 16px;border-radius:999px;border:1px solid #d8b25f;background:none;color:#d8b25f}
+</style></head><body>
+<h1>VS SCREEN — EMBERS &amp; ASH</h1>
+<p>Glowing embers rise and grey ash drifts down over the VS screen — the same particles, at the same moments, in boutcam's player and in a sent video. (Background simplified here; in the app it is the full VS screen with the fighters' photos, names and logos.)</p>
+<div class="stage"><div class="red"></div><div class="blue"></div><div class="vs">VS</div><canvas id="c" width="1920" height="1080"></canvas></div>
+<button onclick="t0=performance.now()">REPLAY</button>
+<script>
+const c=document.getElementById('c'),g=c.getContext('2d');let t0=performance.now();
+const rnd=(i,k)=>{const v=Math.sin(i*12.9898+k*78.233)*43758.5453;return v-Math.floor(v)};
+function frame(now){const t=(now-t0)/1000;g.clearRect(0,0,1920,1080);const fade=Math.min(1,t/0.4);
+for(let i=0;i<90;i++){const ember=rnd(i,0)<0.65,x0=rnd(i,1)*1920,speed=ember?60+rnd(i,2)*140:20+rnd(i,2)*50,s=ember?1.5+rnd(i,3)*3.5:2+rnd(i,3)*4,
+phase=rnd(i,4)*2*Math.PI,amp=10+rnd(i,5)*30,freq=0.25+rnd(i,6)*0.6,cyc=1120,tr=(rnd(i,7)*cyc+t*speed)%cyc,
+y=ember?1100-tr:-20+tr,x=x0+Math.sin(phase+t*freq*2*Math.PI)*amp,a=Math.max(0,Math.min(1,(ember?0.55+0.45*Math.sin(phase*3+t*9+i):0.8)*fade));
+if(a<=.01)continue;
+if(ember){const r=s*3.2,gr=g.createRadialGradient(x,y,0,x,y,r);gr.addColorStop(0,`rgba(255,226,150,${a})`);gr.addColorStop(.32,`rgba(255,122,26,${a*.78})`);gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.beginPath();g.arc(x,y,r,0,7);g.fill();}
+else{g.save();g.translate(x,y);g.rotate((phase*57.3+t*40*(rnd(i,8)-.5))*Math.PI/180);g.fillStyle=`rgba(170,168,164,${.43*a})`;g.fillRect(-s,-s*.6,s*2,s*1.2);g.restore();}}
+requestAnimationFrame(frame)}requestAnimationFrame(frame);
+</script></body></html>

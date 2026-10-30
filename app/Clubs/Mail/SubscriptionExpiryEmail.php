@@ -4,6 +4,7 @@ namespace App\Clubs\Mail;
 
 use App\Clubs\Models\ClubMemberSubscription;
 use App\Members\Models\User;
+use App\Support\Mail\RetriesDelivery;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -13,6 +14,7 @@ use Illuminate\Queue\SerializesModels;
 
 class SubscriptionExpiryEmail extends Mailable implements ShouldQueue
 {
+    use RetriesDelivery; // waits and tries again — App\Support\Mail\RetriesDelivery
     use Queueable, SerializesModels;
 
     public function __construct(

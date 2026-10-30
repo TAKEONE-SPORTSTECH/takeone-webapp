@@ -127,6 +127,37 @@ class OfficialBadgesTest extends TestCase
         $this->assertArrayHasKey('error', $this->mcp(EventBadgesTool::class, User::find($this->officials[1]->user_id), ['event' => $this->event->uuid]));
     }
 
+    public function test_issuing_sends_each_official_their_badge_once_and_lets_only_them_open_it(): void
+    {
+        $holder = fn (int $i) => 'u:'.User::find($this->officials[$i]->user_id)->uuid;
+        $issue = fn (User $as, array $body = []) => $this->actingAs($as->fresh())->postJson(route('me.badges.issue', $this->key()), $body);
+
+        // Nobody but the organiser may issue.
+        $issue(User::find($this->officials[1]->user_id))->assertNotFound();
+        $issue($this->createUser())->assertNotFound();
+
+        // The ticked ones only.
+        $issue($this->organiser, ['holders' => [$holder(0), $holder(1)]])->assertOk()->assertJson(['issued' => 2, 'already' => 0]);
+        $this->assertSame(2, \App\Members\Models\UserNotification::where('type', 'event_badge')->count());
+
+        // Everyone: the two already sent are not sent again.
+        $issue($this->organiser)->assertOk()->assertJson(['issued' => 3, 'already' => 2]);
+        $issue($this->organiser)->assertOk()->assertJson(['issued' => 0, 'already' => 5]);
+        $this->assertSame(5, \App\Members\Models\UserNotification::where('type', 'event_badge')->count());
+
+        // An issued official opens their OWN badge — never another's.
+        $badges = app(EventBadges::class);
+        $mine = $badges->token($this->officials[0]->fresh());
+        $theirs = $badges->token($this->officials[1]->fresh());
+        $me = User::find($this->officials[0]->user_id);
+        $this->actingAs($me->fresh())->get(route('me.badges.pdf', $mine))->assertOk();
+        $this->actingAs($me->fresh())->getJson(route('me.badges.pdf', $theirs))->assertNotFound();
+        $this->actingAs($me->fresh())->getJson(route('me.badges.index', $this->key()))->assertNotFound();
+
+        // An unknown job is a 404; a job nobody holds has nobody to issue to.
+        $issue($this->organiser, ['job' => 'no-such-job'])->assertNotFound();
+    }
+
     public function test_the_print_shop_file_lays_four_badges_to_an_a4_sheet(): void
     {
         $p = ['context' => EventBadges::ALIAS, 'type' => EventBadges::TYPE] + $this->key();

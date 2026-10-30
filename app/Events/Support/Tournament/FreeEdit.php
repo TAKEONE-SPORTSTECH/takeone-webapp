@@ -112,7 +112,8 @@ final class FreeEdit
         $next = ! empty($data['advance']) && $winner ? $this->next($match) : null;
         $before = array_values(array_filter([$this->snapshot($match), $next ? $this->snapshot($next['bout']) : null]));
 
-        DB::transaction(function () use ($event, $category, $match, $entries, $winner, $data, $next, $by) {
+        $leftMat = null;
+        DB::transaction(function () use ($event, $category, $match, $entries, $winner, $data, $next, $by, &$leftMat) {
             foreach (['a', 'b'] as $side) {
                 $entry = $entries[$side] ? $this->inDivision($event, $entries[$side], $category, $by) : null;
                 $this->corner($match, $side, $entry);
@@ -125,6 +126,13 @@ final class FreeEdit
             $match->winner = $winner;
             $match->won_by_bye = $winner !== null && ! $both;
             $match->status = $winner ? 'done' : 'upcoming';
+            // A bye is not a bout: no number, as the draw writes one (LiveMove::decideBye).
+            // Before this, a bye made here kept its number and the mat counted it.
+            if ($match->won_by_bye && $match->match_no !== null) {
+                $leftMat = [$match->court, $match->day];
+                $match->match_no = null;
+                $match->number_pinned = false;
+            }
             if (! $winner) {
                 $match->win_reason = null;
                 $match->win_note = null;
@@ -132,6 +140,11 @@ final class FreeEdit
                 $match->win_reason = 'other';
             }
             $match->save();
+
+            // …and the mat it left closes the gap (MatNumbering, when switched on).
+            if ($leftMat && $leftMat[0] && MatNumbering::enabled()) {
+                app(MatNumbering::class)->close($event->id, $leftMat[0], $leftMat[1]);
+            }
 
             if ($next) {
                 $this->corner($next['bout'], $next['side'], $entries[$winner]);
@@ -148,6 +161,10 @@ final class FreeEdit
         ])->log('events.free_edit'), null, false);
 
         $this->settle($event, $category->fresh());
+        // The mat's numbers moved: the scoring consoles re-read (as LiveMove does).
+        if ($leftMat && MatNumbering::enabled()) {
+            rescue(fn () => app(\App\Scoreboard\Fleet::class)->boardsChanged($event), null, false);
+        }
 
         return ['ok' => true, 'message' => __('events::events.free_edit_saved')];
     }

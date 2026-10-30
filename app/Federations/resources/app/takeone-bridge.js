@@ -385,6 +385,9 @@
   // The whole competition report per event (FederationCompetitionReport).
   var competitionReport = boot.competitionReport || {};
   window.TakeOneFed.competitionReport = function (eventId) { return eventId && competitionReport[eventId] ? competitionReport[eventId] : null; };
+  // The Analytics tab's JSON door per event (FederationCompetitionReport::analytics).
+  var analytics = boot.analytics || {};
+  window.TakeOneFed.analytics = function (eventId) { return eventId && analytics[eventId] ? analytics[eventId] : null; };
   // Its cover page (FederationReportCover) — managers only; {kind, upload, remove}.
   var resultsCover = boot.resultsCover || {};
   window.TakeOneFed.resultsCover = function (eventId) { return eventId && resultsCover[eventId] ? resultsCover[eventId] : null; };
@@ -620,7 +623,7 @@
   // is /federation/sub-federations (a section can never shadow /federation/{slug}).
   var SECTION_PATH = {federations: 'sub-federations'};
   var SECTION_OF = {'sub-federations': 'federations'};
-  var TABS = {overview: 'overview', stats: 'statistics', regs: 'participants', offs: 'officials', clubs: 'clubs', divs: 'draw', results: 'results', schedule: 'schedule', fin: 'financials'};
+  var TABS = {overview: 'overview', stats: 'statistics', regs: 'participants', offs: 'officials', clubs: 'clubs', divs: 'draw', results: 'results', analytics: 'analytics', schedule: 'schedule', fin: 'financials'};
   var TAB_OF = {}; Object.keys(TABS).forEach(function (k) { TAB_OF[TABS[k]] = k; });
   // The tab was called Athletes, at /registrations, until 2026-10-15. A saved or
   // shared link to the old address still opens it, and is corrected in place.
@@ -779,6 +782,10 @@
     if (j.competitionReport && !same(j.competitionReport, competitionReport)) {
       Object.keys(competitionReport).forEach(function (k) { delete competitionReport[k]; });
       Object.keys(j.competitionReport).forEach(function (k) { competitionReport[k] = j.competitionReport[k]; });
+    }
+    if (j.analytics && !same(j.analytics, analytics)) {
+      Object.keys(analytics).forEach(function (k) { delete analytics[k]; });
+      Object.keys(j.analytics).forEach(function (k) { analytics[k] = j.analytics[k]; });
     }
     if (j.resultsCover && !same(j.resultsCover, resultsCover)) {
       Object.keys(resultsCover).forEach(function (k) { delete resultsCover[k]; });

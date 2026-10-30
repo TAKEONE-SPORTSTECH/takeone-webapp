@@ -919,9 +919,19 @@ JS, 1],
                   <div onClick="{{ dz.onClose }}" style="position:fixed;inset:0;z-index:45"></div>
                   <div role="menu" onClick="{{ dz.stop }}" style="position:absolute;top:46px;left:0;z-index:46;min-width:320px;max-width:min(380px,calc(100vw - 2rem));padding:6px;background:#fff;border:1px solid #eef1f6;border-radius:14px;box-shadow:0 18px 40px rgba(30,44,79,.16);animation:rise .18s cubic-bezier(.22,.68,.35,1) both">
                     <sc-for list="{{ dz.items }}" as="i" hint-placeholder-count="2">
-                      <div role="group" aria-label="{{ i.label }}" style="{{ i.style }}"><span style="font-size:.82rem;font-weight:700;color:#1e2c4f">{{ i.label }}</span><span role="status" style="{{ i.hintStyle }}">{{ i.hint }}</span>
-                        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><sc-for list="{{ i.actions }}" as="a" hint-placeholder-count="3"><button type="button" role="menuitem" onClick="{{ a.onClick }}" aria-disabled="{{ a.disabled }}" style="{{ a.style }}">{{ a.label }}</button></sc-for></div>
-                      </div>
+                      <div style="position:relative" onMouseEnter="{{ i.onHover }}">
+                          <sc-if value="{{ i.hasSub }}" hint-placeholder-val="{{ false }}">
+                            <button type="button" role="menuitem" aria-haspopup="menu" aria-expanded="{{ i.subOpen }}" onClick="{{ i.onOpen }}" style="{{ i.style }}" style-hover="background:#fdf6e6"><span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0"><span style="font-size:.82rem;font-weight:700;color:#1e2c4f">{{ i.label }}</span><span style="{{ i.hintStyle }}">{{ i.hint }}</span></span><span aria-hidden="true" style="flex:none;font-size:1rem;color:#8a6d20">&#8250;</span></button>
+                            <sc-if value="{{ i.subOpen }}" hint-placeholder-val="{{ false }}">
+                              <div role="menu" aria-label="{{ i.label }}" style="{{ i.subStyle }}">
+                                <sc-for list="{{ i.actions }}" as="a" hint-placeholder-count="3"><button type="button" role="menuitem" onClick="{{ a.onClick }}" aria-disabled="{{ a.disabled }}" style="{{ a.style }}" style-hover="background:#fdf6e6"><span aria-hidden="true" style="width:16px;flex:none;text-align:center;color:#b08a3a;font-weight:700">{{ a.icon }}</span><span style="display:flex;flex-direction:column;gap:1px;min-width:0"><span style="font-size:.8rem;font-weight:700;color:#1e2c4f">{{ a.label }}</span><span style="font-size:.68rem;color:#6b7689">{{ a.sub }}</span></span></button></sc-for>
+                              </div>
+                            </sc-if>
+                          </sc-if>
+                          <sc-if value="{{ i.isNote }}" hint-placeholder-val="{{ false }}">
+                            <div role="note" style="{{ i.style }}"><span style="font-size:.82rem;font-weight:700;color:#1e2c4f">{{ i.label }}</span><span style="{{ i.hintStyle }}">{{ i.hint }}</span></div>
+                          </sc-if>
+                        </div>
                     </sc-for>
                   </div>
                 </sc-if>
@@ -950,6 +960,16 @@ HTML, 1],
                     ."\n".(string) file_get_contents(dirname(__DIR__).'/resources/patches/event-results.js').'  cssToObj(css) {', 1],
                 'divs-markup' => [['      <sc-if value="{{ tabDivs }}" hint-placeholder-val="{{ false }}">', '      <sc-if value="{{ tabDraw }}" hint-placeholder-val="{{ false }}">'],
                     rtrim((string) file_get_contents(dirname(__DIR__).'/resources/patches/event-divisions.html'))."\n\n".'      <sc-if value="{{ tabDraw }}" hint-placeholder-val="{{ false }}">', 1],
+                // The event's Analytics tab (owner, 2026-10-25): the competition
+                // report's statistics & analytics, live — resources/patches/
+                // event-analytics.*, data from FederationCompetitionReport::analytics.
+                'an-tab' => ["['results','Results'],", "['results','Results'],['analytics','Analytics'],", 1],
+                'an-vals' => ["tabResults: s.tab === 'results',", "tabResults: s.tab === 'results', tabAnalytics: s.tab === 'analytics', an: s.tab === 'analytics' ? this.anVals(sel) : {has: false, loading: false, empty: false},", 1],
+                'an-methods' => ['  cssToObj(css) {', (string) file_get_contents(dirname(__DIR__).'/resources/patches/event-analytics.js').'  cssToObj(css) {', 1],
+                'an-markup' => ['      <sc-if value="{{ tabFin }}" hint-placeholder-val="{{ false }}">',
+                    '      <sc-if value="{{ tabAnalytics }}" hint-placeholder-val="{{ false }}">'."\n"
+                    .rtrim((string) file_get_contents(dirname(__DIR__).'/resources/patches/event-analytics.html'))."\n"
+                    .'      </sc-if>'."\n".'      <sc-if value="{{ tabFin }}" hint-placeholder-val="{{ false }}">', 1],
                 'readiness' => [["    const checklist = [\n      {done: true,  label: 'Venue contract signed'", "    ].map(c => ({...c, mark: c.done"], "    const rowGo = (url) => { if (url) window.location.assign(url); };\n"
                     ."    // A row that names a TAB opens that tab of this dashboard (with its job\n"
                     ."    // filter, for the officials) — nothing here leaves the federation view.\n"
@@ -1047,6 +1067,16 @@ HTML, 1],
                 // PLATFORM: the officials clubs actually named, not the sample list.
                 'officials-data' => [["const offData = [\n      ['Hassan Al Khalifa'", "\n    ];\n    // Officials, drawn"], "const offData = window.TakeOneFed.officials();\n    // Officials, drawn", 1],
                 // PLATFORM: no figure without a record behind it (PLATFORM_SPEC §9).
+                // Financials (owner, 2026-10-25: "make the boxes next to each other"):
+                // the full-width invoices table sat between Revenue mix and Event
+                // transactions, stranding each alone on its row. The two small
+                // boxes now share the first row and the table runs full width below.
+                'fin-invoices-last' => ['<div style="grid-column:1/-1;background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:clamp(16px,2vw,24px)',
+                    '<div style="grid-column:1/-1;order:3;background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:clamp(16px,2vw,24px)', 1],
+                // …and that row is two equal columns (one on a phone), never a
+                // third, empty one beside them.
+                'fin-two-cols' => ['<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:18px">'."\n".'            <div style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:24px;box-shadow:0 14px 40px rgba(30,44,79,.1)">'."\n".'              <div style="font-size:.7rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20;margin-bottom:16px">Revenue mix',
+                    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,max(290px,calc(50% - 9px))),1fr));gap:18px">'."\n".'            <div style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:24px;box-shadow:0 14px 40px rgba(30,44,79,.1)">'."\n".'              <div style="font-size:.7rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#8a6d20;margin-bottom:16px">Revenue mix', 1],
                 'fin-payouts' => ['<span style="color:#6b7689">Outstanding payouts</span><span style="font-weight:700">BD 14,200</span>', '<span style="color:#6b7689">Outstanding payouts</span><span style="font-weight:700">—</span>', 1],
                 'fin-refunds' => ['<span style="color:#6b7689">Pending refunds</span><span style="font-weight:700">BD 1,050</span>', '<span style="color:#6b7689">Pending refunds</span><span style="font-weight:700">—</span>', 1],
                 // PLATFORM: the bank reference is unique across every

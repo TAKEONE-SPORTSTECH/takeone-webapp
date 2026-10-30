@@ -2536,6 +2536,8 @@ window.BracketBoard = window.BracketBoard || (function () {
     async function commit(from, to) {
         S.pick = null;
         if (sameEnd(from, to)) { applyArrangeClasses(); emitState(); return; }
+        // No address to save to: say so, never fetch(null).
+        if (!S.cfg.arrangeUrl) { notice(S.cfg.text.moveFailed); await load(true); return; }
 
         // Optimism is not worth it here: a move can be refused server-side
         // (locked draw, competitor no longer entered), and a bracket that

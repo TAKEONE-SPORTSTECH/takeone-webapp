@@ -150,6 +150,12 @@
                  class="absolute end-0 mt-1 w-64 bg-white border border-gray-100 rounded-xl shadow-lg
                         overflow-hidden z-50">
 
+                {{-- The host's own first row, above everything (the draw stage's
+                     padlock). Optional; absent, the menu is exactly as before. --}}
+                @isset($lead)
+                    {{ $lead }}
+                @endisset
+
                 {{-- The group the board is showing, named, so the two rows
                      under it are obviously about THAT group and not the event. --}}
                 <div x-show="division" x-cloak

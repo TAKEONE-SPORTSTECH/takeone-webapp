@@ -4,6 +4,7 @@ namespace App\Members\Mail;
 
 use App\Members\Models\User;
 use App\Members\Models\UserRelationship;
+use App\Support\Mail\RetriesDelivery;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\URL;
 
 class WelcomeEmail extends Mailable implements ShouldQueue
 {
+    use RetriesDelivery; // waits and tries again — App\Support\Mail\RetriesDelivery
     use Queueable, SerializesModels;
 
     /**

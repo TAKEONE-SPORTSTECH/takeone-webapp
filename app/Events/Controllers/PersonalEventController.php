@@ -9507,7 +9507,13 @@ class PersonalEventController extends Controller
                 : null,
             'finishes_at' => $sheet->finishesAt($event, $day),
             'finishes_label' => $clock($sheet->finishesAt($event, $day)),
-            'starts_label' => $start ? \App\Support\Cldr::time($start) : null,
+            // Once the mats have run (RunSheet::withActuals) the day started when
+            // its first bout did; the planned start stays beside it.
+            'starts_label' => ($actualStart = collect($rows)->where('actual', true)->min('starts_at')) !== null
+                ? $clock((int) $actualStart)
+                : ($start ? \App\Support\Cldr::time($start) : null),
+            'planned_starts_label' => $start ? \App\Support\Cldr::time($start) : null,
+            'started' => $actualStart !== null,
             // The same start as "HH:MM", for an editor to begin from.
             'start_time' => $start ? $start->format('H:i') : null,
             'bout_minutes' => (int) ($event->minutes_per_match ?: \App\Events\Support\RunSheet::DEFAULT_BOUT_MINUTES),

@@ -34,7 +34,12 @@ sed -i -E "s/applicationId = \"[^\"]+\"/applicationId = \"${APP_ID}\"/" android/
 
 echo "▸ building boutcam (${APP_ID}) against ${BASE_URL}"
 
-flutter build apk --release --dart-define="BASE_URL=${BASE_URL}"
+# Phones only: 64- and 32-bit ARM. The x86_64 copy (emulators, Chromebooks)
+# was a third of the download and no camera on a tripod ever runs it.
+# APP_BUILD: the build number, so a video made by an older build (which may
+# draw the bar differently) is never handed out as this build's (lib/kept.dart).
+APP_BUILD="$(sed -nE 's/^version: *[^+]*\+([0-9]+).*/\1/p' pubspec.yaml)"
+flutter build apk --release --target-platform android-arm,android-arm64 --dart-define="BASE_URL=${BASE_URL}" --dart-define="APP_BUILD=${APP_BUILD}"
 
 mkdir -p ../dist
 out="../dist/boutcam.apk"

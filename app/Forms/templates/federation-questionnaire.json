@@ -1,0 +1,1945 @@
+{
+ "title": "What does your federation really need?",
+ "title_ar": "ما الذي يحتاجه اتحادكم فعلاً؟",
+ "description": "A conversation with federation presidents, secretaries general, technical directors, referees and staff about how the federation runs today, what slows it down, and what would make the work easier.",
+ "description_ar": "حوار مع رؤساء الاتحادات وأمنائها العامين ومديريها الفنيين والحكام والموظفين عن طريقة إدارة الاتحاد اليوم، وما يُبطئ العمل، وما الذي يجعله أسهل.",
+ "type": "survey",
+ "settings": {
+  "layout": "paged",
+  "bilingual": true,
+  "interviewer": true,
+  "successMessage": "Thank you for your time.",
+  "successMessage_ar": "شكراً لوقتكم.",
+  "analysis": {
+   "grid": "grid",
+   "must": "must",
+   "nice": "nice",
+   "note": "What TAKEONE has today for each federation feature, and the work to close the gap (1 small · 2 medium · 3 large). Assessed 26 Oct 2026 from the federation module.",
+   "status": {
+    "f01": [
+     "partial",
+     2
+    ],
+    "f02": [
+     "exists",
+     1
+    ],
+    "f03": [
+     "missing",
+     2
+    ],
+    "f04": [
+     "exists",
+     1
+    ],
+    "f05": [
+     "partial",
+     2
+    ],
+    "f06": [
+     "partial",
+     2
+    ],
+    "f07": [
+     "exists",
+     1
+    ],
+    "f08": [
+     "exists",
+     1
+    ],
+    "f09": [
+     "exists",
+     1
+    ],
+    "f10": [
+     "exists",
+     1
+    ],
+    "f11": [
+     "exists",
+     1
+    ],
+    "f12": [
+     "missing",
+     2
+    ],
+    "f13": [
+     "partial",
+     2
+    ],
+    "f14": [
+     "partial",
+     3
+    ],
+    "f15": [
+     "missing",
+     2
+    ],
+    "f16": [
+     "missing",
+     3
+    ],
+    "f17": [
+     "exists",
+     1
+    ],
+    "f18": [
+     "missing",
+     3
+    ],
+    "f19": [
+     "partial",
+     2
+    ],
+    "f20": [
+     "missing",
+     3
+    ],
+    "f21": [
+     "missing",
+     2
+    ],
+    "f22": [
+     "partial",
+     2
+    ],
+    "f23": [
+     "partial",
+     2
+    ],
+    "f24": [
+     "partial",
+     2
+    ]
+   }
+  }
+ },
+ "schema": {
+  "pages": [
+   {
+    "id": "visit",
+    "title": "The visit",
+    "title_ar": "الزيارة",
+    "private": true,
+    "intro": "Who you met, and where. Only the TAKEONE team sees this page.",
+    "intro_ar": "من قابلت وأين. هذه الصفحة يراها فريق تيك ون فقط.",
+    "fields": [
+     {
+      "key": "cover_club",
+      "type": "text",
+      "label": "Federation",
+      "label_ar": "الاتحاد",
+      "required": true,
+      "id": "cover_club"
+     },
+     {
+      "key": "cover_person",
+      "type": "text",
+      "label": "Person interviewed · role",
+      "label_ar": "الشخص · الصفة",
+      "id": "cover_person"
+     },
+     {
+      "key": "cover_phone",
+      "type": "phone",
+      "label": "Phone / WhatsApp",
+      "label_ar": "الهاتف / واتساب",
+      "id": "cover_phone"
+     },
+     {
+      "key": "cover_area",
+      "type": "text",
+      "label": "Department / committee",
+      "label_ar": "الإدارة / اللجنة",
+      "id": "cover_area"
+     },
+     {
+      "key": "cover_interviewer",
+      "type": "text",
+      "label": "Interviewer",
+      "label_ar": "المحاور",
+      "id": "cover_interviewer"
+     },
+     {
+      "key": "consent",
+      "type": "checkbox",
+      "required": true,
+      "label": "The federation agrees that TAKEONE may keep these notes to design its product and may contact them again. Nothing is published under the federation’s name.",
+      "label_ar": "يوافق الاتحاد على احتفاظ تيك ون بهذه الملاحظات لتصميم منتجها، وعلى التواصل معه لاحقاً. لا يُنشر شيء باسم الاتحاد.",
+      "id": "consent"
+     }
+    ]
+   },
+   {
+    "id": "s1",
+    "title": "The Federation Today",
+    "title_ar": "الاتحاد اليوم",
+    "intro": "Who they are and how big the work is, so every later answer has context.",
+    "intro_ar": "من هم وما حجم العمل، حتى تكون لكل إجابة لاحقة سياقها.",
+    "fields": [
+     {
+      "key": "q1",
+      "label": "The federation in numbers",
+      "label_ar": "الاتحاد بالأرقام",
+      "type": "numbers",
+      "rows": [
+       {
+        "value": "member-clubs",
+        "label": "Member clubs",
+        "label_ar": "الأندية الأعضاء"
+       },
+       {
+        "value": "registered-athletes",
+        "label": "Registered athletes",
+        "label_ar": "اللاعبون المسجلون"
+       },
+       {
+        "value": "referees-judges",
+        "label": "Referees & judges",
+        "label_ar": "الحكام"
+       },
+       {
+        "value": "licensed-coaches",
+        "label": "Licensed coaches",
+        "label_ar": "المدربون المرخصون"
+       },
+       {
+        "value": "paid-staff",
+        "label": "Paid staff",
+        "label_ar": "الموظفون"
+       },
+       {
+        "value": "events-year",
+        "label": "Events / year",
+        "label_ar": "البطولات سنوياً"
+       }
+      ],
+      "id": "q1"
+     },
+     {
+      "key": "q2",
+      "label": "Which disciplines or styles do you govern?",
+      "label_ar": "ما التخصصات أو الأساليب التي يشرف عليها الاتحاد؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "kumite-sparring",
+        "label": "Kumite / sparring",
+        "label_ar": "كوميتيه / قتال"
+       },
+       {
+        "value": "kata-forms",
+        "label": "Kata / forms",
+        "label_ar": "كاتا / بومسي"
+       },
+       {
+        "value": "para-sport",
+        "label": "Para-sport",
+        "label_ar": "رياضة ذوي الهمم"
+       },
+       {
+        "value": "women-s-competition",
+        "label": "Women’s competition",
+        "label_ar": "منافسات السيدات"
+       },
+       {
+        "value": "youth-schools",
+        "label": "Youth & schools",
+        "label_ar": "الناشئين والمدارس"
+       },
+       {
+        "value": "veterans-masters",
+        "label": "Veterans / masters",
+        "label_ar": "الأساتذة / كبار السن"
+       }
+      ],
+      "other": true,
+      "id": "q2"
+     },
+     {
+      "key": "q3",
+      "label": "What do you use today to run the federation?",
+      "label_ar": "ماذا تستخدمون اليوم لإدارة الاتحاد؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "paper-files",
+        "label": "Paper files",
+        "label_ar": "ملفات ورقية"
+       },
+       {
+        "value": "excel-google-sheets",
+        "label": "Excel / Google Sheets",
+        "label_ar": "إكسل / جداول جوجل"
+       },
+       {
+        "value": "whatsapp-groups",
+        "label": "WhatsApp groups",
+        "label_ar": "مجموعات واتساب"
+       },
+       {
+        "value": "email",
+        "label": "Email",
+        "label_ar": "البريد الإلكتروني"
+       },
+       {
+        "value": "international-federation-s-system",
+        "label": "International federation’s system",
+        "label_ar": "نظام الاتحاد الدولي"
+       },
+       {
+        "value": "other-software",
+        "label": "Other software",
+        "label_ar": "برنامج آخر"
+       },
+       {
+        "value": "accounting-software",
+        "label": "Accounting software",
+        "label_ar": "برنامج محاسبة"
+       }
+      ],
+      "other": true,
+      "id": "q3"
+     },
+     {
+      "key": "q4",
+      "label": "Which bodies do you report to or work with?",
+      "label_ar": "لأي جهات ترفعون التقارير أو تتعاملون معها؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "ministry-sports-authority",
+        "label": "Ministry / sports authority",
+        "label_ar": "الوزارة / الهيئة الرياضية"
+       },
+       {
+        "value": "national-olympic-committee",
+        "label": "National Olympic Committee",
+        "label_ar": "اللجنة الأولمبية الوطنية"
+       },
+       {
+        "value": "international-federation",
+        "label": "International federation",
+        "label_ar": "الاتحاد الدولي"
+       },
+       {
+        "value": "continental-asian-federation",
+        "label": "Continental / Asian federation",
+        "label_ar": "الاتحاد القاري / الآسيوي"
+       },
+       {
+        "value": "anti-doping-agency",
+        "label": "Anti-doping agency",
+        "label_ar": "وكالة مكافحة المنشطات"
+       },
+       {
+        "value": "schools-universities",
+        "label": "Schools / universities",
+        "label_ar": "المدارس / الجامعات"
+       }
+      ],
+      "other": true,
+      "id": "q4"
+     },
+     {
+      "key": "q5",
+      "label": "Who does the daily admin work — and how many people share it?",
+      "label_ar": "من يقوم بالعمل الإداري اليومي — وكم شخصاً يتقاسمه؟",
+      "type": "textarea",
+      "rows": 2,
+      "id": "q5"
+     },
+     {
+      "key": "q6",
+      "label": "If you have tried a system before: what was it, what worked, and why did it stop?",
+      "label_ar": "إن جربتم نظاماً من قبل: ما هو، وما الذي نجح فيه، ولماذا توقف؟",
+      "type": "textarea",
+      "rows": 3,
+      "id": "q6"
+     },
+     {
+      "key": "obs1",
+      "type": "note",
+      "private": true,
+      "label": "Interviewer observations",
+      "label_ar": "ملاحظات المحاور",
+      "help": "Ask to see where the list of clubs and athletes is kept today — a file, a system, a drawer.",
+      "help_ar": "اطلب رؤية مكان حفظ قائمة الأندية واللاعبين اليوم — ملف، نظام، أم درج مكتب.",
+      "id": "obs1"
+     }
+    ]
+   },
+   {
+    "id": "s2",
+    "title": "Clubs & Affiliation",
+    "title_ar": "الأندية والانتساب",
+    "intro": "How a club joins, stays in good standing, and what the federation asks of it each year.",
+    "intro_ar": "كيف ينضم النادي، وكيف يبقى في وضع سليم، وما الذي يطلبه الاتحاد منه كل عام.",
+    "fields": [
+     {
+      "key": "q7",
+      "label": "How does a new club join the federation today?",
+      "label_ar": "كيف ينضم نادٍ جديد إلى الاتحاد اليوم؟",
+      "type": "radio",
+      "options": [
+       {
+        "value": "paper-application",
+        "label": "Paper application",
+        "label_ar": "طلب ورقي"
+       },
+       {
+        "value": "email-whatsapp",
+        "label": "Email / WhatsApp",
+        "label_ar": "بريد / واتساب"
+       },
+       {
+        "value": "online-form",
+        "label": "Online form",
+        "label_ar": "نموذج إلكتروني"
+       },
+       {
+        "value": "through-the-ministry",
+        "label": "Through the ministry",
+        "label_ar": "عن طريق الوزارة"
+       }
+      ],
+      "note": true,
+      "id": "q7"
+     },
+     {
+      "key": "q8",
+      "label": "What must a club submit to affiliate or renew?",
+      "label_ar": "ما الذي يجب أن يقدمه النادي للانتساب أو التجديد؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "commercial-ministry-licence",
+        "label": "Commercial / ministry licence",
+        "label_ar": "ترخيص تجاري / وزاري"
+       },
+       {
+        "value": "coach-qualifications",
+        "label": "Coach qualifications",
+        "label_ar": "مؤهلات المدربين"
+       },
+       {
+        "value": "facility-details",
+        "label": "Facility details",
+        "label_ar": "بيانات المرافق"
+       },
+       {
+        "value": "insurance",
+        "label": "Insurance",
+        "label_ar": "التأمين"
+       },
+       {
+        "value": "annual-fee",
+        "label": "Annual fee",
+        "label_ar": "رسوم سنوية"
+       },
+       {
+        "value": "athlete-list",
+        "label": "Athlete list",
+        "label_ar": "قائمة اللاعبين"
+       }
+      ],
+      "other": true,
+      "id": "q8"
+     },
+     {
+      "key": "q9",
+      "label": "Does affiliation expire and need renewing each season?",
+      "label_ar": "هل ينتهي الانتساب ويحتاج تجديداً كل موسم؟",
+      "type": "radio",
+      "options": [
+       {
+        "value": "yes",
+        "label": "Yes",
+        "label_ar": "نعم"
+       },
+       {
+        "value": "no",
+        "label": "No",
+        "label_ar": "لا"
+       },
+       {
+        "value": "sometimes",
+        "label": "Sometimes",
+        "label_ar": "أحياناً"
+       }
+      ],
+      "note": true,
+      "id": "q9"
+     },
+     {
+      "key": "q10",
+      "label": "How much work is keeping club records correct and current?",
+      "label_ar": "ما حجم العمل لإبقاء سجلات الأندية صحيحة ومحدّثة؟",
+      "type": "scale",
+      "min": 1,
+      "max": 5,
+      "low": "Easy",
+      "low_ar": "سهل",
+      "high": "A constant fight",
+      "high_ar": "معاناة دائمة",
+      "note": true,
+      "id": "q10"
+     },
+     {
+      "key": "q11",
+      "label": "What problems come up most with clubs — late fees, missing papers, disputes, duplicate clubs?",
+      "label_ar": "ما أكثر المشكلات مع الأندية — رسوم متأخرة، أوراق ناقصة، خلافات، أندية مكررة؟",
+      "type": "textarea",
+      "rows": 3,
+      "id": "q11"
+     },
+     {
+      "key": "obs2",
+      "type": "note",
+      "private": true,
+      "label": "Interviewer observations",
+      "label_ar": "ملاحظات المحاور",
+      "help": "Ask: “Which clubs have not renewed this year?” — and note how long the answer takes.",
+      "help_ar": "اسأل: «ما الأندية التي لم تجدد هذا العام؟» — ولاحظ كم يستغرق الجواب.",
+      "id": "obs2"
+     }
+    ]
+   },
+   {
+    "id": "s3",
+    "title": "Athletes, Licences & Transfers",
+    "title_ar": "اللاعبون والتراخيص والانتقالات",
+    "intro": "One person, one record — from their first licence to their last competition.",
+    "intro_ar": "شخص واحد، سجل واحد — من أول ترخيص إلى آخر بطولة.",
+    "fields": [
+     {
+      "key": "q12",
+      "label": "Does every athlete hold a federation licence or ID card?",
+      "label_ar": "هل يحمل كل لاعب ترخيصاً أو بطاقة من الاتحاد؟",
+      "type": "radio",
+      "options": [
+       {
+        "value": "yes",
+        "label": "Yes",
+        "label_ar": "نعم"
+       },
+       {
+        "value": "no",
+        "label": "No",
+        "label_ar": "لا"
+       },
+       {
+        "value": "sometimes",
+        "label": "Sometimes",
+        "label_ar": "أحياناً"
+       }
+      ],
+      "note": true,
+      "id": "q12"
+     },
+     {
+      "key": "q13",
+      "label": "What do you check before an athlete may compete?",
+      "label_ar": "ما الذي تتحققون منه قبل أن يشارك اللاعب؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "age-cpr",
+        "label": "Age / CPR",
+        "label_ar": "العمر / البطاقة الشخصية"
+       },
+       {
+        "value": "belt-grade",
+        "label": "Belt / grade",
+        "label_ar": "الحزام / الدرجة"
+       },
+       {
+        "value": "medical-certificate",
+        "label": "Medical certificate",
+        "label_ar": "شهادة طبية"
+       },
+       {
+        "value": "anti-doping-consent",
+        "label": "Anti-doping consent",
+        "label_ar": "إقرار مكافحة المنشطات"
+       },
+       {
+        "value": "parent-consent-minors",
+        "label": "Parent consent (minors)",
+        "label_ar": "موافقة ولي الأمر (القُصّر)"
+       },
+       {
+        "value": "nationality",
+        "label": "Nationality",
+        "label_ar": "الجنسية"
+       },
+       {
+        "value": "licence-paid",
+        "label": "Licence paid",
+        "label_ar": "سداد الترخيص"
+       }
+      ],
+      "other": true,
+      "id": "q13"
+     },
+     {
+      "key": "q14",
+      "label": "How often do you find the same athlete registered twice?",
+      "label_ar": "كم مرة تجدون اللاعب نفسه مسجلاً مرتين؟",
+      "type": "scale",
+      "min": 1,
+      "max": 5,
+      "low": "Never",
+      "low_ar": "أبداً",
+      "high": "All the time",
+      "high_ar": "طوال الوقت",
+      "note": true,
+      "id": "q14"
+     },
+     {
+      "key": "q15",
+      "label": "How are transfers between clubs handled?",
+      "label_ar": "كيف تُدار انتقالات اللاعبين بين الأندية؟",
+      "type": "radio",
+      "options": [
+       {
+        "value": "letter-of-release",
+        "label": "Letter of release",
+        "label_ar": "خطاب إخلاء طرف"
+       },
+       {
+        "value": "federation-decides",
+        "label": "Federation decides",
+        "label_ar": "الاتحاد يقرر"
+       },
+       {
+        "value": "no-rules-yet",
+        "label": "No rules yet",
+        "label_ar": "لا قواعد بعد"
+       },
+       {
+        "value": "rarely-happens",
+        "label": "Rarely happens",
+        "label_ar": "نادراً ما يحدث"
+       }
+      ],
+      "note": true,
+      "id": "q15"
+     },
+     {
+      "key": "q16",
+      "label": "What do you need to know about an athlete that you cannot easily find today?",
+      "label_ar": "ما الذي تحتاجون معرفته عن اللاعب ولا تجدونه بسهولة اليوم؟",
+      "type": "textarea",
+      "rows": 3,
+      "id": "q16"
+     },
+     {
+      "key": "obs3",
+      "type": "note",
+      "private": true,
+      "label": "Interviewer observations",
+      "label_ar": "ملاحظات المحاور",
+      "help": "Ask how they would find one athlete’s full history today: every club, belt and medal.",
+      "help_ar": "اسأل كيف يجدون اليوم التاريخ الكامل للاعب واحد: كل نادٍ وحزام وميدالية.",
+      "id": "obs3"
+     }
+    ]
+   },
+   {
+    "id": "s4",
+    "title": "Competitions & Events",
+    "title_ar": "البطولات والفعاليات",
+    "intro": "From the calendar to the medal table — the federation’s busiest weeks.",
+    "intro_ar": "من التقويم إلى جدول الميداليات — أكثر أسابيع الاتحاد ازدحاماً.",
+    "fields": [
+     {
+      "key": "q17",
+      "label": "How do clubs send their entries?",
+      "label_ar": "كيف ترسل الأندية قوائم المشاركين؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "excel-sheet",
+        "label": "Excel sheet",
+        "label_ar": "ملف إكسل"
+       },
+       {
+        "value": "whatsapp",
+        "label": "WhatsApp",
+        "label_ar": "واتساب"
+       },
+       {
+        "value": "paper-form",
+        "label": "Paper form",
+        "label_ar": "نموذج ورقي"
+       },
+       {
+        "value": "online-system",
+        "label": "Online system",
+        "label_ar": "نظام إلكتروني"
+       },
+       {
+        "value": "at-the-venue",
+        "label": "At the venue",
+        "label_ar": "في موقع البطولة"
+       }
+      ],
+      "other": true,
+      "id": "q17"
+     },
+     {
+      "key": "q18",
+      "label": "Which parts of running an event hurt most?",
+      "label_ar": "ما أصعب أجزاء تنظيم البطولة؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "collecting-entries-fees",
+        "label": "Collecting entries & fees",
+        "label_ar": "جمع المشاركات والرسوم"
+       },
+       {
+        "value": "weigh-in-categories",
+        "label": "Weigh-in & categories",
+        "label_ar": "الوزن والفئات"
+       },
+       {
+        "value": "the-draw",
+        "label": "The draw",
+        "label_ar": "القرعة"
+       },
+       {
+        "value": "schedule-mats",
+        "label": "Schedule & mats",
+        "label_ar": "الجدول والبساط"
+       },
+       {
+        "value": "scoring-results",
+        "label": "Scoring & results",
+        "label_ar": "التسجيل والنتائج"
+       },
+       {
+        "value": "certificates-medals",
+        "label": "Certificates & medals",
+        "label_ar": "الشهادات والميداليات"
+       }
+      ],
+      "other": true,
+      "id": "q18"
+     },
+     {
+      "key": "q19",
+      "label": "How long does it take to publish official results after an event?",
+      "label_ar": "كم يستغرق نشر النتائج الرسمية بعد البطولة؟",
+      "type": "scale",
+      "min": 1,
+      "max": 5,
+      "low": "Same day",
+      "low_ar": "نفس اليوم",
+      "high": "Weeks",
+      "high_ar": "أسابيع",
+      "note": true,
+      "id": "q19"
+     },
+     {
+      "key": "q20",
+      "label": "Would you stream or record bouts if it were easy?",
+      "label_ar": "هل ستبثون أو تسجلون النزالات لو كان ذلك سهلاً؟",
+      "type": "radio",
+      "options": [
+       {
+        "value": "yes",
+        "label": "Yes",
+        "label_ar": "نعم"
+       },
+       {
+        "value": "no",
+        "label": "No",
+        "label_ar": "لا"
+       },
+       {
+        "value": "sometimes",
+        "label": "Sometimes",
+        "label_ar": "أحياناً"
+       }
+      ],
+      "note": true,
+      "id": "q20"
+     },
+     {
+      "key": "q21",
+      "label": "Tell us about the last event that went wrong. What happened?",
+      "label_ar": "حدّثنا عن آخر بطولة لم تسر كما يجب. ماذا حدث؟",
+      "type": "textarea",
+      "rows": 3,
+      "id": "q21"
+     },
+     {
+      "key": "obs4",
+      "type": "note",
+      "private": true,
+      "label": "Interviewer observations",
+      "label_ar": "ملاحظات المحاور",
+      "help": "Ask to see the entry list of the last championship. How did it arrive — and how many versions were there?",
+      "help_ar": "اطلب رؤية قائمة المشاركين في آخر بطولة. كيف وصلت — وكم نسخة منها كانت هناك؟",
+      "id": "obs4"
+     }
+    ]
+   },
+   {
+    "id": "s5",
+    "title": "Referees, Officials & Coaches",
+    "title_ar": "الحكام والمسؤولون والمدربون",
+    "intro": "The people who make a competition fair — and how they are trained, graded and paid.",
+    "intro_ar": "الأشخاص الذين يجعلون البطولة عادلة — وكيف يُدرَّبون ويُصنَّفون ويُدفع لهم.",
+    "fields": [
+     {
+      "key": "q22",
+      "label": "Do referees have national grades or licences?",
+      "label_ar": "هل للحكام درجات أو رخص وطنية؟",
+      "type": "radio",
+      "options": [
+       {
+        "value": "yes",
+        "label": "Yes",
+        "label_ar": "نعم"
+       },
+       {
+        "value": "no",
+        "label": "No",
+        "label_ar": "لا"
+       },
+       {
+        "value": "sometimes",
+        "label": "Sometimes",
+        "label_ar": "أحياناً"
+       }
+      ],
+      "note": true,
+      "id": "q22"
+     },
+     {
+      "key": "q23",
+      "label": "How are officials assigned to an event?",
+      "label_ar": "كيف يُكلَّف الحكام والمسؤولون بالبطولة؟",
+      "type": "radio",
+      "options": [
+       {
+        "value": "phone-whatsapp",
+        "label": "Phone / WhatsApp",
+        "label_ar": "هاتف / واتساب"
+       },
+       {
+        "value": "a-list-on-paper",
+        "label": "A list on paper",
+        "label_ar": "قائمة ورقية"
+       },
+       {
+        "value": "referee-commission-meeting",
+        "label": "Referee commission meeting",
+        "label_ar": "اجتماع لجنة الحكام"
+       },
+       {
+        "value": "a-system",
+        "label": "A system",
+        "label_ar": "نظام إلكتروني"
+       }
+      ],
+      "note": true,
+      "id": "q23"
+     },
+     {
+      "key": "q24",
+      "label": "Are officials paid per event or per day?",
+      "label_ar": "هل يُدفع للحكام عن كل بطولة أو عن كل يوم؟",
+      "type": "radio",
+      "options": [
+       {
+        "value": "per-event",
+        "label": "Per event",
+        "label_ar": "عن كل بطولة"
+       },
+       {
+        "value": "per-day",
+        "label": "Per day",
+        "label_ar": "عن كل يوم"
+       },
+       {
+        "value": "per-bout",
+        "label": "Per bout",
+        "label_ar": "عن كل نزال"
+       },
+       {
+        "value": "volunteer",
+        "label": "Volunteer",
+        "label_ar": "تطوعاً"
+       }
+      ],
+      "note": true,
+      "id": "q24"
+     },
+     {
+      "key": "q25",
+      "label": "Do coaches need a federation licence to sit in the corner?",
+      "label_ar": "هل يحتاج المدرب ترخيصاً من الاتحاد للجلوس في الركن؟",
+      "type": "radio",
+      "options": [
+       {
+        "value": "yes",
+        "label": "Yes",
+        "label_ar": "نعم"
+       },
+       {
+        "value": "no",
+        "label": "No",
+        "label_ar": "لا"
+       },
+       {
+        "value": "sometimes",
+        "label": "Sometimes",
+        "label_ar": "أحياناً"
+       }
+      ],
+      "note": true,
+      "id": "q25"
+     },
+     {
+      "key": "q26",
+      "label": "How do you run courses and exams for referees and coaches today?",
+      "label_ar": "كيف تنظمون الدورات والاختبارات للحكام والمدربين اليوم؟",
+      "type": "textarea",
+      "rows": 3,
+      "id": "q26"
+     },
+     {
+      "key": "obs5",
+      "type": "note",
+      "private": true,
+      "label": "Interviewer observations",
+      "label_ar": "ملاحظات المحاور",
+      "help": "Ask who decides which referee works which mat, and how that is recorded.",
+      "help_ar": "اسأل من يقرر أي حكم يعمل على أي بساط، وكيف يُسجَّل ذلك.",
+      "id": "obs5"
+     }
+    ]
+   },
+   {
+    "id": "s6",
+    "title": "Rankings, Talent & National Team",
+    "title_ar": "التصنيف والمواهب والمنتخب",
+    "intro": "Who is the best — and how the federation knows it, fairly and openly.",
+    "intro_ar": "من الأفضل — وكيف يعرف الاتحاد ذلك بعدل وشفافية.",
+    "fields": [
+     {
+      "key": "q27",
+      "label": "Do you keep a national ranking?",
+      "label_ar": "هل لديكم تصنيف وطني للاعبين؟",
+      "type": "radio",
+      "options": [
+       {
+        "value": "yes-points-system",
+        "label": "Yes, points system",
+        "label_ar": "نعم، بنظام نقاط"
+       },
+       {
+        "value": "informally",
+        "label": "Informally",
+        "label_ar": "بشكل غير رسمي"
+       },
+       {
+        "value": "no",
+        "label": "No",
+        "label_ar": "لا"
+       }
+      ],
+      "note": true,
+      "id": "q27"
+     },
+     {
+      "key": "q28",
+      "label": "What decides national team selection?",
+      "label_ar": "ما الذي يحدد اختيار المنتخب الوطني؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "national-championship-results",
+        "label": "National championship results",
+        "label_ar": "نتائج البطولة الوطنية"
+       },
+       {
+        "value": "ranking-points",
+        "label": "Ranking points",
+        "label_ar": "نقاط التصنيف"
+       },
+       {
+        "value": "selection-camp-trials",
+        "label": "Selection camp / trials",
+        "label_ar": "معسكر / اختبارات"
+       },
+       {
+        "value": "coach-s-judgement",
+        "label": "Coach’s judgement",
+        "label_ar": "تقدير المدرب"
+       },
+       {
+        "value": "international-results",
+        "label": "International results",
+        "label_ar": "النتائج الدولية"
+       }
+      ],
+      "other": true,
+      "id": "q28"
+     },
+     {
+      "key": "q29",
+      "label": "How valuable would a public, automatic ranking be?",
+      "label_ar": "ما قيمة تصنيف علني يُحتسب تلقائياً؟",
+      "type": "scale",
+      "min": 1,
+      "max": 5,
+      "low": "Not needed",
+      "low_ar": "غير ضروري",
+      "high": "Essential",
+      "high_ar": "أساسي",
+      "note": true,
+      "id": "q29"
+     },
+     {
+      "key": "q30",
+      "label": "What would help you spot and follow young talent earlier?",
+      "label_ar": "ما الذي يساعدكم على اكتشاف المواهب الشابة ومتابعتها مبكراً؟",
+      "type": "textarea",
+      "rows": 3,
+      "id": "q30"
+     },
+     {
+      "key": "obs6",
+      "type": "note",
+      "private": true,
+      "label": "Interviewer observations",
+      "label_ar": "ملاحظات المحاور",
+      "help": "Ask how the last national team was chosen. Is the reasoning written down anywhere?",
+      "help_ar": "اسأل كيف اختير المنتخب الأخير. هل هناك أسباب مكتوبة في أي مكان؟",
+      "id": "obs6"
+     }
+    ]
+   },
+   {
+    "id": "s7",
+    "title": "Money, Reports & Partners",
+    "title_ar": "المال والتقارير والشركاء",
+    "intro": "Fees in, grants in, costs out — and the reports that prove it.",
+    "intro_ar": "رسوم داخلة، ومنح داخلة، ومصاريف خارجة — والتقارير التي تثبت ذلك.",
+    "fields": [
+     {
+      "key": "q31",
+      "label": "Where does the federation’s money come from?",
+      "label_ar": "من أين يأتي تمويل الاتحاد؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "government-grant",
+        "label": "Government grant",
+        "label_ar": "دعم حكومي"
+       },
+       {
+        "value": "club-affiliation-fees",
+        "label": "Club affiliation fees",
+        "label_ar": "رسوم انتساب الأندية"
+       },
+       {
+        "value": "athlete-licences",
+        "label": "Athlete licences",
+        "label_ar": "تراخيص اللاعبين"
+       },
+       {
+        "value": "event-entry-fees",
+        "label": "Event entry fees",
+        "label_ar": "رسوم المشاركة في البطولات"
+       },
+       {
+        "value": "sponsors",
+        "label": "Sponsors",
+        "label_ar": "الرعاة"
+       },
+       {
+        "value": "courses-exams",
+        "label": "Courses & exams",
+        "label_ar": "الدورات والاختبارات"
+       }
+      ],
+      "other": true,
+      "id": "q31"
+     },
+     {
+      "key": "q32",
+      "label": "How do clubs pay the federation?",
+      "label_ar": "كيف تدفع الأندية للاتحاد؟",
+      "type": "radio",
+      "options": [
+       {
+        "value": "bank-transfer",
+        "label": "Bank transfer",
+        "label_ar": "تحويل بنكي"
+       },
+       {
+        "value": "cash",
+        "label": "Cash",
+        "label_ar": "نقداً"
+       },
+       {
+        "value": "benefitpay",
+        "label": "BenefitPay",
+        "label_ar": "بنفت باي"
+       },
+       {
+        "value": "cheque",
+        "label": "Cheque",
+        "label_ar": "شيك"
+       }
+      ],
+      "note": true,
+      "id": "q32"
+     },
+     {
+      "key": "q33",
+      "label": "How hard is it to know which club owes what, right now?",
+      "label_ar": "ما مدى صعوبة معرفة ما على كل نادٍ من مستحقات الآن؟",
+      "type": "scale",
+      "min": 1,
+      "max": 5,
+      "low": "Easy",
+      "low_ar": "سهل",
+      "high": "Very hard",
+      "high_ar": "صعب جداً",
+      "note": true,
+      "id": "q33"
+     },
+     {
+      "key": "q34",
+      "label": "Which reports do you have to produce?",
+      "label_ar": "ما التقارير التي يجب أن تعدّوها؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "annual-activity-report",
+        "label": "Annual activity report",
+        "label_ar": "تقرير النشاط السنوي"
+       },
+       {
+        "value": "financial-statements",
+        "label": "Financial statements",
+        "label_ar": "القوائم المالية"
+       },
+       {
+        "value": "participation-statistics",
+        "label": "Participation statistics",
+        "label_ar": "إحصاءات المشاركة"
+       },
+       {
+        "value": "results-to-the-international-federation",
+        "label": "Results to the international federation",
+        "label_ar": "النتائج للاتحاد الدولي"
+       },
+       {
+        "value": "women-youth-participation",
+        "label": "Women & youth participation",
+        "label_ar": "مشاركة المرأة والناشئين"
+       },
+       {
+        "value": "grant-reports",
+        "label": "Grant reports",
+        "label_ar": "تقارير المنح"
+       }
+      ],
+      "other": true,
+      "id": "q34"
+     },
+     {
+      "key": "q35",
+      "label": "What does a sponsor or the ministry ask you for that is hard to produce?",
+      "label_ar": "ما الذي يطلبه الراعي أو الوزارة ويصعب إعداده؟",
+      "type": "textarea",
+      "rows": 2,
+      "id": "q35"
+     },
+     {
+      "key": "obs7",
+      "type": "note",
+      "private": true,
+      "label": "Interviewer observations",
+      "label_ar": "ملاحظات المحاور",
+      "help": "Ask how long the last annual report to the ministry or Olympic committee took to prepare.",
+      "help_ar": "اسأل كم استغرق إعداد آخر تقرير سنوي للوزارة أو اللجنة الأولمبية.",
+      "id": "obs7"
+     }
+    ]
+   },
+   {
+    "id": "s8",
+    "title": "Governance, Integrity & Communication",
+    "title_ar": "الحوكمة والنزاهة والتواصل",
+    "intro": "Decisions, rules and fairness — and how the federation talks to its clubs.",
+    "intro_ar": "القرارات والأنظمة والعدالة — وكيف يتواصل الاتحاد مع أنديته.",
+    "fields": [
+     {
+      "key": "q36",
+      "label": "How are board decisions recorded and shared?",
+      "label_ar": "كيف تُوثَّق قرارات مجلس الإدارة وتُنشر؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "minutes-on-paper",
+        "label": "Minutes on paper",
+        "label_ar": "محاضر ورقية"
+       },
+       {
+        "value": "word-pdf-files",
+        "label": "Word / PDF files",
+        "label_ar": "ملفات وورد / PDF"
+       },
+       {
+        "value": "whatsapp",
+        "label": "WhatsApp",
+        "label_ar": "واتساب"
+       },
+       {
+        "value": "circular-to-clubs",
+        "label": "Circular to clubs",
+        "label_ar": "تعميم للأندية"
+       },
+       {
+        "value": "website",
+        "label": "Website",
+        "label_ar": "الموقع الإلكتروني"
+       }
+      ],
+      "other": true,
+      "id": "q36"
+     },
+     {
+      "key": "q37",
+      "label": "Is there a written process for complaints, appeals and discipline?",
+      "label_ar": "هل يوجد إجراء مكتوب للشكاوى والاستئناف والعقوبات؟",
+      "type": "radio",
+      "options": [
+       {
+        "value": "yes",
+        "label": "Yes",
+        "label_ar": "نعم"
+       },
+       {
+        "value": "no",
+        "label": "No",
+        "label_ar": "لا"
+       },
+       {
+        "value": "sometimes",
+        "label": "Sometimes",
+        "label_ar": "أحياناً"
+       }
+      ],
+      "note": true,
+      "id": "q37"
+     },
+     {
+      "key": "q38",
+      "label": "Do you have a safeguarding policy for minors?",
+      "label_ar": "هل لديكم سياسة لحماية القُصّر؟",
+      "type": "radio",
+      "options": [
+       {
+        "value": "yes",
+        "label": "Yes",
+        "label_ar": "نعم"
+       },
+       {
+        "value": "no",
+        "label": "No",
+        "label_ar": "لا"
+       },
+       {
+        "value": "sometimes",
+        "label": "Sometimes",
+        "label_ar": "أحياناً"
+       }
+      ],
+      "note": true,
+      "id": "q38"
+     },
+     {
+      "key": "q39",
+      "label": "How do you reach clubs, athletes and parents?",
+      "label_ar": "كيف تتواصلون مع الأندية واللاعبين وأولياء الأمور؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "whatsapp",
+        "label": "WhatsApp",
+        "label_ar": "واتساب"
+       },
+       {
+        "value": "email",
+        "label": "Email",
+        "label_ar": "البريد الإلكتروني"
+       },
+       {
+        "value": "instagram",
+        "label": "Instagram",
+        "label_ar": "إنستغرام"
+       },
+       {
+        "value": "website",
+        "label": "Website",
+        "label_ar": "الموقع الإلكتروني"
+       },
+       {
+        "value": "official-letters",
+        "label": "Official letters",
+        "label_ar": "خطابات رسمية"
+       }
+      ],
+      "other": true,
+      "id": "q39"
+     },
+     {
+      "key": "q40",
+      "label": "How much time goes into answering the same questions again and again?",
+      "label_ar": "كم من الوقت يذهب في الإجابة على الأسئلة نفسها مراراً؟",
+      "type": "scale",
+      "min": 1,
+      "max": 5,
+      "low": "Little",
+      "low_ar": "قليل",
+      "high": "Too much",
+      "high_ar": "كثير جداً",
+      "note": true,
+      "id": "q40"
+     },
+     {
+      "key": "obs8",
+      "type": "note",
+      "private": true,
+      "label": "Interviewer observations",
+      "label_ar": "ملاحظات المحاور",
+      "help": "Ask how a board decision reaches the clubs, and how they know it was received.",
+      "help_ar": "اسأل كيف يصل قرار مجلس الإدارة إلى الأندية، وكيف يعرفون أنه وصل.",
+      "id": "obs8"
+     }
+    ]
+   },
+   {
+    "id": "s9",
+    "title": "People, Devices & Trust",
+    "title_ar": "الأشخاص والأجهزة والثقة",
+    "intro": "Who would use a system, on what, and what would make them trust it.",
+    "intro_ar": "من سيستخدم النظام، وعلى أي جهاز، وما الذي يجعلهم يثقون به.",
+    "fields": [
+     {
+      "key": "q41",
+      "label": "Who would need access?",
+      "label_ar": "من سيحتاج إلى الدخول؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "president-board",
+        "label": "President & board",
+        "label_ar": "الرئيس ومجلس الإدارة"
+       },
+       {
+        "value": "secretary-general",
+        "label": "Secretary general",
+        "label_ar": "الأمين العام"
+       },
+       {
+        "value": "technical-director",
+        "label": "Technical director",
+        "label_ar": "المدير الفني"
+       },
+       {
+        "value": "referee-commission",
+        "label": "Referee commission",
+        "label_ar": "لجنة الحكام"
+       },
+       {
+        "value": "finance",
+        "label": "Finance",
+        "label_ar": "المالية"
+       },
+       {
+        "value": "club-admins",
+        "label": "Club admins",
+        "label_ar": "إداريو الأندية"
+       },
+       {
+        "value": "athletes-parents",
+        "label": "Athletes & parents",
+        "label_ar": "اللاعبون وأولياء الأمور"
+       }
+      ],
+      "other": true,
+      "id": "q41"
+     },
+     {
+      "key": "q42",
+      "label": "Who must NOT see what? (e.g. clubs see only their athletes, finance only for the treasurer)",
+      "label_ar": "من يجب ألا يرى ماذا؟ (مثلاً: النادي يرى لاعبيه فقط، والمالية لأمين الصندوق فقط)",
+      "type": "textarea",
+      "rows": 2,
+      "id": "q42"
+     },
+     {
+      "key": "q43",
+      "label": "What would make you hesitate to move to a new system?",
+      "label_ar": "ما الذي قد يجعلكم تترددون في الانتقال لنظام جديد؟",
+      "type": "checkboxes",
+      "options": [
+       {
+        "value": "price",
+        "label": "Price",
+        "label_ar": "السعر"
+       },
+       {
+        "value": "moving-old-records",
+        "label": "Moving old records",
+        "label_ar": "نقل السجلات القديمة"
+       },
+       {
+        "value": "data-privacy-ownership",
+        "label": "Data privacy & ownership",
+        "label_ar": "خصوصية البيانات وملكيتها"
+       },
+       {
+        "value": "approval-from-the-board-ministry",
+        "label": "Approval from the board / ministry",
+        "label_ar": "موافقة المجلس / الوزارة"
+       },
+       {
+        "value": "clubs-won-t-use-it",
+        "label": "Clubs won’t use it",
+        "label_ar": "الأندية لن تستخدمه"
+       },
+       {
+        "value": "staff-training",
+        "label": "Staff training",
+        "label_ar": "تدريب الموظفين"
+       }
+      ],
+      "other": true,
+      "id": "q43"
+     },
+     {
+      "key": "q44",
+      "label": "How would you prefer to pay for a system like this?",
+      "label_ar": "كيف تفضّلون الدفع مقابل نظام كهذا؟",
+      "type": "radio",
+      "options": [
+       {
+        "value": "yearly-subscription",
+        "label": "Yearly subscription",
+        "label_ar": "اشتراك سنوي"
+       },
+       {
+        "value": "per-event",
+        "label": "Per event",
+        "label_ar": "لكل بطولة"
+       },
+       {
+        "value": "per-athlete-licence",
+        "label": "Per athlete licence",
+        "label_ar": "لكل ترخيص لاعب"
+       },
+       {
+        "value": "through-a-sponsor",
+        "label": "Through a sponsor",
+        "label_ar": "عن طريق راعٍ"
+       }
+      ],
+      "note": true,
+      "id": "q44"
+     },
+     {
+      "key": "q45",
+      "label": "Roughly what yearly amount would feel fair — if it saved real time?",
+      "label_ar": "ما المبلغ السنوي الذي ترونه عادلاً تقريباً — إن وفّر وقتاً حقيقياً؟",
+      "type": "textarea",
+      "rows": 1,
+      "id": "q45"
+     },
+     {
+      "key": "obs9",
+      "type": "note",
+      "private": true,
+      "label": "Interviewer observations",
+      "label_ar": "ملاحظات المحاور",
+      "help": "Watch which phone or laptop they reach for. Note the language it is set to.",
+      "help_ar": "لاحظ أي هاتف أو حاسوب يستخدمون. ولاحظ لغة الجهاز.",
+      "id": "obs9"
+     }
+    ]
+   },
+   {
+    "id": "priorities",
+    "title": "What matters most",
+    "title_ar": "ما الأهم لديكم",
+    "intro": "One answer per line, then pick the five that matter most.",
+    "intro_ar": "إجابة واحدة لكل سطر، ثم اختر الخمسة الأهم.",
+    "fields": [
+     {
+      "key": "grid",
+      "type": "grid",
+      "required": true,
+      "label": "For each one: must have, nice to have, or not needed?",
+      "label_ar": "لكل ميزة: ضرورية، جيدة، أم غير مطلوبة؟",
+      "rows": [
+       {
+        "value": "f01",
+        "label": "Online club affiliation & yearly renewal",
+        "label_ar": "انتساب الأندية وتجديده سنوياً عبر الإنترنت"
+       },
+       {
+        "value": "f02",
+        "label": "One athlete record across all clubs",
+        "label_ar": "سجل واحد للاعب في كل الأندية"
+       },
+       {
+        "value": "f03",
+        "label": "Athlete licences / ID cards with expiry",
+        "label_ar": "تراخيص / بطاقات اللاعبين بتاريخ انتهاء"
+       },
+       {
+        "value": "f04",
+        "label": "Transfers between clubs (request & approve)",
+        "label_ar": "الانتقالات بين الأندية (طلب وموافقة)"
+       },
+       {
+        "value": "f05",
+        "label": "Medical & age documents checked",
+        "label_ar": "التحقق من الوثائق الطبية والعمر"
+       },
+       {
+        "value": "f06",
+        "label": "Anti-doping & code-of-conduct consents",
+        "label_ar": "إقرارات مكافحة المنشطات وقواعد السلوك"
+       },
+       {
+        "value": "f07",
+        "label": "Competition calendar & event setup",
+        "label_ar": "تقويم البطولات وإعدادها"
+       },
+       {
+        "value": "f08",
+        "label": "Online entries by clubs, with fees",
+        "label_ar": "تسجيل الأندية للاعبين إلكترونياً مع الرسوم"
+       },
+       {
+        "value": "f09",
+        "label": "Weigh-in, categories & the draw",
+        "label_ar": "الوزن والفئات والقرعة"
+       },
+       {
+        "value": "f10",
+        "label": "Live scoring, hall screens & bout video",
+        "label_ar": "التسجيل المباشر وشاشات القاعة وفيديو النزالات"
+       },
+       {
+        "value": "f11",
+        "label": "Results, medal tables & official PDFs",
+        "label_ar": "النتائج وجداول الميداليات وملفات PDF الرسمية"
+       },
+       {
+        "value": "f12",
+        "label": "National ranking (points)",
+        "label_ar": "التصنيف الوطني (بالنقاط)"
+       },
+       {
+        "value": "f13",
+        "label": "Referee registry, grades & assignments",
+        "label_ar": "سجل الحكام ودرجاتهم وتكليفاتهم"
+       },
+       {
+        "value": "f14",
+        "label": "Courses, exams & certificates",
+        "label_ar": "الدورات والاختبارات والشهادات"
+       },
+       {
+        "value": "f15",
+        "label": "Coach licensing",
+        "label_ar": "ترخيص المدربين"
+       },
+       {
+        "value": "f16",
+        "label": "National team selection & squads",
+        "label_ar": "اختيار المنتخب وإدارة الفرق"
+       },
+       {
+        "value": "f17",
+        "label": "Invoicing clubs & tracking payments",
+        "label_ar": "فوترة الأندية ومتابعة المدفوعات"
+       },
+       {
+        "value": "f18",
+        "label": "Budget, grants & financial reports",
+        "label_ar": "الميزانية والمنح والتقارير المالية"
+       },
+       {
+        "value": "f19",
+        "label": "Ready reports for ministry / Olympic committee",
+        "label_ar": "تقارير جاهزة للوزارة / اللجنة الأولمبية"
+       },
+       {
+        "value": "f20",
+        "label": "Board decisions, general assembly & voting",
+        "label_ar": "قرارات المجلس والجمعية العمومية والتصويت"
+       },
+       {
+        "value": "f21",
+        "label": "Complaints, appeals & discipline cases",
+        "label_ar": "الشكاوى والاستئناف والقضايا التأديبية"
+       },
+       {
+        "value": "f22",
+        "label": "Announcements to clubs (app & WhatsApp)",
+        "label_ar": "التعاميم للأندية (التطبيق وواتساب)"
+       },
+       {
+        "value": "f23",
+        "label": "Public federation page: news, calendar, results",
+        "label_ar": "صفحة عامة للاتحاد: أخبار وتقويم ونتائج"
+       },
+       {
+        "value": "f24",
+        "label": "Everything in Arabic and English",
+        "label_ar": "كل شيء بالعربية والإنجليزية"
+       }
+      ],
+      "columns": [
+       {
+        "value": "must",
+        "label": "Must",
+        "label_ar": "ضرورية"
+       },
+       {
+        "value": "nice",
+        "label": "Nice",
+        "label_ar": "جيدة"
+       },
+       {
+        "value": "no",
+        "label": "No need",
+        "label_ar": "غير لازمة"
+       }
+      ],
+      "id": "grid"
+     },
+     {
+      "key": "top5",
+      "type": "rank",
+      "max": 5,
+      "from": "grid",
+      "fromValue": "must",
+      "rows": [
+       {
+        "value": "f01",
+        "label": "Online club affiliation & yearly renewal",
+        "label_ar": "انتساب الأندية وتجديده سنوياً عبر الإنترنت"
+       },
+       {
+        "value": "f02",
+        "label": "One athlete record across all clubs",
+        "label_ar": "سجل واحد للاعب في كل الأندية"
+       },
+       {
+        "value": "f03",
+        "label": "Athlete licences / ID cards with expiry",
+        "label_ar": "تراخيص / بطاقات اللاعبين بتاريخ انتهاء"
+       },
+       {
+        "value": "f04",
+        "label": "Transfers between clubs (request & approve)",
+        "label_ar": "الانتقالات بين الأندية (طلب وموافقة)"
+       },
+       {
+        "value": "f05",
+        "label": "Medical & age documents checked",
+        "label_ar": "التحقق من الوثائق الطبية والعمر"
+       },
+       {
+        "value": "f06",
+        "label": "Anti-doping & code-of-conduct consents",
+        "label_ar": "إقرارات مكافحة المنشطات وقواعد السلوك"
+       },
+       {
+        "value": "f07",
+        "label": "Competition calendar & event setup",
+        "label_ar": "تقويم البطولات وإعدادها"
+       },
+       {
+        "value": "f08",
+        "label": "Online entries by clubs, with fees",
+        "label_ar": "تسجيل الأندية للاعبين إلكترونياً مع الرسوم"
+       },
+       {
+        "value": "f09",
+        "label": "Weigh-in, categories & the draw",
+        "label_ar": "الوزن والفئات والقرعة"
+       },
+       {
+        "value": "f10",
+        "label": "Live scoring, hall screens & bout video",
+        "label_ar": "التسجيل المباشر وشاشات القاعة وفيديو النزالات"
+       },
+       {
+        "value": "f11",
+        "label": "Results, medal tables & official PDFs",
+        "label_ar": "النتائج وجداول الميداليات وملفات PDF الرسمية"
+       },
+       {
+        "value": "f12",
+        "label": "National ranking (points)",
+        "label_ar": "التصنيف الوطني (بالنقاط)"
+       },
+       {
+        "value": "f13",
+        "label": "Referee registry, grades & assignments",
+        "label_ar": "سجل الحكام ودرجاتهم وتكليفاتهم"
+       },
+       {
+        "value": "f14",
+        "label": "Courses, exams & certificates",
+        "label_ar": "الدورات والاختبارات والشهادات"
+       },
+       {
+        "value": "f15",
+        "label": "Coach licensing",
+        "label_ar": "ترخيص المدربين"
+       },
+       {
+        "value": "f16",
+        "label": "National team selection & squads",
+        "label_ar": "اختيار المنتخب وإدارة الفرق"
+       },
+       {
+        "value": "f17",
+        "label": "Invoicing clubs & tracking payments",
+        "label_ar": "فوترة الأندية ومتابعة المدفوعات"
+       },
+       {
+        "value": "f18",
+        "label": "Budget, grants & financial reports",
+        "label_ar": "الميزانية والمنح والتقارير المالية"
+       },
+       {
+        "value": "f19",
+        "label": "Ready reports for ministry / Olympic committee",
+        "label_ar": "تقارير جاهزة للوزارة / اللجنة الأولمبية"
+       },
+       {
+        "value": "f20",
+        "label": "Board decisions, general assembly & voting",
+        "label_ar": "قرارات المجلس والجمعية العمومية والتصويت"
+       },
+       {
+        "value": "f21",
+        "label": "Complaints, appeals & discipline cases",
+        "label_ar": "الشكاوى والاستئناف والقضايا التأديبية"
+       },
+       {
+        "value": "f22",
+        "label": "Announcements to clubs (app & WhatsApp)",
+        "label_ar": "التعاميم للأندية (التطبيق وواتساب)"
+       },
+       {
+        "value": "f23",
+        "label": "Public federation page: news, calendar, results",
+        "label_ar": "صفحة عامة للاتحاد: أخبار وتقويم ونتائج"
+       },
+       {
+        "value": "f24",
+        "label": "Everything in Arabic and English",
+        "label_ar": "كل شيء بالعربية والإنجليزية"
+       }
+      ],
+      "label": "Your top 5, most important first",
+      "label_ar": "أهم خمسة لديكم، الأهم أولاً",
+      "help": "Tap in order. Tap again to remove.",
+      "help_ar": "اضغط بالترتيب. اضغط مرة أخرى للإزالة.",
+      "id": "top5"
+     },
+     {
+      "key": "grid_other",
+      "type": "text",
+      "label": "Something missing from this list?",
+      "label_ar": "شيء غير موجود في القائمة؟",
+      "id": "grid_other"
+     }
+    ]
+   },
+   {
+    "id": "speak",
+    "title": "Speak your mind",
+    "title_ar": "قل رأيك بحرية",
+    "intro": "In your own words. These only start the conversation.",
+    "intro_ar": "بكلماتكم. هذه الأسئلة لبدء الحديث فقط.",
+    "fields": [
+     {
+      "key": "speak1",
+      "type": "textarea",
+      "rows": 4,
+      "label": "If you could fix ONE thing about running the federation tomorrow, what would it be?",
+      "label_ar": "لو استطعت إصلاح شيء واحد في إدارة الاتحاد غداً، ماذا سيكون؟",
+      "id": "speak1"
+     },
+     {
+      "key": "speak2",
+      "type": "textarea",
+      "rows": 4,
+      "label": "Tell me about the hardest week of the last season. What went wrong?",
+      "label_ar": "حدّثني عن أصعب أسبوع في الموسم الماضي. ما الذي حدث؟",
+      "id": "speak2"
+     },
+     {
+      "key": "speak3",
+      "type": "textarea",
+      "rows": 4,
+      "label": "What do clubs and parents complain to the federation about most?",
+      "label_ar": "ما أكثر ما تشتكي منه الأندية وأولياء الأمور للاتحاد؟",
+      "id": "speak3"
+     },
+     {
+      "key": "speak4",
+      "type": "textarea",
+      "rows": 4,
+      "label": "What would make the ministry, the Olympic committee or a sponsor more confident in the federation?",
+      "label_ar": "ما الذي يجعل الوزارة أو اللجنة الأولمبية أو الراعي أكثر ثقة بالاتحاد؟",
+      "id": "speak4"
+     },
+     {
+      "key": "speak5",
+      "type": "textarea",
+      "rows": 4,
+      "label": "Is there anything we did not ask that we should have?",
+      "label_ar": "هل هناك شيء لم نسأل عنه وكان ينبغي أن نسأل؟",
+      "id": "speak5"
+     },
+     {
+      "key": "free",
+      "type": "textarea",
+      "rows": 8,
+      "label": "Anything else, in their own words",
+      "label_ar": "أي شيء آخر، بكلماتهم",
+      "id": "free"
+     }
+    ]
+   },
+   {
+    "id": "summary",
+    "title": "Visit summary",
+    "title_ar": "ملخص الزيارة",
+    "private": true,
+    "intro": "After the visit. Only the TAKEONE team sees this page.",
+    "intro_ar": "بعد الزيارة. هذه الصفحة يراها فريق تيك ون فقط.",
+    "fields": [
+     {
+      "key": "sum_pains",
+      "type": "textarea",
+      "rows": 4,
+      "label": "The three biggest pains you heard",
+      "label_ar": "أكبر ثلاث مشكلات سمعتها",
+      "id": "sum_pains"
+     },
+     {
+      "key": "sum_quote",
+      "type": "textarea",
+      "rows": 2,
+      "label": "Their best quote, word for word",
+      "label_ar": "أفضل عبارة قالوها، حرفياً",
+      "id": "sum_quote"
+     },
+     {
+      "key": "sum_missing",
+      "type": "textarea",
+      "rows": 3,
+      "label": "Features they asked for that we don’t have",
+      "label_ar": "ميزات طلبوها وليست لدينا",
+      "id": "sum_missing"
+     },
+     {
+      "key": "sum_next",
+      "type": "text",
+      "label": "Next step agreed",
+      "label_ar": "الخطوة التالية المتفق عليها",
+      "id": "sum_next"
+     },
+     {
+      "key": "score_interest",
+      "type": "scale",
+      "min": 1,
+      "max": 5,
+      "label": "Interest",
+      "label_ar": "الاهتمام",
+      "low": "Low",
+      "low_ar": "منخفض",
+      "high": "High",
+      "high_ar": "مرتفع",
+      "id": "score_interest"
+     },
+     {
+      "key": "score_tech",
+      "type": "scale",
+      "min": 1,
+      "max": 5,
+      "label": "Comfort with technology",
+      "label_ar": "الراحة مع التقنية",
+      "low": "Low",
+      "low_ar": "منخفض",
+      "high": "High",
+      "high_ar": "مرتفع",
+      "id": "score_tech"
+     },
+     {
+      "key": "score_urgency",
+      "type": "scale",
+      "min": 1,
+      "max": 5,
+      "label": "Urgency",
+      "label_ar": "مدى الإلحاح",
+      "low": "Low",
+      "low_ar": "منخفض",
+      "high": "High",
+      "high_ar": "مرتفع",
+      "id": "score_urgency"
+     },
+     {
+      "key": "pilot",
+      "type": "radio",
+      "label": "Pilot federation?",
+      "label_ar": "اتحاد تجريبي؟",
+      "options": [
+       {
+        "value": "yes",
+        "label": "Yes",
+        "label_ar": "نعم"
+       },
+       {
+        "value": "no",
+        "label": "No",
+        "label_ar": "لا"
+       }
+      ],
+      "id": "pilot"
+     },
+     {
+      "key": "followup",
+      "type": "text",
+      "label": "Follow-up date",
+      "label_ar": "موعد المتابعة",
+      "id": "followup"
+     }
+    ]
+   }
+  ]
+ }
+}

@@ -450,6 +450,9 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
         ->name('karate-scoreboard.player')->whereNumber('registration')->middleware('throttle:mat-read');
     Route::put('/karate/control/{event:uuid}/players/{registration}', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'playerUpdate'])
         ->name('karate-scoreboard.player.update')->whereNumber('registration')->middleware('throttle:admin-write');
+    // How a person's photo is placed on the VS screen — never cropped (PhotoVsFrame).
+    Route::post('/karate/control/{event:uuid}/players/{registration}/vs-frame', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'playerVsFrame'])
+        ->name('karate-scoreboard.player.vs-frame')->whereNumber('registration')->middleware('throttle:admin-write');
     Route::get('/karate/control/{event:uuid}/geo-country', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'geoCountry'])
         ->name('karate-scoreboard.geo-country')->middleware('throttle:mat-read');
     // The Bouts card's Clubs tab — ORGANISERS only (checked in the controller).
@@ -457,6 +460,14 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
         ->name('karate-scoreboard.clubs')->middleware('throttle:mat-read');
     Route::put('/karate/control/{event:uuid}/clubs/{clubKey}', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'clubUpdate'])
         ->name('karate-scoreboard.club.update')->whereUuid('clubKey')->middleware('throttle:admin-write');
+    // The Bouts card's Exhibitions tab — list, and link one to its draw bout.
+    // ORGANISERS only (checked in the controller).
+    Route::get('/karate/control/{event:uuid}/exhibitions', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'exhibitions'])
+        ->name('karate-scoreboard.exhibitions')->middleware('throttle:mat-read');
+    Route::post('/karate/control/{event:uuid}/exhibitions/{exhibition}/link', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'exhibitionLink'])
+        ->name('karate-scoreboard.exhibition.link')->whereUuid('exhibition')->middleware('throttle:admin-write');
+    Route::post('/karate/control/{event:uuid}/exhibitions/{exhibition}/unlink', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'exhibitionUnlink'])
+        ->name('karate-scoreboard.exhibition.unlink')->whereUuid('exhibition')->middleware('throttle:admin-write');
     // Which side of THIS mat the red corner physically stands on. Same
     // canScore() as the commands; the mat travels in the body.
     Route::post('/karate/control/{event:uuid}/corners', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'corners'])
@@ -464,6 +475,17 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
     // The corners' NAMES and COLOURS for the whole event (Mat\CornerLook).
     Route::post('/karate/control/{event:uuid}/corner-look', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'cornerLook'])
         ->name('karate-scoreboard.corner-look')->middleware('throttle:admin-write');
+    // The cropper's face guide — platform-wide, super-admin only (the
+    // controller checks); the event is just the console it was set from.
+    Route::post('/karate/control/{event:uuid}/photo-guide', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'photoGuide'])
+        ->name('karate-scoreboard.photo-guide')->middleware('throttle:admin-write');
+    // Where the VS screen puts the competitors' details — platform-wide,
+    // super-admin only (the controller checks).
+    Route::post('/karate/control/{event:uuid}/vs-layout', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'vsLayout'])
+        ->name('karate-scoreboard.vs-layout')->middleware('throttle:admin-write');
+    // The VS screen as a preview inside the console (the mat page, frozen on the introduction).
+    Route::get('/karate/control/{event:uuid}/vs-preview', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'vsPreview'])
+        ->name('karate-scoreboard.vs-preview')->middleware('throttle:mat-read');
 });
 
 /*
@@ -492,6 +514,10 @@ Route::get('/karate/court/{token}/players/{registration}', [\App\Scoreboard\Spor
     ->name('karate-scoreboard.token-player')->where('token', '[A-Za-z0-9]{40}')->whereNumber('registration')->middleware('throttle:screen-token');
 Route::put('/karate/court/{token}/players/{registration}', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'tokenPlayerUpdate'])
     ->name('karate-scoreboard.token-player.update')->where('token', '[A-Za-z0-9]{40}')->whereNumber('registration')->middleware('throttle:screen-token');
+Route::post('/karate/court/{token}/players/{registration}/vs-frame', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'tokenPlayerVsFrame'])
+    ->name('karate-scoreboard.token-player.vs-frame')->where('token', '[A-Za-z0-9]{40}')->whereNumber('registration')->middleware('throttle:screen-token');
+Route::get('/karate/court/{token}/vs-preview', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'tokenVsPreview'])
+    ->name('karate-scoreboard.token-vs-preview')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
 // Where the tablet is, as a country — seeds a blank nationality (Players tab).
 Route::get('/karate/court/{token}/geo-country', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'tokenGeoCountry'])
     ->name('karate-scoreboard.token-geo-country')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
@@ -500,6 +526,14 @@ Route::get('/karate/court/{token}/clubs', [\App\Scoreboard\Sports\Karate\Control
     ->name('karate-scoreboard.token-clubs')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
 Route::put('/karate/court/{token}/clubs/{clubKey}', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'tokenClubUpdate'])
     ->name('karate-scoreboard.token-club.update')->where('token', '[A-Za-z0-9]{40}')->whereUuid('clubKey')->middleware('throttle:screen-token');
+
+// The Exhibitions tab through the table's token — organisers only.
+Route::get('/karate/court/{token}/exhibitions', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'tokenExhibitions'])
+    ->name('karate-scoreboard.token-exhibitions')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+Route::post('/karate/court/{token}/exhibitions/{exhibition}/link', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'tokenExhibitionLink'])
+    ->name('karate-scoreboard.token-exhibition.link')->where('token', '[A-Za-z0-9]{40}')->whereUuid('exhibition')->middleware('throttle:screen-token');
+Route::post('/karate/court/{token}/exhibitions/{exhibition}/unlink', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'tokenExhibitionUnlink'])
+    ->name('karate-scoreboard.token-exhibition.unlink')->where('token', '[A-Za-z0-9]{40}')->whereUuid('exhibition')->middleware('throttle:screen-token');
 
 // The same switch from a paired table — the device's mat, never the request's.
 Route::post('/karate/court/{token}/corners', [\App\Scoreboard\Sports\Karate\Controllers\ScoreboardController::class, 'tokenCorners'])

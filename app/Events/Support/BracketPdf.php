@@ -430,9 +430,11 @@ class BracketPdf
      * count medals by ONE rule.
      *
      * @param  array<int, list<int>>  $placed  registration id => places won (1–3)
+     * @param  bool  $inlineLogos  false keeps each logo as its address, for a host
+     *                             that draws in a browser (the federation Analytics tab)
      * @return list<list<array<string, mixed>>>  pages of club blocks
      */
-    public function clubPages(ClubEvent $event, array $placed, User $viewer): array
+    public function clubPages(ClubEvent $event, array $placed, User $viewer, bool $inlineLogos = true): array
     {
         $regs = $event->participantRegistrations()
             ->with(['user:id,name,full_name', 'category:id,name', 'representingTenant'])
@@ -472,7 +474,7 @@ class BracketPdf
             unset($person);
         }
 
-        $rows = array_map(function (array $c) use ($viewer) {
+        $rows = array_map(function (array $c) use ($viewer, $inlineLogos) {
             $people = array_values($c['people']);
             foreach ($people as &$p) {
                 sort($p['medals']);
@@ -485,7 +487,7 @@ class BracketPdf
             return [
                 'name' => $c['name'],
                 'none' => $c['none'],
-                'logo' => $c['logo'] ? $this->dataUri((string) $c['logo'], $viewer, original: true, maxPx: 240) : null,
+                'logo' => $c['logo'] ? ($inlineLogos ? $this->dataUri((string) $c['logo'], $viewer, original: true, maxPx: 240) : (string) $c['logo']) : null,
                 'count' => count($people),
                 'medals' => $c['medals'],
                 'people' => $people,

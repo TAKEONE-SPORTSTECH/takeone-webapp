@@ -10,6 +10,7 @@
 library;
 
 import 'package:shared_preferences/shared_preferences.dart';
+import 'device.dart';
 
 class Config {
   const Config._();
@@ -140,7 +141,7 @@ class Config {
   /// Where the MEMBER APP opens. Not `/screen` — that is hall furniture. The
   /// app is a person's own way in, so it lands where the mobile web lands and
   /// lets the server decide whether that means the feed or the sign-in page.
-  static Uri get appHome => base.resolve('/');
+  static Uri get appHome => base.resolve(Device.isNote ? '/me/takenote' : '/');
 
   /// Resolves what the app is handed — which is frequently ROOT-RELATIVE.
   ///

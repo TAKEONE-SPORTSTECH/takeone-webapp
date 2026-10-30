@@ -11,13 +11,13 @@ name: Deploy Staging
 # Same disposable-checkout-dir-then-rsync-to-/var/www/takeone pattern as
 # production: .env, the sqlite database, and storage/ live only at the
 # deploy path and are never touched by the sync.
+#
+# ⚠️ MANUAL ONLY, and REFUSES a working copy (2026-10-30). The staging box is
+# where the code is written: /var/www/takeone there is a git working copy with
+# uncommitted work in it. Syncing a branch over it with --delete would erase
+# that work, so the automatic trigger is gone and the first step below stops
+# the job whenever the deploy path is a git checkout.
 on:
-  workflow_run:
-    workflows: ['CI']
-    branches: [development]
-    types: [completed]
-  # Lets this run on demand from the Actions tab / gh CLI — same reasoning
-  # as deploy.yml's workflow_dispatch trigger.
   workflow_dispatch: {}
 
 env:
@@ -29,6 +29,13 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     steps:
+      - name: Refuse to overwrite a working copy
+        run: |
+          if [ -e "$DEPLOY_PATH/.git" ]; then
+            echo "::error::$DEPLOY_PATH is a git working copy (where the code is written). Deploying over it would erase uncommitted work. Nothing was changed."
+            exit 1
+          fi
+
       - name: Checkout development
         uses: actions/checkout@v7
         with:

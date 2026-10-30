@@ -27,7 +27,7 @@
          ⚠️ The two documents that ARE dark by design (the scoreboard console
          and the wall board) declare `color-scheme: dark` in their own heads
          for the same reason. Do not copy this pair into those. --}}
-    <meta name="color-scheme" content="light">
+    <meta name="color-scheme" content="only light">
     <meta name="darkreader-lock">
     <style>html { color-scheme: only light; }</style>
     @if(\App\Ui\NewUi::active())
@@ -713,6 +713,20 @@
                                         <i class="bi bi-shield-check me-2"></i>{{ __('nav.admin_panel') }}
                                     </a>
                                     @endif
+                                    @if(\App\Ui\NewUi::mode() === 'preview' && \App\Ui\NewUi::canPreview() && ! \App\Ui\NewUi::active())
+                                    <form method="POST" action="{{ route('me.new-ui.on') }}">
+                                        @csrf
+                                        <button type="submit" class="profile-dropdown-item w-full text-start">
+                                            <i class="bi bi-stars me-2"></i>{{ __('ui::messages.new_design') }}
+                                        </button>
+                                    </form>
+                                    @endif
+                                    @if(\App\DevBoard\Support\BoardAccess::linkFor(Auth::user()))
+                                    {{-- On a desk, TakeNote inside the site (notes + board); the board on its own while TakeNote is off. --}}
+                                    <a class="profile-dropdown-item" href="{{ Route::has('me.notes') ? route('me.notes') : route('me.margin') }}">
+                                        <i class="bi bi-vector-pen me-2"></i>{{ Route::has('me.notes') ? 'TakeNote' : __('devboard::messages.nav') }}
+                                    </a>
+                                    @endif
                                 </div>
                                 <div class="border-t border-border py-1">
                                     @if(session()->has('impersonate.original_id'))
@@ -998,6 +1012,19 @@
                     @if(Auth::user()->isSuperAdmin())
                     <a class="drawer-link" href="{{ route('admin.platform.index') }}">
                         <i class="bi bi-shield-check text-lg w-5 text-center"></i>{{ __('nav.admin_panel') }}
+                    </a>
+                    @endif
+                    @if(\App\Ui\NewUi::mode() === 'preview' && \App\Ui\NewUi::canPreview() && ! \App\Ui\NewUi::active())
+                    <form method="POST" action="{{ route('me.new-ui.on') }}">
+                        @csrf
+                        <button type="submit" class="drawer-link w-full">
+                            <i class="bi bi-stars text-lg w-5 text-center"></i>{{ __('ui::messages.new_design') }}
+                        </button>
+                    </form>
+                    @endif
+                    @if(\App\DevBoard\Support\BoardAccess::linkFor(Auth::user()))
+                    <a class="drawer-link" href="{{ route('me.margin') }}">
+                        <i class="bi bi-vector-pen text-lg w-5 text-center"></i>{{ __('devboard::messages.nav') }}
                     </a>
                     @endif
                 </nav>

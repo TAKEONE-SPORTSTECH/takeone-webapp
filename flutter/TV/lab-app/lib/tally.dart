@@ -738,12 +738,28 @@ class ResourceChips extends StatelessWidget {
 /// camera operator who can start the WRONG recording, and the bout that gets
 /// filed against the wrong athlete is discovered days later.
 class CameraRail extends StatelessWidget {
-  const CameraRail({super.key, required this.zoom, required this.onZoom, required this.onSettings, required this.settingsOpen});
+  const CameraRail({
+    super.key,
+    required this.zoom,
+    required this.onZoom,
+    required this.onSettings,
+    required this.settingsOpen,
+    this.onBouts,
+    this.boutsBusy = false,
+    this.boutsWaiting = 0,
+  });
 
   final double zoom;
   final ValueChanged<double> onZoom;
   final VoidCallback onSettings;
   final bool settingsOpen;
+
+  /// The recorded bouts — one tap from the camera, between bouts. Dimmed and
+  /// inert while one is being recorded, so playback never competes with the
+  /// encoder; a gold dot when some are still waiting to be sent.
+  final VoidCallback? onBouts;
+  final bool boutsBusy;
+  final int boutsWaiting;
 
   @override
   Widget build(BuildContext context) {
@@ -775,6 +791,31 @@ class CameraRail extends StatelessWidget {
             child: Icon(Icons.settings_outlined,
                 size: 18, color: settingsOpen ? Tally.goldLight : Tally.textSecondary),
           ),
+          if (onBouts != null) ...[
+            const SizedBox(height: 8),
+            Opacity(
+              opacity: boutsBusy ? 0.4 : 1,
+              child: RailCell(
+                onTap: boutsBusy ? () {} : onBouts!,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Icon(Icons.video_library_outlined, size: 19, color: Tally.textSecondary),
+                    if (boutsWaiting > 0)
+                      Positioned(
+                        right: -3,
+                        top: -3,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(color: Tally.gold, shape: BoxShape.circle),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

@@ -20,7 +20,7 @@
          explicit opt-out (plain `light` is not enough) and `darkreader-lock`
          is that extension's own. Both, because they answer to different
          things; an unknown meta name is ignored everywhere else. --}}
-    <meta name="color-scheme" content="light">
+    <meta name="color-scheme" content="only light">
     <meta name="darkreader-lock">
     <style>html { color-scheme: only light; }</style>
 

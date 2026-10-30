@@ -38,6 +38,16 @@ class EventMatch extends Model
         'number_pinned',
     ];
 
+    /**
+     * Any change to a bout lets its division tidy itself once the request is
+     * done (Tournament\DrawRepair — the obvious byes, seats and numbers),
+     * whichever door made the change. Behind EVENT_DRAW_SELF_REPAIR.
+     */
+    protected static function booted(): void
+    {
+        static::saved(fn (self $bout) => \App\Events\Support\Tournament\DrawRepair::touched($bout));
+    }
+
     protected $casts = [
         'a_provisional' => 'boolean',
         'b_provisional' => 'boolean',

@@ -1,7 +1,7 @@
 {{-- The <head> both verification documents share. Standalone (no app shell): the page is public. --}}
 <meta charset="utf-8">
 {{-- LIGHT by design; say so, or force-dark and Dark Reader invert it (see layouts/tailwind). --}}
-<meta name="color-scheme" content="light">
+<meta name="color-scheme" content="only light">
 <meta name="darkreader-lock">
 <style>html { color-scheme: only light; }</style>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">

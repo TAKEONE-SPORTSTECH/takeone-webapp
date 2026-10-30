@@ -145,6 +145,12 @@ class MainActivity : FlutterActivity() {
 
     private val isMemberApp: Boolean by lazy { meta?.getString("bh.takeone.variant") == "app" }
 
+    /** TakeNote: a pocket app like the member's, without its notification service. */
+    private val isNoteApp: Boolean by lazy { meta?.getString("bh.takeone.variant") == "note" }
+
+    /** The page waiting on an Android microphone dialog — see ensureMicrophonePermission. */
+    private var pendingMicResult: MethodChannel.Result? = null
+
     /** The page waiting on an Android camera dialog — see ensureCameraPermission. */
     private var pendingCameraResult: MethodChannel.Result? = null
 
@@ -226,6 +232,9 @@ class MainActivity : FlutterActivity() {
                     // scanner shows a black viewfinder that decodes nothing and
                     // reports no error. Asked at the moment the page asks.
                     "ensureCameraPermission" -> ensureCameraPermission(result)
+                    // The same two-grant rule for the MICROPHONE: a voice note or a
+                    // video records silence unless Android has granted the app too.
+                    "ensureMicrophonePermission" -> ensureMicrophonePermission(result)
                     // The same two-grant rule for LOCATION: the WebView can let
                     // the page ask, only Android can let the app answer. Used by
                     // the scoring table to seed a blank nationality.
@@ -600,6 +609,8 @@ class MainActivity : FlutterActivity() {
 
             return
         }
+        // TakeNote is a pocket app too: none of the kiosk habits below.
+        if (isNoteApp) return
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         stayUnlocked()
@@ -621,6 +632,25 @@ class MainActivity : FlutterActivity() {
      * member says no — granting the page a camera the app may not open is the
      * black-screen scanner.
      */
+    /** Ask for the microphone at the moment a page asks to record. Answers false on a refusal. */
+    private fun ensureMicrophonePermission(result: MethodChannel.Result) {
+        try {
+            if (Build.VERSION.SDK_INT < 23 ||
+                ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+                == PackageManager.PERMISSION_GRANTED
+            ) {
+                result.success(true)
+                return
+            }
+            pendingMicResult?.success(false)
+            pendingMicResult = result
+            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 7314)
+        } catch (e: Throwable) {
+            pendingMicResult = null
+            result.success(false)
+        }
+    }
+
     private fun ensureCameraPermission(result: MethodChannel.Result) {
         try {
             if (Build.VERSION.SDK_INT < 23 ||
@@ -681,6 +711,13 @@ class MainActivity : FlutterActivity() {
             val any = grantResults.any { it == PackageManager.PERMISSION_GRANTED }
             pendingLocationResult?.success(any)
             pendingLocationResult = null
+            return
+        }
+
+        if (requestCode == 7314) {
+            val granted = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
+            pendingMicResult?.success(granted)
+            pendingMicResult = null
             return
         }
 
@@ -849,7 +886,7 @@ class MainActivity : FlutterActivity() {
      */
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) hideSystemBars()
+        if (hasFocus && !isNoteApp) hideSystemBars()
     }
 
     /** Re-asserted on every resume: a reboot or a knocked power button lands here. */
@@ -857,7 +894,7 @@ class MainActivity : FlutterActivity() {
         super.onResume()
         isForeground = true
 
-        if (isMemberApp) return
+        if (isMemberApp || isNoteApp) return
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         stayUnlocked()

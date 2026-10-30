@@ -669,6 +669,81 @@ class McpServerTest extends TestCase
         $this->assertStringContainsString('Bout not found', $result['error']);
     }
 
+    public function test_share_bout_video_queues_one_render_for_someone_who_can_see_the_bout(): void
+    {
+        config(['media.share_export.enabled' => true]);
+        \Illuminate\Support\Facades\Queue::fake();
+
+        [$event, $organiser] = $this->drawnChampionship();
+        $match = $this->filmFirstBout($event);
+        $this->actingAs($organiser);
+
+        $result = $this->callTool(\App\Mcp\Tools\ShareBoutVideoTool::class, [
+            'event' => $event->uuid, 'match_no' => $match->match_no, 'kind' => 'highlights',
+        ]);
+
+        $this->assertSame('working', $result['state']);
+        $this->assertNull($result['download_url']);
+        $this->assertStringContainsString('0:10', $result['message']);
+        \Illuminate\Support\Facades\Queue::assertPushedOn('media', \App\Jobs\RenderBoutShare::class);
+    }
+
+    public function test_share_bout_video_refuses_someone_who_neither_fought_nor_can_see_the_event(): void
+    {
+        config(['media.share_export.enabled' => true]);
+        \Illuminate\Support\Facades\Queue::fake();
+
+        [$event] = $this->drawnChampionship();
+        $match = $this->filmFirstBout($event);
+        $event->forceFill(['scope' => 'internal'])->save();
+
+        $outsider = $this->createUser();
+        $otherClub = $this->createClub($outsider, ['country' => 'BH']);
+        $outsider->memberClubs()->syncWithoutDetaching([$otherClub->id => ['status' => 'active']]);
+        $this->actingAs($outsider->fresh());
+
+        $result = $this->callTool(\App\Mcp\Tools\ShareBoutVideoTool::class, [
+            'event' => $event->uuid, 'match_no' => $match->match_no, 'kind' => 'full',
+        ]);
+
+        $this->assertStringContainsString('Bout not found', $result['error']);
+        \Illuminate\Support\Facades\Queue::assertNothingPushed();
+    }
+
+    public function test_bout_stats_reads_the_bout_back_for_someone_who_can_see_it(): void
+    {
+        [$event, $organiser] = $this->drawnChampionship();
+        $match = $this->filmFirstBout($event);
+        $this->actingAs($organiser);
+
+        $result = $this->callTool(\App\Mcp\Tools\BoutStatsTool::class, [
+            'event' => $event->uuid, 'match_no' => $match->match_no,
+        ]);
+
+        $this->assertSame($match->match_no, $result['match_no']);
+        $this->assertArrayHasKey('score', $result);
+        $this->assertNotEmpty($result['events']);
+        $this->assertStringContainsString('/stats.pdf', $result['pdf_url']);
+    }
+
+    public function test_bout_stats_refuses_someone_who_neither_fought_nor_can_see_the_event(): void
+    {
+        [$event] = $this->drawnChampionship();
+        $match = $this->filmFirstBout($event);
+        $event->forceFill(['scope' => 'internal'])->save();
+
+        $outsider = $this->createUser();
+        $otherClub = $this->createClub($outsider, ['country' => 'BH']);
+        $outsider->memberClubs()->syncWithoutDetaching([$otherClub->id => ['status' => 'active']]);
+        $this->actingAs($outsider->fresh());
+
+        $result = $this->callTool(\App\Mcp\Tools\BoutStatsTool::class, [
+            'event' => $event->uuid, 'match_no' => $match->match_no,
+        ]);
+
+        $this->assertStringContainsString('Bout not found', $result['error']);
+    }
+
     public function test_list_events_returns_open_events_and_hands_out_the_uuid(): void
     {
         [$event, $organiser] = $this->drawnChampionship();
@@ -822,6 +897,85 @@ class McpServerTest extends TestCase
         $result = $this->callTool(\App\Mcp\Tools\ListEventExhibitionsTool::class, ['event' => $event->uuid]);
 
         $this->assertStringContainsString('Event not found', $result['error']);
+    }
+
+    public function test_link_event_exhibition_files_it_into_the_draw_bout_it_was(): void
+    {
+        [$event, $organiser] = $this->drawnChampionship();
+        $event->forceFill(['started_at' => now()])->save();
+
+        $bout = \App\Events\Models\EventMatch::where('event_id', $event->id)
+            ->whereNotNull('a_competitor_id')->whereNotNull('b_competitor_id')
+            ->orderBy('match_no')->firstOrFail();
+        $ex = \App\Events\Models\EventExhibitionBout::create([
+            'event_id' => $event->id, 'number' => 1, 'court' => 'Mat 1',
+            'a_registration_id' => $bout->b_competitor_id, 'b_registration_id' => $bout->a_competitor_id,
+            'a_name' => $bout->b_name, 'b_name' => $bout->a_name, 'a_score' => '5', 'b_score' => '2',
+            'winner' => 'a', 'status' => 'done',
+        ]);
+        $this->actingAs($organiser);
+
+        // The organiser is told which draw bout it could be…
+        $list = $this->callTool(\App\Mcp\Tools\ListEventExhibitionsTool::class, ['event' => $event->uuid]);
+        $this->assertSame($bout->id, $list['exhibitions'][0]['link_candidates'][0]['match_id']);
+        $this->assertSame('exact', $list['exhibitions'][0]['link_candidates'][0]['kind']);
+
+        // …and linking it files the result, corners turned to the draw's.
+        $result = $this->callTool(\App\Mcp\Tools\LinkEventExhibitionTool::class, [
+            'event' => $event->uuid, 'exhibition' => $ex->uuid, 'match_id' => $bout->id,
+        ]);
+
+        $this->assertSame('linked', $result['exhibition']['status']);
+        $this->assertSame('b', $bout->fresh()->winner);
+        $this->assertSame($bout->id, $ex->fresh()->linked_match_id);
+    }
+
+    public function test_unlink_event_exhibition_undoes_a_link(): void
+    {
+        [$event, $organiser] = $this->drawnChampionship();
+        $event->forceFill(['started_at' => now()])->save();
+        $bout = \App\Events\Models\EventMatch::where('event_id', $event->id)
+            ->whereNotNull('a_competitor_id')->whereNotNull('b_competitor_id')->orderBy('match_no')->firstOrFail();
+        $ex = \App\Events\Models\EventExhibitionBout::create([
+            'event_id' => $event->id, 'number' => 1, 'court' => 'Mat 1',
+            'a_registration_id' => $bout->a_competitor_id, 'b_registration_id' => $bout->b_competitor_id,
+            'a_score' => '3', 'b_score' => '1', 'winner' => 'a', 'status' => 'done',
+        ]);
+        $this->actingAs($organiser);
+        $this->callTool(\App\Mcp\Tools\LinkEventExhibitionTool::class, ['event' => $event->uuid, 'exhibition' => $ex->uuid, 'match_id' => $bout->id]);
+        $this->assertSame('a', $bout->fresh()->winner);
+
+        $result = $this->callTool(\App\Mcp\Tools\UnlinkEventExhibitionTool::class, ['event' => $event->uuid, 'exhibition' => $ex->uuid]);
+
+        $this->assertSame('done', $result['exhibition']['status']);
+        $this->assertNull($bout->fresh()->winner);
+
+        $this->actingAs($this->createUser());
+        $denied = $this->callTool(\App\Mcp\Tools\UnlinkEventExhibitionTool::class, ['event' => $event->uuid, 'exhibition' => $ex->uuid]);
+        $this->assertStringContainsString('Event not found', $denied['error']);
+    }
+
+    public function test_link_event_exhibition_hides_the_event_from_a_non_organiser(): void
+    {
+        [$event] = $this->drawnChampionship();
+        $event->forceFill(['started_at' => now()])->save();
+        $bout = \App\Events\Models\EventMatch::where('event_id', $event->id)
+            ->whereNotNull('a_competitor_id')->whereNotNull('b_competitor_id')->firstOrFail();
+        $ex = \App\Events\Models\EventExhibitionBout::create([
+            'event_id' => $event->id, 'number' => 1, 'court' => 'Mat 1',
+            'a_registration_id' => $bout->a_competitor_id, 'b_registration_id' => $bout->b_competitor_id,
+            'winner' => 'a', 'status' => 'done',
+        ]);
+
+        $this->actingAs($this->createUser());
+
+        $result = $this->callTool(\App\Mcp\Tools\LinkEventExhibitionTool::class, [
+            'event' => $event->uuid, 'exhibition' => $ex->uuid, 'match_id' => $bout->id,
+        ]);
+
+        $this->assertStringContainsString('Event not found', $result['error']);
+        $this->assertNull($bout->fresh()->winner);
+        $this->assertSame('done', $ex->fresh()->status);
     }
 
     public function test_list_event_people_returns_the_athletes_and_their_clubs(): void
@@ -1585,5 +1739,42 @@ class McpServerTest extends TestCase
         $this->assertArrayHasKey('error', $this->callTool(\App\Mcp\Tools\ListDuplicateFindingsTool::class));
         $this->assertArrayHasKey('error', $this->callTool(\App\Mcp\Tools\ResolveDuplicateFindingTool::class, ['finding' => $finding->uuid, 'action' => 'dismiss']));
         $this->assertSame('open', $finding->fresh()->status);
+    }
+
+    public function test_a_super_admin_reads_forms_and_their_results(): void
+    {
+        $this->artisan('forms:import-template', ['name' => 'club-questionnaire'])->assertSuccessful();
+        $form = \App\Forms\Models\Form::firstOrFail();
+        $grid = [];
+        for ($i = 1; $i <= 22; $i++) {
+            $grid[sprintf('f%02d', $i)] = 'must';
+        }
+        $this->postJson('/f/'.$form->uuid, ['fields' => ['grid' => $grid, 'q21' => 4]])->assertOk();
+
+        $admin = $this->createUser();
+        $this->makeSuperAdmin($admin);
+        $this->actingAs($admin);
+
+        $list = $this->callTool(\App\Mcp\Tools\ListFormsTool::class);
+        $this->assertSame(1, $list['count']);
+        $this->assertSame(1, $list['forms'][0]['answers']);
+        $this->assertStringNotContainsString($form->settings['visitToken'], json_encode($list));
+
+        $res = $this->callTool(\App\Mcp\Tools\GetFormResultsTool::class, ['form' => $form->uuid, 'responses' => true]);
+        $this->assertSame(1, $res['results']['n']);
+        $this->assertCount(1, $res['responses']);
+        $this->assertNotEmpty($res['results']['decisions']['lanes']['now']);
+    }
+
+    public function test_forms_are_refused_to_anyone_but_a_super_admin(): void
+    {
+        $this->artisan('forms:import-template', ['name' => 'club-questionnaire'])->assertSuccessful();
+        $form = \App\Forms\Models\Form::firstOrFail();
+        $owner = $this->createUser();
+        $this->makeClubAdmin($owner, $this->createClub($owner));
+        $this->actingAs($owner);
+
+        $this->assertArrayHasKey('error', $this->callTool(\App\Mcp\Tools\ListFormsTool::class));
+        $this->assertArrayHasKey('error', $this->callTool(\App\Mcp\Tools\GetFormResultsTool::class, ['form' => $form->uuid]));
     }
 }

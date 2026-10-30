@@ -102,6 +102,21 @@ class RunningOrderBoardTest extends TestCase
             ->orderBy('match_no')->pluck('match_no')->all());
     }
 
+    /** A bye that kept its mat (decided by an edit) is not on the board, and a drag never numbers it back. */
+    public function test_a_bye_that_kept_its_mat_is_not_counted_and_never_renumbered(): void
+    {
+        [, $event, $m] = $this->scenario();
+        $m['semi1']->forceFill(['b_name' => null, 'b_competitor_id' => null, 'winner' => 'a', 'won_by_bye' => true,
+            'status' => 'done', 'match_no' => null])->save();
+
+        $plan = app(OrderBoard::class)->plan($event, 1);
+        $this->assertNotContains($m['semi1']->id, array_column($plan['mats'][0]['bouts'], 'id'));
+        $this->assertCount(3, $plan['mats'][0]['bouts']);
+
+        $this->assertTrue(app(OrderBoard::class)->move($event, $m['semi2']->id, 'Mat 2', 0)['ok']);
+        $this->assertNull($m['semi1']->fresh()->match_no);
+    }
+
     public function test_a_bout_can_be_dragged_to_another_mat(): void
     {
         [, $event, $m] = $this->scenario();

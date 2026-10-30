@@ -88,6 +88,11 @@ Route::prefix('federation')->name('federations.')->middleware(SealFederation::cl
         ->get('/competition-report/{event}', [FederationAppController::class, 'competitionReport'])
         ->whereUuid('event')->name('competition-report');
 
+    // The event's Analytics tab: the report's figures as JSON (FederationCompetitionReport::analytics).
+    Route::middleware(['auth', 'verified', 'two-factor', 'throttle:federation-page'])
+        ->get('/analytics/{event}', [FederationAppController::class, 'analytics'])
+        ->whereUuid('event')->name('analytics');
+
     // Public: the invitation a club opens from a link, and the static files
     // (code, fonts, flags) the pages load. None of it carries data.
     Route::middleware(['throttle:federation-page'])->group(function () {

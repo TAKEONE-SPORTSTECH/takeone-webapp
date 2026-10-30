@@ -3,6 +3,9 @@
 namespace App\Federations\Services;
 
 use App\Events\Models\ClubEvent;
+use App\Events\Models\EventExhibitionBout;
+use App\Events\Models\EventMatch;
+use App\Events\Support\ExhibitionLink;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -22,7 +25,10 @@ use Illuminate\Support\Facades\DB;
  *    it happened; occurred_at (UTC) is when on the wall clock
  * Only bouts the draw decided, from after the event was started (the draw
  * report's own rule, BracketPdf::actualHours); exhibitions are counted apart
- * and never mixed into the official figures.
+ * and never mixed into the official figures — until the organiser LINKS one to
+ * the draw bout it really was (ExhibitionLink). From then on it IS that bout:
+ * its log is read in the bout's place, turned to the bout's corners, exactly
+ * as the bout page reads it (BoutStats), and it is no longer an exhibition.
  */
 class FederationBoutAnalytics
 {
@@ -56,12 +62,40 @@ class FederationBoutAnalytics
         }
         $catOf = DB::table('event_categories')->where('event_id', $event->id)->pluck('name', 'id');
 
+        // ── Exhibitions linked to the bout they really were ──────────────
+        $groups = $logs->groupBy(fn ($e) => $e->match_id ?: 'x');
+        $linked = EventExhibitionBout::where('event_id', $event->id)
+            ->where('status', EventExhibitionBout::STATUS_LINKED)
+            ->whereIn('linked_match_id', $matches->keys()->all())
+            ->when($event->started_at, fn ($q) => $q->where('created_at', '>=', $event->started_at))
+            ->pluck('linked_match_id');
+        $link = app(ExhibitionLink::class);
+        foreach (EventMatch::whereIn('id', $linked->all())->get() as $match) {
+            $rows = $link->rowsForBout($match);
+            if ($rows && $rows->isNotEmpty()) {
+                // The replay reads the corner from the payload first; on a
+                // swapped link only the row's side was turned, so align it.
+                $groups[$match->id] = $rows->map(function ($r) {
+                    if (in_array($r->side ?? null, ['a', 'b'], true)) {
+                        $p = json_decode((string) $r->payload, true);
+                        if (is_array($p) && isset($p['side'])) {
+                            $p['side'] = $r->side === 'a' ? 'aka' : 'ao';
+                            $r = clone $r;
+                            $r->payload = json_encode($p);
+                        }
+                    }
+
+                    return $r;
+                });
+            }
+        }
+
         // ── Each bout, replayed from its log ──────────────────────────────
         $bouts = [];
         $exhibitions = 0;
-        foreach ($logs->groupBy(fn ($e) => $e->match_id ?: 'x') as $mid => $events) {
+        foreach ($groups as $mid => $events) {
             if ($mid === 'x') {
-                $exhibitions = $events->where('command', 'exhibition')->count();
+                $exhibitions = max(0, $events->where('command', 'exhibition')->count() - $linked->count());
 
                 continue;
             }

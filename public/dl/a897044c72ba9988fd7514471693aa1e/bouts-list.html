@@ -1,0 +1,224 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="color-scheme" content="only dark"><meta name="darkreader-lock"><title>Boutcam bouts list — samples</title><style>
+@font-face{font-family:Poppins;font-weight:400;src:url(/fonts/designer/poppins/Poppins-Regular.ttf)}
+@font-face{font-family:Poppins;font-weight:600;src:url(/fonts/designer/poppins/Poppins-SemiBold.ttf)}
+@font-face{font-family:Poppins;font-weight:700;src:url(/fonts/designer/poppins/Poppins-Bold.ttf)}
+@font-face{font-family:Barlow;font-weight:700;src:url(/fonts/designer/barlow-condensed/BarlowCondensed-Bold.ttf)}
+@font-face{font-family:Barlow;font-weight:900;src:url(/fonts/designer/barlow-condensed/BarlowCondensed-Black.ttf)}
+@font-face{font-family:Taj;font-weight:700;src:url(/fonts/designer/tajawal/Tajawal-Bold.ttf)}
+:root{color-scheme:only dark}*{box-sizing:border-box}
+body{margin:0;background:#05070d;color:#eef1f6;font-family:Poppins,Taj,sans-serif;padding:20px 12px 60px}
+h1{font-family:Barlow;font-weight:900;letter-spacing:.06em;margin:0 0 4px;font-size:26px}.lead{color:#8b96ad;margin:0 0 20px;max-width:980px;font-size:14px}
+.opts{display:flex;flex-wrap:wrap;gap:28px;justify-content:center}
+.opt h2{font-family:Barlow;font-weight:900;letter-spacing:.08em;color:#d8b25f;margin:0 0 4px;font-size:19px}.opt p{margin:0 0 10px;color:#c6cede;font-size:13px;max-width:390px}
+.phone{width:390px;height:844px;border-radius:44px;border:8px solid #1c2236;background:#0b132b;overflow:hidden;position:relative;display:flex;flex-direction:column}
+.hdr{padding:46px 18px 12px;background:linear-gradient(180deg,#14214a,#0b132b)}
+.hrow{display:flex;align-items:center;gap:10px}.back{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.08);display:grid;place-items:center;border:1px solid rgba(255,255,255,.14)}
+.ht b{display:block;font-family:Barlow;font-weight:900;font-size:22px;letter-spacing:.08em}.ht span{font-size:11.5px;color:#8b96ad}
+.stats{display:flex;gap:8px;margin-top:14px}.stat{flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:8px 10px}
+.stat b{display:block;font-family:Barlow;font-weight:900;font-size:20px;color:#edcd85}.stat span{font-size:9.5px;letter-spacing:.12em;color:#8b96ad}
+.chips{display:flex;gap:6px;margin-top:12px;overflow:hidden}.chip{padding:6px 12px;border-radius:999px;font-size:11px;font-weight:600;border:1px solid rgba(255,255,255,.14);color:#c6cede;white-space:nowrap}.chip.on{background:#d8b25f;color:#0b132b;border-color:#d8b25f}
+.list{flex:1;overflow:hidden;padding:10px 12px 90px;display:flex;flex-direction:column;gap:10px}
+.sendall{position:absolute;left:16px;right:16px;bottom:18px;height:52px;border-radius:16px;background:#d8b25f;color:#0b132b;font-family:Barlow;font-weight:900;font-size:18px;letter-spacing:.12em;display:grid;place-items:center;box-shadow:0 10px 30px rgba(216,178,95,.25)}
+/* A */
+.card{display:flex;gap:10px;background:#0e1730;border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:10px}
+.thumb{width:96px;flex:none;border-radius:12px;overflow:hidden;position:relative;background:#1b3566;aspect-ratio:3/4}
+.thumb .mat{position:absolute;inset:0;background:radial-gradient(80% 60% at 50% 60%,#2a4f8f,#0d1a33)}
+.thumb .play{position:absolute;inset:0;display:grid;place-items:center;font-size:22px;color:#fff;text-shadow:0 2px 8px #000}
+.thumb .len{position:absolute;right:6px;bottom:6px;font-family:Barlow;font-weight:700;font-size:12px;background:rgba(0,0,0,.6);padding:1px 6px;border-radius:6px}
+.body{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.top{display:flex;align-items:baseline;gap:8px}.top b{font-family:Barlow;font-weight:900;font-size:18px;letter-spacing:.04em}.top i{font-style:normal;font-family:Barlow;font-weight:700;font-size:12px;color:#d8b25f;letter-spacing:.12em}.top .time{margin-left:auto;font-size:11px;color:#6f7d9c}
+.div{font-size:10.5px;font-weight:600;color:#a993ff;letter-spacing:.04em}.div.ex{color:#8b96ad}
+.vs{display:flex;flex-direction:column;gap:4px}.c{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:#c6cede;background:rgba(255,255,255,.03);border-radius:8px;padding:4px 6px}
+.c .bar{width:3px;height:16px;border-radius:2px;flex:none}.red .bar{background:#e6455a}.blue .bar{background:#3d7be0}
+.c span:nth-child(2){flex:1;min-width:0;line-height:1.25}.c .sc{font-family:Barlow;font-weight:900;font-size:17px;color:#fff;min-width:22px;text-align:right}
+.c.win{color:#fff;background:rgba(216,178,95,.12)}.c.win .sc{color:#edcd85}
+.ar{font-family:Taj,Poppins;font-weight:700}
+.foot{display:flex;align-items:center;gap:8px;margin-top:2px}.st{font-size:9.5px;font-weight:700;letter-spacing:.12em;padding:3px 8px;border-radius:999px;white-space:nowrap}
+.st.ok{color:#4ac97e;background:rgba(74,201,126,.12)}.st.wait{color:#8b96ad;background:rgba(255,255,255,.06)}.meta{font-size:10.5px;color:#6f7d9c;white-space:nowrap}.sp{flex:1}
+.send{font-family:Barlow;font-weight:900;font-size:13px;letter-spacing:.12em;color:#d8b25f;background:rgba(216,178,95,.12);border:1px solid rgba(216,178,95,.45);border-radius:999px;padding:5px 14px}
+/* B */
+.row{display:flex;gap:10px;align-items:center;padding:10px 6px;border-bottom:1px solid rgba(255,255,255,.06)}
+.tl{width:44px;flex:none;display:flex;flex-direction:column;align-items:center;gap:4px}.tl .dot{width:10px;height:10px;border-radius:50%;border:2px solid #6f7d9c}.tl .dot.ok{background:#4ac97e;border-color:#4ac97e}.tm{font-size:10.5px;color:#8b96ad}
+.rbody{flex:1;min-width:0}.rt{display:flex;align-items:center;gap:8px}.no{font-family:Barlow;font-weight:900;font-size:15px;background:#d8b25f;color:#0b132b;border-radius:6px;padding:0 6px;flex:none}.no.exn{background:#3a4566;color:#eef1f6}
+.who2{margin-top:4px;display:flex;flex-direction:column;gap:2px}.who2 .n{font-size:12.5px;font-weight:600;line-height:1.3;padding-left:8px;border-left:3px solid}.who2 .n.r{border-color:#e6455a}.who2 .n.b{border-color:#3d7be0}
+.rs{display:flex;align-items:center;gap:8px;margin-top:4px}.sb{display:flex;border-radius:6px;overflow:hidden;flex:none}.sb b{font-family:Barlow;font-weight:900;font-size:13px;padding:0 7px;color:#fff}.sb .r{background:#9b2232}.sb .b{background:#1e4a95}.sb .w{box-shadow:inset 0 -2px 0 #edcd85}
+.d{font-size:10.5px;color:#a993ff;line-height:1.35}
+.ra{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:none}.ra .len{font-family:Barlow;font-weight:700;font-size:12px;color:#8b96ad}.mini{width:32px;height:32px;border-radius:50%;border:1px solid rgba(216,178,95,.45);background:rgba(216,178,95,.12);color:#d8b25f}
+</style></head><body>
+<h1>RECORDED BOUTS — 2 DESIGNS</h1><p class="lead">Your real 17 Oct bouts from Mat 1 (names, scores, divisions from the event). Thumbnails here are placeholders — in the app each card shows the bout's own first frame. Both keep: a summary on top, filters, the winner highlighted, the status (on this phone / in the vault) and Send.</p>
+<div class="opts">
+<div class="opt"><h2>A · SCORE CARDS</h2><p>One card per bout: a tall thumbnail, the bout and round, the weight class in purple, both corners with their score (the winner lit gold), the status and a Send button.</p><div class="phone"><div class="hdr"><div class="hrow"><div class="back">‹</div><div class="ht"><b>RECORDED BOUTS</b><span>Bahrain Karate Premier League 2026 · Mat 1</span></div></div>
+<div class="stats"><div class="stat"><b>12</b><span>BOUTS</span></div><div class="stat"><b>10</b><span>TO SEND</span></div><div class="stat"><b>2</b><span>IN THE VAULT</span></div></div>
+<div class="chips"><span class="chip on">ALL</span><span class="chip">DRAW BOUTS</span><span class="chip">EXHIBITIONS</span><span class="chip">TO SEND</span></div></div><div class="list"><div class="card">
+ <div class="thumb"><div class="mat"></div><span class="play">▶</span><span class="len">7:50</span></div>
+ <div class="body">
+  <div class="top"><b>BOUT 70</b><i>FINAL</i><span class="time">16:42</span></div><div class="div">CADETS KUMITE FEMALE -54 KG</div>
+  <div class="vs"><div class="c red "><span class="bar"></span><span class="">SASHA MOROZOVA</span><span class="sc">5</span></div>
+  <div class="c blue win"><span class="bar"></span><span class="">KRISTINA BABAYAN</span><span class="sc">3</span></div></div>
+  <div class="foot"><span class="st ok">IN THE VAULT</span><span class="meta">484 MB</span><span class="sp"></span><button class="send">SEND</button></div>
+ </div></div><div class="card">
+ <div class="thumb"><div class="mat"></div><span class="play">▶</span><span class="len">4:50</span></div>
+ <div class="body">
+  <div class="top"><b>BOUT 73</b><i>SEMIFINAL</i><span class="time">16:34</span></div><div class="div">CADETS KUMITE MALE -63 KG</div>
+  <div class="vs"><div class="c red "><span class="bar"></span><span class="ar">عبدالله فهد زويد المطيري</span><span class="sc">2</span></div>
+  <div class="c blue win"><span class="bar"></span><span class="">AKSHAY RAJAN</span><span class="sc">5</span></div></div>
+  <div class="foot"><span class="st wait">ON THIS PHONE</span><span class="meta">299 MB</span><span class="sp"></span><button class="send">SEND</button></div>
+ </div></div><div class="card">
+ <div class="thumb"><div class="mat"></div><span class="play">▶</span><span class="len">4:40</span></div>
+ <div class="body">
+  <div class="top"><b>EXHIBITION 9</b><span class="time">16:30</span></div><div class="div ex">OUTSIDE THE DRAW</div>
+  <div class="vs"><div class="c red "><span class="bar"></span><span class="">DEVARSH KUNNUMMAL</span><span class="sc">1</span></div>
+  <div class="c blue win"><span class="bar"></span><span class="">LEE ANEL ALBONIA MANALO</span><span class="sc">6</span></div></div>
+  <div class="foot"><span class="st wait">ON THIS PHONE</span><span class="meta">288 MB</span><span class="sp"></span><button class="send">SEND</button></div>
+ </div></div><div class="card">
+ <div class="thumb"><div class="mat"></div><span class="play">▶</span><span class="len">5:55</span></div>
+ <div class="body">
+  <div class="top"><b>BOUT 71</b><i>QUARTERFINAL</i><span class="time">16:23</span></div><div class="div">CADETS KUMITE MALE -63 KG</div>
+  <div class="vs"><div class="c red win"><span class="bar"></span><span class="ar">عبدالله فهد زويد المطيري</span><span class="sc">3</span></div>
+  <div class="c blue "><span class="bar"></span><span class="">MUHAMMED HUMRAAZ</span><span class="sc">0</span></div></div>
+  <div class="foot"><span class="st wait">ON THIS PHONE</span><span class="meta">366 MB</span><span class="sp"></span><button class="send">SEND</button></div>
+ </div></div><div class="card">
+ <div class="thumb"><div class="mat"></div><span class="play">▶</span><span class="len">5:30</span></div>
+ <div class="body">
+  <div class="top"><b>BOUT 68</b><i>SEMIFINAL</i><span class="time">16:16</span></div><div class="div">CADETS KUMITE FEMALE -54 KG</div>
+  <div class="vs"><div class="c red "><span class="bar"></span><span class="">NAKSHATRA PUTHUPARAMIL BINU</span><span class="sc">0</span></div>
+  <div class="c blue win"><span class="bar"></span><span class="">SASHA MOROZOVA</span><span class="sc">2</span></div></div>
+  <div class="foot"><span class="st wait">ON THIS PHONE</span><span class="meta">340 MB</span><span class="sp"></span><button class="send">SEND</button></div>
+ </div></div><div class="card">
+ <div class="thumb"><div class="mat"></div><span class="play">▶</span><span class="len">6:06</span></div>
+ <div class="body">
+  <div class="top"><b>EXHIBITION 8</b><span class="time">16:09</span></div><div class="div ex">OUTSIDE THE DRAW</div>
+  <div class="vs"><div class="c red "><span class="bar"></span><span class="ar">هادي جائز الاكلبي</span><span class="sc">0</span></div>
+  <div class="c blue win"><span class="bar"></span><span class="ar">عبدالله بسام عيد</span><span class="sc">8</span></div></div>
+  <div class="foot"><span class="st wait">ON THIS PHONE</span><span class="meta">377 MB</span><span class="sp"></span><button class="send">SEND</button></div>
+ </div></div><div class="card">
+ <div class="thumb"><div class="mat"></div><span class="play">▶</span><span class="len">6:42</span></div>
+ <div class="body">
+  <div class="top"><b>BOUT 62</b><i>FINAL</i><span class="time">16:01</span></div><div class="div">UNDER 14 YEARS KUMITE MALE -60 KG</div>
+  <div class="vs"><div class="c red "><span class="bar"></span><span class="">NEDIK MALIPARAMBIL NIDHINKUMAR</span><span class="sc">3</span></div>
+  <div class="c blue win"><span class="bar"></span><span class="ar">محمد عبدالله محمد العماري</span><span class="sc">6</span></div></div>
+  <div class="foot"><span class="st wait">ON THIS PHONE</span><span class="meta">414 MB</span><span class="sp"></span><button class="send">SEND</button></div>
+ </div></div><div class="card">
+ <div class="thumb"><div class="mat"></div><span class="play">▶</span><span class="len">5:10</span></div>
+ <div class="body">
+  <div class="top"><b>EXHIBITION 7</b><span class="time">15:56</span></div><div class="div ex">OUTSIDE THE DRAW</div>
+  <div class="vs"><div class="c red win"><span class="bar"></span><span class="ar">هادي جائز الاكلبي</span><span class="sc">6</span></div>
+  <div class="c blue "><span class="bar"></span><span class="">AYUSH SURESH PILLAI</span><span class="sc">2</span></div></div>
+  <div class="foot"><span class="st wait">ON THIS PHONE</span><span class="meta">319 MB</span><span class="sp"></span><button class="send">SEND</button></div>
+ </div></div><div class="card">
+ <div class="thumb"><div class="mat"></div><span class="play">▶</span><span class="len">1:35</span></div>
+ <div class="body">
+  <div class="top"><b>EXHIBITION 7</b><span class="time">15:55</span></div><div class="div ex">OUTSIDE THE DRAW</div>
+  <div class="vs"><div class="c red win"><span class="bar"></span><span class="ar">هادي جائز الاكلبي</span><span class="sc">6</span></div>
+  <div class="c blue "><span class="bar"></span><span class="">AYUSH SURESH PILLAI</span><span class="sc">2</span></div></div>
+  <div class="foot"><span class="st wait">ON THIS PHONE</span><span class="meta">98 MB</span><span class="sp"></span><button class="send">SEND</button></div>
+ </div></div><div class="card">
+ <div class="thumb"><div class="mat"></div><span class="play">▶</span><span class="len">8:04</span></div>
+ <div class="body">
+  <div class="top"><b>BOUT 66</b><i>SEMIFINAL</i><span class="time">15:46</span></div><div class="div">CADETS KUMITE MALE -52 KG</div>
+  <div class="vs"><div class="c red "><span class="bar"></span><span class="">ADITYA SANIL KURUP</span><span class="sc">2</span></div>
+  <div class="c blue win"><span class="bar"></span><span class="ar">عبدالله بسام عيد</span><span class="sc">11</span></div></div>
+  <div class="foot"><span class="st ok">IN THE VAULT</span><span class="meta">499 MB</span><span class="sp"></span><button class="send">SEND</button></div>
+ </div></div><div class="card">
+ <div class="thumb"><div class="mat"></div><span class="play">▶</span><span class="len">4:01</span></div>
+ <div class="body">
+  <div class="top"><b>EXHIBITION 6</b><span class="time">15:40</span></div><div class="div ex">OUTSIDE THE DRAW</div>
+  <div class="vs"><div class="c red win"><span class="bar"></span><span class="ar">هادي جائز الاكلبي</span><span class="sc">6</span></div>
+  <div class="c blue "><span class="bar"></span><span class="ar">عيسى نواف ناصر</span><span class="sc">4</span></div></div>
+  <div class="foot"><span class="st wait">ON THIS PHONE</span><span class="meta">248 MB</span><span class="sp"></span><button class="send">SEND</button></div>
+ </div></div><div class="card">
+ <div class="thumb"><div class="mat"></div><span class="play">▶</span><span class="len">0:02</span></div>
+ <div class="body">
+  <div class="top"><b>EXHIBITION 6</b><span class="time">15:40</span></div><div class="div ex">OUTSIDE THE DRAW</div>
+  <div class="vs"><div class="c red win"><span class="bar"></span><span class="ar">هادي جائز الاكلبي</span><span class="sc">6</span></div>
+  <div class="c blue "><span class="bar"></span><span class="ar">عيسى نواف ناصر</span><span class="sc">4</span></div></div>
+  <div class="foot"><span class="st wait">ON THIS PHONE</span><span class="meta">2 MB</span><span class="sp"></span><button class="send">SEND</button></div>
+ </div></div></div><div class="sendall">SEND 10 TO THE EVENT</div></div></div>
+<div class="opt"><h2>B · TIMELINE</h2><p>Compact rows down a timeline (a green dot = in the vault): bout number badge, "red vs blue", a red/blue score chip with the winner underlined, round and weight class, length and send. Fits more bouts on screen; every name is shown in full.</p><div class="phone"><div class="hdr"><div class="hrow"><div class="back">‹</div><div class="ht"><b>RECORDED BOUTS</b><span>Bahrain Karate Premier League 2026 · Mat 1</span></div></div>
+<div class="stats"><div class="stat"><b>12</b><span>BOUTS</span></div><div class="stat"><b>10</b><span>TO SEND</span></div><div class="stat"><b>2</b><span>IN THE VAULT</span></div></div>
+<div class="chips"><span class="chip on">ALL</span><span class="chip">DRAW BOUTS</span><span class="chip">EXHIBITIONS</span><span class="chip">TO SEND</span></div></div><div class="list" style="gap:0"><div class="row">
+ <div class="tl"><span class="dot ok"></span><span class="tm">16:42</span></div>
+ <div class="rbody">
+  <div class="rt"><span class="no ">70</span></div><div class="who2"><div class="n r"><span class="">SASHA MOROZOVA</span></div><div class="n b"><span class="">KRISTINA BABAYAN</span></div></div>
+  <div class="rs"><span class="sb"><b class="r ">5</b><b class="b w">3</b></span><span class="d">Final · Cadets Kumite Female -54 kg</span></div>
+ </div>
+ <div class="ra"><span class="len">7:50</span><button class="mini">➤</button></div>
+</div><div class="row">
+ <div class="tl"><span class="dot "></span><span class="tm">16:34</span></div>
+ <div class="rbody">
+  <div class="rt"><span class="no ">73</span></div><div class="who2"><div class="n r"><span class="ar">عبدالله فهد زويد المطيري</span></div><div class="n b"><span class="">AKSHAY RAJAN</span></div></div>
+  <div class="rs"><span class="sb"><b class="r ">2</b><b class="b w">5</b></span><span class="d">Semifinal · Cadets Kumite Male -63 kg</span></div>
+ </div>
+ <div class="ra"><span class="len">4:50</span><button class="mini">➤</button></div>
+</div><div class="row">
+ <div class="tl"><span class="dot "></span><span class="tm">16:30</span></div>
+ <div class="rbody">
+  <div class="rt"><span class="no exn">EX 9</span></div><div class="who2"><div class="n r"><span class="">DEVARSH KUNNUMMAL</span></div><div class="n b"><span class="">LEE ANEL ALBONIA MANALO</span></div></div>
+  <div class="rs"><span class="sb"><b class="r ">1</b><b class="b w">6</b></span><span class="d">Exhibition</span></div>
+ </div>
+ <div class="ra"><span class="len">4:40</span><button class="mini">➤</button></div>
+</div><div class="row">
+ <div class="tl"><span class="dot "></span><span class="tm">16:23</span></div>
+ <div class="rbody">
+  <div class="rt"><span class="no ">71</span></div><div class="who2"><div class="n r"><span class="ar">عبدالله فهد زويد المطيري</span></div><div class="n b"><span class="">MUHAMMED HUMRAAZ</span></div></div>
+  <div class="rs"><span class="sb"><b class="r w">3</b><b class="b ">0</b></span><span class="d">Quarterfinal · Cadets Kumite Male -63 kg</span></div>
+ </div>
+ <div class="ra"><span class="len">5:55</span><button class="mini">➤</button></div>
+</div><div class="row">
+ <div class="tl"><span class="dot "></span><span class="tm">16:16</span></div>
+ <div class="rbody">
+  <div class="rt"><span class="no ">68</span></div><div class="who2"><div class="n r"><span class="">NAKSHATRA PUTHUPARAMIL BINU</span></div><div class="n b"><span class="">SASHA MOROZOVA</span></div></div>
+  <div class="rs"><span class="sb"><b class="r ">0</b><b class="b w">2</b></span><span class="d">Semifinal · Cadets Kumite Female -54 kg</span></div>
+ </div>
+ <div class="ra"><span class="len">5:30</span><button class="mini">➤</button></div>
+</div><div class="row">
+ <div class="tl"><span class="dot "></span><span class="tm">16:09</span></div>
+ <div class="rbody">
+  <div class="rt"><span class="no exn">EX 8</span></div><div class="who2"><div class="n r"><span class="ar">هادي جائز الاكلبي</span></div><div class="n b"><span class="ar">عبدالله بسام عيد</span></div></div>
+  <div class="rs"><span class="sb"><b class="r ">0</b><b class="b w">8</b></span><span class="d">Exhibition</span></div>
+ </div>
+ <div class="ra"><span class="len">6:06</span><button class="mini">➤</button></div>
+</div><div class="row">
+ <div class="tl"><span class="dot "></span><span class="tm">16:01</span></div>
+ <div class="rbody">
+  <div class="rt"><span class="no ">62</span></div><div class="who2"><div class="n r"><span class="">NEDIK MALIPARAMBIL NIDHINKUMAR</span></div><div class="n b"><span class="ar">محمد عبدالله محمد العماري</span></div></div>
+  <div class="rs"><span class="sb"><b class="r ">3</b><b class="b w">6</b></span><span class="d">Final · Under 14 Years Kumite Male -60 kg</span></div>
+ </div>
+ <div class="ra"><span class="len">6:42</span><button class="mini">➤</button></div>
+</div><div class="row">
+ <div class="tl"><span class="dot "></span><span class="tm">15:56</span></div>
+ <div class="rbody">
+  <div class="rt"><span class="no exn">EX 7</span></div><div class="who2"><div class="n r"><span class="ar">هادي جائز الاكلبي</span></div><div class="n b"><span class="">AYUSH SURESH PILLAI</span></div></div>
+  <div class="rs"><span class="sb"><b class="r w">6</b><b class="b ">2</b></span><span class="d">Exhibition</span></div>
+ </div>
+ <div class="ra"><span class="len">5:10</span><button class="mini">➤</button></div>
+</div><div class="row">
+ <div class="tl"><span class="dot "></span><span class="tm">15:55</span></div>
+ <div class="rbody">
+  <div class="rt"><span class="no exn">EX 7</span></div><div class="who2"><div class="n r"><span class="ar">هادي جائز الاكلبي</span></div><div class="n b"><span class="">AYUSH SURESH PILLAI</span></div></div>
+  <div class="rs"><span class="sb"><b class="r w">6</b><b class="b ">2</b></span><span class="d">Exhibition</span></div>
+ </div>
+ <div class="ra"><span class="len">1:35</span><button class="mini">➤</button></div>
+</div><div class="row">
+ <div class="tl"><span class="dot ok"></span><span class="tm">15:46</span></div>
+ <div class="rbody">
+  <div class="rt"><span class="no ">66</span></div><div class="who2"><div class="n r"><span class="">ADITYA SANIL KURUP</span></div><div class="n b"><span class="ar">عبدالله بسام عيد</span></div></div>
+  <div class="rs"><span class="sb"><b class="r ">2</b><b class="b w">11</b></span><span class="d">Semifinal · Cadets Kumite Male -52 kg</span></div>
+ </div>
+ <div class="ra"><span class="len">8:04</span><button class="mini">➤</button></div>
+</div><div class="row">
+ <div class="tl"><span class="dot "></span><span class="tm">15:40</span></div>
+ <div class="rbody">
+  <div class="rt"><span class="no exn">EX 6</span></div><div class="who2"><div class="n r"><span class="ar">هادي جائز الاكلبي</span></div><div class="n b"><span class="ar">عيسى نواف ناصر</span></div></div>
+  <div class="rs"><span class="sb"><b class="r w">6</b><b class="b ">4</b></span><span class="d">Exhibition</span></div>
+ </div>
+ <div class="ra"><span class="len">4:01</span><button class="mini">➤</button></div>
+</div><div class="row">
+ <div class="tl"><span class="dot "></span><span class="tm">15:40</span></div>
+ <div class="rbody">
+  <div class="rt"><span class="no exn">EX 6</span></div><div class="who2"><div class="n r"><span class="ar">هادي جائز الاكلبي</span></div><div class="n b"><span class="ar">عيسى نواف ناصر</span></div></div>
+  <div class="rs"><span class="sb"><b class="r w">6</b><b class="b ">4</b></span><span class="d">Exhibition</span></div>
+ </div>
+ <div class="ra"><span class="len">0:02</span><button class="mini">➤</button></div>
+</div></div><div class="sendall">SEND 10 TO THE EVENT</div></div></div>
+</div></body></html>

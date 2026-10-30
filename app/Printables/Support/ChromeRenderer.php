@@ -68,7 +68,12 @@ class ChromeRenderer
         return $this->run($html, fn (string $out) => ['--print-to-pdf='.$out, '--no-pdf-header-footer'], 'pdf');
     }
 
-    public function png(string $html, float $width, float $height, int $dpi = 96): string
+    /**
+     * `$transparent` keeps the page's own see-through background in the PNG
+     * (an overlay laid onto video, App\Media\BoutShare); without it Chrome
+     * paints white behind the page, which is what a printable wants.
+     */
+    public function png(string $html, float $width, float $height, int $dpi = 96, bool $transparent = false): string
     {
         $scale = max(0.5, min(6, $dpi / 96));
 
@@ -77,6 +82,7 @@ class ChromeRenderer
             '--window-size='.(int) ceil($width).','.(int) ceil($height),
             '--force-device-scale-factor='.$scale,
             '--hide-scrollbars',
+            ...($transparent ? ['--default-background-color=00000000'] : []),
         ], 'png');
     }
 

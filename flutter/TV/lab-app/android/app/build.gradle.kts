@@ -29,11 +29,17 @@ android {
         versionName = flutter.versionName
     }
 
+    // Phones only (see build.sh): plugins ship their own x86_64 copies too,
+    // 16MB of them for the video-call library alone.
+    packaging { jniLibs { excludes += "lib/x86_64/**" } }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            // Keep Media3 + Guava intact through R8 (see proguard-rules.pro).
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 }
@@ -46,4 +52,14 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Sending a bout (MainActivity.compress / .send): Google's own AndroidX media
+    // stack re-encodes on the phone's video chip, and FileProvider hands the
+    // file to WhatsApp & co. Pinned; 1.4.x needs no newer compileSdk.
+    implementation("androidx.media3:media3-transformer:1.9.2")
+    implementation("androidx.media3:media3-effect:1.9.2")
+    implementation("androidx.media3:media3-common:1.9.2")
+    implementation("androidx.core:core-ktx:1.13.1")
 }

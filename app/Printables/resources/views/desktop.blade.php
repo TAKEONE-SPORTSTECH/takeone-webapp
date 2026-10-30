@@ -11,7 +11,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="robots" content="noindex, nofollow">
     {{-- The editor is drawn light; "only" stops a browser or WebView from forcing a dark theme onto it. --}}
-    <meta name="color-scheme" content="light">
+    <meta name="color-scheme" content="only light">
     <meta name="darkreader-lock">
     <style>html { color-scheme: only light; }</style>
     <title>{{ $title }} · {{ __('printables::messages.designer') }}</title>

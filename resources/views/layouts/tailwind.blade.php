@@ -25,7 +25,7 @@
          ⚠️ The two documents that ARE dark by design (the scoreboard console
          and the wall board) declare `color-scheme: dark` in their own heads
          for the same reason. Do not copy this pair into those. --}}
-    <meta name="color-scheme" content="light">
+    <meta name="color-scheme" content="only light">
     <meta name="darkreader-lock">
     <style>html { color-scheme: only light; }</style>
     <meta name="csrf-token" content="{{ csrf_token() }}">

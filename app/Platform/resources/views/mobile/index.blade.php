@@ -85,6 +85,10 @@
                     $sections[] = ['admin.duplicates.index', 'bi-intersect', __('duplicates::messages.title'), __('duplicates::messages.eyebrow'),
                         rescue(fn () => \App\Duplicates\Models\DuplicateFinding::where('status', 'open')->where('strength', 'likely')->count(), 0, report: false) ?: null];
                 }
+                // Forms & surveys (app/Forms) — questionnaires, their answers and analytics.
+                if (\Illuminate\Support\Facades\Route::has('admin.forms.index')) {
+                    $sections[] = ['admin.forms.index', 'bi-ui-checks-grid', __('forms::admin.nav'), __('forms::admin.nav_desc'), null];
+                }
                 $sections = [...$sections,
                     ['admin.ai.index',           'bi-robot',        __('platform.section_ai_title'),         __('platform.section_ai_desc'), null],
                     ['admin.platform.audit-log', 'bi-journal-text', __('platform.section_audit_title'),      __('platform.section_audit_desc'), null],
