@@ -51,6 +51,10 @@ class ModuleServiceProvider extends ServiceProvider
             $this->bindMigrations($path);
             $this->registerRoutes($path);
             $this->registerCommands($path);
+
+            if ($module instanceof Boots) {
+                $module->boot();
+            }
         }
     }
 

@@ -342,5 +342,49 @@
           </section>
           </sc-if>
 
+          <!-- 7 · National ranking: the top three in each weight class -->
+          <sc-if value="{{ an.hasRankings }}" hint-placeholder-val="{{ true }}">
+          <section style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:clamp(16px,2vw,24px);box-shadow:0 14px 40px rgba(30,44,79,.1)">
+            <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px">
+              <div><div style="font-size:.64rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#8a6d20">WKF formula · every federation event · last 24 months</div><h4 style="margin:3px 0 0;font-size:1.02rem;font-weight:700;color:#1e2c4f">National ranking — top three in each weight class</h4></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:22px">
+              <sc-for list="{{ an.rankings }}" as="c" hint-placeholder-count="4">
+                <div>
+                  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #eef1f6">
+                    <span style="font-size:.9rem;font-weight:800;color:#1e2c4f;overflow-wrap:anywhere">{{ c.name }}</span>
+                    <span style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6b7689">{{ c.sub }}</span>
+                  </div>
+                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px;align-items:stretch">
+                    <sc-for list="{{ c.top }}" as="t" hint-placeholder-count="3">
+                      <div onClick="{{ t.onOpen }}" style="{{ t.link }}">
+                        <div style="{{ t.card }}">
+                          <span style="{{ t.glow }}"></span>
+                          <div style="position:relative;display:flex;align-items:center;gap:10px">
+                            <span style="{{ t.disc }}">{{ t.rank }}</span>
+                            <span style="{{ t.labelStyle }}">{{ t.label }}</span>
+                          </div>
+                          <div style="position:relative;display:flex;align-items:center;gap:12px;min-width:0">
+                            <span style="{{ t.face }}"></span>
+                            <div style="flex:1;min-width:0">
+                              <div style="display:flex;align-items:center;gap:6px;font-size:.88rem;font-weight:800"><sc-if value="{{ t.hasFlag }}" hint-placeholder-val="{{ true }}"><img src="{{ t.flag }}" alt="" style="width:18px;height:13.5px;flex:none;border-radius:2px;object-fit:cover"></sc-if><bdi style="overflow-wrap:anywhere">{{ t.name }}</bdi></div>
+                              <div style="{{ t.clubStyle }}">{{ t.club }}</div>
+                            </div>
+                          </div>
+                          <div style="position:relative;margin-top:auto;display:flex;align-items:flex-end;justify-content:space-between;gap:8px">
+                            <div><span style="{{ t.ptsStyle }}">{{ t.points }}</span> <span style="{{ t.subStyle }}">pts</span></div>
+                            <sc-if value="{{ t.hasMedals }}" hint-placeholder-val="{{ true }}"><span style="{{ t.subStyle }}">{{ t.medals }}</span></sc-if>
+                          </div>
+                        </div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="margin-top:14px;font-size:.7rem;color:#6b7689">Points = (5 for taking part + 10 per bout won + place points) × 6, across every finished federation event in this rule book. Points count in full for 12 months, half for the next 12. Ties: golds, silvers, bronzes, then bouts won.</div>
+          </section>
+          </sc-if>
+
         </div>
         </sc-if>

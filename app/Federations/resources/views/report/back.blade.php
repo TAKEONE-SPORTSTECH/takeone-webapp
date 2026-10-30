@@ -92,6 +92,31 @@
         .bout .side .bar { width: 1.2mm; height: 8mm; border-radius: .6mm; flex: 0 0 auto; }
         .bout .sc { font-family: 'Barlow Condensed', 'Inter', sans-serif; font-weight: 900; font-size: 18pt; color: {{ $navy }}; white-space: nowrap; }
         .bout .ft { padding: 0 3mm 2.2mm; font-size: 6.4pt; color: #6b7590; font-weight: 700; display: flex; justify-content: space-between; gap: 2mm; }
+        .rkc-cls { display: flex; align-items: baseline; justify-content: space-between; gap: 3mm; padding-bottom: 1.4mm; margin-bottom: 2mm; border-bottom: .35mm solid #e3e6ee; }
+        .rkc-cls b { font-family: 'Barlow Condensed', 'Inter', sans-serif; font-weight: 900; font-size: 11.5pt; color: {{ $navy }}; text-transform: uppercase; letter-spacing: .02em; }
+        .rkc-cls small { font-size: 6.4pt; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #8a93a8; }
+        .rkc { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3mm; margin-bottom: 5.5mm; break-inside: avoid; }
+        .rkcard { position: relative; overflow: hidden; display: flex; align-items: stretch; gap: 2.5mm; min-height: 26mm; box-sizing: border-box; padding: 2.6mm 3mm; border-radius: 2.2mm; background: #fff; border: .35mm solid #e3e6ee; color: {{ $navy }}; }
+        .rkcard.p1 { background: linear-gradient(150deg, #16213d, #2c3f6e); border-color: #16213d; color: #fff; }
+        .rkcard.p2 { border-top: 1.1mm solid #a9b2c3; } .rkcard.p3 { border-top: 1.1mm solid #c9895b; }
+        .rkcard .glow { position: absolute; right: -9mm; top: -9mm; width: 26mm; height: 26mm; border-radius: 50%; background: rgba(22,33,61,.04); }
+        .rkcard.p1 .glow { background: rgba(237,205,133,.16); }
+        .rkcard .face { width: 13.5mm; height: 18mm; position: relative; align-self: center; }
+        .rkcard .tx { position: relative; min-width: 0; flex: 1; display: flex; flex-direction: column; }
+        .rkcard .lbl { display: flex; align-items: center; gap: 1.4mm; font-size: 5.8pt; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #8a93a8; }
+        .rkcard.p1 .lbl { color: #edcd85; }
+        .rkcard .lbl .rk { width: 5.6mm; height: 5.6mm; font-size: 8.6pt; }
+        .rkcard .nm { display: flex; align-items: flex-start; gap: 1.2mm; margin-top: 1.4mm; font-size: 7.8pt; font-weight: 800; line-height: 1.2; overflow-wrap: anywhere; }
+        .rkcard .nm .fi { margin-top: .5mm; }
+        .rkcard .pt { padding-top: 1.2mm; }
+        .rkcard .nm .fi { width: 4mm; height: 3mm; border-radius: .4mm; flex: 0 0 auto; }
+        .rkcard .cl { font-size: 5.9pt; font-weight: 700; text-transform: uppercase; color: #6b7590; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .rkcard.p1 .cl { color: #c9d3e6; }
+        .rkcard .pt { margin-top: auto; display: flex; align-items: baseline; justify-content: space-between; gap: 1.5mm; }
+        .rkcard .pt b { font-family: 'Barlow Condensed', 'Inter', sans-serif; font-weight: 900; font-size: 15pt; line-height: 1; }
+        .rkcard.p1 .pt b { color: #edcd85; font-size: 17pt; }
+        .rkcard .pt span { font-size: 5.8pt; font-weight: 700; color: #8a93a8; white-space: nowrap; overflow: hidden; }
+        .rkcard.p1 .pt span { color: #c9d3e6; }
         .sig { border: .35mm solid #e3e6ee; border-radius: 2mm; padding: 4mm; height: 44mm; display: flex; flex-direction: column; }
         .sig small { font-size: 6.6pt; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: {{ $goldInk }}; }
         .sig .ln { margin-top: auto; border-bottom: .35mm solid #8a93a8; height: 10mm; }
@@ -399,6 +424,39 @@
                         @endforeach
                     </div>
                 </div>
+            @endif
+        </div>
+        @include('federations::report.partials.foot', ['part' => 'Analytics', 'page' => $pg])
+    </section>
+@endforeach
+
+{{-- ═══ 7 · National ranking — the top three in each weight class (App\Rankings) ═══ --}}
+@php $nth = fn (int $n) => $n.(in_array($n % 100, [11, 12, 13], true) ? 'th' : ([1 => 'st', 2 => 'nd', 3 => 'rd'][$n % 10] ?? 'th')); @endphp
+@foreach($rankingPages as $ri => $classes)
+    @php $pg++; @endphp
+    <section class="pdf-page">
+        @include('federations::report.partials.band', ['heading' => 'National ranking', 'eyebrow' => 'Top three in each weight class', 'figures' => $ri === 0 ? [[collect($rankingPages)->flatten(1)->count(), 'Weight classes']] : []])
+        <div class="body">
+            @foreach($classes as $cl)
+                <div class="rkc-cls"><b>{{ $cl['name'] }}</b><small>{{ $cl['discipline'] === 'kata' ? 'Kata' : 'Kumite' }} · {{ $cl['athletes'] }} ranked</small></div>
+                <div class="rkc">
+                    @foreach($cl['top'] as $i => $t)
+                        @php $won = collect(['gold' => $t['gold'], 'silver' => $t['silver'], 'bronze' => $t['bronze']])->filter()->map(fn ($n, $m) => $n.' '.$m)->implode(' · '); @endphp
+                        <div class="rkcard p{{ min(3, $i + 1) }}">
+                            <span class="glow"></span>
+                            {!! $face($t['person']) !!}
+                            <div class="tx">
+                                <div class="lbl"><span class="rk r{{ min(3, $i + 1) }}">{{ $t['position'] }}</span>Ranked {{ $nth((int) $t['position']) }}</div>
+                                <div class="nm">{!! $flag($t['person'] ?? []) !!}<span>{{ $t['person']['name'] ?? '—' }}</span></div>
+                                <div class="cl">{{ $t['person']['club'] ?? '' }}</div>
+                                <div class="pt"><b>{{ $t['points'] }}<small style="font-size:6pt;font-weight:800;margin-inline-start:.8mm">PTS</small></b><span>{{ $won }}</span></div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @endforeach
+            @if($ri === count($rankingPages) - 1)
+                <p class="note">Ranking points follow the WKF World Ranking formula: <b>(5 for taking part + 10 per bout won + place points) × 6</b>, over every finished federation event in this rule book. Place points: 1st 100 · 2nd 70 · 3rd 40 · lost bronze bout 30 · quarter-final 20. Points count in full for 12 months and half for the next 12. Ties are broken by golds, silvers, bronzes, then bouts won.</p>
             @endif
         </div>
         @include('federations::report.partials.foot', ['part' => 'Analytics', 'page' => $pg])

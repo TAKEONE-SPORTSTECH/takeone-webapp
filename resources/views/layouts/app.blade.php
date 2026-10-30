@@ -672,6 +672,11 @@
                                         <i class="bi bi-patch-check me-2"></i>{{ __('cert::messages.mine_title') }}
                                     </a>
                                     @endif
+                                    @if(config('rankings.enabled'))
+                                    <a class="profile-dropdown-item" href="{{ route('me.rankings') }}">
+                                        <i class="bi bi-bar-chart-steps me-2"></i>{{ __('rankings::messages.title') }}
+                                    </a>
+                                    @endif
                                     {{-- Paying a subscription bill (upload proof) — mobile's "Payments". --}}
                                     <a class="profile-dropdown-item" href="{{ route('me.payments') }}">
                                         <i class="bi bi-credit-card me-2"></i>{{ __('nav.payments') }}

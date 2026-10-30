@@ -124,6 +124,7 @@
                         ['url' => route('me.affiliations'),  'icon' => 'bi-diagram-3',     'label' => __('nav.affiliations')],
                         ['shell' => 'me.progress', 'icon' => 'bi-graph-up-arrow',  'label' => __('nav.my_progress')],
                         config('certificates.enabled') ? ['url' => route('me.certificates.index'), 'icon' => 'bi-patch-check', 'label' => __('cert::messages.mine_title')] : null,
+                        config('rankings.enabled') ? ['url' => route('me.rankings'), 'icon' => 'bi-bar-chart-steps', 'label' => __('rankings::messages.title')] : null,
                         // Listed for the header title but never reachable from a menu until 2026-10-03.
                         ['url' => route('me.videos'), 'icon' => 'bi-camera-reels', 'label' => __('nav.my_videos')],
                         ['url' => route('openmat'), 'icon' => 'bi-fire', 'label' => __('nav.open_mat')],

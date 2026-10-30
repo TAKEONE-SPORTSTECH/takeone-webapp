@@ -75,6 +75,14 @@ return [
         \App\Ranks\Ranks::class,
 
         /*
+         * National rankings: points from every federation-hosted event, by the
+         * WKF World Ranking formula — see app/Rankings/Rankings.php. Not the
+         * belts above: a rank is worn, a ranking is where you stand. Off unless
+         * RANKINGS_ENABLED.
+         */
+        \App\Rankings\Rankings::class,
+
+        /*
          * Governing bodies clubs affiliate WITH (not a chain that owns them).
          * Every file lives in app/Federations — its config and migrations too.
          */

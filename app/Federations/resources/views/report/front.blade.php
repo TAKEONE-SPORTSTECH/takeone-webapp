@@ -63,6 +63,7 @@
         .toc .part { margin: 5mm 0 2mm; font-size: 6.6pt; font-weight: 800; letter-spacing: .24em; text-transform: uppercase; color: #8a93a8; }
         .toc .part:first-child { margin-top: 0; }
         .toc .e { display: flex; align-items: center; gap: 4mm; padding: 2.6mm 0; border-bottom: .25mm solid #eef1f6; color: {{ $navy }}; }
+        .toc.dense .e { padding: 1.9mm 0; } .toc.dense .part { margin: 4mm 0 1.5mm; }
         .toc .e .ic { width: 9mm; height: 9mm; border-radius: 2mm; display: grid; place-items: center; color: #fff; font-size: 11pt; flex: 0 0 auto; }
         .toc .e .tx { font-family: 'Barlow Condensed', 'Inter', sans-serif; font-weight: 800; font-size: 15pt; text-transform: uppercase; letter-spacing: .02em; }
         .toc .e .ld { flex: 1; border-bottom: .4mm dotted #c3c9d6; transform: translateY(1.5mm); }
@@ -150,7 +151,8 @@
 @php $pg++; $lastPart = null; @endphp
 <section class="pdf-page">
     @include('federations::report.partials.band', ['heading' => 'Contents', 'figures' => [[$total, 'Pages']]])
-    <div class="body toc">
+    {{-- A 14th row (the national ranking) only fits with the rows drawn a little closer. --}}
+    <div class="body toc {{ count($toc) > 13 ? 'dense' : '' }}">
         @foreach($toc as $e)
             @if($e['part'] !== $lastPart)
                 <div class="part">{{ ['Front' => 'The championship', 'Draw' => 'The draw', 'Analytics' => 'Statistics & analytics'][$e['part']] ?? 'Closing' }}</div>

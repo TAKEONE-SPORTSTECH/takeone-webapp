@@ -187,6 +187,36 @@
         per: n2(medals(r) / Math.max(1, r.athletes))})),
       hasPerf: perf.length > 0,
       efficiency: bars(perf.map(r => ({label: r.name, logo: r.logo, value: medals(r) / Math.max(1, r.athletes)})).sort((a, b) => b.value - a.value), '#d8b25f', n2),
-      winRate: bars(perf.filter(r => r.bouts > 0).map(r => ({label: r.name, logo: r.logo, value: pct(r.wins, r.bouts)})).sort((a, b) => b.value - a.value), '#1baf7a', v => v + '%')
+      winRate: bars(perf.filter(r => r.bouts > 0).map(r => ({label: r.name, logo: r.logo, value: pct(r.wins, r.bouts)})).sort((a, b) => b.value - a.value), '#1baf7a', v => v + '%'),
+
+      // ── 7 · National ranking — who leads each weight class ─────────────
+      // (owner, 2026-10-31: "the first ranked, then the second, then third,
+      // each in a stylish manner and with their ranking"). From App\Rankings:
+      // the WKF formula over every federation event, decay applied.
+      rankings: (D.rankings || []).map(c => ({
+        name: c.name,
+        sub: (c.discipline === 'kata' ? 'Kata' : 'Kumite') + ' · ' + c.athletes + ' ranked',
+        top: (c.top || []).map((r, i) => {
+          const dark = i === 0;
+          const metal = ['linear-gradient(140deg,#f8e4a0,#d4a940 55%,#b8892a)', 'linear-gradient(140deg,#f4f6fa,#b9c1ce 55%,#97a1b4)', 'linear-gradient(140deg,#f0c49f,#c9895b 55%,#a2643a)'][i] || '#f1f3f7';
+          const edge = ['#d4a940', '#a9b2c3', '#c9895b'][i] || '#e9edf3';
+          const nth = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ({1: 'st', 2: 'nd', 3: 'rd'}[n % 10] || 'th'));
+          const won = [[r.gold, 'gold'], [r.silver, 'silver'], [r.bronze, 'bronze']].filter(m => m[0]).map(m => m[0] + ' ' + m[1]).join(' · ');
+          return Object.assign(who(r.person), {
+            rank: '#' + r.position, label: 'Ranked ' + nth(r.position), points: r.points, medals: won, hasMedals: !!won,
+            face: face(r.person, dark ? 80 : 68),
+            card: css('position:relative;overflow:hidden;height:100%;box-sizing:border-box;padding:16px;border-radius:16px;display:flex;flex-direction:column;gap:12px;'
+              + (dark ? 'background:linear-gradient(150deg,#1e2c4f,#2c3f6e);color:#fff;box-shadow:0 16px 34px rgba(30,44,79,.28)'
+                      : 'background:#fff;color:#1e2c4f;border:1px solid #e9edf3;border-top:3px solid ' + edge + ';box-shadow:0 10px 26px rgba(30,44,79,.07)')),
+            glow: css('position:absolute;right:-30px;top:-30px;width:110px;height:110px;border-radius:50%;background:' + (dark ? 'rgba(237,205,133,.14)' : 'rgba(30,44,79,.04)')),
+            disc: css('width:38px;height:38px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:.86rem;font-weight:900;color:#1e2c4f;box-shadow:0 4px 12px rgba(30,44,79,.18);background:' + metal),
+            labelStyle: css('font-size:.62rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:' + (dark ? '#edcd85' : '#8a93a8')),
+            clubStyle: css('font-size:.64rem;font-weight:700;text-transform:uppercase;overflow-wrap:anywhere;color:' + (dark ? '#c9d3e6' : '#6b7689')),
+            ptsStyle: css('font-size:' + (dark ? '1.7rem' : '1.4rem') + ';font-weight:900;line-height:1;font-variant-numeric:tabular-nums;color:' + (dark ? '#edcd85' : '#1e2c4f')),
+            subStyle: css('font-size:.68rem;font-weight:700;color:' + (dark ? '#c9d3e6' : '#6b7689'))
+          });
+        })
+      })),
+      hasRankings: (D.rankings || []).length > 0
     };
   }

@@ -44,6 +44,9 @@ class FederationCompetitionReport
     /** Clubs on one performance page. */
     private const PERF_ROWS = 16;
 
+    /** Weight classes on one page of the ranking section (a band + three cards each). */
+    private const RANKING_CLASSES = 5;
+
     public function __construct(
         private FederationEventBracket $brackets,
         private FederationBoutAnalytics $analytics,
@@ -80,7 +83,7 @@ class FederationCompetitionReport
         $front = array_sum($plan);
         $brackets = count($divisions);
         $backPlan = ['numbers' => 1, 'won' => 1, 'time' => 1, 'discipline' => 1, 'stars' => 1,
-            'performance' => count($data['perfPages']), 'signoff' => 1];
+            'performance' => count($data['perfPages']), 'rankings' => count($data['rankingPages']), 'signoff' => 1];
         $total = $front + $brackets + array_sum($backPlan);
 
         $starts = [];
@@ -184,6 +187,11 @@ class FederationCompetitionReport
             'ages' => $ages,
             'athletes' => $people->count(),
             'perfPages' => array_chunk($perf, self::PERF_ROWS) ?: [[]],
+            // The national ranking's top three per weight class (App\Rankings),
+            // faces inlined like the stars'. No pages at all when not ranked.
+            'rankingPages' => array_chunk(array_map(
+                fn (array $c) => ['top' => array_map(fn (array $t) => ['person' => $face($t['person'])] + $t, $c['top'])] + $c,
+                $this->rankingLeaders($event)), self::RANKING_CLASSES),
             'podiums' => count(array_filter($b['cats'], fn ($c) => $c['podium'] !== [])),
             'divisionCount' => count($divisions),
             'flagCss' => 'file://'.public_path('images/flags/flag-icons.css'),
@@ -240,7 +248,50 @@ class FederationCompetitionReport
                 array_values(array_filter($clubs, fn ($c) => ! $c['none']))),
             'perf' => array_map(fn ($p) => array_diff_key($p, ['none' => 1]), $t['perf']),
             'divisions' => count($b['cats']),
+            'rankings' => $this->rankingLeaders($event),
         ];
+    }
+
+    /**
+     * The national ranking's top three in each of this event's weight classes
+     * (App\Rankings). Empty when rankings are off or the event's divisions are
+     * not ranked; never fails the analytics around it.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function rankingLeaders(ClubEvent $event): array
+    {
+        if (! config('rankings.enabled') || $event->host_type !== 'federation' || ! $event->host_id) {
+            return [];
+        }
+
+        return rescue(function () use ($event) {
+            $federation = \App\Federations\Models\Federation::find($event->host_id);
+            if (! $federation) {
+                return [];
+            }
+            $keys = $event->categories()->where('is_heading', false)->orderBy('sort_order')->pluck('name')
+                ->map(fn ($name) => \App\Rankings\Support\EventPoints::categoryKey($event, (string) $name))->all();
+
+            return array_map(fn (array $c) => [
+                'name' => $c['name'],
+                'discipline' => $c['discipline'],
+                'athletes' => $c['athletes'],
+                'top' => $c['top']->map(fn (array $r) => [
+                    'position' => $r['position'],
+                    'points' => \App\Rankings\Support\Standings::format($r['points']),
+                    'gold' => $r['gold'], 'silver' => $r['silver'], 'bronze' => $r['bronze'],
+                    'person' => [
+                        'name' => $r['name'],
+                        'club' => $r['club'],
+                        'photo' => $r['photo'],
+                        'profile' => $r['uuid'] ? route('people.show', $r['uuid']) : null,
+                        'flag' => $r['country'] ? Flag::url($r['country']) : null,
+                        'iso' => $r['country'] ? strtolower((string) Flag::iso2($r['country'])) ?: null : null,
+                    ],
+                ])->all(),
+            ], app(\App\Rankings\Support\Standings::class)->leaders($federation, $keys));
+        }, [], report: true);
     }
 
     /**
@@ -450,6 +501,7 @@ class FederationCompetitionReport
             ['discipline', 'Discipline & the corners', 'bi-flag-fill', '#eb6834', 'Analytics'],
             ['stars', 'Stars of the championship', 'bi-star-fill', '#eb6834', 'Analytics'],
             ['performance', 'Club performance', 'bi-graph-up-arrow', '#eb6834', 'Analytics'],
+            ['rankings', 'National ranking — top three per weight class', 'bi-bar-chart-steps', '#d8b25f', 'Analytics'],
             ['signoff', 'Approval', 'bi-pen-fill', '#16213d', 'Close'],
         ];
 
