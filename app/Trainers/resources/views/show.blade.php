@@ -1,444 +1,425 @@
 @extends('layouts.app')
 
+@section('hide-navbar', true)
 @section('title', ($user->full_name ?? 'Trainer') . ' — ' . ($user->clubInstructors->first()?->tenant->club_name ?? 'Trainer'))
 
 @push('styles')
-@if($user->profile_picture)
+@if($user->profile_picture && ($user->profile_picture_is_public ?? true))
 <link rel="icon" type="image/png" href="{{ file_url($user->profile_picture) }}">
 @elseif($user->clubInstructors->first()?->tenant->logo)
 <link rel="icon" type="image/png" href="{{ file_url($user->clubInstructors->first()->tenant->logo) }}">
 @endif
-@if(request()->routeIs('trainer.show.public'))
-<style>@media (max-width: 768px) { nav { display: none !important; } }</style>
-@endif
-<style>
-    /* ── Trainer profile — desktop, full-width magazine layout ─────────── */
-    .tp-hero {
-        position: relative; overflow: hidden;
-        background:
-            radial-gradient(1100px 480px at 82% -10%, hsl(262 70% 62% / .55), transparent 60%),
-            radial-gradient(760px 420px at 8% 120%, hsl(250 80% 55% / .5), transparent 60%),
-            linear-gradient(135deg, hsl(250 66% 56%), hsl(262 60% 48%));
-    }
-    .tp-hero::after { /* subtle dot grid */
-        content: ""; position: absolute; inset: 0; opacity: .12; pointer-events: none;
-        background-image: radial-gradient(#fff 1px, transparent 1.4px);
-        background-size: 22px 22px;
-    }
-    .tp-hero-blob { position: absolute; border-radius: 9999px; filter: blur(6px); background: #fff; opacity: .06; pointer-events: none; }
-    .tp-glass { background: hsl(0 0% 100% / .14); border: 1px solid hsl(0 0% 100% / .22); backdrop-filter: blur(8px); }
-    .tp-avatar-ring { box-shadow: 0 0 0 6px #fff, 0 22px 48px -14px hsl(250 60% 30% / .55); }
-    @media (min-width: 1024px) { .tp-sticky { position: sticky; top: 1.5rem; } }
-    .tp-stat { transition: transform .25s ease, box-shadow .25s ease; }
-    .tp-stat:hover { transform: translateY(-3px); }
-    .tp-tab { position: relative; }
-    .tp-tab.is-active { color: hsl(250 55% 50%); }
-    .tp-tab.is-active::after { content: ""; position: absolute; inset-inline: .5rem; bottom: -1px; height: 3px; border-radius: 3px; background: hsl(250 65% 60%); }
-    .tp-section-kicker { display: inline-flex; align-items: center; gap: .5rem; font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: hsl(250 40% 55%); }
-    .tp-section-kicker::before { content: ""; height: 2px; width: 26px; border-radius: 3px; background: linear-gradient(90deg, hsl(250 65% 62%), hsl(262 60% 55%)); }
-</style>
 @endpush
 
+{{--
+    A trainer's profile — DESKTOP. Design source: drafts/Club Pages & Design/
+    Trainners/emperor-coach-desktop.html, drawn in the club front page's language
+    (clubs::public.partials.page-style) and in the colour of the club they coach at.
+
+    Real data only. The draft's private-session booking is not drawn: the platform
+    has no trainer rates, slots or bookings yet, so it would be a button to nowhere.
+    The phone keeps trainers::mobile.show.
+--}}
 @section('content')
 @php
     $primaryInstructor = $user->clubInstructors->first();
     $club = $primaryInstructor?->tenant;
     $role = $primaryInstructor?->tr('role');
-    // Distinct clubs this person works at
     $clubs = $user->clubInstructors->map->tenant->filter()->unique('id')->values();
-    $skills = ($skills ?? collect())->values()->all();
-    $initial = mb_strtoupper(mb_substr($user->full_name ?? '?', 0, 1, 'UTF-8'), 'UTF-8');
 
-    $statCards = [
-        ['label' => __('trainer.trainer_show_clients'),        'value' => $stats['clients'],        'icon' => 'bi-people-fill'],
-        ['label' => __('trainer.sessions_per_week'),       'value' => $stats['sessions'],       'icon' => 'bi-activity'],
-        ['label' => __('trainer.trainer_show_rating'),         'value' => $stats['rating'] > 0 ? $stats['rating'] : '—', 'icon' => 'bi-star-fill'],
-        ['label' => __('trainer.trainer_show_certifications'), 'value' => $stats['certifications'], 'icon' => 'bi-patch-check-fill'],
-    ];
+    $brand = $club ? data_get($club->settings, 'brand_color') : null;
+    $cpAccent = is_string($brand) && preg_match('/^#[0-9a-fA-F]{6}$/', $brand) ? $brand : '#C8102E';
 
-    $trainerPhone   = $user->mobile_formatted ?? null;
-    $trainerEmail   = $user->email ?? null;
-    $trainerSocials = $user->social_links ?? [];
-    $socialIcons = [
-        'facebook'=>['icon'=>'bi-facebook','label'=>'Facebook'],'instagram'=>['icon'=>'bi-instagram','label'=>'Instagram'],
-        'twitter'=>['icon'=>'bi-twitter-x','label'=>'Twitter/X'],'linkedin'=>['icon'=>'bi-linkedin','label'=>'LinkedIn'],
-        'youtube'=>['icon'=>'bi-youtube','label'=>'YouTube'],'tiktok'=>['icon'=>'bi-tiktok','label'=>'TikTok'],
-        'snapchat'=>['icon'=>'bi-snapchat','label'=>'Snapchat'],'whatsapp'=>['icon'=>'bi-whatsapp','label'=>'WhatsApp'],
-        'telegram'=>['icon'=>'bi-telegram','label'=>'Telegram'],'discord'=>['icon'=>'bi-discord','label'=>'Discord'],
-        'github'=>['icon'=>'bi-github','label'=>'GitHub'],'spotify'=>['icon'=>'bi-spotify','label'=>'Spotify'],
-    ];
-    $hasContact = $trainerPhone || $trainerEmail || !empty(array_filter($trainerSocials));
+    $name = $user->full_name ?: $user->name;
+    $firstName = \Illuminate\Support\Str::of($name)->explode(' ')->first();
+    $showFace = $user->profile_picture && ($user->profile_picture_is_public ?? true);
+    $face = $showFace ? file_url($user->profile_picture).'?v='.($user->updated_at?->timestamp ?? 1) : null;
+    $cover = $club?->cover_image ? file_url($club->cover_image) : null;
+    $experienceLabel = \App\Support\TrainerExperience::label($user);
+    $onPlatform = $user->created_at ? $user->created_at->diffForHumans(null, \Carbon\CarbonInterface::DIFF_ABSOLUTE) : null;
+    $country = $club?->country ? \App\Support\Countries::name($club->country) : null;
 
-    $dayOrder = ['saturday','sunday','monday','tuesday','wednesday','thursday','friday'];
-    $dayAbbr  = ['saturday'=>'Sat','sunday'=>'Sun','monday'=>'Mon','tuesday'=>'Tue','wednesday'=>'Wed','thursday'=>'Thu','friday'=>'Fri'];
-    $todayKey = strtolower(now()->format('l'));
-    $todayIndex = array_search($todayKey, $dayOrder);
-    $visibleDays = array_slice($dayOrder, $todayIndex !== false ? $todayIndex : 0);
+    $viewer = auth()->user();
+    $canMessage = $viewer && $viewer->id !== $user->id && $viewer->canMessage($user);
+
+    // Contact — exactly what this page has always shown.
+    $trainerPhone = $user->mobile_formatted ?? null;
+    $trainerEmail = $user->email ?? null;
+    $socialIcons = ['facebook' => 'bi-facebook', 'instagram' => 'bi-instagram', 'twitter' => 'bi-twitter-x', 'linkedin' => 'bi-linkedin',
+        'youtube' => 'bi-youtube', 'tiktok' => 'bi-tiktok', 'snapchat' => 'bi-snapchat', 'whatsapp' => 'bi-whatsapp',
+        'telegram' => 'bi-telegram', 'discord' => 'bi-discord', 'github' => 'bi-github', 'spotify' => 'bi-spotify'];
+    $trainerSocials = collect($user->social_links ?? [])
+        ->filter(fn ($url, $platform) => is_string($url) && preg_match('#^https?://#i', $url) && isset($socialIcons[$platform]));
+
+    // What they teach — each discipline opens its directory page when the catalog has one.
+    $activityLinks = \App\Platform\Models\ActivityCatalog::linksForNames($activities->pluck('name'));
+
+    // Classes: one card per programme they coach, its days and times gathered.
+    $dayOrder = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    $dayShort = fn ($d) => \Carbon\Carbon::parse($d)->locale(app()->getLocale())->translatedFormat('D');
+    $classes = collect($scheduleSlots)->groupBy(fn ($s) => ($s['club_slug'] ?? '').'|'.($s['package_name'] ?? '').'|'.$s['activity_name'])
+        ->map(function ($rows) use ($dayOrder, $dayShort) {
+            $first = $rows->first();
+            $days = $rows->flatMap(fn ($r) => $r['days'])->unique()->sortBy(fn ($d) => array_search($d, $dayOrder))->values();
+            return [
+                'title' => $first['activity_name'],
+                'package' => $first['package_name'],
+                'club' => $first['club_name'],
+                'club_url' => $first['club_url'] ? $first['club_url'].'#packages' : null,
+                'days' => $days->map($dayShort)->implode(' · '),
+                'time' => \Carbon\Carbon::parse($rows->min('start'))->format('g:i A'),
+                'image' => $first['picture_url'] ? file_url($first['picture_url']) : null,
+            ];
+        })->values();
+
+    $week = collect($dayOrder)->map(fn ($d) => [
+        'key' => $d,
+        'label' => $dayShort($d),
+        'slots' => collect($scheduleSlots)->filter(fn ($s) => in_array($d, $s['days'], true))->sortBy('start')->values(),
+    ]);
+    $today = strtolower(now()->format('l'));
+    if (! count($week->firstWhere('key', $today)['slots'])) {
+        $today = optional($week->first(fn ($d) => count($d['slots'])))['key'] ?? $today;
+    }
+
+    $bio = trim((string) $user->bio);
+    $bioShort = \Illuminate\Support\Str::limit($bio, 320);
 @endphp
+@include('clubs::public.partials.page-style')
+<style>
+    .tp-head { background: var(--cp-card); border-bottom: 1px solid var(--cp-line); }
+    .tp-shell { max-width: 1200px; margin: 0 auto; padding-inline: 20px; }
+    .tp-cover { height: 400px; position: relative; background-color: #171719; background-size: cover; background-position: center; }
+    .tp-cover::after { content: ''; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(0,0,0,.6), rgba(0,0,0,0) 70%); }
+    .tp-face { width: 150px; border-radius: 26px; border: 5px solid var(--cp-card); outline: 4px solid color-mix(in srgb, var(--cp-accent) 55%, #b49b4e); box-shadow: 0 14px 34px rgba(0,0,0,.2); }
+    .tp-tabs { position: sticky; top: 0; z-index: 30; background: var(--cp-card); border-block: 1px solid var(--cp-line); }
+    .tp-tab { padding: 17px 14px; white-space: nowrap; font-size: 13px; font-weight: 800; border-bottom: 3px solid transparent !important; min-height: 50px; color: var(--cp-muted); }
+    .tp-tab.is-on { border-color: var(--cp-accent) !important; color: var(--cp-accent); }
+    .tp-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 32px; }
+    .tp-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .tp-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .tp-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .cp section[id] { scroll-margin-top: 70px; }
+    @media (max-width: 960px) { .tp-grid { grid-template-columns: 1fr; } .tp-aside { display: none; } .tp-3 { grid-template-columns: 1fr 1fr; } }
+</style>
 
-<div class="bg-background min-h-screen pb-16" x-data="{ activeTab: 'about' }">
+<div class="cp" :class="dark && 'cp-dark'"
+     x-data="{
+        dark: false, tab: 'about', bioOpen: false, day: @js($today),
+        init() { try { this.dark = localStorage.getItem('cp-dark') === '1'; } catch (e) {} },
+        toggleDark() { this.dark = !this.dark; try { localStorage.setItem('cp-dark', this.dark ? '1' : '0'); } catch (e) {} },
+        go(id) { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); this.tab = id; },
+        share() {
+            const url = window.location.href;
+            if (navigator.share) { navigator.share({ title: @js($name), url }).catch(() => {}); return; }
+            if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => window.showToast && window.showToast('success', @js(__('trainer.tp_link_copied'))));
+        }
+     }">
 
-    {{-- ══════════ HERO ══════════ --}}
-    <section class="tp-hero text-white">
-        <span class="tp-hero-blob" style="width:260px;height:260px;top:-70px;right:16%;"></span>
-        <span class="tp-hero-blob" style="width:180px;height:180px;bottom:-60px;left:6%;"></span>
-
-        <div class="relative mx-auto max-w-[1400px] px-6 lg:px-10 pt-8 pb-12">
-            @if(!request()->routeIs('trainer.show.public'))
-            <a href="{{ url()->previous() }}" class="inline-flex items-center gap-2 text-sm text-white/80 hover:text-white transition-colors mb-6">
-                <i class="bi bi-chevron-left"></i><span>{{ __('shared.back') }}</span>
+{{-- ===================== HEADER ===================== --}}
+<header class="tp-head">
+    <div class="tp-shell" style="height:72px;display:flex;align-items:center;gap:12px;">
+        <button type="button" class="cp-round" style="border:1px solid var(--cp-line);" onclick="history.length > 1 ? history.back() : (window.location.href='{{ $club?->url ?? route('clubs.explore') }}')" aria-label="{{ __('shared.back') }}" title="{{ __('shared.back') }}">
+            <i class="bi bi-chevron-left rtl:rotate-180"></i>
+        </button>
+        @if($club)
+            <a href="{{ $club->url }}" class="cp-display" style="font-weight:800;font-size:18px;display:flex;align-items:center;gap:10px;min-width:0;">
+                @if($club->logo)<span style="width:34px;height:34px;flex-shrink:0;"><img src="{{ file_url($club->logo) }}" alt="" style="width:100%;height:100%;object-fit:contain;"></span>@endif
+                <span style="text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $club->tr('club_name') ?: $club->club_name }}</span>
             </a>
-            @endif
-
-            <div class="flex flex-col lg:flex-row lg:items-center gap-8">
-                {{-- Identity --}}
-                <div class="flex-1 min-w-0">
-                    @if($role)
-                        <span class="tp-glass inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold text-white mb-4">
-                            <i class="bi bi-mortarboard-fill"></i> {{ $role }}
-                        </span>
-                    @endif
-                    <h1 class="text-4xl lg:text-6xl font-black tracking-tight leading-[1.05] mb-4">{{ $user->full_name }}</h1>
-
-                    <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-white/85">
-                        <span class="inline-flex items-center gap-1.5">
-                            <i class="bi bi-star-fill text-amber-300"></i>
-                            <span class="font-bold text-white">{{ $stats['rating'] > 0 ? $stats['rating'] : 'N/A' }}</span>
-                            <span class="text-white/70">({{ $reviews->count() }} {{ __('trainer.trainer_show_tab_reviews') }})</span>
-                        </span>
-                        {{-- Live, accumulating trainer experience (prior coaching + platform tenure). --}}
-                        @php $experienceLabel = \App\Support\TrainerExperience::label($user); @endphp
-                        @if($experienceLabel)
-                            <span class="inline-flex items-center gap-1.5">
-                                <i class="bi bi-graph-up-arrow"></i>
-                                {{ $experienceLabel }} {{ __('trainer.trainer_show_experience_word') }}
-                            </span>
-                        @endif
-                        @if($club)
-                            <span class="inline-flex items-center gap-1.5"><i class="bi bi-geo-alt-fill"></i>{{ $club->club_name }}</span>
-                        @endif
-                    </div>
-                </div>
-
-                {{-- Stat strip --}}
-                <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 lg:min-w-[440px]">
-                    @foreach($statCards as $s)
-                        <div class="tp-stat tp-glass rounded-2xl p-4 text-center">
-                            <i class="bi {{ $s['icon'] }} text-white/70 mb-1.5"></i>
-                            <p class="text-2xl font-black text-white leading-none">{{ $s['value'] }}</p>
-                            <p class="text-[11px] uppercase tracking-wide text-white/70 mt-1.5">{{ $s['label'] }}</p>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-        </div>
-    </section>
-
-    {{-- ══════════ BODY ══════════ --}}
-    <div class="mx-auto max-w-[1400px] px-6 lg:px-10 py-8">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-
-            {{-- ───── SIDEBAR ───── --}}
-            <aside class="lg:col-span-4 xl:col-span-3 space-y-5 tp-sticky self-start">
-
-                {{-- Portrait (always 3:4) + club logo --}}
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-                    <div class="flex items-center gap-4">
-                        <div class="w-32 flex-shrink-0">
-                            <div class="aspect-[3/4] rounded-xl overflow-hidden bg-accent ring-1 ring-gray-100">
-                                @if($user->profile_picture)
-                                    <img src="{{ file_url($user->profile_picture) }}" alt="{{ $user->full_name }}" class="w-full h-full object-cover">
-                                @else
-                                    <div class="w-full h-full flex items-center justify-center">
-                                        <span class="text-5xl font-black text-primary">{{ $initial }}</span>
-                                    </div>
-                                @endif
-                            </div>
-                        </div>
-                        @if($club?->logo)
-                            <div class="flex-1 flex items-center justify-center min-w-0">
-                                <img src="{{ file_url($club->logo) }}" alt="{{ $club->club_name }}" class="max-h-24 max-w-full object-contain">
-                            </div>
-                        @endif
-                    </div>
-                </div>
-
-                {{-- Certifications / skills --}}
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-                    <p class="tp-section-kicker mb-3">{{ __('trainer.trainer_show_certifications') }}</p>
-                    @if(($skillCards ?? collect())->count() > 0)
-                        <div class="flex flex-wrap gap-2">
-                            @foreach($skillCards as $sk)
-                                @if($sk['uuid'])
-                                    <a href="{{ route('activity.show', $sk['uuid']) }}"
-                                       class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-accent text-primary no-underline hover:bg-primary/15 transition-colors">
-                                        <i class="bi bi-patch-check-fill"></i>{{ $sk['name'] }}
-                                        @if($sk['years'])<span class="inline-flex items-center gap-0.5 text-[10px] font-semibold text-primary/70"><i class="bi bi-hourglass-split"></i>{{ $sk['years'] }}</span>@endif
-                                    </a>
-                                @else
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-accent text-primary">
-                                        <i class="bi bi-patch-check-fill"></i>{{ $sk['name'] }}
-                                        @if($sk['years'])<span class="inline-flex items-center gap-0.5 text-[10px] font-semibold text-primary/70"><i class="bi bi-hourglass-split"></i>{{ $sk['years'] }}</span>@endif
-                                    </span>
-                                @endif
-                            @endforeach
-                        </div>
-                    @else
-                        <p class="text-sm text-muted-foreground">{{ __('trainer.trainer_show_no_certifications') }}</p>
-                    @endif
-                </div>
-
-                {{-- Clubs --}}
-                @if($clubs->count() > 0)
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-                    <p class="tp-section-kicker mb-3">{{ __('trainer.trainer_show_clients') }}</p>
-                    <div class="space-y-2">
-                        @foreach($clubs as $c)
-                            <a href="{{ $c->url ?? '#' }}" class="flex items-center gap-3 p-2 -mx-1 rounded-xl hover:bg-muted/60 transition-colors no-underline">
-                                <span class="w-9 h-9 flex-shrink-0 flex items-center justify-center">
-                                    @if($c->logo)
-                                        <img src="{{ file_url($c->logo) }}" class="w-full h-full object-contain" alt="{{ $c->club_name }}">
-                                    @else
-                                        <span class="w-9 h-9 rounded-lg bg-accent flex items-center justify-center text-primary font-bold text-sm">{{ mb_substr($c->club_name,0,1) }}</span>
-                                    @endif
-                                </span>
-                                <span class="text-sm font-medium text-foreground truncate">{{ $c->club_name }}</span>
-                                <i class="bi bi-chevron-right ms-auto text-xs text-muted-foreground"></i>
-                            </a>
-                        @endforeach
-                    </div>
-                </div>
-                @endif
-
-                {{-- Contact --}}
-                @if($hasContact)
-                <div id="trainer-contact" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-                    <p class="tp-section-kicker mb-3">{{ __('trainer.trainer_show_contact_information') }}</p>
-                    <div class="space-y-2.5">
-                        @if($trainerPhone)
-                            <a href="tel:{{ $trainerPhone }}" class="flex items-center gap-3 text-sm text-foreground hover:text-primary transition-colors">
-                                <span class="w-9 h-9 rounded-lg bg-accent flex items-center justify-center text-primary"><i class="bi bi-telephone-fill"></i></span>
-                                <span class="font-medium">{{ $trainerPhone }}</span>
-                            </a>
-                        @endif
-                        @if($trainerEmail)
-                            <a href="mailto:{{ $trainerEmail }}" class="flex items-center gap-3 text-sm text-foreground hover:text-primary transition-colors break-all">
-                                <span class="w-9 h-9 rounded-lg bg-accent flex items-center justify-center text-primary flex-shrink-0"><i class="bi bi-envelope-fill"></i></span>
-                                <span class="font-medium">{{ $trainerEmail }}</span>
-                            </a>
-                        @endif
-                    </div>
-                    @if(!empty(array_filter($trainerSocials)))
-                        <div class="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-100">
-                            @foreach($trainerSocials as $platform => $url)
-                                @if(!empty($url) && isset($socialIcons[$platform]))
-                                    <a href="{{ $url }}" target="_blank" rel="noopener noreferrer" title="{{ $socialIcons[$platform]['label'] }}"
-                                       class="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-foreground hover:bg-primary hover:text-white hover:border-primary transition-all">
-                                        <i class="bi {{ $socialIcons[$platform]['icon'] }}"></i>
-                                    </a>
-                                @endif
-                            @endforeach
-                        </div>
-                    @endif
-                </div>
-                @endif
-            </aside>
-
-            {{-- ───── MAIN ───── --}}
-            <main class="lg:col-span-8 xl:col-span-9 space-y-6">
-
-                {{-- Tabs --}}
-                <div x-ref="tabs" id="trainer-tabs" class="bg-white rounded-2xl shadow-sm border border-gray-100 px-2">
-                    <nav class="flex items-center gap-1 overflow-x-auto">
-                        @foreach([['about','trainer_show_tab_about','bi-person-badge'],['schedule','trainer_show_tab_schedule','bi-calendar-week'],['reviews','trainer_show_tab_reviews','bi-star']] as $t)
-                            <button @click="activeTab = '{{ $t[0] }}'"
-                                    :class="activeTab === '{{ $t[0] }}' ? 'is-active' : 'text-muted-foreground hover:text-foreground'"
-                                    class="tp-tab flex items-center gap-2 px-5 py-4 text-sm font-semibold whitespace-nowrap transition-colors">
-                                <i class="bi {{ $t[2] }}"></i>{{ __('trainer.'.$t[1]) }}
-                            </button>
-                        @endforeach
-                    </nav>
-                </div>
-
-                {{-- ===== ABOUT ===== --}}
-                <div x-show="activeTab === 'about'" x-cloak class="space-y-6">
-                    {{-- Bio --}}
-                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-8">
-                        <p class="tp-section-kicker mb-4">{{ __('trainer.trainer_show_biography') }}</p>
-                        <p class="text-foreground/90 leading-relaxed text-lg">{{ $user->bio ?? __('trainer.trainer_show_no_biography') }}</p>
-
-                        @if($activities->count() > 0)
-                            <div class="mt-8 pt-6 border-t border-gray-100">
-                                <p class="tp-section-kicker mb-4">{{ __('trainer.trainer_show_classes_taught') }}</p>
-                                <div class="flex flex-wrap gap-2.5">
-                                    @foreach($activities as $activity)
-                                        <span class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-2 border-gray-100 rounded-full hover:border-primary hover:bg-accent hover:text-primary transition-all cursor-default">
-                                            <i class="bi bi-lightning-charge-fill text-xs"></i>{{ $activity->name }}
-                                        </span>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @endif
-                    </div>
-
-                    {{-- Highlights --}}
-                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                        @php
-                            $highlights = [
-                                ['label'=>__('trainer.trainer_show_specialty'),   'value'=>$role ?? __('trainer.trainer_show_trainer_fallback'), 'icon'=>'bi-award-fill'],
-                                ['label'=>__('trainer.trainer_show_experience'),  'value'=>($experienceLabel ?? __('trainer.exp_new')), 'icon'=>'bi-graph-up-arrow'],
-                                ['label'=>__('trainer.trainer_show_rating'),      'value'=>($stats['rating'] > 0 ? $stats['rating'] : '—'), 'icon'=>'bi-star-fill'],
-                            ];
-                        @endphp
-                        @foreach($highlights as $h)
-                            <div class="group relative overflow-hidden bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-all">
-                                <div class="absolute -top-8 -end-8 w-24 h-24 rounded-full bg-accent/60 transition-transform group-hover:scale-125"></div>
-                                <div class="relative">
-                                    <div class="w-11 h-11 rounded-xl bg-accent flex items-center justify-center text-primary mb-3"><i class="bi {{ $h['icon'] }} text-lg"></i></div>
-                                    <p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">{{ $h['label'] }}</p>
-                                    <p class="text-lg font-bold text-foreground mt-0.5">{{ $h['value'] }}</p>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-
-                {{-- ===== SCHEDULE ===== --}}
-                <div x-show="activeTab === 'schedule'" x-cloak
-                     x-data="{
-                         activeDay: '{{ $todayKey }}',
-                         getStatus(start, end) {
-                             const now = new Date(); const pad = n => String(n).padStart(2,'0');
-                             const t = pad(now.getHours()) + ':' + pad(now.getMinutes());
-                             if (t < start) return 'upcoming'; if (t <= end) return 'live'; return 'finished';
-                         }
-                     }">
-                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-8">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                            <div>
-                                <h3 class="text-xl font-bold text-foreground">{{ __('trainer.trainer_show_weekly_schedule') }}</h3>
-                                <p class="text-sm text-muted-foreground">{{ __('trainer.trainer_show_schedule_subtitle') }}</p>
-                            </div>
-                        </div>
-
-                        @if(count($scheduleSlots) > 0)
-                            <div class="flex flex-wrap gap-2 mb-6">
-                                @foreach($visibleDays as $dayKey)
-                                    <button type="button" @click="activeDay = '{{ $dayKey }}'"
-                                            :class="activeDay === '{{ $dayKey }}' ? 'bg-primary text-white border-primary' : 'bg-white text-muted-foreground border-gray-200 hover:border-primary hover:text-primary'"
-                                            class="px-5 py-2 rounded-full border text-sm font-semibold transition-colors {{ $dayKey === $todayKey ? 'ring-2 ring-primary/30' : '' }}">
-                                        {{ $dayAbbr[$dayKey] }}
-                                    </button>
-                                @endforeach
-                            </div>
-
-                            <div class="grid grid-cols-1 xl:grid-cols-2 gap-3">
-                                @foreach($scheduleSlots as $slot)
-                                    <div class="class-card"
-                                         x-show="@js(array_map('strval', $slot['days'])).includes(activeDay)"
-                                         :class="activeDay === '{{ $todayKey }}' ? getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}') + '-card' : ''"
-                                         :style="{ order: activeDay === '{{ $todayKey }}' ? ({'live':0,'upcoming':1,'finished':2}[getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}')] ?? 0) : null }"
-                                         x-cloak>
-                                        <div class="class-thumb">
-                                            @if($slot['picture_url'])
-                                                <img src="{{ file_url($slot['picture_url']) }}" alt="{{ $slot['activity_name'] }}" class="w-full h-full object-cover">
-                                            @else
-                                                <div class="w-full h-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center min-h-[80px]"><i class="bi bi-activity text-white text-xl"></i></div>
-                                            @endif
-                                        </div>
-                                        <div class="flex-grow flex flex-col">
-                                            <div class="flex justify-between items-start mb-1">
-                                                <div>
-                                                    <h6 class="text-base font-bold mb-0">{{ $slot['activity_name'] }}</h6>
-                                                    <div class="class-meta text-muted-foreground flex items-center gap-x-4 mt-0.5 text-sm">
-                                                        <span><i class="bi bi-clock me-1"></i>{{ \Carbon\Carbon::parse($slot['start'])->format('g:i A') }} – {{ \Carbon\Carbon::parse($slot['end'])->format('g:i A') }}</span>
-                                                        <span class="flex items-center gap-1 ms-2"><i class="bi bi-stopwatch"></i>{{ $slot['duration'] }} {{ __('trainer.trainer_show_min') }}</span>
-                                                    </div>
-                                                    @if($slot['facility_name'])
-                                                        <div class="text-sm text-muted-foreground mt-0.5"><i class="bi bi-geo-alt me-1"></i>{{ $slot['facility_name'] }}</div>
-                                                    @endif
-                                                </div>
-                                                <div class="flex flex-col items-end gap-2 shrink-0">
-                                                    <div x-show="activeDay === '{{ $todayKey }}'">
-                                                        <span x-show="getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}') === 'live'" class="status-chip status-ongoing"><span class="live-dot"></span> {{ __('trainer.trainer_show_ongoing') }}</span>
-                                                        <span x-show="getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}') === 'upcoming'" class="status-chip status-bookable"><i class="bi bi-clock-fill"></i> {{ __('trainer.trainer_show_upcoming') }}</span>
-                                                        <span x-show="getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}') === 'finished'" class="status-chip status-finished"><i class="bi bi-check-circle-fill"></i> {{ __('trainer.trainer_show_finished') }}</span>
-                                                    </div>
-                                                    @if($slot['club_name'])
-                                                        <a href="{{ $slot['club_url'] ?? '#' }}" class="text-xs font-medium text-primary hover:underline flex items-center gap-1"><i class="bi bi-building"></i> {{ $slot['club_name'] }}</a>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                            <div class="flex flex-wrap gap-1 mt-2">
-                                                @if($slot['package_name'])<span class="pill-tag">{{ $slot['package_name'] }}</span>@endif
-                                                @foreach($slot['days'] as $d)<span class="pill-tag">{{ $dayAbbr[$d] ?? ucfirst(substr($d,0,3)) }}</span>@endforeach
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endforeach
-
-                                <div x-show="!@js(collect($scheduleSlots)->map(fn($s) => $s['days'])->flatten()->unique()->values()->toArray()).includes(activeDay)" class="text-center py-16 xl:col-span-2">
-                                    <i class="bi bi-calendar-x text-muted-foreground text-5xl"></i>
-                                    <p class="text-lg font-medium mt-4">{{ __('trainer.trainer_show_no_classes_day') }}</p>
-                                    <p class="text-sm text-muted-foreground mt-2">{{ __('trainer.trainer_show_try_different_day') }}</p>
-                                </div>
-                            </div>
-                        @else
-                            <div class="text-center py-12">
-                                <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center"><i class="bi bi-calendar-x text-2xl text-muted-foreground"></i></div>
-                                <p class="text-muted-foreground">{{ __('trainer.trainer_show_no_classes_scheduled') }}</p>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-
-                {{-- ===== REVIEWS ===== --}}
-                <div x-show="activeTab === 'reviews'" x-cloak class="space-y-6">
-                    @if(!empty($reactionTotal) && $reactionTotal > 0)
-                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                            <p class="tp-section-kicker mb-3"><i class="bi bi-emoji-smile"></i>{{ __('trainer.trainer_show_class_reactions') }} · {{ $reactionTotal }}</p>
-                            <div class="flex flex-wrap gap-2">
-                                @foreach($reactions as $emoji => $cnt)
-                                    <span class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-muted">
-                                        <span class="text-xl leading-none">{{ $emoji }}</span><span class="text-sm font-bold text-foreground">{{ $cnt }}</span>
-                                    </span>
-                                @endforeach
-                            </div>
-                        </div>
-                    @endif
-
-                    @if($reviews->count() > 0)
-                        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                            @foreach($reviews as $review)
-                                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-all">
-                                    <div class="flex items-start justify-between mb-3">
-                                        <div class="flex items-center gap-3">
-                                            <div class="w-11 h-11 rounded-full bg-gradient-to-br from-primary to-[hsl(262_60%_55%)] flex items-center justify-center shadow-sm">
-                                                <span class="text-base font-bold text-white">{{ mb_strtoupper(mb_substr($review->reviewer->full_name ?? 'A', 0, 1, 'UTF-8'), 'UTF-8') }}</span>
-                                            </div>
-                                            <div>
-                                                <p class="font-bold text-sm text-foreground">{{ $review->reviewer->full_name ?? __('trainer.trainer_show_anonymous') }}</p>
-                                                <p class="text-xs text-muted-foreground inline-flex items-center gap-1"><i class="bi bi-clock"></i>{{ $review->formatted_date }}</p>
-                                            </div>
-                                        </div>
-                                        <div class="inline-flex items-center gap-0.5 px-2.5 py-1 bg-amber-50 rounded-lg border border-amber-100">
-                                            @for($i = 0; $i < $review->rating; $i++)<i class="bi bi-star-fill text-amber-400 text-xs"></i>@endfor
-                                        </div>
-                                    </div>
-                                    @if($review->comment)<p class="text-foreground/80 leading-relaxed text-sm">{{ $review->comment }}</p>@endif
-                                </div>
-                            @endforeach
-                        </div>
-                    @else
-                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 text-center py-16">
-                            <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center"><i class="bi bi-chat text-2xl text-muted-foreground"></i></div>
-                            <p class="text-muted-foreground">{{ __('trainer.trainer_show_no_reviews') }}</p>
-                        </div>
-                    @endif
-                </div>
-
-            </main>
+        @endif
+        <div style="margin-inline-start:auto;display:flex;gap:8px;align-items:center;">
+            <button type="button" class="cp-pill" @click="toggleDark()" :aria-pressed="dark" aria-label="{{ __('clubs::page.theme') }}"><i class="bi" :class="dark ? 'bi-sun' : 'bi-moon-stars'"></i></button>
+            <form method="POST" action="{{ route('locale.set') }}" style="margin:0;">
+                @csrf @method('PUT')
+                <input type="hidden" name="locale" value="{{ app()->getLocale() === 'ar' ? 'en' : 'ar' }}">
+                <button type="submit" class="cp-pill">{{ app()->getLocale() === 'ar' ? 'English' : 'عربي' }}</button>
+            </form>
         </div>
     </div>
+</header>
+
+<main id="top">
+{{-- ===================== COVER ===================== --}}
+<div class="tp-cover" style="{{ $cover ? "background-image:url('".e($cover)."')" : 'background:linear-gradient(135deg, '.$cpAccent.', #171719)' }}">
+    <div class="tp-shell" style="height:100%;position:relative;z-index:1;">
+        @if($role)<span class="cp-badge" style="position:absolute;top:20px;inset-inline-start:20px;background:var(--cp-accent);color:#fff;padding:8px 16px;font-size:12px;"><i class="bi bi-patch-check-fill"></i>{{ $role }}</span>@endif
+        @if($club?->tr('slogan'))<span class="cp-tag" style="position:absolute;bottom:20px;inset-inline-end:20px;color:rgba(255,255,255,.9);">{{ $club->tr('slogan') }}</span>@endif
+    </div>
+</div>
+
+{{-- ===================== IDENTITY ===================== --}}
+<div class="tp-shell">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;">
+        <div style="min-width:0;flex:1;">
+            <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-top:-100px;position:relative;z-index:2;gap:16px;">
+                <span class="cp-portrait tp-face">
+                    @if($face)<img src="{{ $face }}" alt="{{ $name }}">@else<x-gender-avatar :gender="$user->gender" class="w-full h-full" />@endif
+                </span>
+                <div style="display:flex;gap:8px;margin-bottom:8px;">
+                    <button type="button" class="cp-pill" style="background:var(--cp-card);" @click="share()"><i class="bi bi-share"></i>{{ __('clubs::page.share') }}</button>
+                </div>
+            </div>
+            <div style="margin-top:20px;">
+                <p class="cp-tag cp-red">{{ collect([$role ?: __('trainer.trainer_show_trainer_fallback'), $country])->filter()->implode(' · ') }}</p>
+                <h1 style="font-size:clamp(40px,5vw,64px);font-weight:700;margin-top:8px;line-height:1;">{{ $name }}<span class="cp-red">.</span></h1>
+                <p class="cp-muted" style="margin-top:10px;">
+                    {{ collect([
+                        $stats['rating'] > 0 ? '★ '.$stats['rating'].' · '.trans_choice('clubs::page.reviews_n', $reviews->count(), ['n' => $reviews->count()]) : null,
+                        $experienceLabel ? $experienceLabel.' '.__('trainer.trainer_show_experience_word') : null,
+                    ])->filter()->implode(' · ') }}
+                </p>
+                @if($club)
+                    <a href="{{ $club->url }}" style="display:inline-flex;align-items:center;gap:10px;margin-top:14px;font-weight:700;font-size:14px;">
+                        <span style="width:32px;height:32px;flex-shrink:0;display:grid;place-items:center;">
+                            @if($club->logo)<img src="{{ file_url($club->logo) }}" alt="" style="width:100%;height:100%;object-fit:contain;">@else<i class="bi bi-building cp-red"></i>@endif
+                        </span>
+                        {{ $club->tr('club_name') ?: $club->club_name }} <i class="bi bi-arrow-up-right cp-flip cp-muted"></i>
+                    </a>
+                @endif
+                @if($onPlatform)<p class="cp-muted" style="font-size:14px;margin-top:6px;"><i class="bi bi-geo-alt"></i> {{ collect([$club?->tr('address'), __('trainer.tp_on_platform', ['time' => $onPlatform])])->filter()->implode(' · ') }}</p>@endif
+            </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
+            @if($canMessage)
+                <form method="POST" action="{{ route('messages.start', $user) }}" style="margin:0;">
+                    @csrf
+                    <button type="submit" class="cp-cta"><i class="bi bi-chat-dots"></i>{{ __('trainer.tp_message', ['name' => $firstName]) }}</button>
+                </form>
+            @elseif(! auth()->check())
+                <a href="{{ route('login') }}" class="cp-cta"><i class="bi bi-chat-dots"></i>{{ __('trainer.tp_sign_in_message') }}</a>
+            @endif
+            @if($classes->isNotEmpty())<button type="button" class="cp-pill" @click="go('classes')">{{ __('trainer.tp_explore_classes') }}</button>@endif
+        </div>
+    </div>
+
+    <div class="tp-stats" style="margin:28px 0 32px;">
+        <div class="cp-card" style="padding:16px;"><b class="cp-display" style="font-size:26px;">{{ number_format($stats['clients']) }}</b><p class="cp-muted" style="font-size:12px;margin-top:2px;">{{ __('trainer.tp_stat_students') }}</p></div>
+        <div class="cp-card" style="padding:16px;"><b class="cp-display" style="font-size:26px;">{{ $stats['sessions'] }}</b><p class="cp-muted" style="font-size:12px;margin-top:2px;">{{ __('trainer.sessions_per_week') }}</p></div>
+        <div class="cp-card" style="padding:16px;"><b class="cp-display" style="font-size:26px;">{{ $stats['rating'] > 0 ? $stats['rating'] : '—' }}</b><p class="cp-muted" style="font-size:12px;margin-top:2px;">{{ __('trainer.trainer_show_rating') }}</p></div>
+        <div class="cp-card" style="padding:16px;"><b class="cp-display" style="font-size:26px;">{{ $skillCards->count() }}</b><p class="cp-muted" style="font-size:12px;margin-top:2px;">{{ __('trainer.trainer_show_certifications') }}</p></div>
+    </div>
+</div>
+
+{{-- ===================== TABS ===================== --}}
+<div class="tp-tabs">
+    <nav class="tp-shell cp-scroll-x" style="display:flex;" aria-label="{{ $name }}">
+        <button type="button" class="tp-tab" :class="tab === 'about' && 'is-on'" @click="go('about')">{{ __('trainer.trainer_show_tab_about') }}</button>
+        @if($classes->isNotEmpty())<button type="button" class="tp-tab" :class="tab === 'classes' && 'is-on'" @click="go('classes')">{{ __('trainer.tp_tab_classes') }}</button>@endif
+        @if($skillCards->isNotEmpty())<button type="button" class="tp-tab" :class="tab === 'skills' && 'is-on'" @click="go('skills')">{{ __('trainer.trainer_show_certifications') }}</button>@endif
+        <button type="button" class="tp-tab" :class="tab === 'reviews' && 'is-on'" @click="go('reviews')">{{ __('trainer.trainer_show_tab_reviews') }}</button>
+    </nav>
+</div>
+
+<div class="tp-shell tp-grid" style="padding-block:36px;">
+    <div style="min-width:0;">
+
+        {{-- ===================== ABOUT ===================== --}}
+        <section id="about" style="margin-bottom:56px;">
+            <p class="cp-tag cp-red">{{ __('trainer.tp_about_eyebrow') }}</p>
+            <h2 style="font-size:40px;font-weight:700;margin-top:8px;">{{ __('trainer.tp_about_title') }}</h2>
+            <div class="cp-card" style="padding:24px;margin-top:24px;">
+                <h3 style="font-size:20px;font-weight:700;">{{ __('trainer.trainer_show_biography') }}</h3>
+                @if($bio !== '')
+                    <p class="cp-muted" style="line-height:1.75;margin-top:12px;white-space:pre-line;" x-show="!bioOpen">{{ $bioShort }}</p>
+                    @if($bioShort !== $bio)
+                        <p class="cp-muted" style="line-height:1.75;margin-top:12px;white-space:pre-line;" x-show="bioOpen" x-cloak>{{ $bio }}</p>
+                        <button type="button" class="cp-red" style="font-weight:700;font-size:14px;margin-top:10px;" @click="bioOpen = !bioOpen">
+                            <span x-text="bioOpen ? @js(__('trainer.tp_read_less')) : @js(__('trainer.tp_read_more'))"></span>
+                            <i class="bi" :class="bioOpen ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                        </button>
+                    @endif
+                @else
+                    <p class="cp-muted" style="margin-top:12px;">{{ __('trainer.trainer_show_no_biography') }}</p>
+                @endif
+            </div>
+
+            @if($activities->isNotEmpty())
+                <h3 style="font-size:24px;font-weight:700;margin-top:32px;">{{ __('trainer.tp_teaches', ['name' => $firstName]) }}</h3>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">
+                    @foreach($activities->unique('name') as $activity)
+                        @php $link = $activityLinks[mb_strtolower(trim($activity->name))] ?? null; @endphp
+                        @if($link)
+                            <a href="{{ $link }}" class="cp-pill">{{ $activity->name }} <i class="bi bi-arrow-up-right cp-flip" style="font-size:10px;"></i></a>
+                        @else
+                            <span class="cp-pill" style="pointer-events:none;">{{ $activity->name }}</span>
+                        @endif
+                    @endforeach
+                </div>
+            @endif
+
+            @foreach($clubs as $c)
+                <a href="{{ $c->url }}" class="cp-card cp-lift" style="margin-top:{{ $loop->first ? '28px' : '12px' }};padding:20px;display:flex;gap:16px;align-items:center;">
+                    <span style="width:64px;height:64px;flex-shrink:0;display:grid;place-items:center;">
+                        @if($c->logo)<img src="{{ file_url($c->logo) }}" alt="" style="width:100%;height:100%;object-fit:contain;">@else<span class="cp-icon-tile" style="width:64px;height:64px;"><i class="bi bi-building" style="font-size:26px;"></i></span>@endif
+                    </span>
+                    <div style="flex:1;min-width:0;">
+                        <p class="cp-tag cp-red">{{ __('trainer.tp_trains_at') }}</p>
+                        <h3 style="font-weight:700;font-size:18px;">{{ $c->tr('club_name') ?: $c->club_name }}</h3>
+                        @if($c->tr('address'))<p class="cp-muted" style="font-size:14px;">{{ $c->tr('address') }}</p>@endif
+                    </div>
+                    <span class="cp-pill">{{ __('trainer.tp_visit') }} <i class="bi bi-arrow-up-right cp-flip"></i></span>
+                </a>
+            @endforeach
+        </section>
+
+        {{-- ===================== CLASSES ===================== --}}
+        @if($classes->isNotEmpty())
+        <section id="classes" style="margin-bottom:56px;">
+            <p class="cp-tag cp-red">{{ __('trainer.tp_classes_eyebrow') }}</p>
+            <h2 style="font-size:40px;font-weight:700;margin-top:8px;">{{ __('trainer.tp_classes_title') }}</h2>
+            <div class="tp-2" style="margin-top:24px;">
+                @foreach($classes as $cl)
+                    <article class="cp-card cp-lift" style="display:flex;flex-direction:column;">
+                        @if($cl['image'])<div style="height:120px;"><img src="{{ $cl['image'] }}" alt="" class="cp-cover"></div>@endif
+                        <div style="padding:20px;display:flex;flex-direction:column;flex:1;">
+                            <div style="display:flex;justify-content:space-between;gap:10px;">
+                                <span class="cp-tag cp-red">{{ __('trainer.tp_group_class') }}</span>
+                                @if($cl['club'])<span class="cp-muted" style="font-size:12px;">{{ $cl['club'] }}</span>@endif
+                            </div>
+                            <h3 style="font-size:22px;font-weight:700;margin-top:10px;">{{ $cl['title'] }}</h3>
+                            <p class="cp-muted" style="font-size:14px;margin-top:6px;">{{ collect([$cl['package'] !== $cl['title'] ? $cl['package'] : null, $cl['days'], $cl['time']])->filter()->implode(' · ') }}</p>
+                            @if($cl['club_url'])
+                                <div style="margin-top:auto;padding-top:18px;"><a href="{{ $cl['club_url'] }}" class="cp-cta">{{ __('clubs::page.join') }} <i class="bi bi-arrow-up-right cp-flip"></i></a></div>
+                            @endif
+                        </div>
+                    </article>
+                @endforeach
+            </div>
+
+            <h3 style="font-size:24px;font-weight:700;margin-top:36px;">{{ __('trainer.trainer_show_weekly_schedule') }}</h3>
+            <div class="cp-scroll-x" style="display:flex;gap:8px;padding:16px 0;">
+                @foreach($week as $d)
+                    <button type="button" class="cp-pill" :class="day === '{{ $d['key'] }}' && 'is-on'" @click="day = '{{ $d['key'] }}'">{{ $d['label'] }}</button>
+                @endforeach
+            </div>
+            @foreach($week as $d)
+                <div x-show="day === '{{ $d['key'] }}'" @if($d['key'] !== $today) x-cloak @endif class="cp-fade">
+                    @forelse($d['slots'] as $s)
+                        <div class="cp-card" style="padding:16px 18px;margin-bottom:8px;display:flex;justify-content:space-between;gap:12px;align-items:center;">
+                            <div style="min-width:0;">
+                                <b>{{ $s['activity_name'] }}</b>
+                                <p class="cp-muted" style="font-size:12px;">{{ collect([$s['club_name'], $s['facility_name']])->filter()->implode(' · ') }}</p>
+                            </div>
+                            <b style="font-size:14px;white-space:nowrap;">{{ \Carbon\Carbon::parse($s['start'])->format('g:i A') }} – {{ \Carbon\Carbon::parse($s['end'])->format('g:i A') }}</b>
+                        </div>
+                    @empty
+                        <div class="cp-card cp-muted" style="padding:24px;text-align:center;">{{ __('trainer.trainer_show_no_classes_day') }}</div>
+                    @endforelse
+                </div>
+            @endforeach
+        </section>
+        @endif
+
+        {{-- ===================== SKILLS ===================== --}}
+        @if($skillCards->isNotEmpty())
+        <section id="skills" style="margin-bottom:56px;">
+            <p class="cp-tag cp-red">{{ __('trainer.tp_skills_eyebrow') }}</p>
+            <h2 style="font-size:40px;font-weight:700;margin-top:8px;">{{ __('trainer.tp_skills_title') }}</h2>
+            <div class="tp-3" style="margin-top:24px;">
+                @foreach($skillCards as $sk)
+                    @php $tag = $sk['uuid'] ? 'a' : 'div'; @endphp
+                    <{{ $tag }} @if($sk['uuid']) href="{{ route('activity.show', $sk['uuid']) }}" @endif class="cp-card {{ $sk['uuid'] ? 'cp-lift' : '' }}" style="padding:16px;display:block;">
+                        <span class="cp-icon-tile" style="width:44px;height:44px;border-radius:14px;overflow:hidden;">
+                            @if($sk['image'])<img src="{{ $sk['image'] }}" alt="" class="cp-cover">@else<i class="bi bi-patch-check-fill" style="font-size:20px;"></i>@endif
+                        </span>
+                        <h4 style="font-weight:700;margin-top:12px;">{{ $sk['name'] }}</h4>
+                        @if($sk['years'])<p class="cp-muted" style="font-size:12px;margin-top:4px;"><i class="bi bi-hourglass-split"></i> {{ $sk['years'] }}</p>@endif
+                    </{{ $tag }}>
+                @endforeach
+            </div>
+        </section>
+        @endif
+
+        {{-- ===================== REVIEWS ===================== --}}
+        <section id="reviews" style="margin-bottom:24px;">
+            <p class="cp-tag cp-red">{{ __('trainer.tp_reviews_eyebrow') }}</p>
+            <h2 style="font-size:40px;font-weight:700;margin-top:8px;">{{ __('trainer.tp_reviews_title') }}</h2>
+
+            @if(! empty($reactionTotal))
+                <div class="cp-card" style="padding:20px;margin-top:24px;">
+                    <p class="cp-tag cp-muted">{{ __('trainer.trainer_show_class_reactions') }} · {{ $reactionTotal }}</p>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;">
+                        @foreach($reactions as $emoji => $cnt)
+                            <span class="cp-pill" style="pointer-events:none;"><span style="font-size:18px;line-height:1;">{{ $emoji }}</span><b>{{ $cnt }}</b></span>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
+            @if($reviews->count())
+                <div class="tp-2" style="margin-top:16px;">
+                    @foreach($reviews as $review)
+                        <figure class="cp-card" style="margin:0;padding:20px;">
+                            <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+                                <figcaption style="display:flex;gap:10px;align-items:center;min-width:0;">
+                                    <span class="cp-round" style="background:var(--cp-accent);color:#fff;font-weight:800;">{{ mb_strtoupper(mb_substr($review->reviewer->full_name ?? 'A', 0, 1, 'UTF-8'), 'UTF-8') }}</span>
+                                    <span style="min-width:0;"><b style="display:block;font-size:14px;">{{ $review->reviewer->full_name ?? __('trainer.trainer_show_anonymous') }}</b><small class="cp-muted">{{ $review->formatted_date }}</small></span>
+                                </figcaption>
+                                <span style="color:#f59e0b;font-size:12px;white-space:nowrap;">@for($i = 1; $i <= 5; $i++)<i class="bi {{ $i <= $review->rating ? 'bi-star-fill' : 'bi-star' }}"></i>@endfor</span>
+                            </div>
+                            @if($review->comment)<blockquote class="cp-muted" style="margin:12px 0 0;line-height:1.65;font-size:14px;">{{ $review->comment }}</blockquote>@endif
+                        </figure>
+                    @endforeach
+                </div>
+            @else
+                <div class="cp-card" style="padding:36px;text-align:center;margin-top:24px;">
+                    <span class="cp-icon-tile" style="width:60px;height:60px;margin:0 auto;"><i class="bi bi-stars" style="font-size:26px;"></i></span>
+                    <h3 style="font-size:22px;font-weight:700;margin-top:14px;">{{ __('trainer.tp_no_reviews_title') }}</h3>
+                    <p class="cp-muted" style="margin-top:6px;">{{ __('trainer.tp_no_reviews_sub', ['name' => $firstName]) }}</p>
+                </div>
+            @endif
+        </section>
+    </div>
+
+    {{-- ===================== ASIDE ===================== --}}
+    <aside class="tp-aside">
+        <div style="position:sticky;top:76px;display:grid;gap:16px;">
+            <div class="cp-card" style="padding:24px;">
+                <p class="cp-tag cp-red">{{ __('trainer.tp_aside_eyebrow') }}</p>
+                <h3 style="font-size:28px;font-weight:700;margin-top:10px;line-height:1.1;">{{ __('trainer.tp_aside_title', ['name' => $firstName]) }}</h3>
+                <p class="cp-muted" style="margin-top:8px;font-size:14px;">{{ trans_choice('trainer.tp_aside_classes', $classes->count(), ['n' => $classes->count()]) }}</p>
+                @if($classes->isNotEmpty())<button type="button" class="cp-cta" style="width:100%;margin-top:18px;" @click="go('classes')">{{ __('trainer.tp_explore_classes') }}</button>@endif
+                @if($canMessage)
+                    <form method="POST" action="{{ route('messages.start', $user) }}" style="margin:8px 0 0;">
+                        @csrf
+                        <button type="submit" class="cp-pill" style="width:100%;"><i class="bi bi-chat-dots"></i>{{ __('trainer.tp_message', ['name' => $firstName]) }}</button>
+                    </form>
+                @endif
+            </div>
+
+            @if($trainerPhone || $trainerEmail || $trainerSocials->isNotEmpty())
+                <div class="cp-card" style="padding:20px;" id="trainer-contact">
+                    <p class="cp-tag cp-muted">{{ __('trainer.trainer_show_contact_information') }}</p>
+                    <div style="display:grid;gap:10px;margin-top:12px;font-size:14px;">
+                        @if($trainerPhone)<a href="tel:{{ preg_replace('/[^0-9+]/', '', $trainerPhone) }}" style="display:flex;gap:10px;align-items:center;"><span class="cp-icon-tile" style="width:36px;height:36px;border-radius:12px;"><i class="bi bi-telephone-fill"></i></span>{{ $trainerPhone }}</a>@endif
+                        @if($trainerEmail)<a href="mailto:{{ $trainerEmail }}" style="display:flex;gap:10px;align-items:center;word-break:break-all;"><span class="cp-icon-tile" style="width:36px;height:36px;border-radius:12px;"><i class="bi bi-envelope-fill"></i></span>{{ $trainerEmail }}</a>@endif
+                    </div>
+                    @if($trainerSocials->isNotEmpty())
+                        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--cp-line);">
+                            @foreach($trainerSocials as $platform => $url)
+                                <a href="{{ $url }}" target="_blank" rel="noopener noreferrer" class="cp-round" style="border:1px solid var(--cp-line);" aria-label="{{ ucfirst($platform) }}"><i class="bi {{ $socialIcons[$platform] }}"></i></a>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+            @endif
+        </div>
+    </aside>
+</div>
+
+{{-- ===================== CLOSING CTA ===================== --}}
+<div class="tp-shell" style="padding-bottom:64px;">
+    <div style="border-radius:28px;padding:48px;color:#fff;background:var(--cp-accent);position:relative;overflow:hidden;">
+        <p class="cp-tag">{{ __('clubs::page.cta_eyebrow') }}</p>
+        <h2 style="font-size:clamp(40px,5vw,64px);font-weight:700;margin-top:14px;line-height:1;">{{ __('trainer.tp_cta_title', ['name' => $firstName]) }}</h2>
+        <p style="margin-top:12px;">{{ __('trainer.tp_cta_sub') }}</p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:24px;">
+            @if($classes->isNotEmpty())<button type="button" class="cp-cta cp-cta-white" @click="go('classes')">{{ __('trainer.tp_explore_classes') }} <i class="bi bi-arrow-up-right cp-flip"></i></button>@endif
+            @if($club)<a href="{{ $club->url }}" class="cp-ghost">{{ __('trainer.tp_visit_club') }}</a>@endif
+        </div>
+    </div>
+</div>
+</main>
 </div>
 @endsection

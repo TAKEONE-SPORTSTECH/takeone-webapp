@@ -13,793 +13,535 @@
 @endsection
 @endif
 
+{{--
+    The club's front page — MOBILE (and the Android app, which is this page in a
+    WebView). Design source: drafts/Club Pages & Design/Club/emperor-academy-mobile-
+    complete.html. Desktop twin: clubs::public.show. Both read App\Clubs\Support\ClubFrontPage,
+    page-style, page-runtime and page-overlays.
+
+    Real data only: a section whose data is empty is not drawn.
+--}}
 @section('content')
+@php extract(\App\Clubs\Support\ClubFrontPage::data(compact('club', 'achievementsAll', 'reviews', 'likedPostIds', 'joinedEventIds'))); @endphp
+@include('clubs::public.partials.page-style')
 @php
-    $instructorsMap = $club->instructors->mapWithKeys(function ($instructor) {
-        return [$instructor->id => [
-            'id' => $instructor->id, 'user_id' => $instructor->user_id,
-            'name' => $instructor->user?->full_name ?? $instructor->user?->name ?? 'Unknown',
-            'image' => $instructor->user?->profile_picture ?? null,
-        ]];
-    })->toArray();
-
-    // Public directory page per activity name — one query for the whole page.
-    $activityLinks = \App\Platform\Models\ActivityCatalog::linksForNames(
-        $club->packages->flatMap(fn ($p) => $p->activities ?? [])->pluck('name')
-    );
-
-    $cover = $club->cover_image ? file_url($club->cover_image)
-           : ($club->galleryImages->first() ? file_url($club->galleryImages->first()->image_path) : null);
-
-    // Weekly class slots from all packages.
-    $slots = collect();
-    foreach ($club->packages as $pkg) {
-        foreach ($pkg->packageActivities as $pa) {
-            $sched = is_string($pa->schedule) ? json_decode($pa->schedule, true) : $pa->schedule;
-            foreach ((is_array($sched) ? $sched : []) as $s) {
-                $slots->push([
-                    'day' => ucfirst($s['day'] ?? ''), 'start' => $s['start_time'] ?? null, 'end' => $s['end_time'] ?? null,
-                    'facility' => $s['facility_name'] ?? null, 'package' => $pkg->name,
-                    'instructor' => $pa->instructor?->user?->full_name ?? null,
-                ]);
-            }
-        }
-    }
-    $dayOrder = ['Saturday'=>0,'Sunday'=>1,'Monday'=>2,'Tuesday'=>3,'Wednesday'=>4,'Thursday'=>5,'Friday'=>6];
-    $slotsByDay = $slots->groupBy('day')->sortBy(fn($v, $k) => $dayOrder[$k] ?? 9);
+    $cpMobile = true;
+    $cpHasSchedule = $cpWeek->contains(fn ($d) => count($d['slots']));
+    $cpTabs = collect([
+        'packages' => [__('clubs::page.tab_packages'), true],
+        'overview' => [__('clubs::page.tab_overview'), true],
+        'schedule' => [__('clubs::page.nav_schedule'), $cpHasSchedule],
+        'events' => [__('clubs::page.nav_events'), $cpEvents->isNotEmpty()],
+        'offers' => [__('clubs::page.tab_offers'), $cpPerks->isNotEmpty()],
+        'shop' => [__('clubs::page.nav_shop'), $cpProducts->isNotEmpty()],
+        'reviews' => [__('clubs::page.nav_reviews'), true],
+    ])->filter(fn ($t) => $t[1]);
 @endphp
-<div x-data="{ tab: window.location.hash === '#packages' ? 'packages' : 'about' }" class="min-h-screen bg-background pb-24">
+<style>
+    .cpm { max-width: 520px; margin: 0 auto; padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+    .cpm section[id] { scroll-margin-top: 56px; }
+    .cpm-top { background: #171719; color: #fff; padding: 16px 20px 12px; display: flex; align-items: center; gap: 10px; }
+    .cpm-top .cp-round { width: 40px; height: 40px; border: 1px solid rgba(255,255,255,.3); color: #fff; }
+    .cpm-hero { height: 385px; position: relative; color: #fff; background-color: #121214; background-size: cover; background-position: center; }
+    .cpm-hero-shade { position: absolute; inset: 0; background: linear-gradient(0deg, #121214 0%, rgba(18,18,20,.31) 58%, rgba(18,18,20,.06) 100%); }
+    .cpm-title { font-size: 52px; line-height: .9; font-weight: 700; letter-spacing: -.06em; text-transform: uppercase; overflow-wrap: anywhere; }
+    .cpm-h { font-size: 40px; line-height: 1; font-weight: 700; text-transform: uppercase; letter-spacing: -.05em; }
+    .cpm-tabs { position: sticky; top: 0; z-index: 30; background: var(--cp-card); border-bottom: 1px solid var(--cp-line); display: flex; }
+    .cpm-tabs button { font-size: 13px; font-weight: 800; padding: 15px 14px; white-space: nowrap; border-bottom: 3px solid transparent !important; color: var(--cp-ink); }
+    .cpm-tabs button.is-on { border-color: var(--cp-accent) !important; color: var(--cp-accent); }
+    .cpm-pad { padding-inline: 20px; }
+    .cpm-dark { background: #1b1b1f; color: #fff; }
+    .cpm-bottom { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: min(520px, 100%); z-index: 50; background: var(--cp-card);
+                  border-top: 1px solid var(--cp-line); padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); display: flex; justify-content: space-between; }
+    .cpm-bottom button { font-size: 10px; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 56px; min-height: 44px; justify-content: center; color: var(--cp-muted); }
+    .cpm-bottom button i { font-size: 20px; }
+    .cpm-bottom button.is-join { color: var(--cp-accent); }
+    .cpm .cp-media { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .cpm .cp-media > button { min-height: 130px; }
+    .cpm .cp-media > button:first-child { grid-column: span 2; grid-row: auto; min-height: 210px; }
+    .cpm-tile { width: 220px; }
+</style>
 
-    {{-- ===== Hero (16:9) ===== --}}
-    <div class="relative aspect-video">
-        @if($cover)
-            <img src="{{ $cover }}" alt="" class="absolute inset-0 w-full h-full object-cover">
-        @else
-            <div class="absolute inset-0 m-hero"></div>
-        @endif
-        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/20"></div>
+<div class="cp" x-data="clubPage" :class="dark && 'cp-dark'" id="clubPage">
+<script type="application/json" id="cp-json">@json($cpJson)</script>
+<div class="cpm">
 
-        {{-- Back --}}
-        <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ route('clubs.explore') }}')"
-                class="m-press absolute top-3 start-3 inline-flex items-center w-10 h-10 justify-center rounded-full bg-black/35 backdrop-blur text-white text-sm font-semibold" aria-label="{{ __('shared.back') }}">
-            <i class="bi bi-chevron-left"></i>
-        </button>
+{{-- ===================== TOP BAR ===================== --}}
+<header class="cpm-top">
+    <button type="button" class="cp-round" onclick="history.length > 1 ? history.back() : (window.location.href='{{ route('clubs.explore') }}')" aria-label="{{ __('clubs::page.back_explore') }}">
+        <i class="bi bi-chevron-left rtl:rotate-180"></i>
+    </button>
+    <div style="flex:1;min-width:0;">
+        @if($cpPlace)<p style="font-size:10px;letter-spacing:.2em;color:rgba(255,255,255,.5);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $cpPlace }}</p>@endif
+        <b class="cp-display" style="font-size:20px;text-transform:uppercase;display:block;line-height:1.1;">{{ $cpNameHead }} @if($cpNameTail)<span class="cp-red" style="filter:brightness(1.25);">{{ $cpNameTail }}</span>@endif</b>
+    </div>
+    <button type="button" class="cp-round" @click="toggleDark()" :aria-pressed="dark" aria-label="{{ __('clubs::page.theme') }}"><i class="bi" :class="dark ? 'bi-sun' : 'bi-moon-stars'"></i></button>
+    <form method="POST" action="{{ route('locale.set') }}" style="margin:0;">
+        @csrf @method('PUT')
+        <input type="hidden" name="locale" value="{{ $cpNextLocale }}">
+        <button type="submit" class="cp-round" style="font-size:12px;font-weight:800;" aria-label="{{ $cpNextLocale === 'ar' ? 'العربية' : 'English' }}">{{ $cpNextLocale === 'ar' ? 'ع' : 'EN' }}</button>
+    </form>
+    <button type="button" class="cp-round" @click="share()" aria-label="{{ __('clubs::page.share') }}"><i class="bi bi-arrow-up-right cp-flip"></i></button>
+</header>
 
-        {{-- One QR button → modal with a Register / Club page tab switcher --}}
-        <div class="absolute top-3 right-3 z-10">
-            <x-qr-code
-                label=""
-                icon="bi-qr-code"
-                button-class="w-10 h-10 rounded-full bg-black/35 backdrop-blur text-white flex items-center justify-center"
-                :targets="[
-                    [
-                        'url'     => \App\Http\Controllers\QrController::clubRegisterUrl($club),
-                        'tab'     => 'Register',
-                        'title'   => $club->tr('club_name') . ' — Registration',
-                        'caption' => 'Scan to register & join this club',
-                        'filename'=> 'qr-' . $club->slug . '-register',
-                        'poster'  => auth()->check() ? route('qr.club.register', $club) : null,
-                    ],
-                    [
-                        'url'     => \App\Http\Controllers\QrController::clubPageUrl($club),
-                        'tab'     => 'Club page',
-                        'title'   => $club->tr('club_name') . ' — Club page',
-                        'caption' => 'Scan to view this club',
-                        'filename'=> 'qr-' . $club->slug . '-page',
-                        'poster'  => auth()->check() ? route('qr.club.page', $club) : null,
-                    ],
-                ]" />
-        </div>
-
-        {{-- Club identity --}}
-        <div class="absolute bottom-0 inset-x-0 p-4 text-white">
-            <div class="flex items-end gap-3">
-                @if($club->logo)
-                    <span class="w-16 h-16 flex-shrink-0">
-                        <img src="{{ file_url($club->logo) }}" alt="" class="w-full h-full object-contain">
-                    </span>
-                @endif
-                <div class="min-w-0">
-                    <h1 class="text-xl font-extrabold uppercase leading-tight truncate">{{ $club->tr('club_name') }}</h1>
-                    @if($club->tr('address'))
-                        <p class="text-[12px] text-white/80 truncate mt-0.5"><i class="bi bi-geo-alt-fill text-primary"></i> {{ $club->tr('address') }}</p>
-                    @endif
-                </div>
+{{-- ===================== HERO ===================== --}}
+<div class="cpm-hero" style="{{ $cpCover ? "background-image:url('".e($cpCover)."')" : 'background:linear-gradient(160deg, '.$cpAccent.', #121214 70%)' }}">
+    <div class="cpm-hero-shade"></div>
+    @if($cpSports->isNotEmpty())
+        <span class="cp-tag" style="position:absolute;top:20px;inset-inline-start:20px;background:var(--cp-accent);padding:8px 12px;border-radius:99px;font-size:10px;"><i class="bi bi-check-lg"></i> {{ $cpSports->first() }}</span>
+    @endif
+    @if($canManage)
+        <a href="{{ route('admin.club.details', $club->slug) }}" class="cp-badge" style="position:absolute;top:20px;inset-inline-end:20px;background:rgba(255,255,255,.92);color:#171719;padding:8px 12px;"><i class="bi bi-pencil-square"></i>{{ __('clubs::page.edit_club') }}</a>
+    @endif
+    <div style="position:absolute;bottom:20px;inset-inline:20px;">
+        <p class="cp-tag" style="color:rgba(255,255,255,.8);margin-bottom:12px;">{{ collect([$cpSports->take(2)->implode(' · ') ?: null, $cpPlace])->filter()->implode(' · ') }}</p>
+        <h1 class="cpm-title cp-display">
+            @if(count($cpHeadline))
+                @foreach($cpHeadline as $i => $line)
+                    <span @if($loop->last && $loop->count > 1) class="cp-red" style="filter:brightness(1.25);" @endif>{{ $line }}</span>@if(! $loop->last)<br>@endif
+                @endforeach
+            @else
+                {{ $cpName }}<span class="cp-red">.</span>
+            @endif
+        </h1>
+        <div style="margin-top:20px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;">
+            <div style="min-width:0;">
+                @if(count($cpHeadline))<p style="font-weight:700;font-size:19px;">{{ $cpName }}</p>@endif
+                <p style="color:rgba(255,255,255,.7);font-size:12px;margin-top:4px;">{{ collect([$cpSports->take(2)->implode(' & ') ?: null, $cpFrom ? __('clubs::page.from_price', ['price' => $cpFrom, 'currency' => $cpCurrency]).' '.__('clubs::page.per_month') : null])->filter()->implode(' · ') }}</p>
             </div>
-            {{-- stat chips --}}
-            <div class="flex gap-2 mt-3 overflow-x-auto scrollbar-hide">
-                <span class="flex-shrink-0 px-3 py-1 rounded-full bg-white/15 backdrop-blur text-[12px] font-semibold"><i class="bi bi-star-fill text-amber-400"></i> {{ number_format($averageRating, 1) }}</span>
-                <span class="flex-shrink-0 px-3 py-1 rounded-full bg-white/15 backdrop-blur text-[12px] font-semibold"><i class="bi bi-people-fill"></i> {{ $activeMembersCount }}{{ __('clubs::club.members_suffix') }}</span>
-                <span class="flex-shrink-0 px-3 py-1 rounded-full bg-white/15 backdrop-blur text-[12px] font-semibold"><i class="bi bi-trophy-fill"></i> {{ $distinctClassCount }}{{ __('clubs::club.classes_suffix') }}</span>
-                @if($club->established_date)
-                    <span class="flex-shrink-0 px-3 py-1 rounded-full bg-white/15 backdrop-blur text-[12px] font-semibold"><i class="bi bi-fire"></i> {{ __('clubs::club.since') }} {{ \Carbon\Carbon::parse($club->established_date)->format('Y') }}</span>
-                @endif
-            </div>
+            @if($cpLogo)<span style="width:56px;height:56px;flex-shrink:0;"><img src="{{ $cpLogo }}" alt="" style="width:100%;height:100%;object-fit:contain;"></span>@endif
         </div>
     </div>
+</div>
 
-    {{-- ===== Social strip ===== --}}
-    @php $contactPhone = $club->contactPhone(); @endphp
-    @if($club->socialLinks->isNotEmpty() || $contactPhone)
-        <div class="flex items-center justify-evenly gap-2 px-4 py-3 bg-white border-b border-border">
-            @foreach($club->socialLinks as $link)
-                @php
-                    $p = strtolower($link->platform); $icon = 'bi-link-45deg';
-                    foreach (['whatsapp'=>'bi-whatsapp','instagram'=>'bi-instagram','facebook'=>'bi-facebook','youtube'=>'bi-youtube','tiktok'=>'bi-tiktok','linkedin'=>'bi-linkedin','snapchat'=>'bi-snapchat','telegram'=>'bi-telegram'] as $k=>$v) { if (str_contains($p,$k)) { $icon=$v; break; } }
-                @endphp
-                <a href="{{ $link->url }}" target="_blank" class="m-press w-10 h-10 rounded-full bg-muted text-primary flex items-center justify-center flex-shrink-0"><i class="bi {{ $icon }}"></i></a>
+{{-- ===================== STATS + JOIN ===================== --}}
+<div style="background:#171719;color:#fff;padding:8px 20px 24px;">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:16px 0;border-bottom:1px solid rgba(255,255,255,.15);">
+        <div><b class="cp-display" style="font-size:30px;">{{ number_format($activeMembersCount) }}</b><p style="font-size:10px;color:rgba(255,255,255,.5);letter-spacing:.08em;text-transform:uppercase;">{{ __('clubs::page.stat_members') }}</p></div>
+        <div><b class="cp-display" style="font-size:30px;">{{ str_pad($cpCoachesCount, 2, '0', STR_PAD_LEFT) }}</b><p style="font-size:10px;color:rgba(255,255,255,.5);letter-spacing:.08em;text-transform:uppercase;">{{ __('clubs::page.stat_coaches') }}</p></div>
+        <div><b class="cp-display" style="font-size:30px;">{{ str_pad($cpMedals, 2, '0', STR_PAD_LEFT) }}</b><p style="font-size:10px;color:rgba(255,255,255,.5);letter-spacing:.08em;text-transform:uppercase;">{{ __('clubs::page.stat_medals') }}</p></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;">
+        <button type="button" class="cp-cta" style="flex:1;" @click="join()">{{ __('clubs::page.join_club') }} <i class="bi bi-arrow-up-right cp-flip"></i></button>
+        @if($cpWhatsapp)<a href="{{ $cpWhatsapp }}" target="_blank" rel="noopener" class="cp-round" style="width:48px;height:48px;border:1px solid rgba(255,255,255,.3);" aria-label="{{ __('clubs::page.whatsapp') }}"><i class="bi bi-whatsapp"></i></a>@endif
+        @if($cpTel)<a href="{{ $cpTel }}" class="cp-round" style="width:48px;height:48px;border:1px solid rgba(255,255,255,.3);" aria-label="{{ __('clubs::page.call') }}"><i class="bi bi-telephone"></i></a>@endif
+        <button type="button" class="cp-round" style="width:48px;height:48px;border:1px solid rgba(255,255,255,.3);" @click="share()" aria-label="{{ __('clubs::page.share') }}"><i class="bi bi-share"></i></button>
+    </div>
+</div>
+
+{{-- ===================== SECTION TABS ===================== --}}
+<nav class="cpm-tabs cp-scroll-x" aria-label="{{ $cpName }}">
+    @foreach($cpTabs as $key => $t)
+        <button type="button" :class="tab === '{{ $key }}' && 'is-on'" @click="go('{{ $key }}')">{{ $t[0] }}</button>
+    @endforeach
+</nav>
+
+<main>
+{{-- ===================== YOUR MOVE ===================== --}}
+<section class="cp-fade" style="margin:40px 20px 0;background:var(--cp-accent);color:#fff;border-radius:28px;padding:28px;">
+    <p class="cp-tag">{{ __('clubs::page.cta_eyebrow_m') }}</p>
+    <h2 style="font-size:48px;font-weight:700;margin-top:16px;line-height:1;text-transform:uppercase;">{!! nl2br(e(__('clubs::page.cta_title_m'))) !!}</h2>
+    @if($cpFrom)<p style="margin-top:20px;">{{ __('clubs::page.cta_join_m', ['club' => $cpName, 'price' => $cpFrom, 'currency' => $cpCurrency]) }}</p>@endif
+    <button type="button" class="cp-cta cp-cta-white" style="width:100%;margin-top:20px;" @click="join()">{{ __('clubs::page.become_member') }} <i class="bi bi-arrow-up-right cp-flip"></i></button>
+    <div style="display:flex;justify-content:center;margin-top:14px;">
+        <x-qr-code label="{{ __('clubs::page.registration_qr') }}" icon="bi-qr-code" button-class="text-xs text-white/70 inline-flex items-center gap-1.5" :targets="$cpQrTargets" />
+    </div>
+</section>
+
+{{-- ===================== WHO IS TRAINING ===================== --}}
+@if($cpWho->count() > 1)
+<section class="cpm-pad" style="padding-top:40px;">
+    <p class="cp-tag cp-red">{{ __('clubs::page.who_eyebrow') }}</p>
+    <h2 style="font-size:32px;font-weight:700;margin-top:10px;line-height:1.05;">{{ __('clubs::page.who_title') }}</h2>
+    <p class="cp-muted" style="margin-top:12px;font-size:15px;line-height:1.55;">{{ __('clubs::page.who_sub') }}</p>
+    <div style="display:grid;grid-template-columns:repeat({{ $cpWho->count() }},1fr);gap:8px;margin-top:24px;">
+        @foreach($cpWho as $w)
+            <button type="button" class="cp-card" style="padding:14px 8px;text-align:center;" @click="pick('{{ $w['cat'] }}')">
+                <span class="cp-icon-tile" style="width:48px;height:48px;margin:0 auto 8px;border-radius:16px;"><i class="bi {{ $w['icon'] }}" style="font-size:22px;"></i></span>
+                <b style="font-size:14px;display:block;">{{ $w['label'] }}</b>
+                <p class="cp-muted" style="font-size:11px;margin-top:2px;">{{ $w['sub'] }}</p>
+            </button>
+        @endforeach
+    </div>
+</section>
+@endif
+
+{{-- ===================== PROGRAMMES ===================== --}}
+<section class="cpm-pad" id="packages" style="padding-top:40px;">
+    <p class="cp-tag cp-red">{{ __('clubs::page.packages_eyebrow_m') }}</p>
+    <h2 class="cpm-h cp-display" style="margin-top:8px;">{!! nl2br(e(__('clubs::page.packages_title_m'))) !!}</h2>
+    <p class="cp-muted" style="font-size:14px;margin-top:12px;">{{ __('clubs::page.packages_sub_m') }}</p>
+    @if($cpPackages->isNotEmpty())
+        @if($cpCats->count() > 1)
+            <div class="cp-scroll-x" style="display:flex;gap:8px;margin-top:20px;margin-inline-end:-20px;padding-bottom:4px;">
+                <button type="button" class="cp-pill" :class="cat === 'all' && 'is-on'" @click="cat = 'all'">{{ __('clubs::page.cat_all') }}</button>
+                @foreach($cpCats as $c)
+                    <button type="button" class="cp-pill" :class="cat === '{{ $c }}' && 'is-on'" @click="cat = '{{ $c }}'">{{ __('clubs::page.cat_'.$c) }}</button>
+                @endforeach
+            </div>
+        @endif
+        @if(auth()->check() && $cpPackages->contains(fn ($p) => ! $p['applicable']))
+            <button type="button" style="margin-top:18px;display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;" @click="eligibleOnly = !eligibleOnly" :aria-pressed="eligibleOnly">
+                <i class="bi" :class="eligibleOnly ? 'bi-check-square-fill cp-red' : 'bi-square'" style="font-size:18px;"></i>{{ __('clubs::page.eligible_family_m') }}
+            </button>
+        @endif
+        <div style="display:grid;gap:12px;margin-top:20px;">
+            @foreach($cpPackages as $p)
+                @include('clubs::public.partials.page-package-card')
             @endforeach
-            @if($contactPhone)
-                <a href="tel:{{ $contactPhone['code'].$contactPhone['number'] }}" class="m-press w-10 h-10 rounded-full bg-muted text-primary flex items-center justify-center flex-shrink-0"><i class="bi bi-telephone"></i></a>
-            @endif
+        </div>
+    @else
+        <div class="cp-card" style="padding:40px 20px;text-align:center;margin-top:20px;">
+            <span class="cp-icon-tile" style="width:56px;height:56px;margin:0 auto;"><i class="bi bi-box" style="font-size:24px;"></i></span>
+            <p style="font-weight:700;margin-top:12px;">{{ __('clubs::club.no_packages') }}</p>
+            <p class="cp-muted" style="font-size:13px;margin-top:4px;">{{ __('clubs::club.check_back_later') }}</p>
+        </div>
+    @endif
+</section>
+
+{{-- ===================== THE CLUB ===================== --}}
+<section id="overview" style="padding-top:40px;">
+    <div class="cpm-pad">
+        <p class="cp-tag cp-red">{{ __('clubs::page.about_eyebrow_m', ['club' => mb_strtoupper($cpName)]) }}</p>
+        <h2 class="cpm-h cp-display" style="margin-top:10px;">{!! nl2br(e(__('clubs::page.about_title_m'))) !!}</h2>
+        @if($club->tr('description'))
+            <div class="cp-muted" style="font-size:14px;line-height:1.65;margin-top:12px;"><x-prose-text :text="$club->tr('description')" /></div>
+        @endif
+        @if($cpSocial->isNotEmpty())
+            <div class="cp-scroll-x" style="display:flex;gap:8px;margin-top:16px;">
+                @foreach($cpSocial as $s)
+                    <a href="{{ $s['url'] }}" target="_blank" rel="noopener" class="cp-pill" aria-label="{{ $s['label'] }}"><i class="bi {{ $s['icon'] }}"></i>{{ $s['label'] }}</a>
+                @endforeach
+            </div>
+        @endif
+    </div>
+
+    @if($cpHome || $cpAddress)
+        <div class="cpm-pad" style="margin-top:24px;">
+            <div class="cp-card">
+                <div style="height:160px;position:relative;background:linear-gradient(135deg, {{ $cpAccent }}, #171719);">
+                    @if($cpHomeImage ?: $cpCover)<img src="{{ $cpHomeImage ?: $cpCover }}" alt="" class="cp-cover">@endif
+                    @if($cpHome?->is_available)<span class="cp-badge" style="position:absolute;top:12px;inset-inline-start:12px;background:#ecfdf3;color:#166534;">● {{ __('clubs::page.hall_available') }}</span>@endif
+                </div>
+                <div style="padding:16px;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+                    <div style="min-width:0;">
+                        <p class="cp-tag cp-red">{{ __('clubs::page.train_here') }}</p>
+                        <h3 style="font-weight:700;font-size:18px;">{{ $cpHome?->tr('name') ?: $cpName }}</h3>
+                        @if($cpHome?->tr('address') ?: $cpAddress)<p class="cp-muted" style="font-size:12px;">{{ $cpHome?->tr('address') ?: $cpAddress }}</p>@endif
+                    </div>
+                    @if($cpMapsUrl)<a href="{{ $cpMapsUrl }}" target="_blank" rel="noopener" class="cp-pill"><i class="bi bi-geo-alt"></i>{{ __('clubs::page.map') }}</a>@endif
+                </div>
+            </div>
         </div>
     @endif
 
-    {{-- ===== Tabs — all five share the width so nothing hides off-screen.
-         A hidden tab is a tab nobody taps; long labels shrink their own text
-         instead of pushing the rail into a horizontal scroll. ===== --}}
-    <div class="sticky top-0 z-30 bg-white border-b border-border">
-        <div class="flex w-full">
-            @foreach(['about'=>__('clubs::club.tab_about'),'packages'=>__('clubs::club.tab_packages'),'schedule'=>__('clubs::club.tab_schedule'),'events'=>__('clubs::club.tab_events'),'reviews'=>__('clubs::club.tab_reviews')] as $key => $label)
-                <button type="button" @click="tab='{{ $key }}'"
-                        class="m-press relative flex-1 min-w-0 px-1 py-3 text-[13px] font-semibold transition-colors"
-                        :class="tab==='{{ $key }}' ? 'text-primary' : 'text-muted-foreground'">
-                    <span class="block truncate">{{ $label }}</span>
-                    <span x-show="tab==='{{ $key }}'" class="absolute bottom-0 inset-x-3 h-0.5 bg-primary rounded-full"></span>
-                </button>
-            @endforeach
+    @if($cpCoaches->isNotEmpty())
+        <div style="margin-top:36px;">
+            <div class="cpm-pad" style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px;">
+                <h2 style="font-size:30px;font-weight:700;">{{ __('clubs::page.coaches_title_m') }}</h2>
+                <span class="cp-tag cp-red" style="text-align:end;">{{ __('clubs::page.coaches_aside_m') }}</span>
+            </div>
+            <div class="cp-scroll-x" style="display:flex;gap:12px;padding:16px 20px 4px;">
+                @foreach($cpCoaches as $c)
+                    <a href="{{ $c['url'] }}" class="cp-card cpm-tile" style="padding:16px;display:block;">
+                        <span style="display:flex;justify-content:center;background:var(--cp-sand);border-radius:14px;height:132px;overflow:hidden;">
+                            <span class="cp-portrait" style="height:132px;background:none;">
+                                @if($c['photo'])<img src="{{ $c['photo'] }}" alt="{{ $c['name'] }}">@else<x-gender-avatar :gender="$c['gender']" class="w-full h-full" />@endif
+                            </span>
+                        </span>
+                        <b style="display:block;font-size:16px;line-height:1.2;margin-top:12px;">{{ $c['name'] }}</b>
+                        <span class="cp-muted" style="font-size:12px;display:block;">{{ $c['role'] }}</span>
+                        <span class="cp-red" style="font-size:14px;font-weight:700;display:inline-block;margin-top:10px;">{{ __('clubs::page.meet', ['name' => \Illuminate\Support\Str::of($c['name'])->explode(' ')->first()]) }} <i class="bi bi-arrow-up-right cp-flip"></i></span>
+                    </a>
+                @endforeach
+            </div>
         </div>
-    </div>
+    @endif
 
-    <div class="px-4 py-4">
-        {{-- ===== About ===== --}}
-        <div x-show="tab==='about'" x-transition.opacity class="space-y-4">
-            @if($club->tr('description'))
-                <div class="text-center">
-                    <p class="text-[14px] leading-relaxed text-foreground/90 whitespace-pre-line">{{ $club->tr('description') }}</p>
-                </div>
-            @endif
-
-            @if($club->facilities->isNotEmpty())
+    @if($cpAchievements->isNotEmpty())
+        <div class="cpm-dark" style="margin-top:36px;padding:32px 0;" id="medals">
+            <div class="cpm-pad" style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
                 <div>
-                    <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-2">{{ __('clubs::club.facilities') }}</p>
-                    <div class="flex gap-3 overflow-x-auto scrollbar-hide pb-1 snap-x snap-mandatory">
-                        @foreach($club->facilities as $f)
-                            @php
-                                $facImages = collect($f->images ?? [])->map(fn($p) => file_url($p))->values()->toArray();
-                                if (empty($facImages) && $f->photo) $facImages = [file_url($f->photo)];
-                                $facTag = $f->maps_url ? 'a' : 'div';
-                            @endphp
-                            <{{ $facTag }} @if($f->maps_url) href="{{ $f->maps_url }}" target="_blank" rel="noopener" @endif
-                                x-data="{ i: 0, n: {{ count($facImages) }} }"
-                                x-init="n > 1 && setInterval(() => i = (i + 1) % n, 3500)"
-                                class="m-press snap-start flex-shrink-0 w-56 aspect-video rounded-2xl overflow-hidden relative shadow-md ring-1 ring-black/5 block">
-                                @if(count($facImages))
-                                    @foreach($facImages as $idx => $img)
-                                        <img src="{{ $img }}" alt="{{ $f->tr('name') }}"
-                                             class="absolute inset-0 w-full h-full object-cover transition-opacity duration-700"
-                                             :class="i === {{ $idx }} ? 'opacity-100' : 'opacity-0'"
-                                             @if($idx === 0) style="opacity:1" @endif>
+                    <p class="cp-tag" style="color:#ff8197;">{{ __('clubs::page.medals_eyebrow_m') }}</p>
+                    <h2 style="font-size:30px;font-weight:700;margin-top:8px;">{{ __('clubs::page.medals_title_m') }}</h2>
+                </div>
+                @if($cpAchievements->count() > 1)
+                    <button type="button" class="cp-round" style="width:44px;height:44px;border:1px solid rgba(255,255,255,.3);" onclick="document.getElementById('cpmAchTrack').scrollBy({left: (document.dir === 'rtl' ? -240 : 240), behavior: 'smooth'})" aria-label="{{ __('clubs::page.next') }}"><i class="bi bi-arrow-right rtl:rotate-180"></i></button>
+                @endif
+            </div>
+            <div class="cp-scroll-x" id="cpmAchTrack" style="display:flex;gap:12px;padding:20px 20px 0;">
+                @foreach($cpAchievements as $i => $a)
+                    <button type="button" style="width:260px;border-radius:18px;overflow:hidden;background:#29292e;text-align:start;" @click="openAch({{ $i }})">
+                        @if($a['image'])
+                            <img src="{{ $a['image'] }}" alt="" style="height:112px;width:100%;object-fit:cover;display:block;">
+                        @else
+                            <div style="height:112px;display:grid;place-items:center;background:linear-gradient(135deg, {{ $cpAccent }}, #29292e);"><i class="bi bi-trophy-fill" style="font-size:36px;opacity:.5;"></i></div>
+                        @endif
+                        <div style="padding:16px;">
+                            @if($a['location'])<p class="cp-tag" style="color:#ff8197;">{{ $a['location'] }}</p>@endif
+                            <h3 style="font-weight:700;font-size:18px;margin-top:6px;line-height:1.15;">{{ $a['short'] }}</h3>
+                            @if($a['date'])<p style="font-size:12px;color:rgba(255,255,255,.5);margin-top:4px;">{{ $a['date'] }}</p>@endif
+                            @if($a['gold'] + $a['silver'] + $a['bronze'])
+                                <p style="margin-top:10px;font-weight:700;font-size:13px;display:flex;gap:10px;flex-wrap:wrap;">
+                                    @foreach([1 => $a['gold'], 2 => $a['silver'], 3 => $a['bronze']] as $place => $count)
+                                        @if($count)<span style="display:inline-flex;align-items:center;gap:4px;"><x-medal-icon :place="$place" :size="13" :numeral="false" /> {{ $count }}</span>@endif
                                     @endforeach
-                                @else
-                                    <div class="absolute inset-0 m-hero flex items-center justify-center">
-                                        <i class="bi bi-building text-white/90 text-4xl"></i>
-                                    </div>
-                                @endif
-
-                                {{-- readability gradient --}}
-                                <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent"></div>
-
-                                {{-- availability + map affordance --}}
-                                <div class="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between">
-                                    @if($f->is_available)
-                                        <span class="px-2 py-0.5 rounded-full bg-green-500/90 text-white text-[10px] font-semibold backdrop-blur-sm"><i class="bi bi-check-circle-fill mr-0.5"></i>{{ __('clubs::club.available') }}</span>
-                                    @else
-                                        <span></span>
-                                    @endif
-                                    @if($f->maps_url)
-                                        <span class="w-7 h-7 rounded-full bg-white/25 backdrop-blur text-white flex items-center justify-center"><i class="bi bi-geo-alt-fill text-xs"></i></span>
-                                    @endif
-                                </div>
-
-                                {{-- image dots --}}
-                                @if(count($facImages) > 1)
-                                    <div class="absolute top-12 left-2.5 flex gap-1">
-                                        @foreach($facImages as $idx => $_)
-                                            <span class="h-1 rounded-full bg-white transition-all duration-300"
-                                                  :class="i === {{ $idx }} ? 'w-4 opacity-90' : 'w-1 opacity-50'"
-                                                  @if($idx === 0) style="width:1rem;opacity:.9" @endif></span>
-                                        @endforeach
-                                    </div>
-                                @endif
-
-                                {{-- title + address --}}
-                                <div class="absolute bottom-0 inset-x-0 p-3 text-white">
-                                    <p class="text-[15px] font-bold leading-tight drop-shadow-sm">{{ $f->tr('name') }}</p>
-                                    @if($f->tr('address'))
-                                        <p class="text-[11px] text-white/85 truncate mt-0.5"><i class="bi bi-geo-alt mr-1"></i>{{ $f->tr('address') }}</p>
-                                    @endif
-                                </div>
-                            </{{ $facTag }}>
-                        @endforeach
-                    </div>
-                </div>
-            @endif
-
-            @if($club->instructors->isNotEmpty())
-                <div>
-                    <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-2">{{ __('clubs::club.coaches') }}</p>
-                    <div class="flex gap-3 overflow-x-auto scrollbar-hide pb-1 snap-x snap-mandatory">
-                        @foreach($club->instructors as $ins)
-                            <a href="{{ route('trainer.show', $ins->user_id) }}"
-                               class="m-press snap-start flex-shrink-0 w-60 flex items-center gap-3 bg-white rounded-2xl shadow-sm border border-gray-100 p-2.5">
-                                <span class="w-14 h-14 flex-shrink-0 rounded-xl bg-muted overflow-hidden flex items-center justify-center">
-                                    @if($ins->user?->profile_picture)<img src="{{ file_url($ins->user->profile_picture) }}" alt="" class="w-[42px] h-14 object-cover">@else<i class="bi bi-person text-2xl text-muted-foreground"></i>@endif
-                                </span>
-                                <span class="flex-1 min-w-0">
-                                    <span class="block text-[13px] font-semibold text-foreground truncate">{{ $ins->user?->full_name ?? __('clubs::club.coach') }}</span>
-                                    @if($ins->tr('role'))<span class="block text-[11px] text-muted-foreground truncate">{{ $ins->tr('role') }}</span>@endif
-                                </span>
-                                <i class="bi bi-chevron-right text-muted-foreground/60 text-sm flex-shrink-0"></i>
-                            </a>
-                        @endforeach
-                    </div>
-                </div>
-            @endif
-
-            {{-- ===== Achievements ===== --}}
-            @if($achievementsAll->isNotEmpty())
-                @php
-                    $achInitial = 5;
-                    $achTotal = $achievementsAll->count();
-                    // Resolve linked-athlete user ids -> uuids for member-profile links (single query).
-                    $athleteIds = $achievementsAll->flatMap(fn ($a) => collect($a->athletes ?? [])->pluck('user_id'))->filter()->unique()->values();
-                    $athleteUuidMap = $athleteIds->isNotEmpty()
-                        ? \App\Members\Models\User::whereIn('id', $athleteIds)->pluck('uuid', 'id')->toArray()
-                        : [];
-                    $achievementsJson = $achievementsAll->map(function ($a) use ($athleteUuidMap) {
-                        $combined = collect(array_filter(array_merge($a->image_path ? [$a->image_path] : [], $a->images ?? [])))
-                            ->map(fn ($p) => file_url($p))->values()->toArray();
-                        $medals = [];
-                        if ($a->medals_gold)   $medals[] = $a->medals_gold . ' Gold';
-                        if ($a->medals_silver) $medals[] = $a->medals_silver . ' Silver';
-                        if ($a->medals_bronze) $medals[] = $a->medals_bronze . ' Bronze';
-                        return [
-                            'title'         => $a->tr('title'),
-                            'short_title'   => $a->tr('short_title') ?: $a->tr('title'),
-                            'type_icon'     => $a->type_icon ?: '🏆',
-                            'description'   => $a->tr('description') ?? '',
-                            'location'      => $a->tr('location') ?? '',
-                            'date_label'    => $a->date_label ?? ($a->achievement_date ? $a->achievement_date->format('M Y') : ''),
-                            'category'      => $a->category ?? '',
-                            'medal_summary' => implode(' • ', $medals) ?: ($a->tr('tag') ?? ''),
-                            'medal_emojis'  => ($a->medals_gold ? '🥇' : '') . ($a->medals_silver ? '🥈' : '') . ($a->medals_bronze ? '🥉' : ''),
-                            'bouts_count'   => $a->bouts_count ?? 0,
-                            'wins_count'    => $a->wins_count ?? 0,
-                            'chips'         => array_values(array_filter((array) ($a->chips ?? []), fn ($c) => is_string($c) && $c !== '')),
-                            'athletes'      => collect($a->athletes ?? [])->map(fn ($x) => is_array($x)
-                                                    ? ['name' => $x['name'] ?? '', 'role' => $x['role'] ?? '', 'profile_url' => (!empty($x['user_id']) && isset($athleteUuidMap[$x['user_id']])) ? route('member.show', $athleteUuidMap[$x['user_id']]) : null]
-                                                    : ['name' => (string) $x, 'role' => '', 'profile_url' => null])
-                                                ->filter(fn ($x) => $x['name'] !== '')->values()->toArray(),
-                            'image_url'     => $combined[0] ?? null,
-                            'images'        => $combined,
-                            'bg_from'       => $a->bg_from ?: '#6d5efc',
-                            'bg_to'         => $a->bg_to ?: '#9b8cff',
-                        ];
-                    })->values()->toArray();
-                @endphp
-                <div x-data="{ showAch: false, ach: null, idx: 0, expanded: false,
-                               openAch(a) { this.ach = a; this.idx = 0; this.showAch = true; },
-                               medalEmoji(r) { r = (r || '').toLowerCase(); var m = '';
-                                   if (r.includes('gold')) m += '🥇';
-                                   if (r.includes('silver')) m += '🥈';
-                                   if (r.includes('bronze')) m += '🥉';
-                                   return m || '🏅'; } }">
-                    <div class="flex items-center justify-between mb-2">
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">{{ __('clubs::club.achievements') }}</p>
-                        <span class="text-[11px] text-muted-foreground/70"><i class="bi bi-arrow-left-right mr-1"></i>{{ __('clubs::club.ach_swipe') }}</span>
-                    </div>
-                    <div class="flex items-stretch gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-1">
-                        @foreach($achievementsAll as $i => $a)
-                            @php
-                                $achData = $achievementsJson[$i];
-                                $athleteInitials = collect($achData['athletes'])->take(4);
-                            @endphp
-                            <div class="relative snap-start flex-shrink-0 w-[58%] max-w-[14rem]"
-                                 @if($i >= $achInitial) x-show="expanded" x-cloak @endif>
-                            @if($canManage)
-                                <a href="{{ route('admin.club.achievements', $club) }}?edit={{ $a->id }}"
-                                   @click.stop
-                                   class="m-press absolute top-1.5 left-1.5 z-10 w-7 h-7 rounded-full bg-black/55 backdrop-blur text-white grid place-items-center active:scale-95 transition-transform"
-                                   aria-label="{{ __('shared.edit') }}">
-                                    <i class="bi bi-pencil-fill text-[11px]"></i>
-                                </a>
+                                </p>
                             @endif
-                            <button type="button" @click='openAch(@json($achData))'
-                                    class="m-press m-card w-full text-left overflow-hidden flex flex-col">
-                                <div class="relative h-24 flex-shrink-0">
-                                    @if($achData['image_url'])
-                                        <img src="{{ $achData['image_url'] }}" alt="{{ $a->tr('title') }}" class="w-full h-24 object-cover">
-                                    @else
-                                        <div class="w-full h-24 flex items-center justify-center" style="background:linear-gradient(135deg,{{ $achData['bg_from'] }},{{ $achData['bg_to'] }});">
-                                            <span class="text-4xl opacity-40">{{ $achData['type_icon'] }}</span>
-                                        </div>
-                                    @endif
-                                    <div class="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/55 to-transparent"></div>
-                                    @if($achData['medal_summary'])
-                                        <span class="absolute top-1.5 right-1.5 max-w-[calc(100%-0.75rem)] inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide text-white bg-black/60">
-                                            <span class="text-[10px] leading-none flex-shrink-0">{{ $achData['medal_emojis'] ?: '🏅' }}</span><span class="truncate">{{ $achData['medal_summary'] }}</span>
-                                        </span>
-                                    @endif
-                                </div>
-                                <div class="p-2.5 flex-1 flex flex-col">
-                                    <p class="font-bold text-[12px] text-foreground flex items-center gap-1">
-                                        <span class="w-4 h-4 rounded bg-accent text-primary grid place-items-center text-[9px] flex-shrink-0">{{ $achData['type_icon'] }}</span>
-                                        <span class="truncate">{{ $achData['short_title'] }}</span>
-                                    </p>
-                                    @if($achData['location'] || $achData['date_label'])
-                                        <p class="mt-0.5 text-[10px] text-muted-foreground flex flex-wrap gap-x-2 gap-y-0.5">
-                                            @if($achData['location'])<span class="truncate"><i class="bi bi-geo-alt mr-0.5"></i>{{ $achData['location'] }}</span>@endif
-                                            @if($achData['date_label'])<span><i class="bi bi-calendar-event mr-0.5"></i>{{ $achData['date_label'] }}</span>@endif
-                                        </p>
-                                    @endif
-                                    <div class="mt-auto pt-2 flex items-center justify-between">
-                                        <div class="flex items-center gap-1.5 min-w-0">
-                                            @if($athleteInitials->isNotEmpty())
-                                                <div class="flex">
-                                                    @foreach($athleteInitials as $idx => $ath)
-                                                        <span class="w-5 h-5 rounded-full bg-primary text-white text-[9px] font-bold grid place-items-center ring-2 ring-white {{ $idx > 0 ? '-ml-1.5' : '' }}">{{ mb_strtoupper(mb_substr($ath['name'], 0, 1)) }}</span>
-                                                    @endforeach
-                                                </div>
-                                            @endif
-                                        </div>
-                                        <span class="text-[10px] font-semibold text-primary flex items-center gap-0.5 flex-shrink-0">{{ __('clubs::club.ach_view_story') }}<i class="bi bi-chevron-right text-[9px]"></i></span>
-                                    </div>
-                                </div>
-                            </button>
-                            </div>
-                        @endforeach
-                    </div>
-
-                    @if($achTotal > $achInitial)
-                        <button type="button" x-show="!expanded" @click="expanded = true"
-                                class="m-press mt-3 w-full flex items-center justify-center gap-1.5 rounded-xl border border-primary/30 text-primary text-sm font-semibold py-2.5">
-                            {{ __('clubs::club.ach_view_more', ['count' => $achTotal - $achInitial]) }}<i class="bi bi-chevron-down"></i>
-                        </button>
-                    @endif
-
-                    {{-- Detail bottom sheet (teleported to body) --}}
-                    <template x-teleport="body">
-                        <div x-show="showAch" x-cloak class="fixed inset-0 z-[60] overflow-y-auto" @keydown.escape.window="showAch = false">
-                            <div x-show="showAch" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-                                 x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-                                 class="fixed inset-0 bg-black/60" @click="showAch = false"></div>
-                            <div class="flex min-h-full items-end justify-center sm:items-center sm:p-4">
-                                <div x-show="showAch"
-                                     x-transition:enter="transition ease-out duration-300"
-                                     x-transition:enter-start="opacity-0 translate-y-full sm:translate-y-4 sm:scale-95"
-                                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
-                                     x-transition:leave="transition ease-in duration-200"
-                                     x-transition:leave-start="opacity-100 translate-y-0"
-                                     x-transition:leave-end="opacity-0 translate-y-full"
-                                     class="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full flex flex-col"
-                                     style="max-height: 92vh;" @click.stop>
-                                    <template x-if="ach">
-                                        <div class="flex flex-col overflow-hidden">
-                                            {{-- Header --}}
-                                            <div class="flex-shrink-0 px-5 pt-3 pb-4 rounded-t-3xl sm:rounded-t-2xl text-white relative overflow-hidden"
-                                                 style="background: linear-gradient(150deg, #b45309, #d97706b0);">
-                                                <div class="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-white/10"></div>
-                                                <div class="mx-auto w-10 h-1 rounded-full bg-white/40 mb-3"></div>
-
-                                                <div class="relative flex items-start gap-3">
-                                                    <span class="w-12 h-12 rounded-2xl bg-white/20 grid place-items-center flex-shrink-0">
-                                                        <i class="bi bi-trophy-fill text-xl"></i>
-                                                    </span>
-                                                    <div class="min-w-0 flex-1">
-                                                        <h3 class="text-lg font-black leading-tight" x-text="ach.title"></h3>
-                                                        <p class="text-[12px] text-white/85 mt-0.5" x-show="ach.date_label" x-text="ach.date_label"></p>
-                                                    </div>
-                                                    <button type="button" @click="showAch = false" aria-label="{{ __('shared.close') }}"
-                                                            class="w-9 h-9 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0 active:scale-90 transition-transform">
-                                                        <i class="bi bi-x-lg"></i>
-                                                    </button>
-                                                </div>
-
-                                                <div class="relative mt-3 flex flex-wrap gap-1.5" x-show="ach.medal_summary">
-                                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/20 text-[11px] font-bold">
-                                                        <span class="text-[12px] leading-none" x-text="ach.medal_emojis || '🏅'"></span><span x-text="ach.medal_summary"></span>
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            {{-- Media --}}
-                                            <div class="relative flex-shrink-0">
-                                                <div class="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
-                                                     x-ref="strip" @scroll.debounce.50ms="idx = Math.round($refs.strip.scrollLeft / $refs.strip.offsetWidth)">
-                                                    <template x-if="ach.images && ach.images.length">
-                                                        <template x-for="img in ach.images" :key="img">
-                                                            <img :src="img" class="snap-start flex-shrink-0 w-full h-60 object-cover">
-                                                        </template>
-                                                    </template>
-                                                    <template x-if="!ach.images || !ach.images.length">
-                                                        <div class="w-full h-60 flex items-center justify-center" :style="'background:linear-gradient(135deg,'+ach.bg_from+','+ach.bg_to+')'">
-                                                            <span class="text-6xl opacity-40" x-text="ach.type_icon"></span>
-                                                        </div>
-                                                    </template>
-                                                </div>
-                                                <div class="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/60 to-transparent pointer-events-none"></div>
-                                                <div x-show="ach.images && ach.images.length > 1" class="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex gap-1.5">
-                                                    <template x-for="(img, i) in ach.images" :key="i">
-                                                        <span class="h-1.5 rounded-full transition-all" :class="idx === i ? 'bg-white w-4' : 'bg-white/50 w-1.5'"></span>
-                                                    </template>
-                                                </div>
-                                            </div>
-
-                                            {{-- Body --}}
-                                            <div class="overflow-y-auto p-4 space-y-3" style="max-height: calc(92vh - 15rem);">
-                                                <div>
-                                                    <p class="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5">
-                                                        <span x-show="ach.location"><i class="bi bi-geo-alt mr-0.5"></i><span x-text="ach.location"></span></span>
-                                                        <span x-show="ach.date_label"><i class="bi bi-calendar-event mr-0.5"></i><span x-text="ach.date_label"></span></span>
-                                                        <span x-show="ach.category"><i class="bi bi-tag mr-0.5"></i><span x-text="ach.category"></span></span>
-                                                    </p>
-                                                </div>
-
-                                                <div x-show="ach.bouts_count" class="flex gap-2">
-                                                    <span class="px-2.5 py-1 rounded-lg bg-muted text-[12px] font-semibold text-foreground"><i class="bi bi-bar-chart-fill text-primary mr-1"></i><span x-text="ach.bouts_count + ' bouts'"></span></span>
-                                                    <span x-show="ach.wins_count" class="px-2.5 py-1 rounded-lg bg-green-50 text-[12px] font-semibold text-green-700"><i class="bi bi-trophy mr-1"></i><span x-text="ach.wins_count + ' wins'"></span></span>
-                                                </div>
-
-                                                <p x-show="ach.description" class="text-[13px] text-foreground/90 whitespace-pre-line" x-text="ach.description"></p>
-
-                                                <div x-show="ach.chips && ach.chips.length" class="flex flex-wrap gap-1.5">
-                                                    <template x-for="chip in ach.chips" :key="chip">
-                                                        <span class="px-2.5 py-1 rounded-full text-[11px] font-medium bg-accent text-primary" x-text="chip"></span>
-                                                    </template>
-                                                </div>
-
-                                                <div x-show="ach.athletes && ach.athletes.length">
-                                                    <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-1.5">{{ __('clubs::club.ach_athletes') }}</p>
-                                                    <div class="space-y-1.5">
-                                                        <template x-for="ath in ach.athletes" :key="ath.name">
-                                                            <a :href="ath.profile_url" :class="ath.profile_url ? 'm-press hover:bg-accent cursor-pointer' : 'cursor-default'"
-                                                               class="flex items-center gap-2.5 rounded-xl bg-muted/50 px-2.5 py-2 transition-colors">
-                                                                <span class="w-7 h-7 rounded-full bg-primary text-white text-[11px] font-bold grid place-items-center flex-shrink-0" x-text="ath.name.charAt(0).toUpperCase()"></span>
-                                                                <div class="min-w-0 flex-1">
-                                                                    <p class="text-[13px] font-semibold text-foreground truncate" x-text="ath.name"></p>
-                                                                    <p x-show="ath.role" class="text-[11px] text-muted-foreground flex items-center gap-1">
-                                                                        <span class="text-[13px] leading-none" x-text="medalEmoji(ath.role)"></span><span x-text="ath.role"></span>
-                                                                    </p>
-                                                                </div>
-                                                                <i x-show="ath.profile_url" class="bi bi-chevron-right text-muted-foreground/50 text-xs flex-shrink-0"></i>
-                                                            </a>
-                                                        </template>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </template>
-                                </div>
-                            </div>
+                            <span style="font-size:13px;text-decoration:underline;margin-top:10px;display:inline-block;">{{ __('clubs::page.view_story') }}</span>
                         </div>
-                    </template>
-                </div>
-            @endif
-
-            {{-- ===== Member Perks ===== --}}
-            @php $activePerks = $club->perks->where('status', 'active')->values(); @endphp
-            @if($activePerks->isNotEmpty())
-                <div x-data="{
-                        open: false, view: 'loading', collectUrl: '',
-                        title: '', message: '', value: '', perkType: '', collectedAt: '', members: [], copied: false,
-                        auth: {{ Auth::check() ? 'true' : 'false' }},
-                        loginUrl: '{{ route('login') }}',
-                        csrf: '{{ csrf_token() }}',
-                        start(url) {
-                            if (!this.auth) { window.location.href = this.loginUrl; return; }
-                            this.collectUrl = url; this.copied = false; this.open = true; this.doCollect(null);
-                        },
-                        doCollect(forId) {
-                            this.view = 'loading';
-                            fetch(this.collectUrl, {
-                                method: 'POST',
-                                headers: { 'X-CSRF-TOKEN': this.csrf, 'Accept': 'application/json', 'Content-Type': 'application/json' },
-                                body: forId ? JSON.stringify({ for_user_id: forId }) : null,
-                            }).then(r => r.json()).then(d => {
-                                if (d.members_only)        { this.message = d.message; this.view = 'members_only'; return; }
-                                if (d.already_collected)   { this.collectedAt = d.collected_at || ''; this.view = 'already'; return; }
-                                if (d.requires_selection)  { this.members = d.members || []; this.view = 'picker'; return; }
-                                if (!d.success)            { this.message = d.message || ''; this.view = 'error'; return; }
-                                this.title = d.title; this.value = d.perk_value; this.perkType = d.perk_type;
-                                if (d.perk_type === 'code') { this.view = 'code'; }
-                                else { this.view = 'qr'; this.$nextTick(() => this.renderQr()); }
-                            }).catch(() => { this.view = 'error'; });
-                        },
-                        renderQr() {
-                            const el = this.$refs.qr; if (!el || typeof QRCode === 'undefined') return;
-                            el.innerHTML = '';
-                            new QRCode(el, { text: this.value, width: 180, height: 180, correctLevel: QRCode.CorrectLevel.M });
-                        },
-                        copy() {
-                            navigator.clipboard.writeText(this.value).then(() => {
-                                this.copied = true; setTimeout(() => this.copied = false, 2000);
-                            });
-                        }
-                     }">
-                    <div class="flex items-center justify-between mb-2">
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">{{ __('clubs::club.perks_title') }}</p>
-                        <span class="text-[11px] text-muted-foreground/70">{{ __('clubs::club.perks_subtitle') }}</span>
-                    </div>
-
-                    <div class="flex gap-3 overflow-x-auto scrollbar-hide pb-1 snap-x snap-mandatory">
-                        @foreach($activePerks as $perk)
-                            <button type="button"
-                                    @click="start('{{ route('clubs.perks.collect', [$club->country_code, $club->slug, $perk->id]) }}')"
-                                    class="m-press m-card snap-start flex-shrink-0 w-[60%] max-w-[15rem] text-left rounded-2xl overflow-hidden bg-white shadow-sm border border-gray-100 flex flex-col">
-                                <div class="relative h-24 flex-shrink-0">
-                                    @if($perk->image_path)
-                                        <img src="{{ file_url($perk->image_path) }}" alt="{{ $perk->tr('title') }}" class="w-full h-24 object-cover">
-                                    @else
-                                        <div class="w-full h-24 flex items-center justify-center" style="background:linear-gradient(135deg,{{ $perk->bg_from ?: '#6d5efc' }},{{ $perk->bg_to ?: '#9b8cff' }});">
-                                            <i class="bi {{ $perk->icon ?: 'bi-gift' }} text-white text-4xl opacity-90"></i>
-                                        </div>
-                                    @endif
-                                    <div class="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/45 to-transparent"></div>
-                                    @if($perk->tr('badge'))
-                                        <span class="absolute top-1.5 left-1.5 max-w-[calc(100%-0.75rem)] truncate px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide text-primary bg-white shadow-sm">{{ $perk->tr('badge') }}</span>
-                                    @endif
-                                </div>
-                                {{-- ticket notch divider --}}
-                                <div class="relative h-0">
-                                    <span class="absolute -left-1.5 -top-1.5 w-3 h-3 rounded-full bg-background"></span>
-                                    <span class="absolute -right-1.5 -top-1.5 w-3 h-3 rounded-full bg-background"></span>
-                                    <span class="absolute inset-x-2 top-0 border-t border-dashed border-gray-200"></span>
-                                </div>
-                                <div class="p-2.5 flex-1 flex flex-col">
-                                    <p class="font-bold text-[12px] text-foreground truncate">{{ $perk->tr('title') }}</p>
-                                    @if($perk->tr('description'))
-                                        <p class="mt-0.5 text-[10px] text-muted-foreground line-clamp-2 leading-snug">{{ $perk->tr('description') }}</p>
-                                    @endif
-                                    <span class="mt-2 inline-flex items-center justify-center gap-1 rounded-lg bg-primary/10 text-primary text-[11px] font-bold py-1.5">
-                                        <i class="bi bi-ticket-perforated-fill text-[12px]"></i>{{ __('clubs::club.perk_collect') }}
-                                    </span>
-                                </div>
-                            </button>
-                        @endforeach
-                    </div>
-
-                    {{-- Collect bottom sheet (teleported to body) --}}
-                    <template x-teleport="body">
-                        <div x-show="open" x-cloak class="fixed inset-0 z-[60] overflow-y-auto" @keydown.escape.window="open = false">
-                            <div x-show="open" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-                                 x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-                                 class="fixed inset-0 bg-black/60" @click="open = false"></div>
-                            <div class="flex min-h-full items-end justify-center sm:items-center sm:p-4">
-                                <div x-show="open"
-                                     x-transition:enter="transition ease-out duration-300"
-                                     x-transition:enter-start="opacity-0 translate-y-full sm:translate-y-4 sm:scale-95"
-                                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
-                                     x-transition:leave="transition ease-in duration-200"
-                                     x-transition:leave-start="opacity-100 translate-y-0"
-                                     x-transition:leave-end="opacity-0 translate-y-full"
-                                     class="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-sm p-6 pt-7"
-                                     style="max-height: 92vh;" @click.stop>
-                                    <button type="button" @click="open = false" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-muted text-muted-foreground grid place-items-center"><i class="bi bi-x-lg text-sm"></i></button>
-
-                                    {{-- Loading --}}
-                                    <div x-show="view === 'loading'" class="py-8 text-center">
-                                        <i class="bi bi-arrow-repeat text-3xl text-primary inline-block animate-spin"></i>
-                                        <p class="mt-3 text-sm text-muted-foreground">{{ __('clubs::club.perk_loading') }}</p>
-                                    </div>
-
-                                    {{-- Members only --}}
-                                    <div x-show="view === 'members_only'" x-cloak class="py-6 text-center">
-                                        <div class="w-14 h-14 mx-auto rounded-2xl bg-accent grid place-items-center"><i class="bi bi-lock-fill text-2xl text-primary"></i></div>
-                                        <h5 class="font-bold text-base mt-3 text-foreground">{{ __('clubs::club.perk_members_only') }}</h5>
-                                        <p class="text-[13px] text-muted-foreground mt-1" x-text="message"></p>
-                                    </div>
-
-                                    {{-- Already collected --}}
-                                    <div x-show="view === 'already'" x-cloak class="py-6 text-center">
-                                        <div class="w-14 h-14 mx-auto rounded-2xl bg-green-50 grid place-items-center"><i class="bi bi-check-circle-fill text-2xl text-green-500"></i></div>
-                                        <h5 class="font-bold text-base mt-3 text-foreground">{{ __('clubs::club.perk_already') }}</h5>
-                                        <p class="text-[13px] text-muted-foreground mt-1" x-text="collectedAt ? '{{ __('clubs::club.perk_collected_on', ['date' => '__D__']) }}'.replace('__D__', collectedAt) : ''"></p>
-                                    </div>
-
-                                    {{-- Member picker --}}
-                                    <div x-show="view === 'picker'" x-cloak>
-                                        <h5 class="font-bold text-base text-foreground">{{ __('clubs::club.perk_who') }}</h5>
-                                        <p class="text-[13px] text-muted-foreground mb-3">{{ __('clubs::club.perk_who_sub') }}</p>
-                                        <div class="space-y-2 max-h-[55vh] overflow-y-auto">
-                                            <template x-for="m in members" :key="m.id">
-                                                <button type="button" :disabled="m.already_collected"
-                                                        @click="!m.already_collected && doCollect(m.id)"
-                                                        class="m-press w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all"
-                                                        :class="m.already_collected ? 'bg-gray-50 border-gray-100 opacity-60 cursor-not-allowed' : 'border-gray-200 hover:border-primary hover:bg-primary/5'">
-                                                    <template x-if="m.profile_picture">
-                                                        <img :src="'/file/' + m.profile_picture" class="w-[30px] h-10 rounded-lg object-cover flex-shrink-0">
-                                                    </template>
-                                                    <template x-if="!m.profile_picture">
-                                                        <span class="w-[30px] h-10 rounded-lg overflow-hidden flex-shrink-0" style="background: hsl(250 55% 60%);"><img :src="m.placeholder" alt="" aria-hidden="true" class="w-full h-full object-cover object-top"></span>
-                                                    </template>
-                                                    <span class="flex-1 min-w-0">
-                                                        <span class="block text-[13px] font-semibold text-foreground truncate" x-text="m.name"></span>
-                                                        <span class="block text-[11px] mt-0.5" :class="m.already_collected ? 'text-green-600' : 'text-muted-foreground'"
-                                                              x-text="m.already_collected ? '{{ __('clubs::club.perk_already') }}' : '{{ __('clubs::club.perk_tap_collect') }}'"></span>
-                                                    </span>
-                                                    <i class="bi bi-chevron-right text-muted-foreground/50 text-xs" x-show="!m.already_collected"></i>
-                                                </button>
-                                            </template>
-                                        </div>
-                                    </div>
-
-                                    {{-- Code reveal --}}
-                                    <div x-show="view === 'code'" x-cloak class="py-2 text-center">
-                                        <div class="w-14 h-14 mx-auto rounded-2xl bg-accent grid place-items-center"><i class="bi bi-ticket-perforated-fill text-2xl text-primary"></i></div>
-                                        <h5 class="font-bold text-base mt-3 text-foreground" x-text="title"></h5>
-                                        <p class="text-[13px] text-muted-foreground mb-4">{{ __('clubs::club.perk_show_code') }}</p>
-                                        <div class="flex items-center gap-2 bg-gray-50 border border-dashed border-gray-300 rounded-xl px-4 py-3">
-                                            <span class="font-mono font-extrabold text-lg tracking-widest flex-1 text-center text-primary" x-text="value"></span>
-                                            <button type="button" @click="copy()" class="text-muted-foreground hover:text-primary transition-colors"><i class="bi" :class="copied ? 'bi-check-lg text-green-500' : 'bi-copy'"></i></button>
-                                        </div>
-                                        <p x-show="copied" class="text-green-600 text-[12px] mt-2">{{ __('clubs::club.perk_copied') }}</p>
-                                    </div>
-
-                                    {{-- QR reveal --}}
-                                    <div x-show="view === 'qr'" x-cloak class="py-2 text-center">
-                                        <h5 class="font-bold text-base text-foreground" x-text="title"></h5>
-                                        <p class="text-[13px] text-muted-foreground mb-4">{{ __('clubs::club.perk_show_qr') }}</p>
-                                        <div x-ref="qr" class="flex justify-center"></div>
-                                    </div>
-
-                                    {{-- Error --}}
-                                    <div x-show="view === 'error'" x-cloak class="py-6 text-center">
-                                        <div class="w-14 h-14 mx-auto rounded-2xl bg-red-50 grid place-items-center"><i class="bi bi-exclamation-triangle-fill text-2xl text-red-500"></i></div>
-                                        <p class="text-[13px] text-muted-foreground mt-3" x-text="message || '{{ __('clubs::club.perk_error') }}'"></p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </template>
-                </div>
-            @endif
+                    </button>
+                @endforeach
+            </div>
         </div>
+    @endif
+</section>
 
-        {{-- ===== Packages ===== --}}
-        <div x-show="tab==='packages'" x-cloak x-transition.opacity>
-            @if($club->packages->count() > 0)
-                <div class="space-y-4">
-                    @foreach($club->packages as $package)
-                        <div class="{{ $package->is_applicable ? '' : 'opacity-60' }}">
-                            <x-package-card-mobile :package="$package" :club="$club" :instructors-map="$instructorsMap" :activity-links="$activityLinks">
-                                <x-slot:footer>
-                                    @if($package->is_applicable)
-                                        <button onclick="openSelectPackageModal({{ $package->id }})"
-                                                class="m-press w-full bg-primary text-white font-bold py-2.5 rounded-xl hover:bg-primary/90 transition-colors">
-                                            {{ __('clubs::club.select_package') }}
-                                        </button>
-                                        @if(($club->enrollment_fee ?? 0) > 0)
-                                            <p class="text-xs text-center text-muted-foreground mt-1.5">{{ __('clubs::club.enrolment_fee_note', ['currency' => $club->currency ?? 'BHD', 'amount' => number_format($club->enrollment_fee, 2)]) }}</p>
-                                        @endif
-                                    @else
-                                        <button disabled
-                                                class="w-full bg-gray-100 text-gray-400 font-bold py-2.5 rounded-xl cursor-not-allowed flex items-center justify-center gap-1.5">
-                                            <i class="bi bi-lock"></i> {{ __('clubs::club.not_eligible') }}
-                                        </button>
-                                        <p class="text-[11px] text-center text-muted-foreground mt-1.5">{{ __('clubs::club.not_eligible_note') }}</p>
-                                    @endif
-                                </x-slot:footer>
-                            </x-package-card-mobile>
-                        </div>
-                    @endforeach
-                </div>
-            @else
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-12 text-center">
-                    <i class="bi bi-box text-4xl text-gray-300 m-float inline-block"></i>
-                    <p class="text-sm font-semibold text-foreground mt-3">{{ __('clubs::club.no_packages') }}</p>
-                    <p class="text-[12px] text-muted-foreground mt-1">{{ __('clubs::club.check_back_later') }}</p>
-                </div>
-            @endif
+{{-- ===================== NEWS ===================== --}}
+@if($cpPosts->isNotEmpty())
+<section id="latest" style="background:#19191d;color:#fff;padding:40px 20px;">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;">
+        <div>
+            <p class="cp-tag" style="color:#fa8197;">{{ __('clubs::page.news_eyebrow') }}</p>
+            <h2 style="font-size:32px;font-weight:700;margin-top:8px;">{{ __('clubs::page.news_title') }}</h2>
+            <p style="color:rgba(255,255,255,.6);margin-top:10px;font-size:14px;">{{ __('clubs::page.news_sub') }}</p>
         </div>
+        @if($cpPosts->count() > 3)<button type="button" class="cp-pill cp-pill-light" @click="openNews()">{{ __('clubs::page.all_updates') }}</button>@endif
+    </div>
+    <div style="display:grid;gap:12px;margin-top:20px;">
+        @foreach($cpPosts->take(3) as $i => $p)
+            <button type="button" style="border-radius:22px;overflow:hidden;background:#29292d;text-align:start;" @click="openPost({{ $i }})" id="post-{{ $p['id'] }}">
+                @if($p['image'])<img src="{{ $p['image'] }}" alt="" style="width:100%;height:160px;object-fit:cover;display:block;">@endif
+                <div style="padding:16px;">
+                    <span class="cp-tag" style="color:#ff8197;">{{ collect([$p['category'], $p['date']])->filter()->implode(' · ') }}</span>
+                    <h3 style="font-size:20px;font-weight:700;margin-top:8px;line-height:1.2;">{{ $p['title'] }}</h3>
+                    <span style="display:flex;justify-content:space-between;margin-top:12px;font-size:13px;">
+                        <span style="text-decoration:underline;">{{ __('clubs::page.read_update') }}</span>
+                        <span style="color:rgba(255,255,255,.55);display:flex;gap:12px;">
+                            <span><i class="bi" :class="d.posts[{{ $i }}].liked ? 'bi-heart-fill' : 'bi-heart'"></i> <span x-text="d.posts[{{ $i }}].likes">{{ $p['likes'] }}</span></span>
+                            <span><i class="bi bi-chat"></i> <span x-text="d.posts[{{ $i }}].comments.length">{{ count($p['comments']) }}</span></span>
+                        </span>
+                    </span>
+                </div>
+            </button>
+        @endforeach
+    </div>
+</section>
+@endif
 
-        {{-- ===== Schedule =====
-             The same schedule as desktop — one partial, same marking, same
-             animation (clubs::public.partials.schedule). --}}
-        {{-- app.css stacks .class-card into a column under 768px (for the desktop
-             page on a narrow window). The phone page keeps the desktop card —
-             thumbnail beside the details — so the two read the same. Scoped
-             here: nothing else on the platform changes. --}}
-        <style>
-            .club-sched-m .class-card { flex-direction: row; gap: 12px; padding: 14px; }
-            .club-sched-m .class-thumb { width: 84px; height: auto; min-height: 84px; }
-            /* Title and times get the full width; status + instructor ride below as one row. */
-            .club-sched-m .class-card .justify-between { flex-direction: column; gap: 8px; }
-            .club-sched-m .class-card .justify-between > .items-end { flex-direction: row-reverse; align-items: center; justify-content: space-between; width: 100%; }
-            .club-sched-m .class-meta span { white-space: nowrap; }
-        </style>
-        <div x-show="tab==='schedule'" x-cloak x-transition.opacity class="club-sched-m">
-            @include('clubs::public.partials.schedule')
+{{-- ===================== GALLERY ===================== --}}
+@if($cpGallery->isNotEmpty() || $cpYoutube)
+<section id="media" style="background:var(--cp-card);padding:40px 20px;">
+    <p class="cp-tag cp-red">{{ __('clubs::page.media_eyebrow', ['club' => $cpName]) }}</p>
+    <h2 style="font-size:32px;font-weight:700;margin-top:8px;">{{ __('clubs::page.media_title') }}</h2>
+    <p class="cp-muted" style="margin:12px 0 24px;font-size:15px;line-height:1.55;">{{ __('clubs::page.media_sub') }}</p>
+    <div class="cp-media">
+        @foreach($cpGallery->take($cpYoutube ? 4 : 5) as $i => $g)
+            <button type="button" @click="open({{ $i }})">
+                <img src="{{ $g['src'] }}" alt="{{ $g['caption'] ?: $cpName }}" loading="lazy">
+                @if($g['caption'])<span class="cp-media-label">{{ $g['caption'] }}</span>@endif
+            </button>
+        @endforeach
+        @if($cpYoutube)
+            <button type="button" @click="openVideo()" style="background:linear-gradient(135deg, {{ $cpAccent }}, #171719);">
+                <span style="position:absolute;inset:0;z-index:1;display:grid;place-items:center;"><span class="cp-round" style="width:52px;height:52px;background:rgba(255,255,255,.92);color:{{ $cpAccent }};"><i class="bi bi-play-fill" style="font-size:24px;"></i></span></span>
+                <span class="cp-media-label">{{ __('clubs::page.watch_film') }}</span>
+            </button>
+        @endif
+    </div>
+    @if($cpGallery->isNotEmpty())
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:16px;">
+            <p class="cp-muted" style="font-size:12px;">{{ __('clubs::page.media_footer') }}</p>
+            <button type="button" class="cp-pill" @click="open(0)">{{ __('clubs::page.open_gallery') }} <i class="bi bi-arrow-up-right cp-flip"></i></button>
         </div>
+    @endif
+</section>
+@endif
 
-        {{-- ===== Events ===== --}}
-        <div x-show="tab==='events'" x-cloak x-transition.opacity class="space-y-3">
-            @forelse($club->events->where('is_archived', false)->sortBy('date') as $event)
-                @php $isJoined = in_array($event->id, $joinedEventIds ?? []); @endphp
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    @if($event->cover_image)<img src="{{ file_url($event->cover_image) }}" alt="" class="w-full h-32 object-cover">@endif
-                    <div class="p-4">
-                        <div class="flex items-start justify-between gap-2">
-                            <p class="font-bold text-foreground">{{ $event->title }}</p>
-                            @if($isJoined)<span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700"><i class="bi bi-check-circle-fill"></i> {{ __('clubs::club.joined') }}</span>@endif
-                        </div>
-                        <p class="text-[12px] text-muted-foreground mt-1">
-                            @if($event->date)<i class="bi bi-calendar-event"></i> {{ \Carbon\Carbon::parse($event->date)->format('d M Y') }}@endif
-                            @if($event->location) · <i class="bi bi-geo-alt"></i> {{ $event->location }}@endif
-                        </p>
-                        @if($event->description)<p class="text-[13px] text-foreground/80 mt-2 line-clamp-3">{{ $event->description }}</p>@endif
-                        @auth
-                            @if(!$isJoined)
-                                <form method="POST" action="{{ route('clubs.events.join', [$club->country_code, $club->slug, $event->id]) }}" class="mt-3">
-                                    @csrf
-                                    <button type="submit" class="m-press w-full bg-primary text-white py-2.5 rounded-xl font-semibold text-sm">{{ $event->cta_text ?: __('clubs::club.join_event') }}</button>
-                                </form>
-                            @endif
-                        @endauth
+{{-- ===================== SCHEDULE ===================== --}}
+@if($cpHasSchedule)
+<section id="schedule" class="cpm-pad" style="padding-top:48px;">
+    <p class="cp-tag cp-red">{{ __('clubs::page.schedule_eyebrow_m') }}</p>
+    <h2 class="cpm-h cp-display" style="margin-top:8px;">{!! nl2br(e(__('clubs::page.schedule_title_m'))) !!}</h2>
+    <div class="cp-scroll-x" style="display:flex;gap:8px;margin-top:20px;margin-bottom:16px;margin-inline-end:-20px;">
+        @foreach($cpWeek as $d)
+            <button type="button" class="cp-pill" :class="day === '{{ $d['key'] }}' && 'is-on'" @click="day = '{{ $d['key'] }}'">{{ $d['label'] }}</button>
+        @endforeach
+    </div>
+    @foreach($cpWeek as $d)
+        <div x-show="day === '{{ $d['key'] }}'" @if($d['key'] !== $cpToday) x-cloak @endif class="cp-fade">
+            @forelse($d['slots'] as $s)
+                <div class="cp-card" style="padding:16px;display:flex;align-items:center;gap:14px;margin-bottom:12px;">
+                    <div style="min-width:80px;text-align:center;"><b style="font-size:15px;">{{ $s['start'] }}</b></div>
+                    <div style="flex:1;min-width:0;">
+                        <b style="font-size:15px;">{{ $s['title'] }}</b>
+                        <p class="cp-muted" style="font-size:13px;">{{ collect([$s['coach'] ? __('clubs::page.coach_named', ['name' => $s['coach']]) : null, $s['place'] ?: ($s['package'] !== $s['title'] ? $s['package'] : null)])->filter()->implode(' · ') }}</p>
                     </div>
+                    <span style="color:#16a34a;font-size:12px;font-weight:700;white-space:nowrap;">● {{ __('clubs::page.available') }}</span>
                 </div>
             @empty
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-12 text-center">
-                    <i class="bi bi-calendar-heart text-4xl text-gray-300 m-float inline-block"></i>
-                    <p class="text-sm font-semibold text-foreground mt-3">{{ __('clubs::club.no_events') }}</p>
+                <div class="cp-card" style="padding:28px;text-align:center;">
+                    <span class="cp-icon-tile" style="width:52px;height:52px;margin:0 auto 8px;"><i class="bi bi-moon-stars" style="font-size:22px;"></i></span>
+                    <b>{{ __('clubs::page.rest_day') }}</b>
+                    <p class="cp-muted" style="font-size:13px;">{{ __('clubs::page.rest_day_sub') }}</p>
                 </div>
             @endforelse
         </div>
+    @endforeach
+</section>
+@endif
 
-        {{-- ===== Reviews ===== --}}
-        <div x-show="tab==='reviews'" x-cloak x-transition.opacity class="space-y-3">
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex items-center gap-4">
-                <div class="text-center">
-                    <p class="text-3xl font-extrabold text-foreground leading-none">{{ number_format($averageRating, 1) }}</p>
-                    <div class="flex gap-0.5 mt-1 text-amber-400 text-[12px]">
-                        @for($i=1;$i<=5;$i++)<i class="bi {{ $i <= round($averageRating) ? 'bi-star-fill' : 'bi-star' }}"></i>@endfor
-                    </div>
-                </div>
-                <div class="flex-1 border-l border-gray-100 pl-4">
-                    <p class="text-sm font-semibold text-foreground">{{ $reviews->count() }} {{ $reviews->count() == 1 ? __('clubs::club.review_count') : __('clubs::club.reviews_count') }}</p>
-                    <p class="text-[12px] text-muted-foreground">{{ __('clubs::club.from_club_members') }}</p>
+{{-- ===================== EVENTS ===================== --}}
+@if($cpEvents->isNotEmpty())
+<section id="events" class="cpm-pad" style="padding-top:48px;">
+    <p class="cp-tag cp-red">{{ __('clubs::page.events_eyebrow_m') }}</p>
+    <h2 class="cpm-h cp-display" style="margin-top:8px;">{{ __('clubs::page.events_title_m') }}</h2>
+    <div style="display:grid;gap:12px;margin-top:20px;">
+        @foreach($cpEvents->take(4) as $e)
+            <div class="cp-card">
+                @if($e['image'])<div style="height:160px;"><img src="{{ $e['image'] }}" alt="" class="cp-cover"></div>@endif
+                <div style="padding:18px;">
+                    <p class="cp-tag cp-red">@if($e['live'])<span style="color:#16a34a;">● {{ __('clubs::page.live_now') }}</span> · @endif{{ $e['date'] }}@if($e['level']) · {{ $e['level'] }}@endif</p>
+                    <h3 style="font-size:22px;font-weight:700;margin-top:6px;">{{ $e['title'] }}</h3>
+                    @if($e['location'])<p class="cp-muted" style="font-size:13px;margin-top:6px;"><i class="bi bi-geo-alt"></i> {{ $e['location'] }}</p>@endif
+                    @if($e['joined'])<span class="cp-badge" style="background:#e8f6ee;color:#15803d;margin-top:10px;"><i class="bi bi-check-circle-fill"></i>{{ __('clubs::page.joined') }}</span>@endif
+                    @if($e['url'])<a href="{{ $e['url'] }}" class="cp-cta" style="width:100%;margin-top:16px;">{{ $e['cta'] ?: __('clubs::page.register_event') }} <i class="bi bi-arrow-up-right cp-flip"></i></a>@endif
                 </div>
             </div>
-            @forelse($reviews as $r)
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                    <div class="flex items-center gap-2.5">
-                        <span class="w-9 h-12 rounded-xl bg-muted overflow-hidden flex items-center justify-center flex-shrink-0">
-                            @if($r->user?->profile_picture)<img src="{{ file_url($r->user->profile_picture) }}" alt="" class="w-full h-full object-cover">@else<i class="bi bi-person text-muted-foreground"></i>@endif
-                        </span>
-                        <div class="min-w-0 flex-1">
-                            <p class="text-sm font-semibold text-foreground truncate">{{ $r->user?->full_name ?? __('clubs::club.member') }}</p>
-                            <div class="flex gap-0.5 text-amber-400 text-[10px]">@for($i=1;$i<=5;$i++)<i class="bi {{ $i <= $r->rating ? 'bi-star-fill' : 'bi-star' }}"></i>@endfor</div>
-                        </div>
-                        <span class="text-[11px] text-muted-foreground">{{ optional($r->created_at)->diffForHumans() }}</span>
-                    </div>
-                    @if($r->comment)<p class="text-[13px] text-foreground/90 mt-2.5">{{ $r->comment }}</p>@endif
-                </div>
-            @empty
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-12 text-center">
-                    <i class="bi bi-chat-square-text text-4xl text-gray-300 m-float inline-block"></i>
-                    <p class="text-sm font-semibold text-foreground mt-3">{{ __('clubs::club.no_reviews') }}</p>
-                </div>
-            @endforelse
+        @endforeach
+    </div>
+</section>
+@endif
+
+{{-- ===================== PERKS ===================== --}}
+@if($cpPerks->isNotEmpty())
+@php $cpLead = $cpPerks->first(); $cpRest = $cpPerks->slice(1)->values(); @endphp
+<section id="offers" style="padding-top:48px;">
+    <div class="cpm-pad">
+        <p class="cp-tag cp-red">{{ __('clubs::page.perks_eyebrow_m') }}</p>
+        <h2 class="cpm-h cp-display" style="margin-top:8px;">{!! nl2br(e(__('clubs::page.perks_title_m'))) !!}</h2>
+    </div>
+    <div style="margin:24px 20px 0;border-radius:26px;background:var(--cp-accent);color:#fff;padding:24px;position:relative;overflow:hidden;">
+        @if($cpLead['image'])<img src="{{ $cpLead['image'] }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.18;">@endif
+        <i class="bi {{ $cpLead['icon'] }}" style="position:absolute;inset-inline-end:-20px;top:-30px;font-size:170px;opacity:.1;"></i>
+        <div style="position:relative;">
+            <p class="cp-tag">{{ $cpLead['badge'] ?: __('clubs::page.members_only_perk') }}</p>
+            <h3 style="font-size:44px;font-weight:700;line-height:1;margin-top:24px;">{{ $cpLead['title'] }}</h3>
+            @if($cpLead['description'])<p style="font-weight:700;font-size:17px;margin-top:10px;">{{ $cpLead['description'] }}</p>@endif
+            <button type="button" class="cp-cta cp-cta-white" style="width:100%;margin-top:20px;" @click="collect(@js($cpLead['url']))"><i class="bi bi-ticket-perforated-fill"></i>{{ __('clubs::page.collect') }}</button>
         </div>
     </div>
-
-    {{-- ===== Enrol flow (shared) ===== --}}
-    @include('clubs::public.partials._join-flow')
-</div>
-@endsection
-
-@if($club->perks->where('status', 'active')->isNotEmpty())
-@push('scripts')
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-@endpush
+    @if($cpRest->isNotEmpty())
+        <div class="cpm-pad" style="display:flex;justify-content:space-between;align-items:center;margin-top:28px;">
+            <h3 style="font-size:24px;font-weight:700;">{{ __('clubs::page.member_perks') }}</h3>
+            <span class="cp-tag cp-red"><i class="bi bi-lock-fill"></i> {{ __('clubs::page.exclusive') }}</span>
+        </div>
+        <div class="cpm-pad" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;">
+            @foreach($cpRest as $pk)
+                <div class="cp-card" style="padding:16px;display:flex;flex-direction:column;">
+                    <span class="cp-icon-tile" style="width:44px;height:44px;border-radius:14px;overflow:hidden;">
+                        @if($pk['image'])<img src="{{ $pk['image'] }}" alt="" class="cp-cover">@else<i class="bi {{ $pk['icon'] }}" style="font-size:20px;"></i>@endif
+                    </span>
+                    <h3 style="font-weight:700;font-size:16px;margin-top:12px;line-height:1.15;">{{ $pk['title'] }}</h3>
+                    @if($pk['description'])<p class="cp-muted" style="font-size:12px;margin-top:4px;">{{ $pk['description'] }}</p>@endif
+                    @if($pk['badge'])<p class="cp-red cp-display" style="font-size:20px;font-weight:700;margin-top:10px;">{{ $pk['badge'] }}</p>@endif
+                    <div style="flex:1;"></div>
+                    <button type="button" class="cp-pill" style="margin-top:12px;width:100%;" @click="collect(@js($pk['url']))"><i class="bi bi-lock"></i>{{ __('clubs::page.collect') }}</button>
+                </div>
+            @endforeach
+        </div>
+    @endif
+</section>
 @endif
+
+{{-- ===================== SHOP ===================== --}}
+@if($cpProducts->isNotEmpty())
+<section id="shop" class="cpm-pad" style="padding-top:48px;">
+    <p class="cp-tag cp-red">{{ __('clubs::page.shop_eyebrow_m') }}</p>
+    <h2 class="cpm-h cp-display" style="margin-top:8px;">{!! nl2br(e(__('clubs::page.shop_title_m'))) !!}</h2>
+    @if($cpShopCats->count() > 1)
+        <div class="cp-scroll-x" style="display:flex;gap:8px;margin-top:20px;margin-inline-end:-20px;">
+            <button type="button" class="cp-pill" :class="shopCat === 'all' && 'is-on'" @click="shopCat = 'all'">{{ __('clubs::page.cat_all') }}</button>
+            @foreach($cpShopCats as $sc)
+                <button type="button" class="cp-pill" :class="shopCat === @js($sc['key']) && 'is-on'" @click="shopCat = @js($sc['key'])">{{ $sc['label'] }}</button>
+            @endforeach
+        </div>
+    @endif
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px;">
+        @foreach($cpProducts as $i => $pr)
+            <a href="{{ $pr['url'] }}" class="cp-card" style="display:flex;flex-direction:column;" x-show="shopCat === 'all' || shopCat === @js($pr['cat'])">
+                <div style="height:144px;position:relative;display:grid;place-items:center;background:{{ $i % 2 ? '#e9e6e1' : '#e7e9e9' }};">
+                    @if($pr['image'])<img src="{{ $pr['image'] }}" alt="{{ $pr['name'] }}" class="cp-cover" loading="lazy">@else<i class="bi {{ $pr['icon'] }}" style="font-size:44px;color:#171719;opacity:.7;"></i>@endif
+                    @if($pr['badge'])<span class="cp-badge" style="position:absolute;top:10px;inset-inline-start:10px;background:#fff;color:#111;font-size:10px;">{{ $pr['badge'] }}</span>@endif
+                </div>
+                <div style="padding:12px;">
+                    <h3 style="font-size:15px;font-weight:700;line-height:1.2;">{{ $pr['name'] }}</h3>
+                    <p style="margin-top:4px;font-size:14px;"><b>{{ $pr['price'] }} {{ $cpCurrency }}</b>@if($pr['old']) <s class="cp-muted" style="font-size:12px;">{{ $pr['old'] }}</s>@endif</p>
+                </div>
+            </a>
+        @endforeach
+    </div>
+    <a href="{{ route('me.market') }}" class="cp-pill" style="width:100%;margin-top:14px;">{{ __('clubs::page.visit_shop') }} <i class="bi bi-arrow-up-right cp-flip"></i></a>
+</section>
+@endif
+
+{{-- ===================== REVIEWS ===================== --}}
+<section id="reviews" class="cpm-pad" style="padding-top:48px;">
+    <p class="cp-tag cp-red">{{ __('clubs::page.reviews_eyebrow_m') }}</p>
+    <h2 class="cpm-h cp-display" style="margin-top:8px;">{!! nl2br(e(__('clubs::page.reviews_title_m'))) !!}</h2>
+    <div class="cp-card" style="padding:24px;margin-top:20px;text-align:center;">
+        @if($reviews->count())
+            <p class="cp-display" style="font-size:44px;font-weight:700;">{{ number_format($averageRating, 1) }}</p>
+            <div style="color:#f59e0b;">@for($s = 1; $s <= 5; $s++)<i class="bi {{ $s <= round($averageRating) ? 'bi-star-fill' : 'bi-star' }}"></i>@endfor</div>
+            <p class="cp-muted" style="font-size:13px;margin-top:4px;">{{ trans_choice('clubs::page.reviews_n', $reviews->count(), ['n' => $reviews->count()]) }}</p>
+        @else
+            <span class="cp-icon-tile" style="width:56px;height:56px;margin:0 auto;"><i class="bi bi-stars" style="font-size:24px;"></i></span>
+            <h3 style="font-size:20px;font-weight:700;margin-top:12px;">{{ __('clubs::page.reviews_none_m') }}</h3>
+            <p class="cp-muted" style="font-size:14px;margin-top:6px;">{{ __('clubs::page.reviews_none_sub_m') }}</p>
+        @endif
+    </div>
+    @foreach($cpReviews as $r)
+        <figure class="cp-card" style="margin:10px 0 0;padding:18px;">
+            <div style="color:#f59e0b;font-size:12px;">@for($s = 1; $s <= 5; $s++)<i class="bi {{ $s <= $r['rating'] ? 'bi-star-fill' : 'bi-star' }}"></i>@endfor</div>
+            <blockquote style="margin:8px 0 0;font-size:14px;line-height:1.6;">{{ $r['comment'] }}</blockquote>
+            <figcaption class="cp-muted" style="font-size:12px;margin-top:8px;"><b style="color:var(--cp-ink);">{{ $r['name'] }}</b> · {{ $r['ago'] }}</figcaption>
+        </figure>
+    @endforeach
+</section>
+
+{{-- ===================== GOOD TO KNOW ===================== --}}
+@if($cpFaq->isNotEmpty())
+<section id="questions" style="background:var(--cp-card);padding:40px 20px;margin-top:48px;">
+    <p class="cp-tag cp-red">{{ __('clubs::page.faq_eyebrow') }}</p>
+    <h2 style="font-size:32px;font-weight:700;margin:8px 0 20px;">{{ __('clubs::page.faq_title') }}</h2>
+    <div style="display:grid;gap:10px;">
+        @foreach($cpFaq as $q)
+            <details class="cp-card cp-faq" style="padding:18px;">
+                <summary>{{ $q['q'] }} <i class="bi bi-plus-lg"></i></summary>
+                <p class="cp-muted" style="margin-top:10px;font-size:14px;line-height:1.65;">{{ $q['a'] }}</p>
+            </details>
+        @endforeach
+    </div>
+    @if($cpWhatsapp)<a href="{{ $cpWhatsapp }}" target="_blank" rel="noopener" class="cp-cta" style="width:100%;margin-top:20px;"><i class="bi bi-whatsapp"></i>{{ __('clubs::page.ask_whatsapp') }}</a>@endif
+</section>
+@endif
+</main>
+
+{{-- ===================== BOTTOM BAR ===================== --}}
+<nav class="cpm-bottom" aria-label="{{ $cpName }}">
+    <button type="button" @click="go('overview')"><i class="bi bi-compass"></i>{{ __('clubs::page.tab_discover') }}</button>
+    <button type="button" @click="go('packages')"><i class="bi bi-grid-1x2"></i>{{ __('clubs::page.tab_programs') }}</button>
+    @if($cpPerks->isNotEmpty())<button type="button" @click="go('offers')"><i class="bi bi-stars"></i>{{ __('clubs::page.tab_perks') }}</button>@endif
+    @if($cpProducts->isNotEmpty())<button type="button" @click="go('shop')"><i class="bi bi-bag"></i>{{ __('clubs::page.tab_shop') }}</button>@endif
+    <button type="button" class="is-join" @click="join()"><i class="bi bi-plus-circle-fill"></i>{{ __('clubs::page.tab_join') }}</button>
+</nav>
+
+</div>
+
+@include('clubs::public.partials.page-overlays')
+</div>
+
+{{-- ===== Enrol flow (shared, unchanged) ===== --}}
+@include('clubs::public.partials._join-flow')
+@include('clubs::public.partials.page-runtime')
+@endsection
