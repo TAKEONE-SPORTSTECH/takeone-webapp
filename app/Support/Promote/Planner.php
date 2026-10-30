@@ -85,6 +85,12 @@ final class Planner
     /** @var array<string, int> "table.column" => copies given a new value */
     private array $renamed = [];
 
+    /** @var array<string, bool> "table.type_column = value" no vocabulary places */
+    private array $unknownMorphs = [];
+
+    /** @var array<int, string> staging people whose only production account is a deleted one */
+    private array $deletedAccounts = [];
+
     /**
      * Staging member id => production member id, for people entered under the
      * same name in the same event on both sides (an event both servers hold).
@@ -96,7 +102,7 @@ final class Planner
     /**
      * @param  array{tenants?: array<int, string>, club_events?: array<int, string>, users?: array<int, string>}  $exclude
      */
-    public function __construct(string $sourcePath, string $targetPath, private array $exclude = [], private ?string $storageRoot = null)
+    public function __construct(string $sourcePath, string $targetPath, private array $exclude = [], private ?string $storageRoot = null, ?PDO $target = null)
     {
         $open = function (string $path): PDO {
             $db = new PDO('sqlite:'.$path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
@@ -105,8 +111,20 @@ final class Planner
             return $db;
         };
         $this->src = $open($sourcePath);
-        $this->dst = $open($targetPath);
+        // The Applier passes its own (writable, locked) connection so the plan
+        // is read inside the same transaction that writes it. The planner
+        // itself only ever reads from it.
+        $this->dst = $target ?? $open($targetPath);
     }
+
+    /** @var array<int, string> */
+    private array $order = [];
+
+    /** @var array<string, array<int|string, int>> table => staging key => production id, from earlier runs */
+    private array $promoted = [];
+
+    /** @var array<string, array<int|string, bool>> rows to add as a separate copy of a record both sides hold */
+    private array $copies = [];
 
     /** @return array<string, mixed> */
     public function plan(): array
@@ -114,8 +132,9 @@ final class Planner
         $this->loadSchema();
         $this->loadMorphs();
         $this->loadSharedEventPeople();
+        $this->loadPromoted();
 
-        foreach ($this->order() as $table) {
+        foreach ($this->order = $this->order() as $table) {
             $this->decide($table);
             $this->decided[$table] = true;
         }
@@ -134,7 +153,9 @@ final class Planner
 
         foreach ($this->tables as $t) {
             foreach ($this->src->query("pragma table_info(\"$t\")") as $c) {
-                $this->cols[$t][$c['name']] = ['notnull' => (bool) $c['notnull'] && $c['dflt_value'] === null];
+                // NOT NULL is required even with a default: a link that cannot
+                // be kept cannot be emptied either (found in rehearsal 2026-10-30).
+                $this->cols[$t][$c['name']] = ['notnull' => (bool) $c['notnull']];
             }
             foreach ($this->dst->query("pragma index_list(\"$t\")") as $ix) {
                 if ($ix['unique'] && $ix['origin'] !== 'pk') {
@@ -179,12 +200,38 @@ final class Planner
         }
     }
 
+    /**
+     * Every name a polymorphic *_type column may hold: the platform's morph
+     * map, the parties' own vocabulary (App\Parties\Kinds — 'person',
+     * 'federation', 'event'…), and full class names from before the map.
+     * A type found in the data that none of these places is UNKNOWN: its link
+     * is never copied with a staging id in it (that id means a different row
+     * in production) — it is cleared, or the row is left out, and reported.
+     */
     private function loadMorphs(): void
     {
-        foreach (MorphMap::map() as $alias => $class) {
+        foreach (MorphMap::map() + \App\Parties\Kinds::map() as $alias => $class) {
             $table = (new $class)->getTable();
-            $this->morphs[$alias] = $table;
+            $this->morphs[$alias] ??= $table;
             $this->morphs[$class] = $table;
+        }
+
+        foreach ($this->tables as $t) {
+            foreach ($this->refs[$t] ?? [] as $r) {
+                if ($r['kind'] !== 'morph') {
+                    continue;
+                }
+                foreach ($this->src->query("select distinct \"{$r['type']}\" from \"$t\" where \"{$r['type']}\" is not null and \"{$r['type']}\" <> ''")->fetchAll(PDO::FETCH_COLUMN) as $type) {
+                    if (isset($this->morphs[$type])) {
+                        continue;
+                    }
+                    if (class_exists($type) && is_subclass_of($type, \Illuminate\Database\Eloquent\Model::class)) {
+                        $this->morphs[$type] = (new $type)->getTable();
+                    } else {
+                        $this->unknownMorphs["$t.{$r['type']} = $type"] = true;
+                    }
+                }
+            }
         }
     }
 
@@ -199,7 +246,7 @@ final class Planner
         $norm = fn ($s) => preg_replace('/\s+/u', ' ', mb_strtolower(trim((string) $s)));
 
         $prod = [];
-        foreach ($this->dst->query($sql) as $r) {
+        foreach ($this->dst->query($sql.' where u.deleted_at is null') as $r) {
             $prod[$r['uuid']][$norm($r['full_name'])][] = (int) $r['id'];
         }
         foreach ($this->src->query($sql) as $r) {
@@ -208,6 +255,45 @@ final class Planner
                 $this->sharedEventPeople[(int) $r['id']] = $hits[0];
             }
         }
+    }
+
+    /**
+     * What earlier runs already brought over (Applier::MAP_TABLE). A row
+     * promoted before is LINKED to what it became, so shipping again adds only
+     * what is new — never a second copy.
+     */
+    private function loadPromoted(): void
+    {
+        $exists = $this->dst->query("select 1 from sqlite_master where type='table' and name='".Applier::MAP_TABLE."'")->fetchColumn();
+        if (! $exists) {
+            return;
+        }
+        foreach ($this->dst->query('select source_table, source_key, target_id from '.Applier::MAP_TABLE) as $r) {
+            $this->promoted[$r['source_table']][$r['source_key']] = (int) $r['target_id'];
+        }
+    }
+
+    /**
+     * Everything the Applier needs to carry the plan out.
+     *
+     * @return array<string, mixed>
+     */
+    public function decisions(): array
+    {
+        return [
+            'order' => $this->order,
+            'cols' => $this->cols,
+            'refs' => $this->refs,
+            'state' => $this->state,
+            'map' => $this->map,
+            'copies' => $this->copies,
+            'morphs' => $this->morphs,
+        ];
+    }
+
+    public function source(): PDO
+    {
+        return $this->src;
     }
 
     private function has(string $table, string $col): bool
@@ -226,12 +312,15 @@ final class Planner
         foreach ($this->tables as $t) {
             $deps[$t] = [];
             foreach ($this->refs[$t] ?? [] as $r) {
-                if (! $r['req'] || $r['kind'] === 'json') {
+                if ($r['kind'] === 'json') {
                     continue;
                 }
                 foreach ($this->targetsOf($t, $r) as $to) {
                     if ($to !== $t && in_array($to, $this->tables, true)) {
-                        $deps[$t][$to] = true;
+                        // true = required. Optional links order too, so a unique
+                        // key holding one (persons.user_id) is matched with the
+                        // link already translated — found in rehearsal 2026-10-30.
+                        $deps[$t][$to] = ($deps[$t][$to] ?? false) || $r['req'];
                     }
                 }
             }
@@ -239,13 +328,22 @@ final class Planner
 
         $order = [];
         while ($deps) {
-            // Ready: nothing it requires is still waiting.
+            // Ready: nothing it points at is still waiting.
             $ready = array_keys(array_filter($deps, fn ($d) => ! array_intersect_key($d, $deps)));
             if (! $ready) {
-                // Two tables that each REQUIRE the other: reported, and the
-                // links that cannot be resolved in order are checked at the end.
-                $pick = array_key_first($deps);
-                $this->cycles[] = $pick.' ← '.implode(', ', array_keys(array_intersect_key($deps[$pick], $deps)));
+                // A loop. Break it where only OPTIONAL links wait (settled at the
+                // end); a loop of required links is reported.
+                $pick = null;
+                foreach ($deps as $t => $d) {
+                    if (! in_array(true, array_intersect_key($d, $deps), true)) {
+                        $pick = $t;
+                        break;
+                    }
+                }
+                if ($pick === null) {
+                    $pick = array_key_first($deps);
+                    $this->cycles[] = $pick.' ← '.implode(', ', array_keys(array_intersect_key($deps[$pick], $deps)));
+                }
                 $ready = [$pick];
             }
             foreach ($ready as $t) {
@@ -281,8 +379,24 @@ final class Planner
 
         $dstUuid = $this->has($t, 'uuid') ? $this->dst->query("select uuid, id from \"$t\" where uuid is not null")->fetchAll(PDO::FETCH_KEY_PAIR) : [];
 
+        $before = $key === 'id' ? ($this->promoted[$t] ?? []) : [];
+        $stillThere = $before ? array_flip($this->dst->query("select id from \"$t\" where id in (".implode(',', array_map('intval', $before)).')')->fetchAll(PDO::FETCH_COLUMN)) : [];
+
         foreach ($rows as $row) {
             $id = $row['__key'];
+
+            if (isset($before[$id])) {
+                if (isset($stillThere[$before[$id]])) {
+                    $this->set($t, $id, 'link', 'promoted on an earlier run');
+                    $this->map[$t][$id] = $before[$id];
+                } else {
+                    // Brought over once and since removed in production: that
+                    // was somebody's decision, and it is not undone.
+                    $this->set($t, $id, 'cascade', 'removed from production after an earlier run');
+                }
+
+                continue;
+            }
 
             if ($this->isTest($t, $row)) {
                 $this->set($t, $id, 'test', 'marked as test');
@@ -369,8 +483,10 @@ final class Planner
             };
 
             if ($to === null) {
-                // A morph to a model with no table of its own here — leave it.
-                continue;
+                // A type nothing places (see loadMorphs): never copied with a
+                // staging id in it — cleared if it may be empty, else the row
+                // cannot be copied.
+                $to = '(unknown type)';
             }
 
             if ($to === $t) {
@@ -493,6 +609,7 @@ final class Planner
             // UNLISTED event (new uuid), so both versions exist and nobody
             // sees the event twice in a list.
             $this->renamed['club_events: copied beside production\'s own, unlisted'] = ($this->renamed['club_events: copied beside production\'s own, unlisted'] ?? 0) + 1;
+            $this->copies[$t][$row['__key']] = true;
 
             return null;
         }
@@ -532,6 +649,18 @@ final class Planner
             return [(int) $found, 'same unique key ('.implode('+', $cols).')'];
         }
 
+        // A link table with no id and no unique key: present when an IDENTICAL
+        // row is (its links translated). Otherwise a second run adds it again.
+        if (! $this->has($t, 'id') && ! array_intersect(array_keys($this->cols[$t]), array_keys($remapped['__unknown'] ?? []))) {
+            $cols = array_keys($this->cols[$t]);
+            $values = array_map(fn ($c) => array_key_exists($c, $remapped) ? $remapped[$c] : ($row[$c] ?? null), $cols);
+            $q = $this->dst->prepare("select rowid from \"$t\" where ".implode(' and ', array_map(fn ($c) => "\"$c\" is ?", $cols)).' limit 1');
+            $q->execute($values);
+            if (($found = $q->fetchColumn()) !== false) {
+                return [(int) $found, 'identical row'];
+            }
+        }
+
         return null;
     }
 
@@ -545,17 +674,27 @@ final class Planner
             return $q->fetch() ?: null;
         };
 
-        if (! empty($row['uuid']) && $hit = $find('select id from users where uuid = ?', [$row['uuid']])) {
+        /*
+         * ACTIVE accounts only. Production keeps deleted copies of people
+         * (merged duplicates — one person had five accounts under one email,
+         * four of them deleted), and linking to one of those hands the
+         * person's events to an account that cannot sign in (found in
+         * rehearsal 2026-10-30). Only when production holds nothing but a
+         * deleted copy of the SAME account (same uuid) is that linked — it is
+         * the account production chose to delete — and it is listed.
+         */
+        $active = 'deleted_at is null';
+        if (! empty($row['uuid']) && $hit = $find("select id from users where uuid = ? and $active", [$row['uuid']])) {
             return [(int) $hit['id'], 'same person (uuid)'];
         }
-        if (! empty($row['email']) && $hit = $find('select id from users where lower(email) = lower(?)', [$row['email']])) {
+        if (! empty($row['email']) && $hit = $find("select id from users where lower(email) = lower(?) and $active order by id desc", [$row['email']])) {
             return [(int) $hit['id'], 'same person (email)'];
         }
         if (isset($this->sharedEventPeople[(int) $row['id']])) {
             return [$this->sharedEventPeople[(int) $row['id']], 'same person (same name, same event)'];
         }
         if (! empty($row['mobile'])) {
-            $hit = $find('select id, full_name from users where mobile = ?', [$row['mobile']]);
+            $hit = $find("select id, full_name from users where mobile = ? and $active order by id desc", [$row['mobile']]);
             if ($hit && $this->sameName($hit['full_name'], $row['full_name'] ?? '')) {
                 return [(int) $hit['id'], 'same person (phone + name)'];
             }
@@ -578,6 +717,12 @@ final class Planner
 
                 return [-1, 'unique key ('.implode('+', $cols).') taken by a different person'];
             }
+        }
+
+        if (! empty($row['uuid']) && $hit = $find('select id from users where uuid = ? and deleted_at is not null', [$row['uuid']])) {
+            $this->deletedAccounts[] = "{$row['full_name']} (staging #{$row['id']}) is production account #{$hit['id']}, which production DELETED — linked to it, so it stays deleted";
+
+            return [(int) $hit['id'], 'same person (uuid) — deleted in production'];
         }
 
         return null;
@@ -668,6 +813,8 @@ final class Planner
             'skipped_tables' => Policy::SKIP,
             'cleared_links' => $this->cleared,
             'renamed' => $this->renamed,
+            'unknown_morph_types' => array_keys($this->unknownMorphs),
+            'linked_to_deleted_accounts' => $this->deletedAccounts,
             'conflicts' => $this->conflicts,
             'unknown_columns' => $this->unknown,
             'cycles' => $this->cycles,

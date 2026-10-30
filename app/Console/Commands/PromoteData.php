@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\Promote\Applier;
 use App\Support\Promote\Planner;
 use Illuminate\Console\Command;
 
@@ -12,7 +13,9 @@ use Illuminate\Console\Command;
  * read-only) and says, table by table, what promoting would add, what it
  * would link to records production already has, and what it would leave out
  * as test data — plus every conflict and unclassified column to settle first.
- * It writes nothing to either database. Applying is a later, separate step.
+ * Without --apply it writes nothing to either database. With --apply it
+ * writes the plan into the target (App\Support\Promote\Applier), refusing the
+ * application's own live database unless --production is given.
  *
  *   php artisan takeone:promote staging.sqlite production.sqlite \
  *       --exclude=storage/app/private/promote/exclude.json --json=report.json
@@ -28,7 +31,10 @@ class PromoteData extends Command
         {target : the production database snapshot (SQLite file)}
         {--exclude= : JSON file naming the test data to leave out}
         {--storage= : staging storage/ folder, to count the files that travel with the rows}
-        {--json= : write the full report here}';
+        {--json= : write the full report here}
+        {--apply : WRITE the plan into the target database (one transaction; rolled back on any failed check)}
+        {--files-to= : with --apply, the target storage/ folder the added rows\' files are copied into}
+        {--production : allow --apply on the database this application is running on}';
 
     protected $description = 'Report what promoting staging data into production would do (read-only)';
 
@@ -50,6 +56,10 @@ class PromoteData extends Command
 
                 return self::FAILURE;
             }
+        }
+
+        if ($this->option('apply')) {
+            return $this->applyPlan($exclude);
         }
 
         $report = (new Planner($this->argument('source'), $this->argument('target'), $exclude, $this->option('storage')))->plan();
@@ -75,6 +85,32 @@ class PromoteData extends Command
             file_put_contents($path, json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
             $this->line("Full report: $path");
         }
+
+        return self::SUCCESS;
+    }
+
+    /**
+     * Write it. Into a COPY unless --production says otherwise: the database
+     * this application runs on is refused by default, so a rehearsal can
+     * never land on the real thing by a slip of the path.
+     */
+    private function applyPlan(array $exclude): int
+    {
+        $target = realpath($this->argument('target'));
+        $live = realpath((string) config('database.connections.'.config('database.default').'.database')) ?: null;
+
+        if ($target === $live && ! $this->option('production')) {
+            $this->error('That is the live database of this application. Rehearse on a copy, or pass --production after a verified backup.');
+
+            return self::FAILURE;
+        }
+
+        $result = (new Applier($this->argument('source'), $target, $exclude, $this->option('storage'), $this->option('files-to')))->apply();
+
+        $this->info('Written and committed — every check passed.');
+        $this->table(['table', 'rows added'], collect($result['written'])->map(fn ($n, $t) => [$t, $n])->values()->all());
+        $this->line(sprintf('Files: %d copied (%.1f MB), %d already there, %d missing',
+            $result['files']['copied'], $result['files']['bytes'] / 1048576, $result['files']['already_there'], $result['files']['missing']));
 
         return self::SUCCESS;
     }
