@@ -121,6 +121,41 @@ jobs:
             --filter='P /public/emperor-dashboard.html' \
             ./ "$DEPLOY_PATH/"
 
+      # The owner's rule (2026-10-30): whatever is shipped is ON in production.
+      # deploy/feature-flags.conf is written by scripts/ship.sh from the staging
+      # .env; each KEY=value in it is set in production's .env, before the
+      # config is cached below. Only switches travel: a line must be KEY=word,
+      # and keys that describe the server (APP_*, DB_*, MAIL_*, …) are refused
+      # here too, so the file can never change a credential or the environment.
+      # Keys not in the file are left exactly as they are.
+      - name: Apply feature switches
+        working-directory: ${{ env.DEPLOY_PATH }}
+        run: |
+          f=deploy/feature-flags.conf
+          [ -f "$f" ] || { echo "No $f — switches left as they are."; exit 0; }
+          server='^(APP|DB|MAIL|CACHE|SESSION|QUEUE|LOG|BACKUP|BROADCAST|REDIS|FILESYSTEM|VITE|AWS|PUSHER|REVERB)_|^FILE_XSENDFILE(=|$)'
+          changed=0
+          while IFS= read -r line; do
+            case "$line" in ''|'#'*) continue ;; esac
+            if ! printf '%s' "$line" | grep -qE '^[A-Z][A-Z0-9_]*=[a-z0-9_-]*$'; then
+              echo "::warning::skipped a malformed line in $f"; continue
+            fi
+            key=${line%%=*}; val=${line#*=}
+            if printf '%s' "$key" | grep -qE "$server"; then
+              echo "::warning::$key describes the server, not a feature — skipped"; continue
+            fi
+            old=$(grep -E "^$key=" .env | tail -1 | cut -d= -f2- || true)
+            [ "$old" = "$val" ] && continue
+            if grep -qE "^$key=" .env; then
+              sed -i "s|^$key=.*|$key=$val|" .env
+            else
+              printf '\n%s=%s\n' "$key" "$val" >> .env
+            fi
+            echo "$key: ${old:-(unset)} -> $val"
+            changed=$((changed+1))
+          done < "$f"
+          echo "$changed switch(es) changed."
+
       - name: Migrate & cache
         working-directory: ${{ env.DEPLOY_PATH }}
         run: |
