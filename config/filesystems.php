@@ -82,6 +82,11 @@ return [
         | always. Scratch work, backups and the TV app downloads use
         | storage_path() directly and stay on each box. `takeone:uploads-check`
         | proves the shared folder is really mounted.
+        |
+        | Private files are group-READABLE (0640 / dirs 0750). Laravel's default
+        | 0600/0700 shut out the deploy user (the folders' group), so the deploy
+        | backup could not archive new folders and staging→production copies
+        | silently skipped files (2026-10-30). Still nothing for "other".
         */
 
         'local' => [
@@ -90,6 +95,10 @@ return [
             'serve' => true,
             'throw' => false,
             'report' => false,
+            'permissions' => [
+                'file' => ['public' => 0644, 'private' => 0640],
+                'dir' => ['public' => 0755, 'private' => 0750],
+            ],
         ],
 
         'public' => [
@@ -98,6 +107,10 @@ return [
             'visibility' => 'private',
             'throw' => false,
             'report' => false,
+            'permissions' => [
+                'file' => ['public' => 0644, 'private' => 0640],
+                'dir' => ['public' => 0755, 'private' => 0750],
+            ],
         ],
 
         's3' => [
