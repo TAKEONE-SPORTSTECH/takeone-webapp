@@ -48,6 +48,13 @@ Schedule::command('takeone:backup')
     ->dailyAt('03:30')
     ->withoutOverlapping()
     ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('Nightly backup FAILED — restore capability is compromised.'));
+// Staging and production share one database AND one uploads folder (UPLOADS_ROOT).
+// An unmounted folder means pictures written to one box only — shout, don't drift.
+// Passes quietly while UPLOADS_ROOT is unset.
+Schedule::command('takeone:uploads-check')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->onFailure(fn () => \Illuminate\Support\Facades\Log::critical('Shared uploads folder is NOT mounted or not writable — uploads are landing on this box only.'));
 // Margin / TakeNote: the Bin keeps a note 30 days, then it goes for good with every
 // picture, recording and drawing in it; uploads taken out of every note go a day
 // later. After the nightly backup, so the last copy of anything is always in one.

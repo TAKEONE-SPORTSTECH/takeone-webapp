@@ -76,11 +76,17 @@ return [
         |
         | Both are kept as names so the ~100 existing `disk('public')` call
         | sites keep working; they are the same disk.
+        |
+        | UPLOADS_ROOT moves that one root to the folder staging and production
+        | share (same database, so the same files). Unset = storage/app, as
+        | always. Scratch work, backups and the TV app downloads use
+        | storage_path() directly and stay on each box. `takeone:uploads-check`
+        | proves the shared folder is really mounted.
         */
 
         'local' => [
             'driver' => 'local',
-            'root' => storage_path('app'),
+            'root' => env('UPLOADS_ROOT') ?: storage_path('app'),
             'serve' => true,
             'throw' => false,
             'report' => false,
@@ -88,7 +94,7 @@ return [
 
         'public' => [
             'driver' => 'local',
-            'root' => storage_path('app'),
+            'root' => env('UPLOADS_ROOT') ?: storage_path('app'),
             'visibility' => 'private',
             'throw' => false,
             'report' => false,

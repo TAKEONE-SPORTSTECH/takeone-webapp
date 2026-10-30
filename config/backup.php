@@ -39,7 +39,7 @@ return [
     | pointing at files that no longer exist.
     */
     'uploads' => [
-        storage_path('app'),
+        env('UPLOADS_ROOT') ?: storage_path('app'),
     ],
 
     // Skip an uploads archive larger than this (MB); 0 = no limit. Guards a

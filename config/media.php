@@ -22,7 +22,7 @@ return [
     | controller that authorises first. Holds everything when no vault is
     | attached, plus the derived HLS ladders and fetched copies always.
     */
-    'local_root' => env('MEDIA_LOCAL_ROOT', storage_path('app/media')),
+    'local_root' => env('MEDIA_LOCAL_ROOT', (env('UPLOADS_ROOT') ?: storage_path('app')).'/media'),
 
     /*
     | Serving
