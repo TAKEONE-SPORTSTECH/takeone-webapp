@@ -16,4 +16,11 @@ use App\Scoreboard\Sports\Karate\Mat\Scoring as BaseScoring;
  * Chosen by App\Scoreboard\Sports\Karate\Styles\KarateStyles for an event whose
  * style is `shotokan`.
  */
-class Scoring extends BaseScoring {}
+class Scoring extends BaseScoring
+{
+    // Settings → Points and Fouls: the organiser's own buttons and foul ladder
+    // (Styles\OrganiserScoring). Unchanged until somebody designs some.
+    use \App\Scoreboard\Sports\Karate\Styles\OrganiserScoring;
+
+    public const COMMANDS = [...BaseScoring::COMMANDS, 'buttons', 'button', 'button_undo', 'penalties'];
+}

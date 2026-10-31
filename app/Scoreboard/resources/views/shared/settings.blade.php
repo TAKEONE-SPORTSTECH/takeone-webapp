@@ -78,6 +78,9 @@
     $first = $tabs[0][0] ?? 'corners';
     $closeLabel = __('scoreboard::settings.close');
     $panelHidden = fn (string $tab) => $tab === $first ? '' : ' hidden';
+    // The VS panels speak the VS screen's corner keys (red = aka, blue = ao),
+    // whatever a sport calls its corners (BJJ: blue/white).
+    $stVsLook = isset($L['aka'], $L['ao']) ? $L : array_combine(['aka', 'ao'], array_slice(array_values((array) $L), 0, 2));
 @endphp
 <div id="settings" hidden class="scrim" style="z-index:{{ $z }};">
   @if ($chrome === 'sheet')
@@ -124,12 +127,12 @@
 
     {{-- Photo guide — where a face goes in the cropper, platform-wide (super-admin only). --}}
     @if ($photoGuideUrl)
-      @include('scoreboard::shared.settings.photo-guide', ['look' => $L, 'photoGuideUrl' => $photoGuideUrl])
+      @include('scoreboard::shared.settings.photo-guide', ['look' => $stVsLook, 'photoGuideUrl' => $photoGuideUrl])
     @endif
 
     {{-- VS screen — where each competitor's details sit over their photo, platform-wide (super-admin only). --}}
     @if ($vsLayoutUrl)
-      @include('scoreboard::shared.settings.vs-layout', ['look' => $L, 'vsLayoutUrl' => $vsLayoutUrl])
+      @include('scoreboard::shared.settings.vs-layout', ['look' => $stVsLook, 'vsLayoutUrl' => $vsLayoutUrl])
     @endif
 
     {{-- Timer --}}

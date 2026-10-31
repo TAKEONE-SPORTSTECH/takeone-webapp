@@ -990,7 +990,7 @@
     'sounds' => true, 'soundLabels' => ['point_1' => __('scoreboard::bjj_messages.ctl_sound_point_1'), 'point_2' => __('scoreboard::bjj_messages.ctl_sound_point_2'), 'point_3' => __('scoreboard::bjj_messages.ctl_sound_point_3')],
     'perScreen' => true, 'customScoring' => null,
     'cameraUrl' => $cameraUrl ?? null, 'cameraCommandBase' => $cameraCommandBase ?? null,
-    'photoGuideUrl' => null, 'vsLayoutUrl' => null, 'ownScript' => false,
+    'photoGuideUrl' => $photoGuideUrl ?? null, 'vsLayoutUrl' => $vsLayoutUrl ?? null, 'ownScript' => false,
 ])
 
 {{-- ── The end of a match ────────────────────────────────────────────────

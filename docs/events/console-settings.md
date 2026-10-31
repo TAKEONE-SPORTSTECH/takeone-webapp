@@ -11,11 +11,11 @@ Settings pop-up for the first time (its separate Corners and Cameras pop-ups mov
 |---|---|---|
 | Rules | `rulesView` — the sport's own partial (`karate/…/settings-rules`, `bjj/…/settings-rules`) | Karate (all styles; Kyokushin without Senshu), BJJ |
 | Corners | always; `perScreen` adds per-screen sides (control · board · upcoming) | all, with per-screen sides everywhere (each sport's screens read `MatSides::redRight(…, $screen)`) |
-| Points + Fouls | `customScoring` = `'points'` (Combat's words) / `'buttons'` (Kyokushin's) | Combat, Kyokushin |
+| Points + Fouls | `customScoring` = `'points'` (Combat's words) / `'buttons'` (Kyokushin's) | every Karate style (Styles\OrganiserScoring: unchanged until an organiser designs some; console script `karate/scoreboard/partials/custom-scoring-script`) |
 | Timer | `timer` = `['dur'=>[m,s], 'warn'=>[m,s], 'warnId'=>'ato'\|'warn', 'warnInk'=>css]` | Karate, BJJ |
 | Sounds | `sounds` true (+ `soundLabels` overrides) | Karate, BJJ |
 | Cameras | `cameraUrl` | all |
-| Photo guide / VS layout | `photoGuideUrl` / `vsLayoutUrl` (super-admin) | Karate |
+| Photo guide / VS layout | `photoGuideUrl` / `vsLayoutUrl` (super-admin) | all (`App\Scoreboard\Support\LookController` for BJJ/Taekwondo; THE shared VS preview) |
 
 ## Rules of the file
 
@@ -42,5 +42,4 @@ Settings pop-up for the first time (its separate Corners and Cameras pop-ups mov
 ## Not yet everywhere (needs engine/endpoint work, not markup)
 
 - Taekwondo: Rules, Timer (its rounds × minutes stay beside Start next), Sounds.
-- BJJ and Taekwondo: Points/Fouls (engines don't read `Styles\Custom*`), Photo guide
-  and VS layout (endpoints and previews are Karate's).
+- BJJ and Taekwondo: Points/Fouls (their engines have no custom-scoring hook yet).

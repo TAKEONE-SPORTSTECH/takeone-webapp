@@ -71,17 +71,41 @@
   el('vs').hidden = false;
   refitNames();
 
-  // The console's editor moves the photo; this screen draws it.
+  // A picture that exists only in the console's browser (a "try a photo"):
+  // a blob: or data:image URL, checked here, drawn on this preview only.
+  var LOCAL = /^(blob:https?:\/\/[^"'()\s]+|data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+\/=]+)$/;
+  var local = { aka: null, ao: null };
+  function paintLocal() {
+    [['aka', 'vsRedPhoto'], ['ao', 'vsBluePhoto']].forEach(function (p) {
+      var n = el(p[1]), u = local[p[0]];
+      if (!n || !u) return;
+      n.style.backgroundImage = 'url("' + u + '")';
+      n.style.opacity = '1';
+    });
+  }
+
+  // The console's editors move the photo, try a photo, or re-lay the info
+  // block (the VS layout tab); this screen draws it.
   window.addEventListener('message', function (e) {
     var d = e.data;
     if (e.origin !== window.location.origin || !d || d.type !== 'vs-preview') return;
     ['aka', 'ao'].forEach(function (k) {
       var c = d[k];
       if (!c || !state[k]) return;
-      if (typeof c.photo === 'string' && /^(https?:\/\/|\/)/.test(c.photo)) state[k].photo = c.photo;
+      if (typeof c.photo === 'string' && /^(https?:\/\/|\/)/.test(c.photo)) { state[k].photo = c.photo; local[k] = null; }
       if ('vs_frame' in c) state[k].vs_frame = c.vs_frame;
+      if ('local' in c) local[k] = (typeof c.local === 'string' && LOCAL.test(c.local)) ? c.local : null;
     });
     paintVs(state);
+    paintLocal();
+    if (d.layout) {
+      var vs = el('vs'), b = parseFloat(d.layout.b), k = parseFloat(d.layout.k);
+      if (vs && isFinite(b) && isFinite(k)) {
+        vs.style.setProperty('--vs-info-bottom', Math.min(700, Math.max(0, b)) + 'px');
+        vs.style.setProperty('--vs-info-scale', Math.min(1.3, Math.max(0.5, k)));
+      }
+      if (vs && d.layout.s !== undefined) vs.setAttribute('data-stats', d.layout.s ? '1' : '0');
+    }
   });
 
   if (window.parent && window.parent !== window) window.parent.postMessage({ type: 'vs-preview-ready' }, window.location.origin);

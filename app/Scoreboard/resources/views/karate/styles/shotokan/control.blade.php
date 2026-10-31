@@ -302,12 +302,16 @@
         <div id="score-{{ $side }}" style="font-family:'Anton',sans-serif;font-size:104px;line-height:1;font-variant-numeric:tabular-nums;text-shadow:0 4px 30px rgba(0,0,0,.8);">0</div>
       </div>
 
-      <div style="flex:1;display:flex;flex-direction:column;gap:12px;">
+      {{-- The built-in buttons, until the mat has its own (Settings → Points,
+           Styles\CustomButtons). Then #cus-{side} takes the whole column and
+           every button shares its height (flex:1), however many there are. --}}
+      <div id="std-{{ $side }}" style="flex:1;display:flex;flex-direction:column;gap:12px;">
         <button class="sbtn bout" style="background:{{ $colour }};color:{{ $L[$side]['ink'] }};" data-cmd="point" data-side="{{ $side }}" data-n="1">Yuko +1</button>
         <button class="sbtn bout" style="background:{{ $colour }};color:{{ $L[$side]['ink'] }};" data-cmd="point" data-side="{{ $side }}" data-n="2">Waza-ari +2</button>
         <button class="sbtn bout" style="background:{{ $colour }};color:{{ $L[$side]['ink'] }};" data-cmd="point" data-side="{{ $side }}" data-n="3">Ippon +3</button>
         <button class="sbtn bout" style="background:var(--fill);color:var(--text);font-size:30px;" data-cmd="undo_point" data-side="{{ $side }}" data-n="1">Correct −1</button>
       </div>
+      <div id="cus-{{ $side }}" data-colour="{{ $colour }}" hidden style="flex:1;min-height:0;flex-direction:column;gap:12px;"></div>
 
       {{-- Five cells, and the cell IS the button: pressing C3 gives C3, rather
            than pressing + three times in front of a hall. Pressing the one
@@ -420,7 +424,7 @@
       'sport' => 'karate', 'L' => $L, 'z' => 21, 'inlineTabs' => true,
       'rulesView' => 'scoreboard::karate.scoreboard.partials.settings-rules', 'rulesData' => [],
       'timer' => ['dur' => [3, 0], 'warn' => [0, 15], 'warnId' => 'ato', 'warnInk' => 'var(--aka-ink)', 'hint' => __('scoreboard::karate_messages.ctl_warning_hint')],
-      'sounds' => true, 'soundLabels' => [], 'perScreen' => true, 'customScoring' => null,
+      'sounds' => true, 'soundLabels' => [], 'perScreen' => true, 'customScoring' => 'points',
       'cameraUrl' => $cameraUrl ?? null, 'cameraCommandBase' => $cameraCommandBase ?? null,
       'photoGuideUrl' => $photoGuideUrl ?? null, 'vsLayoutUrl' => $vsLayoutUrl ?? null, 'ownScript' => false,
   ])
@@ -596,6 +600,10 @@
   var URL_CMD = @json($commandUrl ?? route('karate-scoreboard.command', $event->uuid));
   var EVENT_TITLE = @json($event->title);
   var PEN = @json(\App\Scoreboard\Sports\Karate\Mat\MatState::PENALTIES);
+  // The built-in foul ladder (C1 · C2 · C3 · HC · H, the top step ending the
+  // bout), and the mat's own when it has one (Styles\CustomPenalties).
+  var CB_DEFAULT_PENS = PEN.map(function (l, i) { return { id: '', label: l, effect: 'none', value: 0, ends: i === PEN.length - 1 }; });
+  function penSteps() { return Array.isArray(STATE.penalties) && STATE.penalties.length ? STATE.penalties : CB_DEFAULT_PENS; }
   var TBD = @json(__('scoreboard::karate_messages.court_tbd'));
   var FAILED = @json(__('scoreboard::karate_messages.ctl_failed'));
 
@@ -834,8 +842,12 @@
     var level = STATE[side + 'Pen'] || 0;
     var host = el('pen-' + side);
     host.textContent = '';
-    PEN.forEach(function (label, i) {
-      var on = i < level, top = i >= 3;   // HC and H are the disqualifying two
+    // The mat's own fouls (Styles\CustomPenalties). Red: a step that ends the
+    // bout, and the one just below it (HC under H) — the look the board always had.
+    var steps = penSteps();
+    steps.forEach(function (step, i) {
+      var label = step.label;
+      var on = i < level, top = !!step.ends || !!(steps[i + 1] && steps[i + 1].ends);
       var b = document.createElement('button');
       b.className = 'pcell bout';
       b.disabled = !STATE.matchId;
@@ -843,6 +855,8 @@
       b.style.color = on ? (top ? '#fff' : '#000') : '#5c6175';
       b.style.border = '1px solid ' + (on ? (top ? '#ff3b47' : 'transparent') : '#1f2230');
       b.textContent = label;
+      if (steps.length > 5) b.style.fontSize = '17px';
+      b.title = step.effect === 'deduct' ? '−' + step.value : (step.effect === 'award' ? '+' + step.value + ' →' : '');
       b.onclick = function () { send('penalty', { side: side, level: level === i + 1 ? i : i + 1 }); };
       host.appendChild(b);
     });
@@ -917,6 +931,7 @@
   }
 
   function paint() {
+    paintButtons('aka'); paintButtons('ao');
     paintMeta(); paintSide('aka'); paintSide('ao');
     paintWinner(); paintClock(); paintQueue(); paintArmed(); paintBoardToggle();
     paintRules(); paintTimerFields(); paintParticipant();
@@ -1085,7 +1100,7 @@
     // apply something the reader is not looking at.
     var apply = el('btnApply');
     if (apply) {
-      var own = which === 'cameras' || which === 'corners' || which === 'guide' || which === 'vs';   // both save as they go
+      var own = which === 'cameras' || which === 'buttons' || which === 'penalties' || which === 'corners' || which === 'guide' || which === 'vs';   // both save as they go
       apply.hidden = own;
       if (apply.nextElementSibling) apply.nextElementSibling.hidden = own;
     }
@@ -1521,6 +1536,8 @@
     el('endBout').hidden = false;
   }
 
+@include('scoreboard::karate.scoreboard.partials.custom-scoring-script', ['defaultButtons' => [], 'seedButtons' => \App\Scoreboard\Sports\Karate\Styles\Combat\Scoring::DEFAULT_BUTTONS])
+
   /* ── Wiring ───────────────────────────────────────────────────────────── */
   document.addEventListener('click', function (e) {
     var t = e.target.closest ? e.target.closest('[data-cmd],[data-close],[data-participant],[data-tab],[data-rule]') : null;
@@ -1549,6 +1566,7 @@
       send(t.dataset.cmd, {
         side: t.dataset.side || null,
         n: t.dataset.n ? parseInt(t.dataset.n, 10) : null,
+        button: t.dataset.button || null,
       });
     }
   });
@@ -1596,6 +1614,9 @@
   };
 
   el('btnSettings').onclick = function () {
+    // The Points and Fouls editors start from what the mat runs now.
+    btnDraftFromState(); paintBtnRows();
+    penDraftFromState(); paintPenRows();
     draft = draftFromState();
     paintRules();
     paintTimerFields();

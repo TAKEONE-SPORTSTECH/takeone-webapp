@@ -340,7 +340,7 @@
     'chrome' => 'sheet', 'inlineTabs' => true, 'ownScript' => true,
     'rulesView' => null, 'timer' => null, 'sounds' => false, 'perScreen' => true, 'customScoring' => null,
     'cameraUrl' => $cameraUrl ?? null, 'cameraCommandBase' => $cameraCommandBase ?? null,
-    'photoGuideUrl' => null, 'vsLayoutUrl' => null,
+    'photoGuideUrl' => $photoGuideUrl ?? null, 'vsLayoutUrl' => $vsLayoutUrl ?? null,
 ])
 @endif
 

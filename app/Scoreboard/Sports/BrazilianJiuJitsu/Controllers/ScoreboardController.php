@@ -94,6 +94,11 @@ class ScoreboardController extends Controller
             'cameraCommandBase' => \Illuminate\Support\Str::beforeLast(
                 route('me.events.mat-cameras.command', [$event->uuid, 0], false), '0'
             ),
+            // Settings → Photo guide / VS layout: platform-wide, super-admin only
+            // (App\Scoreboard\Support\LookController), with THE shared VS preview.
+            'photoGuideUrl' => Auth::user()?->isSuperAdmin() ? route('scoreboard.photo-guide', $event->uuid, false) : null,
+            'vsLayoutUrl' => Auth::user()?->isSuperAdmin() ? route('scoreboard.vs-layout', $event->uuid, false) : null,
+            'vsPreviewUrl' => route('bjj-scoreboard.players-vs-preview', $event->uuid, false),
             // The Bouts card's Players tab — ORGANISERS only; null hides it.
             'players' => \App\Scoreboard\Support\ConsolePlayers::console(
                 $event, Auth::user(), $court, null, route('me.events.bracket', $event->uuid)

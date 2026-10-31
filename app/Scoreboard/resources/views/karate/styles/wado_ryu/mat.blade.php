@@ -342,16 +342,22 @@
       : { bg: 'rgba(0,0,0,.3)', fg: 'rgba(255,255,255,.45)', line: 'rgba(255,255,255,.25)' };
   }
 
-  function chips(id, n) {
+  function chips(id, n, own) {
     var host = el(id);
     if (!host) return;
     var off = offInk(id);
     host.textContent = '';
-    PEN.forEach(function (label, i) {
-      var on = i < n, tone = CHIP_ON[i] || CHIP_ON[0];
+    // The mat's own fouls (Settings → Fouls, Styles\CustomPenalties), else
+    // the built-in ladder: each chip takes the tone of its place on the ladder, the
+    // last tone for a step that ends the bout. A longer ladder shrinks to fit.
+    var steps = Array.isArray(own) && own.length ? own.map(function (p) { return p.label; }) : PEN;
+    var ends = Array.isArray(own) && own.length ? own.map(function (p) { return !!p.ends; }) : [];
+    var many = steps.length > 5;
+    steps.forEach(function (label, i) {
+      var on = i < n, tone = ends[i] ? CHIP_ON[CHIP_ON.length - 1] : (CHIP_ON[Math.min(i, CHIP_ON.length - 1)] || CHIP_ON[0]);
       var c = document.createElement('div');
-      c.style.cssText = 'width:72px; height:68px; border-radius:10px; display:flex; align-items:center; justify-content:center;' +
-        "font-family:'Anton',sans-serif; font-size:30px;" +
+      c.style.cssText = 'min-width:' + (many ? 48 : 72) + 'px; padding:0 ' + (many ? 8 : 0) + 'px; height:68px; border-radius:10px; display:flex; align-items:center; justify-content:center;' +
+        "font-family:'Anton',sans-serif; font-size:" + (many ? 22 : 30) + "px;" +
         'background:' + (on ? tone.bg : off.bg) + ';' +
         'color:' + (on ? tone.fg : off.fg) + ';' +
         'border:2px solid ' + (on ? 'transparent' : off.line) + ';' +
@@ -642,7 +648,7 @@
       aoScore.style.animation = 'scorePop .45s cubic-bezier(.2,.8,.2,1)';
     }
 
-    chips('sbAkaPen', s.akaPen); chips('sbAoPen', s.aoPen);
+    chips('sbAkaPen', s.akaPen, s.penalties); chips('sbAoPen', s.aoPen, s.penalties);
     senshu('sbAkaSenshu', s.akaSenshu); senshu('sbAoSenshu', s.aoSenshu);
 
     el('sbAkaWin').hidden = !(s.finished && s.akaLeads);

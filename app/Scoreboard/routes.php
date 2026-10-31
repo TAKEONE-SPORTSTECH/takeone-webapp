@@ -642,3 +642,15 @@ foreach (['taekwondo' => ['court', 'taekwondo'], 'bjj' => ['bjj/screen', 'bjj']]
             ->name("{$sport}-scoreboard.players-geo")->defaults('sport', $sport)->middleware('throttle:mat-read');
     });
 }
+
+/*
+| The shared Settings pop-up's PLATFORM-WIDE looks — the photo guide and the VS
+| layout — for every sport's console (App\Scoreboard\Support\LookController).
+| Super-admin only, checked in the controller; Karate's own doors stay too.
+*/
+Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
+    Route::post('/scoreboard/{event:uuid}/photo-guide', [\App\Scoreboard\Support\LookController::class, 'photoGuide'])
+        ->name('scoreboard.photo-guide')->middleware('throttle:admin-write');
+    Route::post('/scoreboard/{event:uuid}/vs-layout', [\App\Scoreboard\Support\LookController::class, 'vsLayout'])
+        ->name('scoreboard.vs-layout')->middleware('throttle:admin-write');
+});
