@@ -391,6 +391,14 @@ class User extends Authenticatable implements \Ahl\Certificates\Contracts\Recipi
             return null;
         }
 
+        // No separate code: the number carries its own ("+973 033112233"), so
+        // read it the way a typed number is read — which also drops a trunk
+        // zero typed after the country code. Otherwise identical to the line
+        // below (digits, `00` and leading zeros gone).
+        if ($code === '') {
+            return self::normalisePhoneInput((string) ($mobile['number'] ?? ''));
+        }
+
         return mb_substr($code.$number, 0, 32);
     }
 
@@ -403,10 +411,29 @@ class User extends Authenticatable implements \Ahl\Certificates\Contracts\Recipi
      */
     public static function normalisePhoneInput(?string $typed): ?string
     {
+        return self::phoneInputKeys($typed)[0] ?? null;
+    }
+
+    /**
+     * The keys a typed number may be stored under: the canonical one first,
+     * then — only when it differs — the key this rule produced before a trunk
+     * zero after the country code was dropped (2026-10-31).
+     *
+     * "+973 033112233" is the Bahraini number 33112233 with the local `0`
+     * typed out of habit; its key is 97333112233, the same as "+973 33112233"
+     * and as `{code: +973, number: 033112233}`. Only a zero AFTER a separated
+     * country code is dropped — "+973033112233" in one run cannot be split
+     * safely, so it keeps its old reading. The legacy key is still matched so
+     * a row stored under it before the fix stays reachable.
+     *
+     * @return string[]
+     */
+    public static function phoneInputKeys(?string $typed): array
+    {
         $digits = preg_replace('/\D/', '', (string) $typed);
 
         if ($digits === '') {
-            return null;
+            return [];
         }
 
         // `00973…` is the same as `+973…`.
@@ -414,7 +441,21 @@ class User extends Authenticatable implements \Ahl\Certificates\Contracts\Recipi
             $digits = substr($digits, 2);
         }
 
-        return mb_substr(ltrim($digits, '0'), 0, 32);
+        $legacy = mb_substr(ltrim($digits, '0'), 0, 32);
+
+        if ($legacy === '') {
+            return [];
+        }
+
+        if (preg_match('/^\s*(?:\+|00)\s*(\d{1,4})[\s\-.\/()]+0+[\s\-.\/()]*(\d[\d\s\-.\/()]*)$/', (string) $typed, $m)) {
+            $canonical = mb_substr(ltrim($m[1], '0').ltrim(preg_replace('/\D/', '', $m[2]), '0'), 0, 32);
+
+            if ($canonical !== '' && $canonical !== $legacy) {
+                return [$canonical, $legacy];
+            }
+        }
+
+        return [$legacy];
     }
 
     /**
@@ -435,21 +476,23 @@ class User extends Authenticatable implements \Ahl\Certificates\Contracts\Recipi
      */
     public function scopeWithPhone($query, ?string $typed)
     {
-        $key = self::normalisePhoneInput($typed);
+        $keys = self::phoneInputKeys($typed);
 
-        if ($key === null) {
+        if ($keys === []) {
             return $query->whereRaw('1 = 0');
         }
 
-        return $query->where(function ($q) use ($key) {
-            $q->where('phone_key', $key);
+        return $query->where(function ($q) use ($keys) {
+            foreach ($keys as $key) {
+                $q->orWhere('phone_key', $key);
 
-            if (mb_strlen($key) >= 6) {
-                // They typed the local number; we hold it with a country code.
-                $q->orWhere('phone_key', 'like', '%'.$key);
+                if (mb_strlen($key) >= 6) {
+                    // They typed the local number; we hold it with a country code.
+                    $q->orWhere('phone_key', 'like', '%'.$key);
 
-                // They typed the country code; we hold only the local number.
-                $q->orWhereRaw("length(phone_key) >= 6 AND ? LIKE '%' || phone_key", [$key]);
+                    // They typed the country code; we hold only the local number.
+                    $q->orWhereRaw("length(phone_key) >= 6 AND ? LIKE '%' || phone_key", [$key]);
+                }
             }
         });
     }

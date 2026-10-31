@@ -47,6 +47,24 @@ class WelcomeEmail extends Mailable implements ShouldQueue
     public $intended;
 
     /**
+     * The signed verification link, built when the mail is CONSTRUCTED.
+     *
+     * Built here — on the box that dispatches the mail — rather than in
+     * content() at send time: staging and production share one jobs queue, so
+     * whichever box's worker sent it used to stamp its own APP_URL and signing
+     * key on the link, and a link signed by the wrong box answers "invalid
+     * signature". A public string serialises with the queued job, so the
+     * sending worker can no longer change it.
+     *
+     * Valid for `auth.verification.expire` minutes (default 1440 = 24 h): the
+     * mail may be sent hours late (RetriesDelivery), so a 60-minute link could
+     * be dead on arrival.
+     *
+     * @var string
+     */
+    public string $verificationUrl = '';
+
+    /**
      * Create a new message instance.
      *
      * @return void
@@ -57,6 +75,15 @@ class WelcomeEmail extends Mailable implements ShouldQueue
         $this->guardian = $guardian;
         $this->relationship = $relationship;
         $this->intended = $intended;
+        $this->verificationUrl = URL::temporarySignedRoute(
+            'verification.verify',
+            now()->addMinutes((int) config('auth.verification.expire', 1440)),
+            array_filter([
+                'id' => $user->getKey(),
+                'hash' => sha1($user->getEmailForVerification()),
+                'intended' => $intended,
+            ])
+        );
     }
 
     /**
@@ -81,11 +108,7 @@ class WelcomeEmail extends Mailable implements ShouldQueue
         return new Content(
             view: 'members::emails.welcome',
             with: [
-                'verificationUrl' => URL::temporarySignedRoute('verification.verify', now()->addMinutes(60), array_filter([
-                    'id' => $this->user->getKey(),
-                    'hash' => sha1($this->user->getEmailForVerification()),
-                    'intended' => $this->intended,
-                ])),
+                'verificationUrl' => $this->verificationUrl,
             ],
         );
     }

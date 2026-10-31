@@ -65,5 +65,11 @@ return [
         // of the same name is that person; a club's named officials are reused
         // across that club's events.
         'officials' => (bool) env('DUPLICATE_GUARD_OFFICIALS', false),
+        // Person doors: KnownPerson's name rule also treats common short forms
+        // as one name (Mohd = Mohammed, Ahmad = Ahmed, Yousif = Yusuf …), and
+        // the sign-up form refuses a phone + name that already belongs to an
+        // account with no email (sign in / forgot password instead) — it never
+        // links or adopts that account.
+        'registration' => (bool) env('DUPLICATE_GUARD_REGISTRATION', false),
     ],
 ];

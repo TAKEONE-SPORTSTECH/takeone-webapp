@@ -86,7 +86,8 @@ class ClubInstructorController extends Controller
                 'full_name' => $request->name,
                 'email' => $request->email,
                 'password' => bcrypt($request->password),
-                'mobile' => ($request->country_code ?? '+973').$request->phone,
+                // The standard {code, number} shape every other door stores.
+                'mobile' => ['code' => $request->country_code ?: '+973', 'number' => trim((string) $request->phone)],
                 'gender' => $request->gender,
                 'birthdate' => $request->birthdate,
                 'nationality' => $request->nationality,

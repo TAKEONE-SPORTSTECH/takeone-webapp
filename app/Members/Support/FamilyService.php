@@ -16,6 +16,36 @@ use Illuminate\Support\Facades\Mail;
 
 class FamilyService
 {
+    /** A name as compared for duplicates: case-folded, whitespace collapsed. */
+    public static function nameKey(?string $name): string
+    {
+        return (string) preg_replace('/\s+/u', ' ', mb_strtolower(trim((string) $name)));
+    }
+
+    /**
+     * The dependent of THIS guardian who is the same child: the same
+     * normalised full name and the same birthdate (or both unknown). Never
+     * looks outside the guardian's own family.
+     */
+    public function existingDependent(User $guardian, ?string $fullName, $birthdate): ?User
+    {
+        $key = self::nameKey($fullName);
+        if ($key === '') {
+            return null;
+        }
+        try {
+            $dob = ($birthdate !== null && $birthdate !== '') ? \Illuminate\Support\Carbon::parse($birthdate)->toDateString() : null;
+        } catch (\Throwable) {
+            return null;
+        }
+
+        $ids = UserRelationship::where('guardian_user_id', $guardian->id)->pluck('dependent_user_id');
+
+        return User::whereIn('id', $ids)->get()->first(
+            fn (User $u) => self::nameKey($u->full_name) === $key && $u->birthdate?->toDateString() === $dob
+        );
+    }
+
     /**
      * Create a new dependent user and link it to the guardian.
      *
@@ -25,6 +55,19 @@ class FamilyService
      */
     public function createDependent(User $guardian, array $data): User
     {
+        /*
+         * duplicates.guard.registration: THIS guardian already has a dependent
+         * with the same name and birthdate — that is the same child, not a
+         * second one. Matched only within this guardian's own family: a typed
+         * child is never linked to somebody else's.
+         */
+        if (config('duplicates.guard.registration', false)
+            && $this->existingDependent($guardian, $data['full_name'] ?? null, $data['birthdate'] ?? null)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'full_name' => __(':name is already in your family.', ['name' => $data['full_name']]),
+            ]);
+        }
+
         // Normalize gender value to match database enum (m/f)
         $gender = $data['gender'];
         $genderMap = ['male' => 'Male', 'female' => 'Female'];
@@ -84,7 +127,7 @@ class FamilyService
         ];
 
         $softDeleted = ! empty($data['email'])
-            ? User::withTrashed()->where('email', $data['email'])->whereNotNull('deleted_at')->first()
+            ? User::withTrashed()->whereRaw('lower(email) = ?', [mb_strtolower(trim((string) $data['email']))])->whereNotNull('deleted_at')->first()
             : null;
 
         if ($softDeleted) {

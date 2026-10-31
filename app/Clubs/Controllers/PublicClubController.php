@@ -1076,6 +1076,16 @@ class PublicClubController extends Controller
         $club = Tenant::findOrFail($request->club_id);
         $payLater = $request->boolean('pay_later');
 
+        // A registrant is the signed-in member or one of THEIR dependents —
+        // never an arbitrary account picked by id from the client.
+        $allowedIds = UserRelationship::where('guardian_user_id', $user->id)
+            ->pluck('dependent_user_id')->map(fn ($id) => (int) $id)->push((int) $user->id)->all();
+        foreach ($request->registrants as $registrant) {
+            if (! empty($registrant['user_id']) && ! in_array((int) $registrant['user_id'], $allowedIds, true)) {
+                return response()->json(['success' => false, 'message' => 'You can only register yourself or your own family members.'], 403);
+            }
+        }
+
         // Store proof of payment image if provided (private disk — not publicly accessible)
         $proofPath = null;
         if (! $payLater && $request->filled('payment_proof_base64')) {

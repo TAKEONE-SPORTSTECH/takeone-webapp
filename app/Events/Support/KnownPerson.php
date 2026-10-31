@@ -32,6 +32,32 @@ use Illuminate\Support\Collection;
  */
 class KnownPerson
 {
+    /**
+     * Short forms and spellings of one given name, each mapped to one form.
+     * THE one table — `samePerson` reads it through `close()`. Consulted only
+     * while `duplicates.guard.registration` is on.
+     *
+     * Hasan and Husain are deliberately two groups: brothers who share every
+     * consonant and, very often, a phone.
+     */
+    private const NAME_ALIASES = [
+        'mohd' => 'mohammed', 'mohamed' => 'mohammed', 'mohammad' => 'mohammed',
+        'mohamad' => 'mohammed', 'muhammad' => 'mohammed', 'muhammed' => 'mohammed',
+        'mohammed' => 'mohammed', 'mhd' => 'mohammed',
+        'abdulla' => 'abdullah', 'abdullah' => 'abdullah', 'abdallah' => 'abdullah', 'abdalla' => 'abdullah',
+        'ahmad' => 'ahmed', 'ahmed' => 'ahmed',
+        'hussain' => 'hussain', 'husain' => 'hussain', 'hussein' => 'hussain', 'husein' => 'hussain',
+        'hasan' => 'hasan', 'hassan' => 'hasan',
+        'yousif' => 'yusuf', 'yousef' => 'yusuf', 'yusuf' => 'yusuf', 'yousuf' => 'yusuf', 'yusif' => 'yusuf', 'yosef' => 'yusuf',
+        'ebrahim' => 'ibrahim', 'ibrahim' => 'ibrahim',
+        'khalid' => 'khalid', 'khaled' => 'khalid',
+    ];
+
+    private static function aliasesOn(): bool
+    {
+        return (bool) config('duplicates.guard.registration', false);
+    }
+
     public static function enabled(): bool
     {
         return (bool) config('events.entry_dedupe', false);
@@ -84,7 +110,7 @@ class KnownPerson
             return null;
         }
         if (str_starts_with($typed, '+') || str_starts_with(preg_replace('/\s+/', '', $typed), '00')) {
-            return ['code' => '', 'number' => '+'.ltrim(preg_replace('/\D/', '', $typed), '0')];
+            return ['code' => '', 'number' => '+'.User::normalisePhoneInput($typed)];
         }
 
         return ['code' => '+973', 'number' => preg_replace('/\D/', '', $typed)];
@@ -154,6 +180,10 @@ class KnownPerson
     private function tokens(string $name): array
     {
         $name = mb_strtolower($name);
+        if (self::aliasesOn()) {
+            // "Moh'd" is one name, not "moh" and "d".
+            $name = str_replace(["'", '’', '`'], '', $name);
+        }
         // Arabic letters that are written several ways for one sound.
         $name = strtr($name, ['أ' => 'ا', 'إ' => 'ا', 'آ' => 'ا', 'ة' => 'ه', 'ى' => 'ي', 'ؤ' => 'و', 'ئ' => 'ي', 'ـ' => '']);
         $name = preg_replace('/[\x{064B}-\x{0652}]/u', '', $name);   // tashkeel
@@ -189,6 +219,10 @@ class KnownPerson
     private function close(string $x, string $y): bool
     {
         if ($x === $y) {
+            return true;
+        }
+        if (self::aliasesOn() && isset(self::NAME_ALIASES[$x], self::NAME_ALIASES[$y])
+            && self::NAME_ALIASES[$x] === self::NAME_ALIASES[$y]) {
             return true;
         }
         if (! preg_match('/^[a-z]+$/', $x) || ! preg_match('/^[a-z]+$/', $y)) {
