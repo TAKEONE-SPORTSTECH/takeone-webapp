@@ -201,10 +201,11 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
 
     // Bills routes
     Route::get('/bills', [InvoiceController::class, 'index'])->name('bills.index');
+    // before /bills/{id}, which would otherwise swallow "pay-all" as an id
+    Route::get('/bills/pay-all', [InvoiceController::class, 'payAll'])->name('bills.pay-all');
     Route::get('/bills/{id}', [InvoiceController::class, 'show'])->name('bills.show');
     Route::get('/bills/{id}/receipt', [InvoiceController::class, 'receipt'])->name('bills.receipt');
     Route::get('/bills/{id}/pay', [InvoiceController::class, 'pay'])->name('bills.pay');
-    Route::get('/bills/pay-all', [InvoiceController::class, 'payAll'])->name('bills.pay-all');
 });
 
 /*

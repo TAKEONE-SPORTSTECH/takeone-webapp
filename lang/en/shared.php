@@ -698,6 +698,7 @@ return [
     'invoices_show_modal_owner' => 'Owner',
     'invoices_show_modal_paid' => 'Paid',
     'invoices_show_modal_pay_now' => 'Pay Now',
+    'invoices_paid_by_club' => 'Pay your club directly. They will mark the bill paid once they receive it.',
     'invoices_show_modal_pending' => 'Pending',
     'invoices_show_modal_status' => 'Status:',
     'invoices_show_modal_student_information' => 'Student Information',

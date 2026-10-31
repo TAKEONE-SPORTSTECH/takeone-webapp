@@ -114,7 +114,10 @@ class InvoiceController extends Controller
     }
 
     /**
-     * Process payment for the specified invoice.
+     * "Pay now" on one invoice. There is no payment gateway: a bill is marked
+     * paid only by the club once it has the money, never by the member. This
+     * used to set status=paid with no payment at all, so it now changes nothing
+     * and says how payment works.
      *
      * @param  int  $id
      * @return \Illuminate\Http\RedirectResponse
@@ -126,35 +129,18 @@ class InvoiceController extends Controller
             ->where('payer_user_id', $user->id)
             ->firstOrFail();
 
-        // In a real application, this would integrate with a payment gateway
-        $invoice->update([
-            'status' => 'paid',
-        ]);
-
         return redirect()->route('bills.show', $invoice->id)
-            ->with('success', 'Payment processed successfully.');
+            ->with('info', __('shared.invoices_paid_by_club'));
     }
 
     /**
-     * Process payment for all unpaid invoices.
+     * "Pay all" — same rule as pay(): nothing is marked paid here.
      *
      * @return \Illuminate\Http\RedirectResponse
      */
     public function payAll()
     {
-        $user = Auth::user();
-        $invoices = Invoice::where('payer_user_id', $user->id)
-            ->where('status', '!=', 'paid')
-            ->get();
-
-        // In a real application, this would integrate with a payment gateway
-        foreach ($invoices as $invoice) {
-            $invoice->update([
-                'status' => 'paid',
-            ]);
-        }
-
         return redirect()->route('bills.index')
-            ->with('success', 'All payments processed successfully.');
+            ->with('info', __('shared.invoices_paid_by_club'));
     }
 }
