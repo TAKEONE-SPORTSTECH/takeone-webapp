@@ -406,14 +406,8 @@ class MatState
      */
     private function announced(array $corner): array
     {
-        if (($corner['country'] ?? '') !== '') {
-            $corner['country'] = \App\Support\Countries::label($corner['country']);
-        }
-        if (($corner['nationality'] ?? '') !== '') {
-            $corner['nationalityName'] = \App\Support\Countries::label($corner['nationality']);
-        }
-
-        return $corner;
+        // One answer for every VS screen (Scoreboard\Support\VsCorner).
+        return \App\Scoreboard\Support\VsCorner::announced($corner);
     }
 
     /** A score as stored: whole points as an int, a half kept as a half. */

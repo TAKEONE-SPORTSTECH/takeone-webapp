@@ -2,7 +2,7 @@
     The scoring table at a Brazilian Jiu-Jitsu mat — Match Control.
 
     ── Where this design came from ────────────────────────────────────────────
-    The user's own canvas, `drafts/Score Control Board.html`, adopted whole on
+    The user's own canvas, `drafts/scoreboards/Score Control Board.html`, adopted whole on
     2026-09-10 as the PRIMARY layout for this console — the same file on the
     laptop at the table and on the tablet in the referee's hand, because there
     is one console here and it only ever SCALES (see the note on the controller's
@@ -277,7 +277,7 @@
   /* ── The referee's stalling count, the draft's way ──────────────────────
      The count runs INSIDE the button of the corner it is against, the button
      glows and the number pumps while it runs. Both animations are the draft's
-     own (drafts/Score Control Board.html): an inset gold wash that breathes,
+     own (drafts/scoreboards/Score Control Board.html): an inset gold wash that breathes,
      and a 1.18 pump on the inner span so the whole label moves rather than the
      digits jittering against a fixed word. */
   @keyframes stallGlow{0%,100%{box-shadow:inset 0 0 12px 2px rgba(255,225,53,.35)}
@@ -1264,7 +1264,7 @@
 {{-- ── Hardware — NO LONGER REACHABLE ────────────────────────────────────
      Its button became the score log above. The markup is left in place rather
      than deleted in passing (CLAUDE.md → House Cleaning) and is registered in
-     Documentation/HOUSE-CLEANING.md; it is `hidden`, so it costs a reader
+     docs/platform/house-cleaning.md; it is `hidden`, so it costs a reader
      nothing. Give it an opener again and it works exactly as it did. --}}
 <div id="hardware" hidden class="scrim" style="z-index:41;">
   <div class="modal" style="width:640px;">
@@ -1281,7 +1281,7 @@
 </div>
 
 {{-- ── Finish: the Match result card ─────────────────────────────────────
-     The draft's card (drafts/Score Control Board.html), adopted whole and wired
+     The draft's card (drafts/scoreboards/Score Control Board.html), adopted whole and wired
      to the real ending. It REPLACES the shared three-question dialog that
      Finish used to raise — a winner choice, a method choice and a note, asked
      as three rows of chips with no scoreline in sight, on the one screen where

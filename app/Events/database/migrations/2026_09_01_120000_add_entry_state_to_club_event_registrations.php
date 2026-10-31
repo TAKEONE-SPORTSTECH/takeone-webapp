@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * An entry can exist before it is complete.
  *
- * Phase A of Documentation/EVENTS-PUBLIC-ENTRY.md: a coach commits an entry by
+ * Phase A of docs/events/public-entry.md: a coach commits an entry by
  * NAME, and the athlete supplies the details a coach could only have guessed at.
  * Everything already on file keeps today's meaning — the default is `complete`,
  * so every existing row is exactly what it was before this ran.

@@ -17,7 +17,7 @@ use App\Members\Models\User;
  * alone, each with its reason. The limits printed are the limits in force
  * (config('events.division_merge')), never retyped.
  *
- * Text source: Documentation/DIVISION-MERGING.md and the online handbook it
+ * Text source: docs/events/division-merging.md and the online handbook it
  * links — keep the three in step.
  *
  * Printed through BracketPdf's browser (Shared Stays Shared). The event chapter

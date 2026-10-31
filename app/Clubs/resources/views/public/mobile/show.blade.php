@@ -15,7 +15,7 @@
 
 {{--
     The club's front page — MOBILE (and the Android app, which is this page in a
-    WebView). Design source: drafts/Club Pages & Design/Club/emperor-academy-mobile-
+    WebView). Design source: drafts/clubs-and-trainers/Club/emperor-academy-mobile-
     complete.html. Desktop twin: clubs::public.show. Both read App\Clubs\Support\ClubFrontPage,
     page-style, page-runtime and page-overlays.
 

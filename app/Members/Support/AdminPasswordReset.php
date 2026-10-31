@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Mail;
  * over those accounts. Those people reset by email, or through a super-admin.
  *
  * Every password set by somebody else is logged and the member is emailed, so it
- * can never happen silently. See docs/account-recovery.md.
+ * can never happen silently. See docs/platform/account-recovery.md.
  */
 final class AdminPasswordReset
 {

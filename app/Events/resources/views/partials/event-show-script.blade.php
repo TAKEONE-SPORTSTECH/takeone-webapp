@@ -370,7 +370,7 @@ x-data="{
         /* ---------------- Entering someone not listed (Door B) ----------------
          * A NAME commits the entry; a single-use link lets the athlete supply
          * what the coach could only have guessed at. See
-         * Documentation/EVENTS-PUBLIC-ENTRY.md.
+         * docs/events/public-entry.md.
          */
         byName: { full_name: '', contact_email: '', contact_phone: '' },
         byNameContact: false,

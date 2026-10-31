@@ -127,7 +127,7 @@ class ScoreboardController extends Controller
      * it would rewrite every reference for no behavioural gain (RULE #1).
      * mobile/control.blade.php, react/control-mobile.blade.php and
      * console-mobile-styles.blade.php are now unreferenced and are registered
-     * in Documentation/HOUSE-CLEANING.md — NOT deleted here, so this is one
+     * in docs/platform/house-cleaning.md — NOT deleted here, so this is one
      * line to reverse if a referee ever does want the thumb console back.
      */
     private function consoleView(ClubEvent $event, $mats, string $court, array $urls)

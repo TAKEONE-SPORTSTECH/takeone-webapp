@@ -10,7 +10,7 @@
     THE DRAW — the Combat Sports Bracket, running as itself.
 
     ⚠️ THE BOARD ON THIS PAGE IS NOT A RE-IMPLEMENTATION OF THE DESIGN FILE.
-    It IS the design file. `drafts/Combat Sports Bracket.html` ships React 18
+    It IS the design file. `drafts/events/Combat Sports Bracket.html` ships React 18
     UMD, a `dc-runtime` that parses its root `x-dc` element, twelve Poppins
     woff2 faces and one `class Component extends DCLogic`. All of it was
     unpacked out of that file and installed verbatim:

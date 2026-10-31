@@ -12,7 +12,7 @@
 @endpush
 
 {{--
-    A trainer's profile — DESKTOP. Design source: drafts/Club Pages & Design/
+    A trainer's profile — DESKTOP. Design source: drafts/clubs-and-trainers/
     Trainners/emperor-coach-desktop.html, drawn in the club front page's language
     (clubs::public.partials.page-style) and in the colour of the club they coach at.
 

@@ -108,6 +108,17 @@ return [
     |
     | OFF by default (RULE #1). MEDIA_SHARE_EXPORT=true, then config:cache.
     */
+    /*
+    | The bout page's Analytics tab (<x-bout-analytics>, App\Media\BoutStats) —
+    | one bout's statistics beside Match · Points · Review · Comments, read from
+    | the mat's own log. Same access as the page; no endpoint of its own.
+    |
+    | OFF by default (RULE #1). BOUT_ANALYTICS_TAB=true, then config:cache.
+    */
+    'analytics_tab' => [
+        'enabled' => (bool) env('BOUT_ANALYTICS_TAB', false),
+    ],
+
     'share_export' => [
         'enabled' => (bool) env('MEDIA_SHARE_EXPORT', false),
         'max_height' => 1080,

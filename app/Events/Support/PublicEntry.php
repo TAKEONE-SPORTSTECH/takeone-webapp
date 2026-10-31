@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
 /**
  * A stranger enters a competition — Door C.
  *
- * Phase C of Documentation/EVENTS-PUBLIC-ENTRY.md. Somebody who has never heard
+ * Phase C of docs/events/public-entry.md. Somebody who has never heard
  * of TAKEONE opens a shared link, reads the poster and decides to compete. The
  * account is a SIDE EFFECT; entering the competition is the thing they came for.
  *

@@ -17,7 +17,7 @@ use App\Support\Modules\AbstractModule;
  *
  * Delete test: remove app/DevBoard/, its `devboard_*` tables, its line in
  * config/modules.php and public/vendor/{sortablejs,perfect-freehand}, and
- * nothing else notices. Plan: Documentation/DEV-BOARD-PLAN.md.
+ * nothing else notices. Plan: docs/plans/dev-board-plan.md.
  */
 class DevBoard extends AbstractModule
 {

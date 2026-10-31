@@ -495,6 +495,12 @@
   </div>
 </div>
 
+{{-- Analytics (App\Media\BoutStats) — drawn once on the server, cloned into
+     the rail by renderPanel(). Only while BOUT_ANALYTICS_TAB is on. --}}
+@if (! empty($analytics))
+<template id="boutAnalyticsTpl"><x-bout-analytics :stats="$analytics" :timeline="$timeline" variant="desktop" /></template>
+@endif
+
 <script>
 /* ══════════ DATA — from the platform, not typed by anyone ══════════ */
 const ROUNDS  = @json($rounds);
@@ -641,7 +647,11 @@ function renderPanel(mount, sticky){
   const tabs = document.createElement('div'); tabs.className = 'tabs';
   const tp = document.createElement('button'); tp.className = 'tab on'; tp.textContent = 'Points';
   const tr = document.createElement('button'); tr.className = 'tab'; tr.textContent = 'Coach Review';
-  tabs.append(tp, tr); mount.append(tabs);
+  // Analytics sits between Points and Coach Review when the page carries it.
+  const tpl = document.getElementById('boutAnalyticsTpl');
+  const ta = tpl ? document.createElement('button') : null;
+  if (ta) { ta.className = 'tab'; ta.textContent = @json(__('events::events.bout_an_tab')); }
+  tabs.append(...[tp, ta, tr].filter(Boolean)); mount.append(tabs);
 
   const pPts = document.createElement('div'); pPts.className = 'pane on';
   ROUNDS.forEach(r => {
@@ -686,10 +696,20 @@ function renderPanel(mount, sticky){
     add.onclick = () => noteForm(null);
     pRev.append(add);
   }
-  mount.append(pPts, pRev);
+  let pAn = null;
+  if (tpl) {
+    pAn = document.createElement('div'); pAn.className = 'pane';
+    pAn.append(tpl.content.cloneNode(true));
+    // A key moment or a chart dot replays exactly like a point in the list.
+    pAn.querySelectorAll('[data-seek]').forEach(el => el.addEventListener('click', () => {
+      const label = el.querySelector('.pt-action')?.textContent || '';
+      seek(parseFloat(el.dataset.seek), label);
+    }));
+  }
+  mount.append(...[pPts, pAn, pRev].filter(Boolean));
 
-  tp.onclick = () => { tp.classList.add('on'); tr.classList.remove('on'); pPts.classList.add('on'); pRev.classList.remove('on'); };
-  tr.onclick = () => { tr.classList.add('on'); tp.classList.remove('on'); pRev.classList.add('on'); pPts.classList.remove('on'); };
+  const pairs = [[tp, pPts], [ta, pAn], [tr, pRev]].filter(([t]) => t);
+  pairs.forEach(([t, p]) => t.onclick = () => pairs.forEach(([t2, p2]) => { t2.classList.toggle('on', t2 === t); p2.classList.toggle('on', p2 === p); }));
 }
 renderPanel(document.getElementById('railMount'));
 renderPanel(document.getElementById('fsPanel'));

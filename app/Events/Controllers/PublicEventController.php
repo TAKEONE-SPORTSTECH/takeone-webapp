@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\Storage;
 /**
  * The event page anybody may open — the link an organiser puts on Instagram.
  *
- * Phase B of Documentation/EVENTS-PUBLIC-ENTRY.md. READ-ONLY: the whole new
+ * Phase B of docs/events/public-entry.md. READ-ONLY: the whole new
  * surface is a GET, so the page can ship and be judged before any public write
  * exists (that is Phase C).
  *

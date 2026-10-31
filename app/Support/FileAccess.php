@@ -234,7 +234,7 @@ class FileAccess
         // and, since 2026-09-02, the FILES it publishes too: the rulebook, the
         // entry form, the schedule. Both are gated on the organiser's own
         // switch, so turning the public page off closes them again in the same
-        // instant. See Documentation/EVENTS-PUBLIC-ENTRY.md, Phase B.
+        // instant. See docs/events/public-entry.md, Phase B.
         //
         // Still narrow: `branding` and `documents` only. An event's CLIPS and
         // its screens stay exactly as closed as they have always been — bout

@@ -57,6 +57,9 @@ class VsScreen(
         const val INFO_DEFAULT = 40f
         const val INFO_MIN = 16f
         const val INFO_MAX = 520f
+        const val CHIP_H = 57f
+        val RED = intArrayOf(0xFF4B1A17.toInt(), 0x8CC0392F.toInt(), 0xFFC0392F.toInt(), 0xFFE9C3BD.toInt())
+        val BLUE = intArrayOf(0xFF14284D.toInt(), 0x8C2457A6.toInt(), 0xFF2457A6.toInt(), 0xFFBCCDE6.toInt())
     }
 
 
@@ -64,6 +67,16 @@ class VsScreen(
     private val blue = plan.optJSONObject("blue") ?: JSONObject()
     private val vs = plan.optJSONObject("vs") ?: JSONObject()
     private val division = plan.optString("division")
+
+    // What every other VS screen shows (the mats, the bout page) — sent by the
+    // server under vs.corners / vs.layout / vs.red_right / vs.referee
+    // (App\Scoreboard\Support\VsCorner). Absent on an older server: every
+    // read below falls back to what this screen drew before.
+    private val redX = vs.optJSONObject("corners")?.optJSONObject("red") ?: JSONObject()
+    private val blueX = vs.optJSONObject("corners")?.optJSONObject("blue") ?: JSONObject()
+    private val redRight = vs.optBoolean("red_right", false)
+    private val showStats = (vs.optJSONObject("layout")?.optInt("show_stats", 1) ?: 1) != 0
+    private val referee = vs.optString("referee").takeIf { it.isNotEmpty() && it != "null" }
 
     private val regular = font(assets, "BarlowCondensed-Regular.ttf", "Tajawal-Regular.ttf")
     private val bold = font(assets, "BarlowCondensed-Bold.ttf", "Tajawal-Bold.ttf")
@@ -96,7 +109,8 @@ class VsScreen(
         // Both fighters share one grid: the name row is as tall as the taller
         // of the two names, so every row sits level on both sides.
         val nameRow = maxOf(nameInk(red), nameInk(blue)) + 12f
-        val block = 52f + 10f + 42f + 10f + nameRow + 4f + 86f
+        val chipRow = if (chipsOf(redX).isNotEmpty() || chipsOf(blueX).isNotEmpty()) CHIP_H + 10f else 0f
+        val block = 52f + 10f + 42f + 10f + nameRow + 4f + 86f + chipRow
         val lift = infoBottom.coerceIn(INFO_MIN, INFO_MAX)
 
         val base = layer("base", RectF(0f, 0f, W, H)) { c ->
@@ -120,11 +134,13 @@ class VsScreen(
                 base,
                 layer("red", RectF(0f, 0f, W, ph)) { c ->
                     panel(c, Path().apply { moveTo(0f, 0f); lineTo(W, 0f); lineTo(W, ph * 0.82f); lineTo(0f, ph * 0.96f); close() },
-                        RectF(0f, 0f, W, ph), 0xFF4B1A17.toInt(), redPhoto, 0x8CC0392F.toInt(), leftToRight = true)
+                        RectF(0f, 0f, W, ph), colour(redX, "panel", RED[0]), redPhoto, colour(redX, "glow", RED[1]), leftToRight = true,
+                        frame = redX.optJSONObject("vs_frame"))
                 },
                 layer("blue", RectF(0f, by, W, H)) { c ->
                     panel(c, Path().apply { moveTo(0f, by + ph * 0.18f); lineTo(W, by + ph * 0.04f); lineTo(W, H); lineTo(0f, H); close() },
-                        RectF(0f, by, W, H), 0xFF14284D.toInt(), bluePhoto, 0x8C2457A6.toInt(), leftToRight = false)
+                        RectF(0f, by, W, H), colour(blueX, "panel", BLUE[0]), bluePhoto, colour(blueX, "glow", BLUE[1]), leftToRight = false,
+                        frame = blueX.optJSONObject("vs_frame"))
                 },
                 layer("divider", RectF(0f, H / 2f - 120f, W, H / 2f + 120f)) { c ->
                     c.save()
@@ -137,10 +153,12 @@ class VsScreen(
                 },
                 layer("top", RectF(0f, 0f, W, 190f)) { c -> top(c) },
                 layer("infoRed", RectF(0f, redBase - block - 20f, W, redBase + 20f)) { c ->
-                    fighter(c, red, mirrored = false, tag = 0xFFC0392F.toInt(), country = 0xFFE9C3BD.toInt(), nameRow = nameRow, baseY = redBase)
+                    fighter(c, red, mirrored = false, tag = colour(redX, "badge_bg", RED[2]), country = colour(redX, "country_ink", RED[3]),
+                        nameRow = nameRow, baseY = redBase, extra = redX, chipRow = chipRow)
                 },
                 layer("infoBlue", RectF(0f, blueBase - block - 20f, W, blueBase + 20f)) { c ->
-                    fighter(c, blue, mirrored = true, tag = 0xFF2457A6.toInt(), country = 0xFFBCCDE6.toInt(), nameRow = nameRow, baseY = blueBase)
+                    fighter(c, blue, mirrored = true, tag = colour(blueX, "badge_bg", BLUE[2]), country = colour(blueX, "country_ink", BLUE[3]),
+                        nameRow = nameRow, baseY = blueBase, extra = blueX, chipRow = chipRow)
                 },
                 layer("chips", RectF(0f, H - 120f, W, H)) { c -> chips(c, H - 32.4f - (34.6f + 21.6f)) },
                 layer("vs", RectF(W / 2f - 400f, H / 2f - 290f, W / 2f + 400f, H / 2f + 250f)) { c -> word(c) },
@@ -151,17 +169,29 @@ class VsScreen(
         val bx = W - w
         val baseY = H - lift
 
+        // Which corner stands in which slot — the sport's convention, as the mats.
+        val leftWho = if (redRight) blue else red
+        val rightWho = if (redRight) red else blue
+        val leftX = if (redRight) blueX else redX
+        val rightX = if (redRight) redX else blueX
+        val leftPhoto = if (redRight) bluePhoto else redPhoto
+        val rightPhoto = if (redRight) redPhoto else bluePhoto
+        val leftDefault = if (redRight) BLUE else RED
+        val rightDefault = if (redRight) RED else BLUE
+
         return listOf(
             base,
             // The two panels: red from the left, blue from the right, each cut
             // on the slant and carrying its fighter's photograph.
-            layer("red", RectF(0f, 0f, w, H)) { c ->
+            layer(if (redRight) "blue" else "red", RectF(0f, 0f, w, H)) { c ->
                 panel(c, Path().apply { moveTo(0f, 0f); lineTo(w, 0f); lineTo(w * 0.82f, H); lineTo(0f, H); close() },
-                    RectF(0f, 0f, w, H), 0xFF4B1A17.toInt(), redPhoto, 0x8CC0392F.toInt(), leftToRight = true)
+                    RectF(0f, 0f, w, H), colour(leftX, "panel", leftDefault[0]), leftPhoto, colour(leftX, "glow", leftDefault[1]),
+                    leftToRight = true, frame = leftX.optJSONObject("vs_frame"))
             },
-            layer("blue", RectF(bx, 0f, W, H)) { c ->
+            layer(if (redRight) "red" else "blue", RectF(bx, 0f, W, H)) { c ->
                 panel(c, Path().apply { moveTo(bx + w * 0.18f, 0f); lineTo(W, 0f); lineTo(W, H); lineTo(bx, H); close() },
-                    RectF(bx, 0f, W, H), 0xFF14284D.toInt(), bluePhoto, 0x8C2457A6.toInt(), leftToRight = false)
+                    RectF(bx, 0f, W, H), colour(rightX, "panel", rightDefault[0]), rightPhoto, colour(rightX, "glow", rightDefault[1]),
+                    leftToRight = false, frame = rightX.optJSONObject("vs_frame"))
             },
             // The gold divider, on the page's 10° lean, over both panels.
             layer("divider", RectF(700f, 0f, 1220f, H)) { c ->
@@ -174,11 +204,13 @@ class VsScreen(
                 c.restore()
             },
             layer("top", RectF(0f, 0f, W, 170f)) { c -> top(c) },
-            layer("infoRed", RectF(0f, baseY - block - 20f, W / 2f, baseY + 20f)) { c ->
-                fighter(c, red, mirrored = false, tag = 0xFFC0392F.toInt(), country = 0xFFE9C3BD.toInt(), nameRow = nameRow, baseY = baseY)
+            layer(if (redRight) "infoBlue" else "infoRed", RectF(0f, baseY - block - 20f, W / 2f, baseY + 20f)) { c ->
+                fighter(c, leftWho, mirrored = false, tag = colour(leftX, "badge_bg", leftDefault[2]), country = colour(leftX, "country_ink", leftDefault[3]),
+                    nameRow = nameRow, baseY = baseY, extra = leftX, chipRow = chipRow)
             },
-            layer("infoBlue", RectF(W / 2f, baseY - block - 20f, W, baseY + 20f)) { c ->
-                fighter(c, blue, mirrored = true, tag = 0xFF2457A6.toInt(), country = 0xFFBCCDE6.toInt(), nameRow = nameRow, baseY = baseY)
+            layer(if (redRight) "infoRed" else "infoBlue", RectF(W / 2f, baseY - block - 20f, W, baseY + 20f)) { c ->
+                fighter(c, rightWho, mirrored = true, tag = colour(rightX, "badge_bg", rightDefault[2]), country = colour(rightX, "country_ink", rightDefault[3]),
+                    nameRow = nameRow, baseY = baseY, extra = rightX, chipRow = chipRow)
             },
             // Match and mat along the bottom, centred between the two fighters.
             layer("chips", RectF(0f, H - 120f, W, H)) { c -> chips(c, H - 32.4f - (34.6f + 21.6f)) },
@@ -198,17 +230,34 @@ class VsScreen(
         return out
     }
 
-    private fun panel(c: Canvas, shape: Path, box: RectF, colour: Int, photo: Bitmap?, scrim: Int, leftToRight: Boolean) {
+    private fun panel(c: Canvas, shape: Path, box: RectF, colour: Int, photo: Bitmap?, scrim: Int, leftToRight: Boolean, frame: JSONObject? = null) {
         c.save()
         c.clipPath(shape)
         c.drawColor(colour)
 
         if (photo != null) {
-            val fit = maxOf(box.width() / photo.width, box.height() / photo.height)
-            val pw = photo.width * fit
-            val ph = photo.height * fit
-            c.drawBitmap(photo, null, RectF(box.centerX() - pw / 2f, box.centerY() - ph / 2f, box.centerX() + pw / 2f, box.centerY() + ph / 2f),
-                Paint(Paint.FILTER_BITMAP_FLAG))
+            // How THIS photo is placed (PhotoVsFrame, set in the console's
+            // Players tab): a zoom over the panel's width and a focal point, as
+            // the mats' CSS reads it. None: cover, centred, 12% from the top.
+            val z = frame?.optDouble("z", Double.NaN) ?: Double.NaN
+            val fx = frame?.optDouble("x", Double.NaN) ?: Double.NaN
+            val fy = frame?.optDouble("y", Double.NaN) ?: Double.NaN
+            val framed = !z.isNaN() && !fx.isNaN() && !fy.isNaN()
+            val pw: Float
+            val ph: Float
+            if (framed) {
+                pw = box.width() * z.toFloat().coerceIn(1f, 3f)
+                ph = pw * photo.height / photo.width
+            } else {
+                val fit = maxOf(box.width() / photo.width, box.height() / photo.height)
+                pw = photo.width * fit
+                ph = photo.height * fit
+            }
+            val px = if (framed) fx.toFloat().coerceIn(0f, 100f) / 100f else 0.5f
+            val py = if (framed) fy.toFloat().coerceIn(0f, 100f) / 100f else 0.12f
+            val left = box.left + (box.width() - pw) * px
+            val top = box.top + (box.height() - ph) * py
+            c.drawBitmap(photo, null, RectF(left, top, left + pw, top + ph), Paint(Paint.FILTER_BITMAP_FLAG))
         }
 
         // The corner's colour washing in from the outer edge, then the dark
@@ -306,11 +355,31 @@ class VsScreen(
      * sides always line up, whichever script a name is in or whatever is
      * missing.
      */
-    private fun fighter(c: Canvas, who: JSONObject, mirrored: Boolean, tag: Int, country: Int, nameRow: Float, baseY: Float) {
+    private fun fighter(c: Canvas, who: JSONObject, mirrored: Boolean, tag: Int, country: Int, nameRow: Float, baseY: Float,
+                        extra: JSONObject = JSONObject(), chipRow: Float = 0f) {
         val edge = if (mirrored) W - 43.2f else 43.2f
         fun x(width: Float) = if (mirrored) edge - width else edge
 
         var y = baseY
+
+        // The chips under the club — record, belt (gold), age · height · weight —
+        // as the mats draw them. The row keeps its height on both sides.
+        if (chipRow > 0f) {
+            var cx = edge
+            for ((value, goldChip) in chipsOf(extra)) {
+                val p = text(black, 34f, if (goldChip) 0xFFE8C96A.toInt() else Color.WHITE, 0.1f)
+                val tw = p.measureText(value) + 40f
+                val box = if (mirrored) RectF(cx - tw, y - CHIP_H, cx, y) else RectF(cx, y - CHIP_H, cx + tw, y)
+                c.drawRect(box, Paint().apply { color = 0xD10A0A0E.toInt() })
+                c.drawRect(box, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.STROKE; strokeWidth = 2f
+                    color = if (goldChip) 0xD9FDC436.toInt() else 0x8CFFFFFF.toInt()
+                })
+                c.drawText(value, box.left + 20f, box.centerY() - (p.fontMetrics.ascent + p.fontMetrics.descent) / 2f, p)
+                cx = if (mirrored) box.left - 9.7f else box.right + 9.7f
+            }
+            y -= chipRow
+        }
 
         // Club row: the crest, bare, and the club's name.
         val clubRow = 86f
@@ -363,8 +432,8 @@ class VsScreen(
         }
         y -= flagRow + 10f
 
-        // The corner tag: AKA / AO.
-        val label = who.optString("label").uppercase()
+        // The corner tag: the event's own badge ("AKA · RED"), else AKA / AO.
+        val label = (extra.optString("badge").takeIf { it.isNotEmpty() && it != "null" } ?: who.optString("label")).uppercase()
         if (label.isNotEmpty()) {
             val p = text(black, 36f, Color.WHITE, 0.3f)
             val tw = p.measureText(label) + 24f + 30f
@@ -392,6 +461,7 @@ class VsScreen(
         val chips = listOfNotNull(
             vs.optString("match").takeIf { it.isNotEmpty() }?.let { "MATCH" to it },
             vs.optString("court").takeIf { it.isNotEmpty() }?.let { "COURT" to it.uppercase() },
+            referee?.let { "REFEREE" to it.uppercase() },
         )
         if (chips.isEmpty()) return
 
@@ -423,6 +493,35 @@ class VsScreen(
     }
 
     /* ── Small things ──────────────────────────────────────────────────────── */
+
+    /** The chips a corner carries, in the mats' order; stats only when the platform shows them. */
+    private fun chipsOf(x: JSONObject): List<Pair<String, Boolean>> {
+        fun s(k: String) = x.optString(k).takeIf { it.isNotEmpty() && it != "null" }
+        val stats = if (!showStats) null else listOfNotNull(
+            s("age")?.let { it + "Y" }, s("height")?.let { it + "cm" },
+            s("weight")?.let { (it.toDoubleOrNull()?.let { w -> if (w % 1.0 == 0.0) w.toInt().toString() else w.toString() } ?: it) + "kg" },
+        ).joinToString(" · ").takeIf { it.isNotEmpty() }
+
+        return listOfNotNull(s("record")?.let { it.uppercase() to false }, s("belt")?.let { it.uppercase() to true }, stats?.let { it.uppercase() to false })
+    }
+
+    private val rgba = Regex("rgba?\\(\\s*([\\d.]+)\\s*,\\s*([\\d.]+)\\s*,\\s*([\\d.]+)\\s*(?:,\\s*([\\d.]+))?\\s*\\)")
+
+    /** A colour the server sent (#rrggbb or rgba(r,g,b,a)), or this screen's own. */
+    private fun colour(x: JSONObject, key: String, fallback: Int): Int {
+        val v = x.optString(key).trim()
+        try {
+            if (v.startsWith("#")) return Color.parseColor(v)
+            val m = rgba.find(v)
+            if (m != null) {
+                val a = m.groupValues[4].toFloatOrNull() ?: 1f
+                return Color.argb((a * 255).toInt().coerceIn(0, 255), m.groupValues[1].toFloat().toInt(),
+                    m.groupValues[2].toFloat().toInt(), m.groupValues[3].toFloat().toInt())
+            }
+        } catch (_: Throwable) {}
+
+        return fallback
+    }
 
     private fun fitInto(c: Canvas, bitmap: Bitmap, box: RectF, cover: Boolean = false) {
         val fit = if (cover) maxOf(box.width() / bitmap.width, box.height() / bitmap.height)

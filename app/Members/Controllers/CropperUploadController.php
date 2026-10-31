@@ -21,7 +21,7 @@ use Illuminate\Support\Str;
  * Nothing in the product posts here: every cropper is given its own endpoint
  * through `uploadUrl`. It stays only so an old client gets a safe answer.
  *
- * See docs/uploads.md for the rule this enforces and what is left to do.
+ * See docs/platform/uploads.md for the rule this enforces and what is left to do.
  * Constraint: the destination is decided here, never by the request — the
  * `folder` and `filename` fields are accepted for compatibility and ignored.
  */

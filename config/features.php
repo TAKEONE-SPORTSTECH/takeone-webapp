@@ -80,7 +80,7 @@ return [
     'club_removal_tool' => (bool) env('CLUB_REMOVAL_TOOL', false),
 
     /*
-     * The new UI (branch `new-ui`, plan: Documentation/major-change/NEW-UI.md).
+     * The new UI (branch `new-ui`, plan: docs/plans/major-change/new-ui.md).
      * Every new screen is a NEW file beside the old one; this decides which
      * of the two renders.
      *

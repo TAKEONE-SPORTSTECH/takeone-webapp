@@ -3,7 +3,7 @@
     was handed over.
 
     GENERATED. The source of truth is the design file in `drafts/` plus the
-    build script `drafts/build-bout-video-page.py`; edit those and re-run it
+    build script `drafts/bout-video/build-bout-video-page.py`; edit those and re-run it
     rather than patching this file, or the next regeneration will discard the
     patch.
 
@@ -3447,7 +3447,7 @@
            block IS the Highlights content and the desktop pane's own
            header/panels are hidden. Above 991px the reverse, so the side
            pane is exactly what it always was.
-           Design: drafts/match-review-standalone.html
+           Design: drafts/bout-video/match-review-standalone.html
            ============================================================ */
         .mrv { display: none; }
 
@@ -3746,7 +3746,7 @@
         .ytp-wrap.ytp-fullscreen .events-sidebar .hl-sheet-grab { display: none; }
 
         /* ────────────────────────────────────────────────────────────────
-           FULLSCREEN DRAWER CONTENT — drafts/fullscreen-highlights-standalone.html
+           FULLSCREEN DRAWER CONTENT — drafts/bout-video/fullscreen-highlights-standalone.html
            Every colour, size and spacing below is taken from that file.
            ──────────────────────────────────────────────────────────────── */
         .fsh { display: none; }
@@ -4165,15 +4165,24 @@ window.TOB = {
    No z-index on the root: source order inside #ytpWrap places the video
    controls AFTER the overlay slot, so they paint on top and stay clickable.
 ------------------------------------------------------------------------ */
+/* The score bar's face — the boutcam's (ScoreBar.kt): Barlow Condensed, and
+   Tajawal for Arabic, scaled to Barlow's height (25 → 19, as the camera sets it). Self-hosted. */
+@font-face { font-family: 'TO Bar'; font-weight: 400; src: url('/fonts/designer/barlow-condensed/BarlowCondensed-Regular.ttf'); }
+@font-face { font-family: 'TO Bar'; font-weight: 600 700; src: url('/fonts/designer/barlow-condensed/BarlowCondensed-Bold.ttf'); }
+@font-face { font-family: 'TO Bar'; font-weight: 800 900; src: url('/fonts/designer/barlow-condensed/BarlowCondensed-Black.ttf'); }
+@font-face { font-family: 'TO Bar'; font-weight: 400; src: url('/fonts/designer/tajawal/Tajawal-Regular.ttf'); unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF; size-adjust: 76%; }
+@font-face { font-family: 'TO Bar'; font-weight: 600 700; src: url('/fonts/designer/tajawal/Tajawal-Bold.ttf'); unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF; size-adjust: 76%; }
+@font-face { font-family: 'TO Bar'; font-weight: 800 900; src: url('/fonts/designer/tajawal/Tajawal-Black.ttf'); unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF; size-adjust: 76%; }
 .msb-root {
     position: absolute; inset: 0;
     pointer-events: none;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: 'TO Bar', 'Barlow Condensed', sans-serif;
     color: #efe9e0;
     -webkit-font-smoothing: antialiased;
     overflow: hidden;
 }
 .msb-root * { box-sizing: border-box; }
+.msb-root .msb-nologo { display: none !important; }
 
 /*
  * Fixed 1150 px design canvas. `msb-scale` is positioned at (0, 0), sized
@@ -4197,7 +4206,7 @@ window.TOB = {
 .msb-info .rule { width: 4px; background: linear-gradient(#e8534a, #7c1d18); }
 .msb-info .txt  { display: flex; flex-direction: column; gap: 2px; }
 .msb-info .disc {
-    font-family: 'Zen Old Mincho', serif; font-size: 15px; letter-spacing: .34em;
+    font-size: 15px; font-weight: 700; letter-spacing: .34em;
     color: #efe9e0; text-transform: uppercase;
 }
 .msb-info .sub {
@@ -4229,7 +4238,7 @@ window.TOB = {
 .msb-feed .entry.msb-new { animation: msbRiseIn .45s ease both; }
 .msb-feed .entry .ts   { font-size: 12px; line-height: 1; letter-spacing: .16em; color: #79736c; }
 .msb-feed .entry .name { font-size: 17px; line-height: 1; letter-spacing: .12em; font-weight: 700; color: #efe9e0; text-transform: uppercase; }
-.msb-feed .entry .pts  { font-family: 'Zen Old Mincho', serif; font-size: 19px; line-height: 1; font-weight: 700; }
+.msb-feed .entry .pts  { font-size: 15px; line-height: 1; font-weight: 900; font-variant-numeric: tabular-nums; }
 
 /*
  * Score bar + timeline visuals live entirely as inline styles on the verbatim
@@ -4324,7 +4333,7 @@ body.msb-menu-open #ytpSettingsBtn svg { fill: #e8534a; }
           <div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px">
             <div style="display:flex;align-items:center;gap:10px;min-width:0">
               <span data-msb="redFlag" data-msb-part="flags" style="width:26px;height:17px;flex:none;background:repeating-linear-gradient(135deg,rgba(255,255,255,.28) 0 4px,rgba(255,255,255,.1) 4px 8px);box-shadow:0 0 0 1px rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-family:ui-monospace,monospace;font-size:7px;color:rgba(255,255,255,.85)">FLAG</span>
-              <span data-msb="redName" style="flex:1 1 auto;min-width:0;font-size:25px;line-height:1;font-weight:800;color:#fff;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Fawzia Abdulla</span>
+              <span data-msb="redName" style="flex:1 1 auto;min-width:0;font-size:25px;line-height:1;font-weight:900;color:#fff;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Fawzia Abdulla</span>
             </div>
             <div style="display:flex;align-items:center;gap:8px;min-width:0">
               <span data-msb="redClubName" data-msb-part="clubs" style="flex:1 1 auto;min-width:0;font-size:12px;letter-spacing:.03em;color:rgba(255,232,228,.85);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Sparta Worrior</span>
@@ -4333,7 +4342,7 @@ body.msb-menu-open #ytpSettingsBtn svg { fill: #e8534a; }
           </div>
           <div style="width:60px;flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:5px">
             <span data-msb="redCorner" style="font-size:11px;letter-spacing:.24em;color:rgba(255,236,232,.7)">AKA</span>
-            <span data-msb="redScore" style="font-family:'Zen Old Mincho',serif;font-size:46px;line-height:.8;font-weight:700;color:#fff;text-shadow:0 6px 20px rgba(0,0,0,.5)">0</span>
+            <span data-msb="redScore" style="font-size:48px;line-height:.8;font-weight:900;font-variant-numeric:tabular-nums;color:#fff;text-shadow:0 3px 10px rgba(0,0,0,.5)">0</span>
           </div>
         </div>
       </div>
@@ -4341,7 +4350,7 @@ body.msb-menu-open #ytpSettingsBtn svg { fill: #e8534a; }
       
       <div style="width:118px;flex:none;transform:skewX(-9deg);background:rgba(9,9,11,.9);backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-bottom:3px solid #2c2a28">
         <div data-msb="roundLabel" style="transform:skewX(9deg);font-size:11px;letter-spacing:.3em;color:#8f8a83;text-transform:uppercase">Round 1</div>
-        <div data-msb="clock" style="transform:skewX(9deg);font-size:34px;line-height:1;font-weight:800;color:#efe9e0;font-variant-numeric:tabular-nums">0:00</div>
+        <div data-msb="clock" style="transform:skewX(9deg);font-size:34px;line-height:1;font-weight:900;color:#efe9e0;font-variant-numeric:tabular-nums">0:00</div>
         <div style="transform:skewX(9deg);display:flex;gap:4px">
           <span style="width:20px;height:3px;background:#e8534a"></span>
           <span style="width:20px;height:3px;background:#e8534a"></span>
@@ -4354,11 +4363,11 @@ body.msb-menu-open #ytpSettingsBtn svg { fill: #e8534a; }
         <div style="transform:skewX(9deg);height:100%;padding:0 16px;display:flex;align-items:center;gap:12px">
           <div style="width:60px;flex:none;display:flex;flex-direction:column;align-items:flex-start;gap:5px">
             <span data-msb="blueCorner" style="font-size:11px;letter-spacing:.24em;color:rgba(226,238,255,.7)">AO</span>
-            <span data-msb="blueScore" style="font-family:'Zen Old Mincho',serif;font-size:46px;line-height:.8;font-weight:700;color:#fff;text-shadow:0 6px 20px rgba(0,0,0,.5)">0</span>
+            <span data-msb="blueScore" style="font-size:48px;line-height:.8;font-weight:900;font-variant-numeric:tabular-nums;color:#fff;text-shadow:0 3px 10px rgba(0,0,0,.5)">0</span>
           </div>
           <div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px;align-items:flex-end;text-align:right">
             <div style="display:flex;align-items:center;gap:10px;min-width:0">
-              <span data-msb="blueName" style="flex:1 1 auto;min-width:0;font-size:25px;line-height:1;font-weight:800;color:#fff;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Sharifa Sanad</span>
+              <span data-msb="blueName" style="flex:1 1 auto;min-width:0;font-size:25px;line-height:1;font-weight:900;color:#fff;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Sharifa Sanad</span>
               <span data-msb="blueFlag" data-msb-part="flags" style="width:26px;height:17px;flex:none;background:repeating-linear-gradient(135deg,rgba(255,255,255,.28) 0 4px,rgba(255,255,255,.1) 4px 8px);box-shadow:0 0 0 1px rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-family:ui-monospace,monospace;font-size:7px;color:rgba(255,255,255,.85)">FLAG</span>
             </div>
             <div style="display:flex;align-items:center;gap:8px;min-width:0">
@@ -4463,9 +4472,13 @@ body.msb-menu-open #ytpSettingsBtn svg { fill: #e8534a; }
             // (or leave the placeholder if no image). Never touches inline styles.
             const setImage = (name, path) => {
                 const el = $(name); if (!el) return;
-                if (!path) return;
+                // No crest on file: nothing is drawn (as the boutcam's
+                // ScoreBar.kt does), never a "CLUB LOGO" box on a real bout.
+                if (!path) { el.textContent = ''; el.classList.add('msb-nologo'); return; }
                 el.textContent = '';
-                el.style.background = 'rgba(0,0,0,.32)';
+                // Crests are transparent PNGs — bare, never on a tile (Design Rule #5).
+                el.style.background = 'transparent';
+                el.style.border = '0';
                 const img = document.createElement('img');
                 img.src = path; img.alt = '';
                 img.style.cssText = 'width:100%;height:100%;object-fit:contain;display:block';
@@ -4713,10 +4726,16 @@ body.msb-menu-open #ytpSettingsBtn svg { fill: #e8534a; }
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@400;600;700;800&display=swap">
 
+{{--
+    The VS intro — the SAME screen every mat shows (scoreboard::vs.arena, its
+    helpers, paint and animations), fed by the same corner builder
+    (App\Scoreboard\Support\VsCorner). Only the wrapper is this page's own:
+    it scales the 1920x1080 stage into the player, holds the video at 0:00 and
+    counts down to Skip. Docs: docs/events/vs-screen.md
+--}}
 @php
-    // A face only where the athlete chose to show it — the same rule the
-    // bracket and the board follow. Its absence is silent, never a label.
-    $refereeName = collect($officials)->first()['name'] ?? null;
+    $L = $vsIntro['look'];
+    $rr = $redRight = $vsIntro['redRight'];
 @endphp
 <div id="vsScreen" class="vs-screen" role="dialog" aria-label="{{ __('events::events.bout_video_intro') }}">
     <button type="button" class="vs-skip" id="vsSkip" aria-label="{{ __('events::events.bout_video_skip') }}">
@@ -4724,81 +4743,7 @@ body.msb-menu-open #ytpSettingsBtn svg { fill: #e8534a; }
     </button>
 
     <div class="vs-stage">
-
-        <div class="vs-panel vs-panel-red">
-            <div class="vs-panel-photo vs-panel-photo-red"
-                 @if ($red['photo']) style="background-image:url('{{ $red['photo'] }}')" @endif></div>
-            <div class="vs-panel-scrim vs-panel-scrim-red"></div>
-            <div class="vs-panel-gradient"></div>
-        </div>
-
-        <div class="vs-panel vs-panel-blue">
-            <div class="vs-panel-photo vs-panel-photo-blue"
-                 @if ($blue['photo']) style="background-image:url('{{ $blue['photo'] }}')" @endif></div>
-            <div class="vs-panel-scrim vs-panel-scrim-blue"></div>
-            <div class="vs-panel-gradient"></div>
-        </div>
-
-        <div class="vs-divider"></div>
-
-        <div class="vs-info vs-info-red">
-            <div class="vs-corner-tag vs-corner-tag-red">{{ Str::upper($red['corner_label']) }}</div>
-            <div class="vs-flag-row vs-nullable-row">
-                @if ($red['country'])<span class="vs-flag fi fi-{{ Str::lower($red['country']) }} vs-flag-slot"></span>@endif
-                <div class="vs-country vs-country-red vs-nullable">{{ $red['country'] ? Str::upper($red['country']) : '' }}</div>
-            </div>
-            <div class="vs-name vs-nullable">{{ $red['name'] }}</div>
-            <div class="vs-club-row vs-nullable-row">
-                <div class="vs-club vs-nullable">{{ $red['club'] }}</div>
-            </div>
-        </div>
-
-        <div class="vs-info vs-info-blue">
-            <div class="vs-corner-tag vs-corner-tag-blue">{{ Str::upper($blue['corner_label']) }}</div>
-            <div class="vs-flag-row vs-flag-row-r vs-nullable-row">
-                @if ($blue['country'])<span class="vs-flag fi fi-{{ Str::lower($blue['country']) }} vs-flag-slot"></span>@endif
-                <div class="vs-country vs-country-blue vs-nullable">{{ $blue['country'] ? Str::upper($blue['country']) : '' }}</div>
-            </div>
-            <div class="vs-name vs-nullable">{{ $blue['name'] }}</div>
-            <div class="vs-club-row vs-club-row-r vs-nullable-row">
-                <div class="vs-club vs-nullable">{{ $blue['club'] }}</div>
-            </div>
-        </div>
-
-        <div class="vs-top">
-            <div class="vs-top-event vs-nullable">{{ $e['title'] }}</div>
-            <div class="vs-top-stage-row ">
-                <div class="vs-top-stage-line vs-top-stage-line-l"></div>
-                <div class="vs-top-stage">{{ $bout['round'] }}</div>
-                <div class="vs-top-stage-line vs-top-stage-line-r"></div>
-            </div>
-            <div class="vs-top-weight vs-nullable">{{ $bout['division'] }}</div>
-        </div>
-
-        <div class="vs-center">
-            <div class="vs-word">VS
-                <div class="vs-shine-wrap"><div class="vs-shine"></div></div>
-            </div>
-        </div>
-
-        <div class="vs-flash"></div>
-
-        <div class="vs-bottom">
-            <div class="vs-chip vs-nullable-chip" data-vs-empty="0">
-                <span class="vs-chip-label">{{ __('events::events.bout_card_match') }}</span>
-                <span class="vs-chip-value vs-nullable">{{ $bout['match_no'] }}</span>
-            </div>
-            <div class="vs-diamond vs-diamond-match-court"></div>
-            <div class="vs-chip vs-nullable-chip" data-vs-empty="0">
-                <span class="vs-chip-label">{{ __('events::events.bout_card_court') }}</span>
-                <span class="vs-chip-value vs-nullable">{{ $bout['court'] }}</span>
-            </div>
-            <div class="vs-diamond vs-diamond-court-ref"></div>
-            <div class="vs-chip vs-nullable-chip" data-vs-empty="0">
-                <span class="vs-chip-label">{{ __('events::events.bout_card_referee') }}</span>
-                <span class="vs-chip-value vs-chip-value-name vs-nullable">{{ $refereeName }}</span>
-            </div>
-        </div>
+@include('scoreboard::vs.arena')
     </div>
 </div>
 
@@ -4851,265 +4796,24 @@ body.msb-menu-open #ytpSettingsBtn svg { fill: #e8534a; }
 #vsScreen .vs-skip:hover { background: rgba(10,10,14,.92); border-color: rgba(255,255,255,.55); }
 #vsScreen .vs-skip #vsSkipTimer { display: inline-block; margin-left: 6px; opacity: .8; }
 
-/* ══ EVERYTHING BELOW: absolute pixels on the 1920×1080 canvas ══ */
-
-/* ── Side panels ── */
-#vsScreen .vs-panel { position: absolute; overflow: hidden; }
-#vsScreen .vs-panel-red {
-    inset: 0 auto 0 0; width: 56%;
-    background: oklch(0.28 0.09 25);
-    clip-path: polygon(0 0, 100% 0, 82% 100%, 0 100%);
-    animation: vsPanelL .9s cubic-bezier(.22,1,.36,1) both;
-}
-#vsScreen .vs-panel-blue {
-    inset: 0 0 0 auto; width: 56%;
-    background: oklch(0.28 0.09 255);
-    clip-path: polygon(18% 0, 100% 0, 100% 100%, 0 100%);
-    animation: vsPanelR .9s cubic-bezier(.22,1,.36,1) both;
-}
-#vsScreen .vs-panel-photo {
-    position: absolute; inset: 0;
-    background-size: cover; background-position: center;
-    animation: vsSlowDrift 18s ease-in-out infinite;
-}
-#vsScreen .vs-panel-photo-blue { animation-direction: reverse; }
-#vsScreen .vs-panel-scrim-red   { position: absolute; inset: 0; pointer-events: none;
-    background: linear-gradient(115deg, oklch(0.45 0.18 25 / 0.55) 0%, transparent 55%); }
-#vsScreen .vs-panel-scrim-blue  { position: absolute; inset: 0; pointer-events: none;
-    background: linear-gradient(245deg, oklch(0.45 0.15 255 / 0.55) 0%, transparent 55%); }
-#vsScreen .vs-panel-gradient {
-    position: absolute; inset: 0; pointer-events: none;
-    background:
-        linear-gradient(to top, rgba(5,5,7,.95) 0%, rgba(5,5,7,.72) 22%, rgba(5,5,7,.30) 42%, transparent 62%),
-        linear-gradient(to bottom, rgba(5,5,7,.82) 0%, rgba(5,5,7,.35) 18%, transparent 32%);
-}
-
-/* ── Divider ── */
-#vsScreen .vs-divider {
-    position: absolute; top: -6%; bottom: -6%; left: 50%;
-    width: 3px; margin-left: -1.5px;
-    transform: rotate(10.15deg);
-    background: linear-gradient(to bottom, transparent, oklch(0.85 0.16 85 / .9) 20%, oklch(0.85 0.16 85 / .9) 80%, transparent);
-    pointer-events: none; filter: blur(1px);
-}
-
-/* ── Fighter identity blocks ── (absolute px on the 1920×1080 canvas) */
-#vsScreen .vs-info {
-    position: absolute; z-index: 6; max-width: 44%;
-    display: flex; flex-direction: column; gap: 13px;
-}
-#vsScreen .vs-info-red  { left: 43.2px; bottom: 118.8px; align-items: flex-start;  animation: vsRiseUp .8s .7s cubic-bezier(.22,1,.36,1) both; }
-#vsScreen .vs-info-blue { right: 43.2px; bottom: 118.8px; align-items: flex-end; text-align: right; animation: vsRiseUp .8s .85s cubic-bezier(.22,1,.36,1) both; }
-
-#vsScreen .vs-corner-tag {
-    font: 800 21.6px/1 'Barlow Condensed', sans-serif;
-    letter-spacing: .35em; color: #fff;
-    padding: 5.4px 15.1px 5.4px 18.9px;
-}
-#vsScreen .vs-corner-tag-red  { background: oklch(0.55 0.20 25); }
-#vsScreen .vs-corner-tag-blue { background: oklch(0.50 0.16 255); }
-
-#vsScreen .vs-flag-row   { display: flex; align-items: center; gap: 15.1px; }
-#vsScreen .vs-flag-row-r { flex-direction: row-reverse; }
-#vsScreen .vs-flag {
-    width: 56.2px; height: auto; aspect-ratio: 4/3;
-    background-size: cover !important; background-position: center !important;
-    border: 1px solid rgba(255,255,255,.35);
-    box-shadow: 0 4px 18px rgba(0,0,0,.6);
-    display: inline-block; line-height: 0;
-}
-#vsScreen .vs-country       { font: 700 32.4px/1 'Barlow Condensed', sans-serif; letter-spacing: .28em; }
-#vsScreen .vs-country-red   { color: oklch(0.85 0.05 25); }
-#vsScreen .vs-country-blue  { color: oklch(0.85 0.05 255); }
-
-#vsScreen .vs-name {
-    font-family: 'Anton', 'Barlow Condensed', sans-serif;
-    font-size: 71.3px; line-height: .95;
-    text-transform: uppercase; color: #fff;
-    text-shadow: 0 6px 30px rgba(0,0,0,.8);
-}
-
-#vsScreen .vs-club-row   { display: flex; align-items: center; gap: 13px; margin-top: 4.3px; }
-#vsScreen .vs-club-row-r { flex-direction: row-reverse; }
-#vsScreen .vs-club-logo {
-    width: 69.1px; height: 69.1px;
-    border-radius: 50%;
-    background: rgba(255,255,255,.06);
-    background-size: cover; background-position: center;
-    border: 1px solid rgba(255,255,255,.2);
-}
-#vsScreen .vs-club {
-    font: 600 30.2px/1.1 'Barlow Condensed', sans-serif;
-    letter-spacing: .12em; text-transform: uppercase;
-    color: rgba(232,230,224,.9);
-}
-
-/* Fighter chips row (Record / Rank / Stats) — from the original artifact. */
-#vsScreen .vs-chips-row {
-    display: flex; flex-wrap: wrap; gap: 9.7px; margin-top: 5.4px;
-}
-#vsScreen .vs-info-blue .vs-chips-row { justify-content: flex-end; }
-#vsScreen .vs-chip-fighter {
-    font: 700 23.8px/1 'Barlow Condensed', sans-serif;
-    letter-spacing: .12em; text-transform: uppercase;
-    padding: 5.4px 14px;
-    background: rgba(10,10,14,.62);
-    border: 1px solid rgba(255,255,255,.25);
-    color: #fff;
-}
-#vsScreen .vs-chip-fighter-gold {
-    border-color: oklch(0.85 0.16 85 / .6);
-    color: oklch(0.87 0.14 85);
-}
-
-/* ══ Placeholder hiding ══
-   Every placeholder DOM element is always rendered. Empty ones are hidden
-   here — this keeps the design's HTML shape intact (same as the artifact)
-   while adapting the visible layout to whatever data actually exists. */
-#vsScreen .vs-nullable:empty { display: none; }
-/* When every direct child of a "row" wrapper is hidden, the row collapses too. */
-#vsScreen .vs-nullable-row:not(:has(> :not(.vs-nullable-hide):not(.vs-nullable:empty))) { display: none; }
-/* Image slots explicitly marked as missing (flag / club logo without data). */
-#vsScreen .vs-nullable-hide { display: none; }
-
-/* Bottom chips: whole chip hides when its value is empty, and the
-   diamond separators next to a hidden chip hide too. */
-#vsScreen .vs-chip.vs-nullable-chip[data-vs-empty="1"] { display: none; }
-#vsScreen .vs-bottom .vs-diamond-match-court:has(+ .vs-chip[data-vs-empty="1"]),
-#vsScreen .vs-bottom .vs-chip[data-vs-empty="1"] + .vs-diamond-court-ref,
-#vsScreen .vs-bottom .vs-chip[data-vs-empty="1"] + .vs-diamond-match-court,
-#vsScreen .vs-bottom .vs-diamond-court-ref:has(+ .vs-chip[data-vs-empty="1"]) { display: none; }
-
-/* ── Top (event / stage / weight) ── */
-#vsScreen .vs-top {
-    position: absolute; top: 34.6px; left: 50%; transform: translateX(-50%);
-    display: flex; flex-direction: column; align-items: center; gap: 10.8px;
-    z-index: 8; width: 92%; pointer-events: none;
-    animation: vsDropIn .8s .5s cubic-bezier(.22,1,.36,1) both;
-}
-#vsScreen .vs-top-event {
-    font: 700 30.2px/1.05 'Barlow Condensed', sans-serif;
-    letter-spacing: .42em; text-transform: uppercase;
-    color: rgba(232,230,224,.92); text-align: center;
-    text-shadow: 0 2px 14px rgba(0,0,0,.9);
-}
-#vsScreen .vs-top-stage-row  { display: flex; align-items: center; gap: 17.3px; }
-#vsScreen .vs-top-stage-line { height: 2px; width: 64.8px; }
-#vsScreen .vs-top-stage-line-l { background: linear-gradient(to left,  oklch(0.85 0.16 85), transparent); }
-#vsScreen .vs-top-stage-line-r { background: linear-gradient(to right, oklch(0.85 0.16 85), transparent); }
-#vsScreen .vs-top-stage {
-    font-family: 'Anton', 'Barlow Condensed', sans-serif;
-    font-size: 38.9px;
-    letter-spacing: .30em; padding-left: .3em;
-    color: oklch(0.85 0.16 85); text-transform: uppercase;
-}
-#vsScreen .vs-top-weight {
-    font: 700 42px/1.1 'Anton', 'Barlow Condensed', sans-serif;
-    letter-spacing: .28em; padding-left: .28em; text-transform: uppercase;
-    color: #ffffff;
-    text-shadow: 0 2px 14px rgba(0,0,0,.9);
-}
-
-/* ── Center VS ── */
-#vsScreen .vs-center {
-    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -52%);
-    z-index: 7; pointer-events: none;
-    display: flex; align-items: center; justify-content: center;
-    animation: vsSlam .7s 1.1s cubic-bezier(.22,1,.36,1) both;
-}
-#vsScreen .vs-word {
-    position: relative;
-    font-family: 'Anton', 'Barlow Condensed', sans-serif;
-    font-size: 183.6px;
-    font-style: italic;
-    color: #fffdf5; line-height: 1;
-    -webkit-text-stroke: 2px oklch(0.85 0.16 85 / 0.6);
-    animation: vsPulse 2.4s ease-in-out infinite;
-    overflow: visible;
-}
-#vsScreen .vs-shine-wrap { position: absolute; inset: -10% -20%; overflow: hidden; pointer-events: none; }
-#vsScreen .vs-shine {
-    position: absolute; top: 0; bottom: 0; width: 34%;
-    background: linear-gradient(to right, transparent, rgba(255,255,255,.16), transparent);
-    animation: vsShine 5s ease-in-out infinite;
-}
-
-#vsScreen .vs-flash {
-    position: absolute; inset: 0; background: #fff;
-    opacity: 0; pointer-events: none; z-index: 9;
-    animation: vsFlash .9s 1.5s ease-out both;
-}
-
-/* ── Bottom chips ── */
-#vsScreen .vs-bottom {
-    position: absolute; bottom: 32.4px; left: 50%; transform: translateX(-50%);
-    display: flex; gap: 17.3px; z-index: 8; align-items: center;
-    flex-wrap: wrap; justify-content: center; max-width: 94%;
-    animation: vsRiseC .8s 1.3s cubic-bezier(.22,1,.36,1) both;
-}
-#vsScreen .vs-chip {
-    display: flex; align-items: baseline; gap: 8.6px;
-    background: rgba(10,10,14,.72);
-    border: 1px solid oklch(0.85 0.16 85 / .45);
-    padding: 10.8px 23.8px; backdrop-filter: blur(6px);
-}
-#vsScreen .vs-chip-label {
-    font: 600 23.8px/1 'Barlow Condensed', sans-serif;
-    letter-spacing: .30em; text-transform: uppercase;
-    color: rgba(232,230,224,.65);
-}
-#vsScreen .vs-chip-value {
-    font-family: 'Anton', 'Barlow Condensed', sans-serif;
-    font-size: 34.6px; color: #fff;
-}
-#vsScreen .vs-chip-value-name {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
-    font-size: 28.1px;
-}
-#vsScreen .vs-diamond {
-    width: 6px; height: 6px; transform: rotate(45deg);
-    background: oklch(0.85 0.16 85);
-}
-
-/* ── Portrait canvas (1080×1920): stack layout ── */
-#vsScreen.vs-portrait { --vs-stage-w: 1080px; --vs-stage-h: 1920px; }
-#vsScreen.vs-portrait .vs-panel-red  { inset: 0 0 auto 0; width: 100%; height: 56%;
-    clip-path: polygon(0 0, 100% 0, 100% 82%, 0 96%); animation-name: vsPanelT; }
-#vsScreen.vs-portrait .vs-panel-blue { inset: auto 0 0 0; width: 100%; height: 56%;
-    clip-path: polygon(0 18%, 100% 4%, 100% 100%, 0 100%); animation-name: vsPanelB; }
-#vsScreen.vs-portrait .vs-divider {
-    left: -4%; right: -4%; top: 50%; bottom: auto;
-    width: auto; height: 3px; margin-top: -1.5px; margin-left: 0;
-    transform: rotate(-4.48deg);
-    background: linear-gradient(to right, transparent, oklch(0.85 0.16 85 / .9) 20%, oklch(0.85 0.16 85 / .9) 80%, transparent);
-}
-#vsScreen.vs-portrait .vs-info-red  { left: 43.2px; top: 129.6px; bottom: auto; }
-#vsScreen.vs-portrait .vs-info-blue { right: 43.2px; bottom: 129.6px; top: auto; }
-
-/* ── Animations ── */
-@keyframes vsPulse {
-    0%,100% { text-shadow: 0 0 30px rgba(255,215,120,.55), 0 0 90px rgba(255,170,60,.3); transform: scale(1); }
-    50%     { text-shadow: 0 0 65px rgba(255,220,130,1),   0 0 160px rgba(255,170,60,.7); transform: scale(1.045); }
-}
-@keyframes vsShine     { 0% { transform: translateX(-130%) skewX(-18deg); } 60%,100% { transform: translateX(230%) skewX(-18deg); } }
-@keyframes vsSlowDrift { 0% { transform: translate3d(0,0,0) scale(1.02); } 50% { transform: translate3d(0,-1.2%,0) scale(1.05); } 100% { transform: translate3d(0,0,0) scale(1.02); } }
-@keyframes vsPanelL    { from { transform: translateX(-105%); } to { transform: translateX(0); } }
-@keyframes vsPanelR    { from { transform: translateX( 105%); } to { transform: translateX(0); } }
-@keyframes vsPanelT    { from { transform: translateY(-105%); } to { transform: translateY(0); } }
-@keyframes vsPanelB    { from { transform: translateY( 105%); } to { transform: translateY(0); } }
-@keyframes vsRiseUp    { from { opacity: 0; transform: translateY(43.2px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes vsRiseC     { from { opacity: 0; transform: translate(-50%, 43.2px); } to { opacity: 1; transform: translate(-50%, 0); } }
-@keyframes vsDropIn    { from { opacity: 0; transform: translate(-50%, -32.4px); } to { opacity: 1; transform: translate(-50%, 0); } }
-@keyframes vsSlam {
-    0%   { opacity: 0; transform: translate(-50%,-52%) scale(3.4) rotate(-6deg); }
-    60%  { opacity: 1; transform: translate(-50%,-52%) scale(.92) rotate(1deg); }
-    80%  {              transform: translate(-50%,-52%) scale(1.06); }
-    100% { opacity: 1; transform: translate(-50%,-52%) scale(1) rotate(0deg); }
-}
-@keyframes vsFlash { 0% { opacity: 0; } 12% { opacity: .85; } 100% { opacity: 0; } }
+/* The shared arena's own layer rules, scoped to this wrapper. */
+#vsScreen .layer { position: absolute; inset: 0; }
+#vsScreen [hidden] { display: none !important; }
+@include('scoreboard::vs.keyframes')
 </style>
-
+<script>
+(function () {
+    'use strict';
+    var el = function (id) { return document.getElementById(id); };
+    var EVENT_TITLE = @json($vsIntro['tournament']);
+    var COURT = @json($vsIntro['court']);
+@include('scoreboard::vs.helpers')
+@include('scoreboard::vs.paint')
+    paintVs(@json($vsIntro));
+    el('vs').hidden = false;
+    refitNames();
+})();
+</script>
 <script>
 (function () {
     const VS_INTRO_SECONDS = 6;
@@ -5126,10 +4830,9 @@ body.msb-menu-open #ytpSettingsBtn svg { fill: #e8534a; }
         if (!host) return;
         const w = host.clientWidth, h = host.clientHeight;
         if (!w || !h) return;
-        const portrait = h > w * 1.05;
-        vs.classList.toggle('vs-portrait', portrait);
-        const sw = portrait ? 1080 : 1920;
-        const sh = portrait ? 1920 : 1080;
+        // The shared stage is landscape (as on every mat): letterboxed in a
+        // tall box rather than re-laid-out.
+        const sw = 1920, sh = 1080;
         const scale = Math.min(w / sw, h / sh);
         vs.style.setProperty('--vs-scale', scale);
     }
@@ -6785,15 +6488,18 @@ a.mac-photo:hover { box-shadow: 0 0 0 2px #ffd75e; transform: translateY(-1px); 
     .mac-sub { font-size: 11px; gap: 5px; }
     .mac-head-r { align-items: flex-start; text-align: left; font-size: 11px; gap: 2px; }
 
-    .mac-body { grid-template-columns: 1fr; gap: 10px; padding: 12px 14px; }
-    .mac-side, .mac-side-blue { justify-content: flex-start; text-align: left; gap: 10px; }
+    /* Narrow (the desktop side panel): the two corners side by side, each a
+       column — photo, corner, name, club — and the score across beneath them,
+       as the phone card lays them out. Was a stacked list with blue mirrored
+       and pushed to the far edge, so the two never lined up. */
+    .mac-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px 10px; padding: 14px; }
+    .mac-side, .mac-side-blue { flex-direction: column; align-items: center; justify-content: flex-start; text-align: center; gap: 8px; }
     .mac-side-red { order: 1; }
-    .mac-side-blue { order: 3; }
-    .mac-side-blue { flex-direction: row-reverse; }
-    .mac-side-blue .mac-id { align-items: flex-start; }
-    .mac-side-blue .mac-club { flex-direction: row-reverse; justify-content: flex-end; }
-    .mac-side-blue .mac-corner { flex-direction: row-reverse; justify-content: flex-end; }
-    .mac-photo { width: 54px; height: 66px; border-radius: 6px; }
+    .mac-side-blue { order: 2; }
+    .mac-side-blue .mac-photo { order: -1; }
+    .mac-id, .mac-side-blue .mac-id { align-items: center; }
+    .mac-corner, .mac-club { justify-content: center; }
+    .mac-photo { width: 72px; height: 96px; border-radius: 6px; }   /* 3:4, as every face is */
     .mac-id { gap: 3px; }
     .mac-corner { font-size: 11px; gap: 5px; }
     .mac-win { padding: 1px 5px; }
@@ -6801,7 +6507,7 @@ a.mac-photo:hover { box-shadow: 0 0 0 2px #ffd75e; transform: translateY(-1px); 
     .mac-club { font-size: 11px; gap: 5px; }
     .mac-logo { width: 18px; height: 18px; }
 
-    .mac-score { flex-direction: row; align-items: center; justify-content: center; gap: 10px; padding: 8px 0; border-top: 1px solid #2a2a2e; border-bottom: 1px solid #2a2a2e; order: 2; }
+    .mac-score { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: center; gap: 10px; padding: 8px 0; border-top: 1px solid #2a2a2e; border-bottom: 1px solid #2a2a2e; order: 3; }
     .mac-score-lbl { font-size: 10px; }
     .mac-pts { font-size: 34px; }
     .mac-pts-txt, .mac-dash { font-size: 18px; }
@@ -6813,7 +6519,7 @@ a.mac-photo:hover { box-shadow: 0 0 0 2px #ffd75e; transform: translateY(-1px); 
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   MOBILE BLOCK (.macm) — drafts/match-about-mobile.html
+   MOBILE BLOCK (.macm) — drafts/bout-video/match-about-mobile.html
    Its own container so the cqw units below size against the card's width.
    Only one of the two blocks is ever shown; the swap is a MEDIA query
    because it has to toggle the containers themselves, and a container
@@ -6879,7 +6585,7 @@ a.mac-photo:hover { box-shadow: 0 0 0 2px #ffd75e; transform: translateY(-1px); 
     .macm a { text-decoration: none; color: inherit; transition: color .15s; }
     .macm a:hover { color: #ffd75e; }
 
-    /* header — drafts/macm-inner.html */
+    /* header — drafts/bout-video/macm-inner.html */
     .macm-head { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 4.5cqw 5.5cqw 0; }
     .macm-kicker-row { display: flex; align-items: center; justify-content: center; width: 100%; }
     .macm-kicker { font-size: 2.7cqw; font-weight: 700; letter-spacing: 1cqw; text-transform: uppercase; color: #9a9aa0; }
@@ -8444,9 +8150,12 @@ window._comment = {
                 <div class="mrv" id="matchReview">
 
                 
-                    <div class="mrv-tabs">
+                    <div class="mrv-tabs{{ ! empty($analytics) ? ' has-analytics' : '' }}">
                         <button type="button" class="mrv-tab is-on" data-mrv-tab="match">{{ __('events::events.bout_video_tab_match') }}</button>
                         <button type="button" class="mrv-tab" data-mrv-tab="points">{{ __('events::events.bout_video_tab_points') }}</button>
+                        @if (! empty($analytics))
+                            <button type="button" class="mrv-tab" data-mrv-tab="analytics">{{ __('events::events.bout_an_tab') }}</button>
+                        @endif
                         <button type="button" class="mrv-tab" data-mrv-tab="coach">{{ __('events::events.bout_video_tab_coach') }}</button>
                         <button type="button" class="mrv-tab" data-mrv-tab="comments">{{ __('events::events.bout_video_tab_comments') }}</button>
                     </div>
@@ -8512,6 +8221,15 @@ window._comment = {
                         </div>
                     </div>
 
+                    {{-- Analytics (App\Media\BoutStats) — only while BOUT_ANALYTICS_TAB is on. --}}
+                    @if (! empty($analytics))
+                        <div class="mrv-pane" data-mrv-panel="analytics">
+                            <div class="mrv-scroll">
+                                <x-bout-analytics :stats="$analytics" :timeline="$timeline" variant="mobile" />
+                            </div>
+                        </div>
+                    @endif
+
                     <div class="mrv-pane" data-mrv-panel="coach">
                         <div class="mrv-scroll">
                             @forelse ($play['reviews'] ?? [] as $r)
@@ -8567,6 +8285,9 @@ window._comment = {
                     <div class="fsh-head">
                         <button type="button" class="fsh-tab is-on" data-fsh-tab="match">{{ __('events::events.bout_video_tab_match') }}</button>
                         <button type="button" class="fsh-tab" data-fsh-tab="points">{{ __('events::events.bout_video_tab_points') }}</button>
+                        @if (! empty($analytics))
+                            <button type="button" class="fsh-tab" data-fsh-tab="analytics">{{ __('events::events.bout_an_tab') }}</button>
+                        @endif
                         <button type="button" class="fsh-tab" data-fsh-tab="coach">{{ __('events::events.bout_video_tab_coach') }}</button>
                         <button type="button" class="fsh-tab" data-fsh-tab="comments">{{ __('events::events.bout_video_tab_comments') }}</button>
 
@@ -8609,6 +8330,12 @@ window._comment = {
                         @endforelse
                     </div>
 
+                    @if (! empty($analytics))
+                        <div class="fsh-list" data-fsh-panel="analytics">
+                            <x-bout-analytics :stats="$analytics" :timeline="$timeline" variant="mobile" />
+                        </div>
+                    @endif
+
                     <div class="fsh-list" data-fsh-panel="coach">
                         @foreach ($play['reviews'] ?? [] as $r)
                             <div class="fsh-note" data-mrv-seek="{{ $r['start_time_seconds'] }}"
@@ -8636,6 +8363,9 @@ window._comment = {
                 <div class="tab-header">
                     <button class="tab-button active" data-tab="match">{{ __('events::events.bout_video_tab_match') }}</button>
                     <button class="tab-button" data-tab="official">{{ __('events::events.bout_video_tab_points') }}</button>
+                    @if (! empty($analytics))
+                        <button class="tab-button" data-tab="analytics">{{ __('events::events.bout_an_tab') }}</button>
+                    @endif
                     <button class="tab-button" data-tab="review">{{ __('events::events.bout_video_tab_coach') }}</button>
                     <button class="tab-button" data-tab="comments">{{ __('events::events.bout_video_tab_comments') }}</button>
 
@@ -8653,6 +8383,12 @@ window._comment = {
                     </div>
 
                     <!-- Coach Review Tab -->
+                    @if (! empty($analytics))
+                        <div class="tab-panel" id="tab-analytics">
+                            <x-bout-analytics :stats="$analytics" :timeline="$timeline" variant="mobile" />
+                        </div>
+                    @endif
+
                     <div class="tab-panel" id="tab-review">
                         <div class="event-list" id="reviewEvents"></div>
                         @if ($canAnnotate)

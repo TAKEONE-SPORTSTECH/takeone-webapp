@@ -101,7 +101,7 @@ class BracketDataContractTest extends ContractTestCase
     /**
      * THE BOARD'S OWN WRITE ADDRESSES.
      *
-     * The draw stage runs the design file `drafts/Combat Sports Bracket.html`
+     * The draw stage runs the design file `drafts/events/Combat Sports Bracket.html`
      * as itself, and `public/bracket/takeone-bridge.js` is what makes it real:
      * it reads this payload and posts changes back through the two addresses
      * the page hands it in `window.TAKEONE_BRACKET`.

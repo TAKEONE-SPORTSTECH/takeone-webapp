@@ -57,7 +57,14 @@ class HallScreenRouter
          */
         $from = strtolower(trim((string) $request->input('from_host')));
 
-        if ($from !== '' && $from !== strtolower($request->getHost()) && preg_match('/^[a-z0-9.-]{1,253}$/', $from)) {
+        // ⚠️ Only when the code is unknown HERE. Stage and production now read
+        // one shared database, so a code printed by the other host is usually
+        // perfectly valid on this one — refusing it on the host name alone
+        // turned every cross-host scan into an error for a screen that was
+        // waiting. Should the databases ever split again, the code stops
+        // resolving and this answer comes back by itself.
+        if ($from !== '' && $from !== strtolower($request->getHost()) && preg_match('/^[a-z0-9.-]{1,253}$/', $from)
+            && ! $this->codeKnownHere((string) $request->input('code'))) {
             $told = __('personal.event_screens_other_host', ['there' => $from, 'here' => $request->getHost()]);
 
             PairingLog::refused($request, $event, 'code_from_the_other_server', $told);
@@ -323,6 +330,22 @@ class HallScreenRouter
             'cameras' => \App\Events\Support\Cameras\CameraFleet::console($event)['cameras'] ?? [],
             'screens' => $this->screensList($request, $event),
         ]);
+    }
+
+    /** Does any device on this server wait with that code — neutral screen, camera, or a sport's own fleet? */
+    private function codeKnownHere(string $code): bool
+    {
+        if (PendingScreen::pairable($code) || \App\Events\Models\EventCamera::pairable($code)) {
+            return true;
+        }
+
+        foreach (Fleet::fleets() as $model) {
+            if (class_exists($model) && $model::pairable($code)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** The event's screens as the console lists them, from the owning package. */

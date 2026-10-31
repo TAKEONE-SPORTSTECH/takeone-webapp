@@ -304,7 +304,7 @@ img.move-ghost { height: auto; }
 .tbl-fill[data-fill="1"] { background: #a99df5; } .tbl-fill[data-fill="2"] { background: #f08bb0; } .tbl-fill[data-fill="3"] { background: #f9c66b; }
 .tbl-fill[data-fill="4"] { background: #6fd7b0; } .tbl-fill[data-fill="5"] { background: #8cc4ee; } .tbl-fill[data-fill="6"] { background: #b6b1c0; }
 .tbl-fill.is-none { background: transparent; }
-[dir=rtl] .is-flip .bi { transform: scaleX(-1); } /* kept apart from :dir() — one unknown selector would drop the whole rule */
+[dir=rtl] .is-flip .bi, .tbl-bar.is-rtl .is-flip .bi { transform: scaleX(-1); } /* kept apart from :dir() — one unknown selector would drop the whole rule */
 .ed[contenteditable="false"] ~ .tbl-bar { display: none; }
 
 /* the size picker: columns × rows */

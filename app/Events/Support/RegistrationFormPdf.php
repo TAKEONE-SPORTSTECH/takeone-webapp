@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\App;
 /**
  * The registration form — a BLANK entry form for one event, printed A4 on two
  * pages, for the organiser to hand out and collect at a desk (owner,
- * 2026-10-14; design source: drafts/The Gost Team Tournament Reg. Form.doc).
+ * 2026-10-14; design source: drafts/entry-forms-and-data/The Gost Team Tournament Reg. Form.doc).
  *
  * Bilingual on purpose: every label is English AND Arabic side by side,
  * whatever language the organiser reads the site in. The words live in

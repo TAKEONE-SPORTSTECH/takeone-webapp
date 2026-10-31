@@ -27,7 +27,7 @@
       · they have a TAKEONE account → search for it and enter THAT person, so
         their profile, their club and their record follow them into the draw;
       · they have none → a name is committed immediately and a single-use link
-        lets them fill in the rest (Documentation/EVENTS-PUBLIC-ENTRY.md, Door B).
+        lets them fill in the rest (docs/events/public-entry.md, Door B).
 
     WHO SEES IT. Rendered only where the console already decided the viewer may
     manage the event — and both endpoints behind it re-check that server-side

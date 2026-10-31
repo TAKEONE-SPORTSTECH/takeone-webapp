@@ -103,7 +103,7 @@
 
         {{-- ===== The entry list =====
 
-             The PARTICIPANT CARD, ported from drafts/participant-card.html and
+             The PARTICIPANT CARD, ported from drafts/events/participant-card.html and
              used as drawn — the markup, the class names and the data-*
              contract are the draft's, and nothing of the card that stood here
              before it survives (the user's instruction, 2026-09-16). The

@@ -18,6 +18,7 @@ return [
     'no_clubs_title' => 'No member clubs yet',
     'no_clubs_body' => 'When a club applies and you accept it, it appears here with its athletes and its events.',
     'no_upcoming' => 'Nothing on the calendar across your clubs.',
+    'fee_entry_refused' => 'This is a ranked national event: only clubs that have paid :federation\'s yearly fee for this season can enter. Pay the fee from your club\'s Federation page, then enter again.',
     'no_pending' => 'No applications waiting.',
     'applied' => 'Applied :when',
     'calendar' => 'Across the federation',

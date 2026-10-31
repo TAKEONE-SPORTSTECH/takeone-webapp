@@ -47,7 +47,7 @@ use App\Support\Modules\AbstractModule;
  * ⚠️ `Models\ContentTranslation` and `Models\TranslationRun` are the previous
  * store — one row per field per language — and are now DORMANT. Their data was
  * copied into the document by the 2026-09-09 migration and nothing reads them.
- * They are registered for removal in Documentation/HOUSE-CLEANING.md rather
+ * They are registered for removal in docs/platform/house-cleaning.md rather
  * than deleted here, because nothing is deleted in passing (CLAUDE.md).
  *
  * ── When it runs ─────────────────────────────────────────────────────────────

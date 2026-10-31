@@ -148,6 +148,7 @@
         if (o.html) ed.innerHTML = o.html; // cleaned by the server's NoteHtml — see the header
         hydrate(ed, o.picture);
         wrapLoose(ed);
+        autoDirs(ed);
         var st = { o: o, T: o.T, el: ed, range: null, uploads: 0, tools: null, sub: null };
         clips(st);
         if (!ed.firstChild) { var p0 = h('p'); p0.appendChild(h('br')); ed.appendChild(p0); }
@@ -212,7 +213,13 @@
         if (ui) text = text.replace(ui.textContent, '');
         st.el.classList.toggle('is-blank', !text.trim() && !st.el.querySelector('img,hr,li,blockquote,.clip,table'));
     }
-    function edited(st) { blankCheck(st); syncTools(st); if (st.o.onEdit) st.o.onEdit(); }
+    /* A list, quote or table with no direction set takes it from its first words, so in Arabic the bullets, the
+       quote's bar and a table's first column sit on the right ("plaintext" turns the words, not the box around them).
+       ("auto" never reaches the server — NoteHtml keeps only ltr / rtl — so it is put back on every load.) */
+    function autoDirs(root) {
+        Array.prototype.forEach.call(root.querySelectorAll('ul:not([dir]), ol:not([dir]), blockquote:not([dir]), table:not([dir])'), function (l) { l.setAttribute('dir', 'auto'); });
+    }
+    function edited(st) { autoDirs(st.el); blankCheck(st); syncTools(st); if (st.o.onEdit) st.o.onEdit(); }
 
     function bind(st) {
         var ed = st.el;
@@ -1213,6 +1220,7 @@
         hideTableBar(st);
         var T = st.T, host = st.el.parentNode, bar = h('div', 'img-chips tbl-bar'); bar.dataset.ui = '1';
         bar.setAttribute('role', 'toolbar'); bar.setAttribute('aria-label', T.fmt_table);
+        if (getComputedStyle(table).direction === 'rtl') bar.classList.add('is-rtl'); // an Arabic table: "column before" is to its right
         function live() { var c = st.tcell && st.tcell.isConnected && st.tcell.closest('table') === table ? st.tcell : null; return c || table.querySelector('td,th'); }
         function btn(ic, label, fn, cls, quiet) {
             var b = h('button', 'img-chip' + (cls ? ' ' + cls : '')); b.type = 'button';

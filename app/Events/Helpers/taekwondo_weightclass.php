@@ -6,7 +6,7 @@
  *
  * The classifiers now belong to the Taekwondo package
  * (App\Events\Sports\Taekwondo\Classifier, Sport Package Plan phase 2); these
- * only forward to it. Registered in Documentation/HOUSE-CLEANING.md: remove
+ * only forward to it. Registered in docs/platform/house-cleaning.md: remove
  * once nothing calls the global functions.
  */
 if (! function_exists('classifyTaekwondo')) {

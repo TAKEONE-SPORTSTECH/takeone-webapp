@@ -1,7 +1,7 @@
 <?php
 
 // The club front page (clubs::public.show / clubs::public.mobile.show).
-// Design source: drafts/Club Pages & Design/Club.
+// Design source: drafts/clubs-and-trainers/Club.
 return [
     // header & navigation
     'back_explore' => 'Back to Explore',

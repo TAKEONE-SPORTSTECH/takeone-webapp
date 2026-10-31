@@ -10,7 +10,7 @@
 {{--
     The event's public page — the switch and the link, in one row of the console.
 
-    Documentation/EVENTS-PUBLIC-ENTRY.md, Phase B. Standalone per the component
+    docs/events/public-entry.md, Phase B. Standalone per the component
     contract: it owns its own Alpine state, its own request, its own sheet, and
     patches itself in place (No-Reload). Drop it into either console — mobile or
     desktop — with no page glue.

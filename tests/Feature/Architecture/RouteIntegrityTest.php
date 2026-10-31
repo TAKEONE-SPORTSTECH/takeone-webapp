@@ -36,7 +36,7 @@ class RouteIntegrityTest extends TestCase
      * removed with Firebase. Native push is delivered over MQTT by the broker
      * the platform already runs, so there is no per-device token to register.
      *
-     * 655 since 2026-09-01: the claim link (Documentation/EVENTS-PUBLIC-ENTRY.md,
+     * 655 since 2026-09-01: the claim link (docs/events/public-entry.md,
      * Phase A). Two OPEN routes — `entry.claim` / `entry.claim.store`, the
      * athlete's side, reachable with no account — and four behind /me for the
      * coach: `me.events.entries.unnamed`, `me.events.entry-links`, and that
@@ -178,7 +178,7 @@ class RouteIntegrityTest extends TestCase
      *   me.events.order{,.page,.move,.auto}                            (4)
      *
      * ⚠️ Those last two groups are the SAME FEATURE twice — the two rival
-     * running-order boards recorded in Documentation/MAP.md and on the
+     * running-order boards recorded in docs/platform/map.md and on the
      * house-cleaning register. Ten of these sixteen routes serve one job, and
      * this tripwire is being moved to accept that rather than to bless it.
      * When the duplicate goes, this number drops and the note goes with it.
@@ -224,7 +224,7 @@ class RouteIntegrityTest extends TestCase
      * 942 since 2026-10-03: +1, me.events.entry-channels — how athletes enter
      * an event, the organiser's switch (PLAN.md Phase 7).
      *
-     * 948 since 2026-10-04: +6, the new UI (Documentation/major-change/NEW-UI.md)
+     * 948 since 2026-10-04: +6, the new UI (docs/plans/major-change/new-ui.md)
      * — me.new-ui, me.new-ui.on, me.new-ui.off, me.manage, me.ask,
      * me.ask.message. All six answer 404 unless NEW_UI is on (or, for the
      * preview three, preview).

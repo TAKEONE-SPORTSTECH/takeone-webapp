@@ -14,7 +14,7 @@ use Illuminate\Queue\SerializesModels;
  * Tells a member that somebody else set their password — a club admin at the
  * desk, or a platform administrator. Never carries the password itself; it exists
  * so a change can never happen without the member knowing.
- * Sent by App\Members\Support\AdminPasswordReset — see docs/account-recovery.md.
+ * Sent by App\Members\Support\AdminPasswordReset — see docs/platform/account-recovery.md.
  */
 class PasswordChangedByAdminEmail extends Mailable
 {

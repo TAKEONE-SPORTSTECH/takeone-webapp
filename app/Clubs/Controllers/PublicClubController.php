@@ -52,7 +52,7 @@ class PublicClubController extends Controller
     public function index()
     {
         // New UI (branch new-ui): its own Explore, rendered by app/Ui. Off → the
-        // classic page below, unchanged. See Documentation/major-change/NEW-UI.md.
+        // classic page below, unchanged. See docs/plans/major-change/new-ui.md.
         if (\App\Ui\NewUi::active()) {
             return \App\Ui\Explore\ExplorePage::render(request());
         }

@@ -970,7 +970,7 @@ class PersonalEventController extends Controller
      * each other is an endless bounce; see the note there.
      *
      * The two views this used to render are registered for deletion in
-     * Documentation/HOUSE-CLEANING.md rather than deleted in passing.
+     * docs/platform/house-cleaning.md rather than deleted in passing.
      */
     public function bracket(Request $request, ClubEvent $event): RedirectResponse
     {
@@ -8551,7 +8551,7 @@ class PersonalEventController extends Controller
 
     /* ---------------- Entering someone not listed (Door B) ----------------
      *
-     * Documentation/EVENTS-PUBLIC-ENTRY.md. A coach types a NAME and nothing
+     * docs/events/public-entry.md. A coach types a NAME and nothing
      * else; the athlete supplies the rest through a single-use claim link. The
      * service owns every rule — these methods only carry the request.
      */
@@ -8771,7 +8771,7 @@ class PersonalEventController extends Controller
 
     /* ---------------- Reviewing public entries (Door C) ----------------
      *
-     * Documentation/EVENTS-PUBLIC-ENTRY.md, Phase C. A stranger followed the
+     * docs/events/public-entry.md, Phase C. A stranger followed the
      * shared link and asked to compete. The request is worth nothing until the
      * organiser accepts it — it counts toward no entrant total, no capacity and
      * no money — so this queue IS the gate, not paperwork after one.

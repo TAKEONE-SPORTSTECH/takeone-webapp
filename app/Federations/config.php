@@ -47,6 +47,16 @@ return [
     'platform_events' => (bool) env('FEDERATION_PLATFORM_EVENTS', false),
 
     /*
+    | The club yearly federation fee (2026-10-31): a federation sets a season
+    | and its fee, clubs pay by transfer and upload the proof, the federation
+    | approves — and only a recognised club may enter RANKED national events,
+    | and only results earned while recognised earn ranking points. Nothing is
+    | enforced for a federation until it has created its first season, and
+    | nothing before that season's start. OFF by default.
+    */
+    'club_fees' => (bool) env('FEDERATION_CLUB_FEES', false),
+
+    /*
     | TakeOne's own account — where a federation pays its subscription by
     | bank transfer (there is no card gateway). Shown on the dashboard's pay
     | screen; while the IBAN is unset the screen says so instead of showing a

@@ -92,7 +92,7 @@
 {{--
     ONE ENTRANT, as a card. `x-participant-card`
 
-    Ported from drafts/participant-card.html on 2026-09-16 and used as drawn:
+    Ported from drafts/events/participant-card.html on 2026-09-16 and used as drawn:
     the markup, the class names and the data-* contract are the draft's, and
     only the values are ours.
 
@@ -397,7 +397,7 @@
 
 
 {{-- ===========================================================================
-     THE COMPONENT'S OWN STYLESHEET — drafts/participant-card.html, verbatim.
+     THE COMPONENT'S OWN STYLESHEET — drafts/events/participant-card.html, verbatim.
 
      Emitted ONCE however many cards a page draws, by the card itself: a
      component that needs the host to remember a stylesheet is not standalone.
@@ -789,7 +789,7 @@
 
 <script>
 /* ============================================================================
-   The card's behaviour — drafts/participant-card.html, wired to real routes.
+   The card's behaviour — drafts/events/participant-card.html, wired to real routes.
 
    Behavior matrix, unchanged from the draft:
      PARTICIPANT: card tap -> member public profile (SEALED, inside this event)

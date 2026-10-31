@@ -12,6 +12,7 @@ use App\Clubs\Models\Tenant;
 use App\Members\Models\TournamentEvent;
 use App\Members\Support\AchievementVerificationService;
 use App\Clubs\Concerns\HandlesClubAuthorization;
+use App\Traits\StoresBase64Images;
 use App\Traits\PersistsTranslations;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
@@ -21,6 +22,7 @@ use Illuminate\Support\Facades\Storage;
 class ClubAchievementController extends Controller
 {
     use HandlesClubAuthorization;
+    use StoresBase64Images;
     use PersistsTranslations;
 
     public function achievements(Tenant $club)
@@ -291,15 +293,15 @@ class ClubAchievementController extends Controller
     {
         $paths = [];
         foreach ($base64List as $base64) {
-            if (! str_starts_with($base64, 'data:image')) {
-                continue;
+            // The real bytes decide the type and the extension — never the
+            // client's data-URI header (CLAUDE.md: Image Uploads Must Validate
+            // Real Bytes). Anything that is not a whitelisted image is skipped.
+            $path = is_string($base64)
+                ? $this->storeBase64Image($base64, 'clubs/'.$clubId.'/achievements', uniqid('ach_'))
+                : null;
+            if ($path !== null) {
+                $paths[] = $path;
             }
-            [$meta, $imageData] = explode(',', $base64, 2);
-            preg_match('/image\/(\w+)/', $meta, $m);
-            $ext = $m[1] ?? 'jpg';
-            $path = 'clubs/'.$clubId.'/achievements/'.uniqid('ach_').'.'.$ext;
-            Storage::disk('public')->put($path, base64_decode($imageData));
-            $paths[] = $path;
         }
 
         return $paths;

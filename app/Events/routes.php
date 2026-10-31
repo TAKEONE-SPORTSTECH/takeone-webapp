@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 | The event page anybody may open
 |--------------------------------------------------------------------------
-| Documentation/EVENTS-PUBLIC-ENTRY.md, Phase B. Opt-in per event
+| docs/events/public-entry.md, Phase B. Opt-in per event
 | (`entry_mode = public`) and READ-ONLY — the whole surface is a GET. An event
 | that was not deliberately made public 404s exactly as an unknown uuid does,
 | so the address cannot be used to discover which events exist.
@@ -190,7 +190,7 @@ Route::get('/me/events/{event:uuid}/enter/clubs', [App\Events\Controllers\Public
 |--------------------------------------------------------------------------
 | Completing an entry somebody else committed — the claim link
 |--------------------------------------------------------------------------
-| Documentation/EVENTS-PUBLIC-ENTRY.md, Door B. Open, because the person who
+| docs/events/public-entry.md, Door B. Open, because the person who
 | opens it has no account: a coach entered them by NAME and this is where they
 | supply what only they know. The link itself is the credential — a public uuid
 | plus a secret half, single-use, expiring, bound to ONE entry — and every kind
@@ -1066,7 +1066,7 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
     Route::post('/events/{event:uuid}/public-entries/{entry}/decline', [App\Events\Controllers\PersonalEventController::class, 'declinePublicEntry'])->name('events.public-entries.decline')->whereUuid('entry')->middleware('throttle:admin-write');
     // Entering somebody not on the roster: a NAME commits the entry, and a
     // single-use link lets the athlete supply what the coach could only have
-    // guessed at (Documentation/EVENTS-PUBLIC-ENTRY.md, Door B).
+    // guessed at (docs/events/public-entry.md, Door B).
     Route::post('/events/{event:uuid}/entries/unnamed', [App\Events\Controllers\PersonalEventController::class, 'storeUnnamedEntry'])->name('events.entries.unnamed')->middleware('throttle:admin-write');
     // The pre-draw duplicate check: likely pairs among the entrants, and settling one (EventDuplicates).
     Route::get('/events/{event:uuid}/duplicates', [App\Events\Controllers\EventDuplicatesController::class, 'index'])->name('events.duplicates')->middleware('throttle:60,1');

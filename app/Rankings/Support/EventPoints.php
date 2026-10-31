@@ -6,7 +6,9 @@ use App\Events\Models\ClubEvent;
 use App\Events\Models\ClubEventRegistration;
 use App\Events\Models\EventCategory;
 use App\Events\Support\EntryClub;
+use App\Federations\Support\ClubRecognition;
 use App\Rankings\Schemes\Wkf;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -71,6 +73,11 @@ class EventPoints
             $reg = $registrations->get($t['registration_id']);
             if (! $reg || ! $reg->user_id) {
                 continue;   // a name with no account behind it cannot hold a ranking
+            }
+            // Only results earned while the athlete's club was recognised by the
+            // federation count (federations.club_fees; never before its first season).
+            if (! ClubRecognition::countsForRanking($event, $reg->representing_tenant_id ? (int) $reg->representing_tenant_id : null, CarbonImmutable::parse((string) $earnedOn))) {
+                continue;
             }
 
             /** @var EventCategory $division */

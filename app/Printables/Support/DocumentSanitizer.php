@@ -214,7 +214,7 @@ final class DocumentSanitizer
 
     private const QR_BALL = ['square', 'rounded', 'circle', 'leaf', 'teardrop', 'cushion', 'octagon'];
 
-    /** Only known shapes, real colours and clamped numbers survive (docs/qr-designer-study.md). */
+    /** Only known shapes, real colours and clamped numbers survive (docs/research/qr-designer-study.md). */
     private function qrStyle(array $q): array
     {
         $pick = fn ($v, array $list, string $default) => in_array($v, $list, true) ? $v : $default;

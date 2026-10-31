@@ -1467,17 +1467,18 @@
                         // everyone trying to help them. The submit carries the
                         // scanned host so the SERVER decides and writes it down;
                         // the toast below is the same answer, shown immediately.
-                        if (there !== here) {
-                            this.from = there;
-                            this.submit();
-                            return;
-                        }
+                        // The code is read from the URL either way: the two
+                        // hosts share one database, so the server decides
+                        // whether it resolves. `from` is per scan — left set,
+                        // it flagged every later scan and typed code as foreign.
+                        this.from = there !== here ? there : null;
 
                         const parts = url.pathname.split('/').filter(Boolean);
                         found = this.strict(parts[parts.length - 1] || '');
                     } else {
                         // Not a URL: a bare code, read aloud or typed into the
                         // scanner's manual field.
+                        this.from = null;
                         found = this.strict(raw);
                     }
 

@@ -20,7 +20,7 @@ use Tests\TestCase;
  * A club admin could enroll ANY account into their club and then set its
  * password — a super-admin's included. Now the desk can still help an ordinary
  * member who forgot theirs, but never a privileged account, and every change
- * made by somebody else is logged and emailed. See docs/account-recovery.md.
+ * made by somebody else is logged and emailed. See docs/platform/account-recovery.md.
  */
 class AdminPasswordResetTest extends TestCase
 {

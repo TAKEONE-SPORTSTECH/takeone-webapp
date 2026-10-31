@@ -279,7 +279,7 @@ final class Planner
         // Promoting them back must link to the original, never add a copy —
         // an event matched by uuid while its divisions, entries and bouts came
         // back as second copies is what the 30 Oct round trip did
-        // (docs/data-promotion.md).
+        // (docs/platform/data-promotion.md).
         if ($hasMap($this->src)) {
             foreach ($this->src->query('select source_table, source_key, target_id from '.Applier::MAP_TABLE) as $r) {
                 $this->returning[$r['source_table']][(string) $r['target_id']] = (int) $r['source_key'];

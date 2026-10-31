@@ -120,22 +120,7 @@
   @keyframes introSlideL { 0% { transform:translateX(-120px); opacity:0; } 100% { transform:translateX(0); opacity:1; } }
   @keyframes introSlideR { 0% { transform:translateX(120px); opacity:0; } 100% { transform:translateX(0); opacity:1; } }
 
-  /* ── The VS arena's loops (design/vs-arena.source.html) ─────────────────── */
-  @keyframes vsPulse { 0%,100% { text-shadow:0 0 30px rgba(255,215,120,0.55), 0 0 90px rgba(255,170,60,0.3); transform:scale(1); } 50% { text-shadow:0 0 55px rgba(255,225,150,0.85), 0 0 140px rgba(255,180,70,0.5); transform:scale(1.03); } }
-  @keyframes slowDrift { 0% { transform:translate3d(0,0,0) scale(1.02); } 50% { transform:translate3d(0,-1.2%,0) scale(1.05); } 100% { transform:translate3d(0,0,0) scale(1.02); } }
-  @keyframes shineSweep { 0% { transform:translateX(-130%) skewX(-18deg); } 60%,100% { transform:translateX(230%) skewX(-18deg); } }
-  @keyframes panelL { from { transform:translateX(-105%); } to { transform:translateX(0); } }
-  @keyframes panelR { from { transform:translateX(105%); } to { transform:translateX(0); } }
-  @keyframes riseUp { from { opacity:0; transform:translateY(43.2px); } to { opacity:1; transform:translateY(0); } }
-  @keyframes dropIn { from { opacity:0; transform:translate(-50%,-32.4px); } to { opacity:1; transform:translate(-50%,0); } }
-  @keyframes vsSlam { 0% { opacity:0; transform:translate(-50%,-52%) scale(3.4) rotate(-6deg); } 60% { opacity:1; transform:translate(-50%,-52%) scale(0.92) rotate(2deg); } 100% { opacity:1; transform:translate(-50%,-52%) scale(1) rotate(0); } }
-  @keyframes flashOut { 0% { opacity:0; } 12% { opacity:0.85; } 100% { opacity:0; } }
-  @keyframes riseC { from { opacity:0; transform:translate(-50%,43.2px); } to { opacity:1; transform:translate(-50%,0); } }
-
-  /* The wipe that hands the screen from the introduction to the bout. This is
-     the transition the whole single-document design exists for. */
-  @keyframes vsExit { from { opacity:1; transform:scale(1); } to { opacity:0; transform:scale(1.08); } }
-
+@include('scoreboard::vs.keyframes')
   .layer { position:absolute; inset:0; }
   [hidden] { display:none !important; }
 
@@ -260,86 +245,7 @@
     <div id="sbWinner" hidden style="position:absolute; inset:0; z-index:8; pointer-events:none; background:rgba(0,0,0,.45); overflow:hidden;"></div>
   </div>
 
-  {{-- ── The introduction, over the top of it ───────────────────────────── --}}
-  {{-- The age · height · weight chip obeys the platform's VS layout (VsLayout show_stats). --}}
-  <style>#vs[data-stats="0"] .vs-stat{display:none !important;}</style>
-  <div id="vs" class="layer" hidden data-stats="{{ \App\Scoreboard\Support\VsLayout::get()['show_stats'] ? 1 : 0 }}" style="{{ \App\Scoreboard\Support\VsLayout::cssVars() }} z-index:12; background:radial-gradient(120% 90% at 50% 40%, #16161f 0%, #0a0a0e 65%, #050507 100%); font-family:'Barlow Condensed',sans-serif; color:#e8e6e0; overflow:hidden;">
-    <div style="position:absolute; {{ $rr ? 'inset:0 0 0 auto; width:56%; clip-path:polygon(18% 0, 100% 0, 100% 100%, 0 100%);' : 'inset:0 auto 0 0; width:56%; clip-path:polygon(0 0, 100% 0, 82% 100%, 0 100%);' }} overflow:hidden; background:{{ $L['aka']['vsPanel'] }}; animation:{{ $rr ? 'panelR' : 'panelL' }} 0.9s cubic-bezier(0.22,1,0.36,1) both;">
-      <div id="vsRedPhoto" style="position:absolute; inset:0; background-size:cover; background-position:center 12%; animation:slowDrift 18s ease-in-out infinite;"></div>
-      <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient({{ $rr ? '245deg' : '115deg' }}, {{ $L['aka']['vsGlow'] }} 0%, transparent 55%);"></div>
-      <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(to top, rgba(5,5,7,0.95) 0%, rgba(5,5,7,0.72) 22%, rgba(5,5,7,0.3) 42%, transparent 62%), linear-gradient(to bottom, rgba(5,5,7,0.82) 0%, rgba(5,5,7,0.35) 18%, transparent 32%);"></div>
-    </div>
-    <div style="position:absolute; {{ $rr ? 'inset:0 auto 0 0; width:56%; clip-path:polygon(0 0, 100% 0, 82% 100%, 0 100%);' : 'inset:0 0 0 auto; width:56%; clip-path:polygon(18% 0, 100% 0, 100% 100%, 0 100%);' }} overflow:hidden; background:{{ $L['ao']['vsPanel'] }}; animation:{{ $rr ? 'panelL' : 'panelR' }} 0.9s cubic-bezier(0.22,1,0.36,1) both;">
-      <div id="vsBluePhoto" style="position:absolute; inset:0; background-size:cover; background-position:center 12%; animation:slowDrift 18s ease-in-out infinite reverse;"></div>
-      <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient({{ $rr ? '115deg' : '245deg' }}, {{ $L['ao']['vsGlow'] }} 0%, transparent 55%);"></div>
-      <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(to top, rgba(5,5,7,0.95) 0%, rgba(5,5,7,0.72) 22%, rgba(5,5,7,0.3) 42%, transparent 62%), linear-gradient(to bottom, rgba(5,5,7,0.82) 0%, rgba(5,5,7,0.35) 18%, transparent 32%);"></div>
-    </div>
-    <div style="position:absolute; top:-6%; bottom:-6%; left:50%; width:3px; margin-left:-1.5px; transform:rotate(10.15deg); pointer-events:none; background:linear-gradient(to bottom, transparent, rgba(253,196,54,0.9) 20%, rgba(253,196,54,0.9) 80%, transparent);background:linear-gradient(to bottom, transparent, oklch(0.85 0.16 85 / 0.9) 20%, oklch(0.85 0.16 85 / 0.9) 80%, transparent); filter:blur(1px);"></div>
-
-    <div style="position:absolute; {{ $rr ? 'right:43.2px; bottom:var(--vs-info-bottom, 64.8px); scale:var(--vs-info-scale, 1); transform-origin:right bottom; display:flex; flex-direction:column; align-items:flex-end; gap:13px; z-index:6; max-width:44%; min-width:0; text-align:right;' : 'left:43.2px; bottom:var(--vs-info-bottom, 64.8px); scale:var(--vs-info-scale, 1); transform-origin:left bottom; display:flex; flex-direction:column; align-items:flex-start; gap:13px; z-index:6; max-width:44%; min-width:0;' }} animation:riseUp 0.8s 0.7s cubic-bezier(0.22,1,0.36,1) both;">
-      <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:{{ $L['aka']['badgeInk'] }}; background:{{ $L['aka']['badgeBg'] }}; padding:5.4px 15.1px 5.4px 18.9px;">{{ $L['aka']['badge'] }}</div>
-      <div style="display:flex; align-items:center; {{ $rr ? 'gap:15.1px; flex-direction:row-reverse;' : 'gap:15.1px;' }}">
-        <div id="vsRedFlag" style="width:56.2px; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:1px solid rgba(255,255,255,0.35); box-shadow:0 4px 18px rgba(0,0,0,0.6);"></div>
-        <div id="vsRedCountry" style="max-width:760px; font-weight:700; font-size:32.4px; letter-spacing:0.28em; text-transform:uppercase; color:{{ $L['aka']['countryInk'] }};"></div>
-      </div>
-      <div id="vsRedName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:71.3px; line-height:0.95; text-transform:uppercase; color:#fff; text-shadow:0 6px 30px rgba(0,0,0,0.8);"></div>
-      <div style="display:flex; align-items:center; gap:13px; {{ $rr ? 'margin-top:4.3px; flex-direction:row-reverse;' : 'margin-top:4.3px;' }}">
-        <div id="vsRedLogo" style="width:69.1px; height:69.1px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.2); border-radius:50%; background-size:cover; background-position:center;"></div>
-        <div id="vsRedClub" style="font-weight:600; font-size:30.2px; letter-spacing:0.12em; text-transform:uppercase; color:rgba(232,230,224,0.9);"></div>
-      </div>
-      <div id="vsRedChips" style="display:flex; flex-wrap:wrap; gap:9.7px; {{ $rr ? 'margin-top:5.4px; justify-content:flex-end;' : 'margin-top:5.4px;' }}"></div>
-    </div>
-
-    <div style="position:absolute; {{ $rr ? 'left:43.2px; bottom:var(--vs-info-bottom, 64.8px); scale:var(--vs-info-scale, 1); transform-origin:left bottom; display:flex; flex-direction:column; align-items:flex-start; gap:13px; z-index:6; max-width:44%; min-width:0;' : 'right:43.2px; bottom:var(--vs-info-bottom, 64.8px); scale:var(--vs-info-scale, 1); transform-origin:right bottom; display:flex; flex-direction:column; align-items:flex-end; gap:13px; z-index:6; max-width:44%; min-width:0; text-align:right;' }} animation:riseUp 0.8s 0.85s cubic-bezier(0.22,1,0.36,1) both;">
-      <div style="font-weight:800; font-size:21.6px; letter-spacing:0.35em; color:{{ $L['ao']['badgeInk'] }}; background:{{ $L['ao']['badgeBg'] }}; padding:5.4px 15.1px 5.4px 18.9px;">{{ $L['ao']['badge'] }}</div>
-      <div style="display:flex; align-items:center; {{ $rr ? 'gap:15.1px;' : 'gap:15.1px; flex-direction:row-reverse;' }}">
-        <div id="vsBlueFlag" style="width:56.2px; aspect-ratio:4/3; background-size:100% 100%; image-rendering:auto; background-position:center; border:1px solid rgba(255,255,255,0.35); box-shadow:0 4px 18px rgba(0,0,0,0.6);"></div>
-        <div id="vsBlueCountry" style="max-width:760px; font-weight:700; font-size:32.4px; letter-spacing:0.28em; text-transform:uppercase; color:{{ $L['ao']['countryInk'] }};"></div>
-      </div>
-      <div id="vsBlueName" style="max-width:100%; font-family:'Anton',sans-serif; font-size:71.3px; line-height:0.95; text-transform:uppercase; color:#fff; text-shadow:0 6px 30px rgba(0,0,0,0.8);"></div>
-      <div style="display:flex; align-items:center; gap:13px; {{ $rr ? 'margin-top:4.3px;' : 'margin-top:4.3px; flex-direction:row-reverse;' }}">
-        <div id="vsBlueLogo" style="width:69.1px; height:69.1px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.2); border-radius:50%; background-size:cover; background-position:center;"></div>
-        <div id="vsBlueClub" style="font-weight:600; font-size:30.2px; letter-spacing:0.12em; text-transform:uppercase; color:rgba(232,230,224,0.9);"></div>
-      </div>
-      <div id="vsBlueChips" style="display:flex; flex-wrap:wrap; gap:9.7px; {{ $rr ? 'margin-top:5.4px;' : 'margin-top:5.4px; justify-content:flex-end;' }}"></div>
-    </div>
-
-    <div style="position:absolute; top:34.6px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:10.8px; z-index:8; width:92%; pointer-events:none; animation:dropIn 0.8s 0.5s cubic-bezier(0.22,1,0.36,1) both;">
-      <div id="vsEvent" style="font-weight:700; font-size:30.2px; letter-spacing:0.42em; text-transform:uppercase; color:rgba(232,230,224,0.92); text-align:center; text-shadow:0 2px 14px rgba(0,0,0,0.9);"></div>
-      <div style="display:flex; align-items:center; gap:17.3px;">
-        <div style="height:2px; width:64.8px; background:linear-gradient(to left, #fdc436, transparent);background:linear-gradient(to left, oklch(0.85 0.16 85), transparent);"></div>
-        <div id="vsStage" style="font-family:'Anton',sans-serif; font-size:38.9px; letter-spacing:0.3em; padding-left:0.3em; color:#fdc436; color:oklch(0.85 0.16 85); text-transform:uppercase;"></div>
-        <div style="height:2px; width:64.8px; background:linear-gradient(to right, #fdc436, transparent);background:linear-gradient(to right, oklch(0.85 0.16 85), transparent);"></div>
-      </div>
-      <div id="vsWeight" style="font-weight:600; font-size:28.1px; letter-spacing:0.3em; text-transform:uppercase; color:rgba(232,230,224,0.75);"></div>
-    </div>
-
-    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-52%); z-index:7; pointer-events:none; display:flex; align-items:center; justify-content:center; animation:vsSlam 0.7s 1.1s cubic-bezier(0.22,1,0.36,1) both;">
-      <div style="position:relative; font-family:'Anton',sans-serif; font-size:183.6px; font-style:italic; color:#fffdf5; line-height:1; animation:vsPulse 2.4s ease-in-out infinite; -webkit-text-stroke:2px rgba(253,196,54,0.6); -webkit-text-stroke:2px oklch(0.85 0.16 85 / 0.6); overflow:visible;">VS
-        <div style="position:absolute; inset:-10% -20%; overflow:hidden; pointer-events:none;">
-          <div style="position:absolute; top:0; bottom:0; width:34%; background:linear-gradient(to right, transparent, rgba(255,255,255,0.16), transparent); animation:shineSweep 5s ease-in-out infinite;"></div>
-        </div>
-      </div>
-    </div>
-    <div style="position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; z-index:9; animation:flashOut 0.9s 1.5s ease-out both;"></div>
-
-    <div style="position:absolute; bottom:32.4px; left:50%; transform:translateX(-50%); display:flex; gap:17.3px; z-index:8; align-items:center; flex-wrap:wrap; justify-content:center; max-width:94%; animation:riseC 0.8s 1.3s cubic-bezier(0.22,1,0.36,1) both;">
-      <div style="display:flex; align-items:baseline; gap:8.6px; background:rgba(10,10,14,0.72); border:1px solid rgba(253,196,54,0.45); border:1px solid oklch(0.85 0.16 85 / 0.45); padding:10.8px 23.8px; backdrop-filter:blur(6px);">
-        <span style="font-weight:600; font-size:23.8px; letter-spacing:0.3em; color:rgba(232,230,224,0.65); text-transform:uppercase;">{{ __('scoreboard::karate_messages.court_match') }}</span>
-        <span id="vsMatchNo" style="font-family:'Anton',sans-serif; font-size:34.6px; color:#fff;"></span>
-      </div>
-      <div style="width:6px; height:6px; transform:rotate(45deg); background:#fdc436; background:oklch(0.85 0.16 85);"></div>
-      <div style="display:flex; align-items:baseline; gap:8.6px; background:rgba(10,10,14,0.72); border:1px solid rgba(253,196,54,0.45); border:1px solid oklch(0.85 0.16 85 / 0.45); padding:10.8px 23.8px; backdrop-filter:blur(6px);">
-        <span style="font-weight:600; font-size:23.8px; letter-spacing:0.3em; color:rgba(232,230,224,0.65); text-transform:uppercase;">{{ __('scoreboard::karate_messages.court_court') }}</span>
-        <span id="vsCourt" style="font-family:'Anton',sans-serif; font-size:34.6px; color:#fff;"></span>
-      </div>
-      <div style="width:6px; height:6px; transform:rotate(45deg); background:#fdc436; background:oklch(0.85 0.16 85);"></div>
-      <div id="vsRefWrap" style="display:flex; align-items:baseline; gap:8.6px; background:rgba(10,10,14,0.72); border:1px solid rgba(253,196,54,0.45); border:1px solid oklch(0.85 0.16 85 / 0.45); padding:10.8px 23.8px; backdrop-filter:blur(6px);">
-        <span style="font-weight:600; font-size:23.8px; letter-spacing:0.3em; color:rgba(232,230,224,0.65); text-transform:uppercase;">{{ __('scoreboard::karate_messages.vs_referee') }}</span>
-        <span id="vsReferee" style="font-weight:700; font-size:28.1px; letter-spacing:0.08em; color:#fff; text-transform:uppercase;"></span>
-      </div>
-    </div>
-  </div>
+@include('scoreboard::vs.arena')
 
   <div id="stale"><span>{{ __('scoreboard::karate_messages.court_reconnecting') }}</span></div>
 </div></div>
@@ -365,89 +271,7 @@
   (window.ResizeObserver ? new ResizeObserver(fit).observe(root) : window.addEventListener('resize', fit));
   fit();
 
-  // ── Untrusted values ─────────────────────────────────────────────────────
-  // Names, clubs and image paths were all typed by a person. Text goes in
-  // through textContent only, and a URL is dropped unless it is one we would
-  // have generated: a hall screen is a publication surface.
-  function safeUrl(u) {
-    return (typeof u === 'string' && /^(https?:\/\/|\/)[^"'()\\\s]*$/.test(u)) ? u : null;
-  }
-  function text(id, v) { var n = el(id); if (n) n.textContent = (v == null ? '' : String(v)); }
-  function bg(id, url) {
-    var n = el(id), u = safeUrl(url);
-    if (!n) return;
-    n.style.backgroundImage = u ? 'url("' + encodeURI(u) + '")' : 'none';
-  }
-  /* ── A competitor's name never takes a second line ──────────────────────
-     It is the thing the hall reads first, and a name broken across two lines
-     reads as two people. So the type SHRINKS to fit rather than wrapping, and
-     it is never truncated: an ellipsis through somebody's name on a wall is
-     worse than small type.
-
-     Measured, not guessed — scrollWidth against clientWidth with the line
-     forced to nowrap. Only re-measured when the name actually changes, when a
-     hidden layer becomes visible (a hidden element has no width to measure
-     against), and once the webfonts have loaded, because Anton is far narrower
-     than the fallback and fitting to the wrong metrics sizes every name wrong. */
-  // Karate's red corner (AKA) stands on the right — App\\Sports\\Combat\\CornerSide.
-  var RED_RIGHT = @json($redRight ?? \App\Sports\Combat\CornerSide::redRight('karate'));
-  // Each corner's name and colours (Mat\CornerLook), for what the script draws.
-  var LOOK = @json($L);
-  var nameSpec = {};
-  function setName(id, value, max, min) {
-    var n = el(id);
-    if (!n) return;
-    nameSpec[id] = { v: value, max: max, min: min };
-    if (n.textContent !== value) n.textContent = value;
-    n.style.whiteSpace = 'nowrap';
-    fitName(id);
-  }
-  function fitName(id) {
-    var n = el(id), spec = nameSpec[id];
-    if (!n || !spec) return;
-    if (!n.clientWidth) return;              // not laid out yet — retry on show
-    if (n.getAttribute('data-fit') === spec.v) return;
-
-    // Step 1 — shrink the type. Measured against the panel's real width, which
-    // is 639px on the scoreboard: a 24-character name lands at 40px.
-    n.style.transform = 'none';
-    var size = spec.max;
-    n.style.fontSize = size + 'px';
-    for (var i = 0; i < 120 && size > spec.min && n.scrollWidth > n.clientWidth; i++) {
-      size -= 2;
-      n.style.fontSize = size + 'px';
-    }
-
-    // Step 2 — a name long enough to still overflow at the floor is CONDENSED,
-    // not cut. Broadcast graphics squeeze rather than truncate for the same
-    // reason: half a competitor's name on a wall is a mistake, narrow type is
-    // just narrow. Floored at 0.6 — past that it stops being readable and the
-    // operator should shorten the name on the control page instead.
-    if (n.scrollWidth > n.clientWidth) {
-      var ratio = Math.max(0.6, n.clientWidth / n.scrollWidth);
-      // Condense toward the edge the name is aligned to, so it never drifts
-      // away from its own corner.
-      // Anchored at the line's START: overflow runs toward its end however
-      // the line is aligned, so an end-anchored squeeze pushed a long name's
-      // tail past its own box.
-      n.style.transformOrigin = getComputedStyle(n).direction === 'rtl' ? 'right center' : 'left center';
-      n.style.transform = 'scaleX(' + ratio.toFixed(3) + ')';
-    }
-
-    n.setAttribute('data-fit', spec.v);
-  }
-  function refitNames() {
-    Object.keys(nameSpec).forEach(function (id) {
-      var n = el(id);
-      if (n) n.removeAttribute('data-fit');   // re-measure from the top
-      fitName(id);
-    });
-  }
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(refitNames);
-
-  function flagUrl(code) {
-    return /^[a-z]{2}$/.test(String(code || '')) ? '/images/flags/' + code + '.svg' : null;
-  }
+@include('scoreboard::vs.helpers')
 
   /* ── The clock ──────────────────────────────────────────────────────────
      Never told what to display — given `remaining` at a moment plus whether it
@@ -779,77 +603,7 @@
   }
 
   /* ── The introduction ─────────────────────────────────────────────────── */
-  function chip(host, value, gold) {
-    if (!value) return;   // an absent fact is hidden, never invented
-    var d = document.createElement('div');
-    // Big enough to read from the far side of the hall (owner, 2026-10-16):
-    // the age · weight line under the club was barely visible at 23.8px.
-    d.style.cssText = 'font-weight:800; font-size:34px; letter-spacing:0.1em; text-transform:uppercase; padding:9px 20px; line-height:1.15;' +
-      'background:rgba(10,10,14,0.82); border:2px solid ' + (gold ? 'rgba(253,196,54,0.85)' : 'rgba(255,255,255,0.55)') + ';' +
-      'color:' + (gold ? '#e8c96a' : '#fff') + ';';
-    d.textContent = value;
-    host.appendChild(d);
-  }
-
-  function statLine(c) {
-    // "24Y · 178cm · 74kg" — each part only when we actually have it.
-    return [c.age ? c.age + 'Y' : null, c.height ? c.height + 'cm' : null, c.weight ? c.weight + 'kg' : null]
-      .filter(Boolean).join(' · ');
-  }
-
-  function paintVs(s) {
-    var a = s.aka || {}, b = s.ao || {};
-    text('vsEvent', s.tournament || EVENT_TITLE);
-    text('vsStage', s.stage || '');
-    text('vsWeight', s.division || '');
-    text('vsMatchNo', s.matchNo || '');
-    // The chip is removed from the row when nobody is appointed, rather than
-    // standing there empty — same rule the queue board follows.
-    text('vsReferee', s.referee || '');
-    el('vsRefWrap').hidden = !s.referee;
-    text('vsCourt', COURT.replace(/[^0-9]/g, '') || COURT);
-
-    [['Red', a], ['Blue', b]].forEach(function (pair) {
-      var k = pair[0], c = pair[1];
-      setName('vs' + k + 'Name', c.name || '', 71.3, 26);
-      text('vs' + k + 'Club', c.club || '');
-      // The country is spelled out — 'BAHRAIN', never 'BH' — so it is fitted
-      // like the name is: a long one shrinks and then condenses rather than
-      // running off the panel.
-      // The VS presents the ATHLETE, so it flies their own nationality;
-      // the club's country stands in only when none is on file.
-      var natFlag = flagUrl(c.nationality);
-      setName('vs' + k + 'Country', (natFlag ? c.nationalityName : c.country) || '', 32.4, 18);
-      bg('vs' + k + 'Flag', natFlag || flagUrl(c.flag));
-      bg('vs' + k + 'Logo', c.logo);
-
-      // Their own face, and the drawn stand-in when there is none, so an
-      // introduction is never half a coloured panel with nobody in it. The
-      // stand-in sits well back — this panel is two metres of wall and a
-      // drawing at full strength would read as a photograph of the athlete
-      // standing on the mat. Their name and club carry the half either way.
-      var face = c.photo || c.fallback;
-      bg('vs' + k + 'Photo', face);
-      var pel = el('vs' + k + 'Photo');
-      if (pel) pel.style.opacity = (face && !c.photo) ? '.45' : '1';
-      // How THIS person's photo is placed (PhotoVsFrame) — zoomed and moved
-      // over the untouched original, never cropped. None: the panel's own
-      // cover / center 12%, reset every time because the panel is reused.
-      var fr = c.photo ? c.vs_frame : null;
-      var fz = fr ? parseFloat(fr.z) : NaN, fx = fr ? parseFloat(fr.x) : NaN, fy = fr ? parseFloat(fr.y) : NaN;
-      if (pel) {
-        var framed = isFinite(fz) && isFinite(fx) && isFinite(fy);
-        pel.style.backgroundSize = framed ? (Math.min(3, Math.max(1, fz)) * 100) + '% auto' : 'cover';
-        pel.style.backgroundPosition = framed ? Math.min(100, Math.max(0, fx)) + '% ' + Math.min(100, Math.max(0, fy)) + '%' : 'center 12%';
-      }
-      var host = el('vs' + k + 'Chips');
-      host.textContent = '';
-      chip(host, c.record, false);
-      chip(host, c.belt, true);
-      chip(host, statLine(c), false);
-      if (statLine(c) && host.lastChild) host.lastChild.classList.add('vs-stat');
-    });
-  }
+@include('scoreboard::vs.paint', ['vsFlag' => 'nationality'])
 
   function paintScoreboard(s) {
     var a = s.aka || {}, b = s.ao || {};

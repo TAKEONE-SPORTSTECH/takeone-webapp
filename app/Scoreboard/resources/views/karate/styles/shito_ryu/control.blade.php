@@ -1,7 +1,7 @@
 {{--
     The scoring table at a Karate mat — Match Control.
 
-    Built to the approved design handoff (`drafts/HTML Templates/Karate Shotokan
+    Built to the approved design handoff (`drafts/scoreboards/Karate Shotokan
     Scoreboard Controller.zip` → `design_handoff_match_control/`). Like the wall
     screens it does NOT extend a layout and does not use the design system: it
     is a 1920x1080 broadcast console authored as a whole document, operated at

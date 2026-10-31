@@ -1477,7 +1477,7 @@ return [
     'videos_won' => 'Won',
     'videos_lost' => 'Lost',
     'videos_count' => ':n videos',
-    // Entering somebody not on the roster — Documentation/EVENTS-PUBLIC-ENTRY.md
+    // Entering somebody not on the roster — docs/events/public-entry.md
     'event_show_squad_tab_byname' => 'By name',
     'event_show_byname_label' => 'Full name',
     'event_show_byname_placeholder' => 'The athlete you are entering',
@@ -1534,7 +1534,7 @@ return [
     'event_bans_failed' => 'Could not read who is barred.',
     'event_bans_retry' => 'Try again',
 
-    /* ── The participant card (drafts/participant-card.html) ─────────────── */
+    /* ── The participant card (drafts/events/participant-card.html) ─────────────── */
     'event_card_paid' => 'Paid',
     'event_card_not_paid' => 'Not paid',
     'event_card_paid_part' => ':paid of :total entries paid',

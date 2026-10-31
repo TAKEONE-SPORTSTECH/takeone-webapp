@@ -22,7 +22,7 @@ return [
     'enabled' => (bool) env('PRINTABLES_DESIGNER', false),
 
     /*
-     * Styled QR codes (shapes, colours, gradients — docs/qr-designer-study.md).
+     * Styled QR codes (shapes, colours, gradients — docs/research/qr-designer-study.md).
      * OFF by default: an element with no style prints exactly as before.
      */
     'qr_style' => (bool) env('PRINTABLES_QR_STYLE', false),

@@ -29,7 +29,7 @@ use Illuminate\Support\Facades\Route;
 // Replaces takeone/cropper's own `POST /image-upload` (same URL and name), which
 // had no auth or throttle and let the client choose the destination. Module
 // routes load after every package has booted, so this one is what answers.
-// See docs/uploads.md.
+// See docs/platform/uploads.md.
 Route::middleware(['auth', 'verified', 'two-factor', 'throttle:uploads'])
     ->post('/image-upload', [CropperUploadController::class, 'store'])
     ->name('image.upload');

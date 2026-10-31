@@ -19,7 +19,7 @@ use Illuminate\Support\Str;
 /**
  * Entering somebody the coach cannot describe, and the link that completes them.
  *
- * Documentation/EVENTS-PUBLIC-ENTRY.md, Door B. The whole point is that the
+ * docs/events/public-entry.md, Door B. The whole point is that the
  * person who COMMITS an entry and the person who SUPPLIES the athlete's details
  * are not the same person. A coach knows who is fighting; he does not know
  * their weight or their birthdate, and asking him produces an invented number

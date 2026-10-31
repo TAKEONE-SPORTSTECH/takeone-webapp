@@ -602,7 +602,7 @@ class MemberController extends Controller
         $isOwnProfile = $user->id == $id;
 
         // A club admin acts through one of the member's clubs, and never for a
-        // privileged account (AdminPasswordReset; docs/account-recovery.md).
+        // privileged account (AdminPasswordReset; docs/platform/account-recovery.md).
         $club = null;
         if (! $isSuperAdmin && ! $isOwnProfile) {
             $club = AdminPasswordReset::viaClub($user, $member);

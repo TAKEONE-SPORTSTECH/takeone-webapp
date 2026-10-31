@@ -1,6 +1,6 @@
 {{--
     The athlete's claim page — completing an entry somebody else committed.
-    Spec: Documentation/EVENTS-PUBLIC-ENTRY.md (Door B, "What the athlete sees").
+    Spec: docs/events/public-entry.md (Door B, "What the athlete sees").
 
     Standalone document on purpose: the real page is opened by someone with no
     account, from a link in a WhatsApp message. It has no app shell, no bottom

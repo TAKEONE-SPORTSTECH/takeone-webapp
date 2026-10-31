@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Whether an event has a page anybody may open.
  *
- * Phase B of Documentation/EVENTS-PUBLIC-ENTRY.md. `members` is what every
+ * Phase B of docs/events/public-entry.md. `members` is what every
  * event does today — visible to whoever the event's scope reaches, and nobody
  * else — so the default changes nothing. An organiser opts a SPECIFIC event
  * into `public`, which is the feature flag RULE #1 asks for: off unless somebody

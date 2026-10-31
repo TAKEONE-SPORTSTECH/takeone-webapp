@@ -25,7 +25,7 @@
     The match video card.
 
     ⚠️ THE CSS AND THE SCRIPT BELOW ARE THE STANDALONE TEMPLATE, VERBATIM.
-    They are copied byte-for-byte from `drafts/Match Video Card — Standalone.html`
+    They are copied byte-for-byte from `drafts/bout-video/Match Video Card — Standalone.html`
     and must stay that way: the VS intro, the explode-on-hover, the scorebar fit
     and the live-scoring feed are a single choreography, and editing one
     keyframe or one selector to "tidy" it is how that choreography breaks in a
@@ -308,10 +308,9 @@
 .vs-mini .vs-mini-club-row   { display: flex; align-items: center; gap: 13px; margin-top: 4.3px; }
 .vs-mini .vs-mini-club-row-r { flex-direction: row-reverse; }
 .vs-mini .vs-mini-logo {
-    width: 69.1px; height: 69.1px; border-radius: 50%;
-    background: rgba(255,255,255,.06);
-    background-size: cover; background-position: center;
-    border: 1px solid rgba(255,255,255,.2);
+    /* Crests are transparent PNGs: bare, uncropped, never on a tile (Design Rule #5). */
+    width: 69.1px; height: 69.1px;
+    background: transparent no-repeat center / contain;
 }
 .vs-mini .vs-mini-club {
     font: 600 30.2px/1.1 'Barlow Condensed', sans-serif;
@@ -453,9 +452,17 @@
 /* ══════════════════════════════════════════════════════════════════════
    SCOREBAR MINI — appears while hover-preview video is playing
 ════════════════════════════════════════════════════════════════════════ */
+/* The score bar's face — the boutcam's (ScoreBar.kt): Barlow Condensed, and Tajawal for
+   Arabic scaled to Barlow's height. Self-hosted. */
+@font-face { font-family: 'TO Bar'; font-weight: 400; src: url('/fonts/designer/barlow-condensed/BarlowCondensed-Regular.ttf'); }
+@font-face { font-family: 'TO Bar'; font-weight: 600 700; src: url('/fonts/designer/barlow-condensed/BarlowCondensed-Bold.ttf'); }
+@font-face { font-family: 'TO Bar'; font-weight: 800 900; src: url('/fonts/designer/barlow-condensed/BarlowCondensed-Black.ttf'); }
+@font-face { font-family: 'TO Bar'; font-weight: 400; src: url('/fonts/designer/tajawal/Tajawal-Regular.ttf'); unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF; size-adjust: 76%; }
+@font-face { font-family: 'TO Bar'; font-weight: 600 700; src: url('/fonts/designer/tajawal/Tajawal-Bold.ttf'); unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF; size-adjust: 76%; }
+@font-face { font-family: 'TO Bar'; font-weight: 800 900; src: url('/fonts/designer/tajawal/Tajawal-Black.ttf'); unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF; size-adjust: 76%; }
 .yt-video-thumb .sbm {
     position: absolute; inset: 0; z-index: 6;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: 'TO Bar', 'Barlow Condensed', sans-serif;
     color: #efe9e0; pointer-events: none;
     opacity: 0; transition: opacity .25s ease .05s;
     overflow: hidden;
@@ -501,7 +508,7 @@
 }
 .sbm .sbm-feed-entry .ts   { font-size: 12px; line-height: 1; letter-spacing: .16em; color: #79736c; }
 .sbm .sbm-feed-entry .name { font-size: 17px; line-height: 1; letter-spacing: .12em; font-weight: 700; color: #efe9e0; text-transform: uppercase; }
-.sbm .sbm-feed-entry .pts  { font-family: 'Zen Old Mincho', serif; font-size: 19px; line-height: 1; font-weight: 700; }
+.sbm .sbm-feed-entry .pts  { font-size: 15px; line-height: 1; font-weight: 900; font-variant-numeric: tabular-nums; }
 .sbm.sbm-small .sbm-feed { display: none; }
 
 @keyframes sbmPulse  { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
@@ -763,11 +770,11 @@
                       <!-- RED -->
                       <div style="flex:1 1 0;min-width:0;transform:skewX(-9deg);overflow:hidden;background:linear-gradient(90deg, rgba(122,26,22,.94), rgba(180,52,44,.9));border-bottom:3px solid #ff6a5e">
                         <div style="transform:skewX(9deg);height:100%;padding:0 16px;display:flex;align-items:center;gap:12px">
-                          <div style="width:46px;height:46px;flex:none;background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.24);background-size:cover;background-position:center;@if (!empty($red['club_logo']))background-image:url('{{ $red['club_logo'] }}')@endif"></div>
+                          @if (!empty($red['club_logo']))<div style="width:46px;height:46px;flex:none;background:transparent url('{{ $red['club_logo'] }}') center/contain no-repeat"></div>@endif
                           <div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px">
                             <div style="display:flex;align-items:center;gap:10px;min-width:0">
                               @if ($redFlag)<span class="fi fi-{{ $redFlag }}" style="width:26px;height:17px;flex:none;box-shadow:0 0 0 1px rgba(255,255,255,.3);background-size:cover !important;background-position:center !important;display:inline-block"></span>@endif
-                              <span style="flex:1 1 auto;min-width:0;font-size:25px;line-height:1;font-weight:800;color:#fff;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ $red['name'] ?? '' }}</span>
+                              <span style="flex:1 1 auto;min-width:0;font-size:25px;line-height:1;font-weight:900;color:#fff;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ $red['name'] ?? '' }}</span>
                             </div>
                             <div style="display:flex;align-items:center;gap:8px;min-width:0">
                               <span style="flex:1 1 auto;min-width:0;font-size:12px;letter-spacing:.03em;color:rgba(255,232,228,.85);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ $red['club'] ?? '' }}</span>
@@ -775,14 +782,14 @@
                           </div>
                           <div style="width:60px;flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:5px">
                             <span style="font-size:11px;letter-spacing:.24em;color:rgba(255,236,232,.7)">{{ $red['tag'] ?? '' }}</span>
-                            <span data-sbm-red-score style="font-family:'Zen Old Mincho',serif;font-size:46px;line-height:.8;font-weight:700;color:#fff;text-shadow:0 6px 20px rgba(0,0,0,.5)">0</span>
+                            <span data-sbm-red-score style="font-size:48px;line-height:.8;font-weight:900;font-variant-numeric:tabular-nums;color:#fff;text-shadow:0 3px 10px rgba(0,0,0,.5)">0</span>
                           </div>
                         </div>
                       </div>
                       <!-- CENTER -->
                       <div style="width:118px;flex:none;transform:skewX(-9deg);background:rgba(9,9,11,.9);backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-bottom:3px solid #2c2a28">
                         <div data-sbm-round style="transform:skewX(9deg);font-size:11px;letter-spacing:.3em;color:#8f8a83;text-transform:uppercase">&nbsp;</div>
-                        <div data-sbm-clock style="transform:skewX(9deg);font-size:34px;line-height:1;font-weight:800;color:#efe9e0;font-variant-numeric:tabular-nums">0:00</div>
+                        <div data-sbm-clock style="transform:skewX(9deg);font-size:34px;line-height:1;font-weight:900;color:#efe9e0;font-variant-numeric:tabular-nums">0:00</div>
                         <div style="transform:skewX(9deg);display:flex;gap:4px">
                           <span style="width:20px;height:3px;background:#e8534a"></span>
                           <span style="width:20px;height:3px;background:#e8534a"></span>
@@ -794,18 +801,18 @@
                         <div style="transform:skewX(9deg);height:100%;padding:0 16px;display:flex;align-items:center;gap:12px">
                           <div style="width:60px;flex:none;display:flex;flex-direction:column;align-items:flex-start;gap:5px">
                             <span style="font-size:11px;letter-spacing:.24em;color:rgba(226,238,255,.7)">{{ $blue['tag'] ?? '' }}</span>
-                            <span data-sbm-blue-score style="font-family:'Zen Old Mincho',serif;font-size:46px;line-height:.8;font-weight:700;color:#fff;text-shadow:0 6px 20px rgba(0,0,0,.5)">0</span>
+                            <span data-sbm-blue-score style="font-size:48px;line-height:.8;font-weight:900;font-variant-numeric:tabular-nums;color:#fff;text-shadow:0 3px 10px rgba(0,0,0,.5)">0</span>
                           </div>
                           <div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px;align-items:flex-end;text-align:right">
                             <div style="display:flex;align-items:center;gap:10px;min-width:0">
-                              <span style="flex:1 1 auto;min-width:0;font-size:25px;line-height:1;font-weight:800;color:#fff;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ $blue['name'] ?? '' }}</span>
+                              <span style="flex:1 1 auto;min-width:0;font-size:25px;line-height:1;font-weight:900;color:#fff;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ $blue['name'] ?? '' }}</span>
                               @if ($blueFlag)<span class="fi fi-{{ $blueFlag }}" style="width:26px;height:17px;flex:none;box-shadow:0 0 0 1px rgba(255,255,255,.3);background-size:cover !important;background-position:center !important;display:inline-block"></span>@endif
                             </div>
                             <div style="display:flex;align-items:center;gap:8px;min-width:0;justify-content:flex-end">
                               <span style="flex:1 1 auto;min-width:0;font-size:12px;letter-spacing:.03em;color:rgba(226,238,255,.85);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right">{{ $blue['club'] ?? '' }}</span>
                             </div>
                           </div>
-                          <div style="width:46px;height:46px;flex:none;background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.24);background-size:cover;background-position:center;@if (!empty($blue['club_logo']))background-image:url('{{ $blue['club_logo'] }}')@endif"></div>
+                          @if (!empty($blue['club_logo']))<div style="width:46px;height:46px;flex:none;background:transparent url('{{ $blue['club_logo'] }}') center/contain no-repeat"></div>@endif
                         </div>
                       </div>
                     </div>

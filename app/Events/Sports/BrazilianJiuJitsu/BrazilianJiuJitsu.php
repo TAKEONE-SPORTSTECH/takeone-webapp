@@ -332,7 +332,7 @@ class BrazilianJiuJitsu extends AbstractCombatSport
      * BLUE one — the KEYS are the side, not the colour. They are what
      * `bjj_mat_states.blue` / `.white` and 1,100 recorded ledger rows are
      * keyed by, so renaming them is a migration rather than a lick of paint;
-     * registered in Documentation/HOUSE-CLEANING.md.
+     * registered in docs/platform/house-cleaning.md.
      *
      * ⚠️ Red now means two things on this sport's screens — a corner, and a
      * penalty. The corner plate is a deep crimson (#c1121f) and the alarm is

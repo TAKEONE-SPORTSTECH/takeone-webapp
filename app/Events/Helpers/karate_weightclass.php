@@ -5,7 +5,7 @@
  *
  * The classifier now belongs to the Karate package
  * (App\Events\Sports\Karate\Classifier, Sport Package Plan phase 2); this only
- * forwards to it. Registered in Documentation/HOUSE-CLEANING.md: remove once
+ * forwards to it. Registered in docs/platform/house-cleaning.md: remove once
  * nothing calls the global function.
  */
 if (! function_exists('classifyKarate')) {

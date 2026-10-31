@@ -67,7 +67,7 @@
        columns are called (`bjj_mat_states.blue` / `.white`) and what 1,100
        recorded ledger rows are keyed by, so renaming them is a migration and
        not a lick of paint. Renaming is registered in
-       Documentation/HOUSE-CLEANING.md; until then, read these as A and B. */
+       docs/platform/house-cleaning.md; until then, read these as A and B. */
     --blue:#c1121f;          /* side A — RED  */
     --blue-ink:#ff9aa0;
     --blue-plate:#e03a43;

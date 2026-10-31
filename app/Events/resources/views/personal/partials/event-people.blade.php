@@ -886,7 +886,7 @@
                                      in the body, or one card per entry in the
                                      list — has the data waiting and needs no
                                      server change. Registered in
-                                     Documentation/HOUSE-CLEANING.md.
+                                     docs/platform/house-cleaning.md.
 
                                      ⚠️ `personal.event_verify_entries` is now
                                      unread. Left in the lang files rather than

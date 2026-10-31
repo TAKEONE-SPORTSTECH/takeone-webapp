@@ -119,6 +119,128 @@ class BoutStatsTest extends TestCase
         $this->assertCount(4, $s['events']);    // three points and a penalty; the reset attempt is gone
     }
 
+    public function test_the_analytics_fields_name_the_moments_and_sum_the_bout_up(): void
+    {
+        [, , $match] = $this->bout();
+
+        $s = app(BoutStats::class)->for($match->load('event'));
+
+        // 0:15 Ao's 3 is both the first score and the last time Aka trailed —
+        // one point, one name (the more telling one); 1:20 Aka's 3 ends a run of
+        // four and wins it, so it is named for winning.
+        $this->assertSame(['behind', 'decider'], array_column($s['moments'], 'kind'));
+        $this->assertEquals([15.0, 80.0], array_column($s['moments'], 'at'));
+        $this->assertNull($s['win_reason']);       // nothing recorded → nothing claimed
+        $this->assertFalse($s['moments'][1]['at_bell']);
+        $this->assertArrayHasKey('red', $s['corners']);
+
+        $verdict = BoutStats::verdict($s);
+        $this->assertStringContainsString('0–3', $verdict);
+        $this->assertStringContainsString('once', $verdict);
+        $this->assertStringNotContainsString('bell', $verdict);
+    }
+
+    public function test_a_point_given_after_time_ran_out_is_awarded_at_the_bell(): void
+    {
+        [, , $match] = $this->bout(logged: false);
+        $match->load('event');
+
+        $rows = [
+            ['load', null, null, 90, []], ['start', null, null, 90, []],
+            ['point', 'b', 1, 30, ['side' => 'ao', 'n' => 1]],   // 1:00 · 0–1
+            ['pause', null, null, 0, []],                         // time runs out
+            ['point', 'a', 2, 0, ['side' => 'aka', 'n' => 2]],    // given after the bell · 2–1
+            ['finish', null, null, 0, ['winner' => 'aka']],
+        ];
+        $t = now()->startOfMinute();
+        foreach ($rows as $i => [$cmd, $side, $pts, $left, $payload]) {
+            DB::table('event_match_events')->insert([
+                'event_id' => $match->event_id, 'match_id' => $match->id, 'court' => 'Mat 1', 'sport' => 'karate',
+                'command' => $cmd, 'side' => $side, 'points' => $pts, 'score_a' => 0, 'score_b' => 0,
+                'clock_remaining' => $left, 'clock_duration' => 90,
+                'payload' => json_encode(['command' => $cmd] + $payload),
+                'occurred_at' => $t->copy()->addSeconds($i * 5)->format('Y-m-d H:i:s.v'),
+                'sequence' => $i + 1, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+        $match->forceFill(['win_reason' => 'senshu'])->save();
+
+        $s = app(BoutStats::class)->for($match->fresh()->load('event'));
+
+        $last = end($s['events']);
+        $this->assertTrue($last['at_bell']);
+        $this->assertSame('decider', end($s['moments'])['kind']);
+        $this->assertSame('senshu', $s['win_reason']);
+        $this->assertStringContainsString('awarded at the bell', BoutStats::verdict($s));
+        $this->assertStringNotContainsString('buzzer', BoutStats::verdict($s));
+    }
+
+    public function test_the_analytics_tab_appears_on_both_pages_only_while_switched_on(): void
+    {
+        $phone = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148';
+        $desk = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36';
+
+        [$event, $organiser, $match] = $this->bout();
+        [$quietEvent, $quietOrganiser, $quiet] = $this->bout(logged: false);
+        $page = route('me.events.bout.video', ['event' => $event->uuid, 'matchNo' => $match->match_no]);
+        $quietPage = route('me.events.bout.video', ['event' => $quietEvent->uuid, 'matchNo' => $quiet->match_no]);
+        $markers = [$phone => 'data-mrv-tab="analytics"', $desk => 'id="boutAnalyticsTpl"'];
+        // A branded event keeps its phone layout at every width (BrandEventPage);
+        // switched off here so the desktop page is the one being checked.
+        config(['events.branded_surface' => false]);
+
+        config(['media.analytics_tab.enabled' => false]);
+        foreach ($markers as $agent => $marker) {
+            $html = $this->actingAs($organiser)->withHeader('User-Agent', $agent)->get($page)->assertOk()->getContent();
+            $this->assertStringNotContainsString($marker, $html);
+        }
+
+        config(['media.analytics_tab.enabled' => true]);
+        foreach ($markers as $agent => $marker) {
+            $html = $this->actingAs($organiser)->withHeader('User-Agent', $agent)->get($page)->assertOk()->getContent();
+            $this->assertStringContainsString($marker, $html);
+            $this->assertStringContainsString('data-bout-analytics', $html);
+
+            // A bout the mat never logged has no story, so no tab at all.
+            $quietHtml = $this->actingAs($quietOrganiser)->withHeader('User-Agent', $agent)->get($quietPage)->assertOk()->getContent();
+            $this->assertStringNotContainsString($marker, $quietHtml);
+        }
+    }
+
+    public function test_someone_who_may_not_watch_never_sees_the_analytics(): void
+    {
+        config(['media.analytics_tab.enabled' => true]);
+        [$event, , $match] = $this->bout();
+        $page = route('me.events.bout.video', ['event' => $event->uuid, 'matchNo' => $match->match_no]);
+
+        $res = $this->actingAs($this->outsider())->get($page);
+        $this->assertStringNotContainsString('data-bout-analytics', (string) $res->getContent());
+    }
+
+    public function test_the_bout_page_lists_only_the_referees_and_judges(): void
+    {
+        [$event, $organiser, $match] = $this->bout();
+        $appoint = fn (string $name, string $role, ?string $label = null) => \App\Events\Models\EventOfficial::create([
+            'event_id' => $event->id, 'user_id' => $this->createUser(['full_name' => $name])->id,
+            'role' => $role, 'role_label' => $label, 'assigned_by' => $organiser->id,
+        ]);
+        $appoint('Ref Rashid', 'other', 'Referee');
+        $appoint('Judge Huda', 'other', 'Judge');
+        $appoint('Doctor Dana', 'medical');
+        $appoint('Manager Majed', 'other', 'Team manager');
+        $appoint('Payments Pat', \App\Events\Models\EventOfficial::ROLE_PAYMENTS);
+
+        $html = $this->actingAs($organiser)->withHeader('User-Agent', 'Mozilla/5.0 (iPhone) Mobile')
+            ->get(route('me.events.bout.video', ['event' => $event->uuid, 'matchNo' => $match->match_no]))
+            ->assertOk()->getContent();
+
+        $this->assertStringContainsString('Ref Rashid', $html);
+        $this->assertStringContainsString('Judge Huda', $html);
+        foreach (['Doctor Dana', 'Manager Majed', 'Payments Pat'] as $notAJudge) {
+            $this->assertStringNotContainsString($notAJudge, $html);
+        }
+    }
+
     public function test_a_bout_with_nothing_logged_has_no_stats_and_no_sheet(): void
     {
         [$event, $organiser, $match] = $this->bout(logged: false);

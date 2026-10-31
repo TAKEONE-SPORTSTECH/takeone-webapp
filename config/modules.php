@@ -97,7 +97,7 @@ return [
         /*
          * Parties & relationships: who holds what role in which party, since
          * when, with what share — one dated table for owners, staff, members,
-         * presidents, hosts (Documentation/major-change/PLAN.md). Its doors
+         * presidents, hosts (docs/plans/major-change/plan.md). Its doors
          * (Relations, Authority) sit at the module root because every other
          * module calls them. PARTIES_ENABLED / PARTIES_SHADOW, both OFF.
          */

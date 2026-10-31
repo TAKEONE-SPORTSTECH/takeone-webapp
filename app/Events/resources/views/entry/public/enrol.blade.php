@@ -5,7 +5,7 @@
 {{--
     Entering a competition from the public link — Door C.
 
-    Documentation/EVENTS-PUBLIC-ENTRY.md, Phase C. Opened by somebody who has
+    docs/events/public-entry.md, Phase C. Opened by somebody who has
     no account and, five minutes ago, had never heard of TAKEONE.
 
     ONE SCREEN (2026-09-05).
