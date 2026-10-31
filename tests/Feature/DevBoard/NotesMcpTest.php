@@ -150,8 +150,10 @@ class NotesMcpTest extends TestCase
         $tools = collect($this->postJson('/mcp/notes', $rpc)->assertOk()->json('result.tools'))->pluck('name');
         $this->assertEqualsCanonicalizing(['list_notes', 'get_note', 'create_note', 'update_note', 'list_note_folders'], $tools->all());
         $this->postJson('/mcp', $rpc)->assertForbidden();
+        $this->getJson('/api/user')->assertForbidden(); // the only other bearer-token route
 
         Sanctum::actingAs($me, ['mcp:use']);
+        $this->getJson('/api/user')->assertOk();
         $this->postJson('/mcp', $rpc)->assertOk();
         $this->postJson('/mcp/notes', $rpc)->assertForbidden();
     }
