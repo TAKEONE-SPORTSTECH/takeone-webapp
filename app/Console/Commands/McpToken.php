@@ -14,6 +14,7 @@ class McpToken extends Command
     protected $signature = 'mcp:token
         {user : User email or numeric id}
         {--name=mcp : A label for the token}
+        {--notes : A notes-only token: opens /mcp/notes (the user\'s notebook) and nothing else}
         {--list : List the user\'s existing MCP tokens instead of creating one}
         {--revoke= : Revoke a token by its id}';
 
@@ -63,15 +64,16 @@ class McpToken extends Command
             return self::SUCCESS;
         }
 
-        $token = $user->createToken($this->option('name'), ['mcp:use']);
+        $notes = (bool) $this->option('notes');
+        $token = $user->createToken($this->option('name'), [$notes ? 'notes' : 'mcp:use']);
 
         $this->newLine();
-        $this->info("MCP token created for {$user->email} (user #{$user->id}).");
+        $this->info(($notes ? 'Notes-only MCP token' : 'MCP token')." created for {$user->email} (user #{$user->id}).");
         $this->newLine();
         $this->line('  Bearer token (shown once — copy it now):');
         $this->line('  <fg=yellow>'.$token->plainTextToken.'</>');
         $this->newLine();
-        $this->line('  Endpoint:  '.rtrim(config('app.url'), '/').'/mcp');
+        $this->line('  Endpoint:  '.rtrim(config('app.url'), '/').($notes ? '/mcp/notes' : '/mcp'));
         $this->line('  Header:    Authorization: Bearer <token>');
         $this->newLine();
 

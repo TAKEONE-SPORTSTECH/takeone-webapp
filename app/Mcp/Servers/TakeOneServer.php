@@ -82,6 +82,11 @@ use App\Mcp\Tools\TranslationHealthTool;
 use App\Mcp\Tools\TranslateEventTool;
 use App\Mcp\Tools\VerifyAchievementTool;
 use App\Mcp\Tools\WhoAmITool;
+use App\DevBoard\Mcp\Tools\CreateNoteTool;
+use App\DevBoard\Mcp\Tools\GetNoteTool;
+use App\DevBoard\Mcp\Tools\ListNoteFoldersTool;
+use App\DevBoard\Mcp\Tools\ListNotesTool;
+use App\DevBoard\Mcp\Tools\UpdateNoteTool;
 use Laravel\Mcp\Server;
 use Laravel\Mcp\Server\Attributes\Instructions;
 use Laravel\Mcp\Server\Attributes\Name;
@@ -108,6 +113,7 @@ Getting started:
   8. `search_people` finds discoverable members who share a confirmed club membership with the acting user (never platform-wide; safe public fields only).
   9. `get_event_translation` reads an event in ANY language — its title, description, location, prize, requirements, divisions and fee lines, as the public page shows them. An organiser writes an event once in their own language and the platform rewrites it into the reader's; call this rather than sending English to somebody who does not read it. Omit `locale` to see which languages an event already has. It never starts a translation.
  10. `list_event_videos` lists the bouts of an event that were filmed, grouped by division; `get_bout_video` reads one bout's camera angles, its scoring timeline (derived from the officiating log — timestamps are seconds into the video) and its coach notes. An athlete always reaches their OWN bout, whatever the event's scope and after it is archived.
+ 11. `list_notes` / `get_note` / `list_note_folders` read the acting user's own notebook (/me/notes); `create_note` and `update_note` write it (Markdown in; pass `get_note`'s version to update).
 
 Write tools (may be globally disabled via server config):
   • `record_transaction` — log manual income/expense for a club (admins only).
@@ -126,6 +132,12 @@ class TakeOneServer extends Server
 {
     protected array $tools = [
         WhoAmITool::class,
+        // the acting user's own notebook (/me/notes) — also served alone by App\DevBoard\Mcp\NotesServer
+        ListNotesTool::class,
+        GetNoteTool::class,
+        CreateNoteTool::class,
+        UpdateNoteTool::class,
+        ListNoteFoldersTool::class,
         ListClubsTool::class,
         GetClubTool::class,
         ListMembersTool::class,
