@@ -15,8 +15,7 @@ return [
     // same way, so this starts with Shotokan alone; add one to rank it too.
     'category_systems' => array_values(array_filter(array_map('trim', explode(',', (string) env('RANKINGS_CATEGORY_SYSTEMS', 'shotokan'))))),
 
-    // The event factor every federation event carries until events can be given
-    // tiers of their own. 6 = what WKF gives a Premier League / continental
-    // championship, the closest thing to a national championship.
-    'default_factor' => (int) env('RANKINGS_DEFAULT_FACTOR', 6),
+    // The coefficient of an event nobody has set one for. Each event's own is
+    // set on the federation event's Analytics tab (App\Rankings\Support\EventFactor).
+    'default_factor' => (int) env('RANKINGS_DEFAULT_FACTOR', 1),
 ];

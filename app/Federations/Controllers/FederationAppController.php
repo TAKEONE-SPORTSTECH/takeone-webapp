@@ -373,6 +373,9 @@ class FederationAppController extends Controller
                     ? route('me.events.create', ['host' => 'federation:'.$access['root']->uuid]) : null,
                 'testMode' => \Illuminate\Support\Facades\Route::has('federations.api.events.test-mode') ? route('federations.api.events.test-mode') : null,
                 'ruleBook' => \Illuminate\Support\Facades\Route::has('federations.api.events.rulebook') ? route('federations.api.events.rulebook') : null,
+                // The Analytics tab's ranking coefficient (App\Rankings) — managers only.
+                'rankingFactor' => ($access['manager'] ?? false) && config('rankings.enabled') && \Illuminate\Support\Facades\Route::has('federations.api.events.ranking-factor')
+                    ? route('federations.api.events.ranking-factor') : null,
                 'feature' => \Illuminate\Support\Facades\Route::has('federations.api.events.feature') ? route('federations.api.events.feature') : null,
                 'eventDelete' => \Illuminate\Support\Facades\Route::has('federations.api.events.delete') ? route('federations.api.events.delete') : null,
                 'uploads' => route('federations.api.uploads'),

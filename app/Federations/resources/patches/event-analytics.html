@@ -343,11 +343,35 @@
           </sc-if>
 
           <!-- 7 · National ranking: the top three in each weight class -->
-          <sc-if value="{{ an.hasRankings }}" hint-placeholder-val="{{ true }}">
+          <sc-if value="{{ an.rkShow }}" hint-placeholder-val="{{ true }}">
           <section style="background:#fff;border-radius:18px;border-top:3px solid #d8b25f;padding:clamp(16px,2vw,24px);box-shadow:0 14px 40px rgba(30,44,79,.1)">
             <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px">
               <div><div style="font-size:.64rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#8a6d20">WKF formula · every federation event · last 24 months</div><h4 style="margin:3px 0 0;font-size:1.02rem;font-weight:700;color:#1e2c4f">National ranking — top three in each weight class</h4></div>
+              <!-- This event's ranking coefficient: every point earned here is multiplied by it. -->
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+                <sc-if value="{{ an.rkNotEditing }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <span title="Every ranking point earned at this event is multiplied by this coefficient" style="display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 6px 0 14px;border-radius:999px;background:linear-gradient(135deg,#1e2c4f,#2c3f6e);color:#fff;box-shadow:0 8px 20px rgba(30,44,79,.18)">
+                      <span style="font-size:.62rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#edcd85">Ranking coefficient</span>
+                      <b style="min-width:30px;height:28px;padding:0 9px;border-radius:999px;display:grid;place-items:center;background:linear-gradient(140deg,#f8e4a0,#d4a940 55%,#b8892a);color:#1e2c4f;font-size:.92rem;font-weight:900;font-variant-numeric:tabular-nums">{{ an.rkFactor }}</b>
+                    </span>
+                    <sc-if value="{{ an.rkCanEdit }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ an.onRkEdit }}" style="height:38px;padding:0 14px;border-radius:11px;border:1px solid #caa14f;background:#fff;color:#8a6d20;font-family:inherit;font-size:.78rem;font-weight:700;cursor:pointer" style-hover="background:#fdf6e6">Change</button></sc-if>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ an.rkEditing }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+                    <label for="fed-rank-factor" style="font-size:.66rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#6b7689">Coefficient ×</label>
+                    <input id="fed-rank-factor" type="number" min="1" max="20" step="1" inputmode="numeric" autocomplete="off" value="{{ an.rkVal }}" onChange="{{ an.onRkVal }}" onKeyDown="{{ an.onRkKey }}" style="width:86px;height:38px;border:1px solid #d5dae3;border-radius:11px;padding:0 12px;font-family:inherit;font-size:.95rem;font-weight:800;color:#1e2c4f;outline:none;box-sizing:border-box;font-variant-numeric:tabular-nums" style-focus="border-color:#caa14f;box-shadow:0 0 0 3px rgba(216,178,95,.25)">
+                    <button type="button" onClick="{{ an.onRkSave }}" style="height:38px;padding:0 16px;border-radius:11px;border:0;background:linear-gradient(135deg,#1e2c4f,#2c3f6e);color:#fff;font-family:inherit;font-size:.78rem;font-weight:700;cursor:pointer">{{ an.rkSaveLabel }}</button>
+                    <button type="button" onClick="{{ an.onRkCancel }}" style="height:38px;padding:0 12px;border-radius:11px;border:1px solid #d5dae3;background:#fff;color:#6b7689;font-family:inherit;font-size:.78rem;font-weight:700;cursor:pointer" style-hover="background:#f7f8fb">Cancel</button>
+                  </div>
+                  <sc-if value="{{ an.rkHasErr }}" hint-placeholder-val="{{ false }}"><div role="alert" style="font-size:.72rem;font-weight:700;color:#c4511f">{{ an.rkErr }}</div></sc-if>
+                </sc-if>
+              </div>
             </div>
+            <sc-if value="{{ an.rkEmpty }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:18px;border-radius:14px;background:#f7f8fb;border:1px dashed #d5dae3;text-align:center;font-size:.82rem;color:#6b7689">No athlete has ranking points in this event’s weight classes yet. Set the coefficient now — the points use it the moment results come in.</div>
+            </sc-if>
             <div style="display:flex;flex-direction:column;gap:22px">
               <sc-for list="{{ an.rankings }}" as="c" hint-placeholder-count="4">
                 <div>
@@ -382,7 +406,7 @@
                 </div>
               </sc-for>
             </div>
-            <div style="margin-top:14px;font-size:.7rem;color:#6b7689">Points = (5 for taking part + 10 per bout won + place points) × 6, across every finished federation event in this rule book. Points count in full for 12 months, half for the next 12. Ties: golds, silvers, bronzes, then bouts won.</div>
+            <div style="margin-top:14px;font-size:.7rem;color:#6b7689">Points = (5 for taking part + 10 per bout won + place points) × each event’s ranking coefficient, across every finished federation event in this rule book. Points count in full for 12 months, half for the next 12. Ties: golds, silvers, bronzes, then bouts won.</div>
           </section>
           </sc-if>
 

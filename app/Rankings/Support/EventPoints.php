@@ -49,7 +49,7 @@ class EventPoints
             return [];
         }
 
-        $factor = max(1, (int) config('rankings.default_factor', 6));
+        $factor = EventFactor::for($event);
         $earnedOn = ($event->end_date ?: $event->date);
 
         $divisions = $event->categories()->with('matches')->get()
@@ -62,7 +62,7 @@ class EventPoints
             }
         }
 
-        $registrations = ClubEventRegistration::with('user:id')
+        $registrations = ClubEventRegistration::with('user:id,nationality')
             ->whereIn('id', array_column($tallies, 'registration_id'))
             ->get()->keyBy('id');
 
@@ -113,11 +113,17 @@ class EventPoints
             }
         }
 
-        // The club an athlete stood for, as the event recorded it.
+        // The club an athlete stood for, as the event recorded it — and the
+        // athlete's OWN nationality. A ranking is about the person, so their
+        // passport, never the club's country (that put 63 Indian athletes
+        // under Bahrain's flag, 2026-10-31); the entry's flag only fills in a
+        // nationality that is not on file.
         foreach ($rows as &$row) {
-            $club = rescue(fn () => EntryClub::for($registrations->get($row['registration_id'])), null, report: false);
+            $reg = $registrations->get($row['registration_id']);
+            $club = rescue(fn () => EntryClub::for($reg), null, report: false);
+            $country = $reg?->user?->nationality ?: rescue(fn () => $reg?->countryCode(), null, report: false) ?: ($club['country'] ?? null);
             $row['club_name'] = isset($club['name']) ? mb_substr((string) $club['name'], 0, 255) : null;
-            $row['country'] = isset($club['country']) ? mb_substr((string) $club['country'], 0, 8) : null;
+            $row['country'] = $country ? mb_substr((string) $country, 0, 8) : null;
         }
         unset($row);
 

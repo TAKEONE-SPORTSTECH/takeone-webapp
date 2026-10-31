@@ -249,6 +249,10 @@ class FederationCompetitionReport
             'perf' => array_map(fn ($p) => array_diff_key($p, ['none' => 1]), $t['perf']),
             'divisions' => count($b['cats']),
             'rankings' => $this->rankingLeaders($event),
+            // The event's own coefficient, for the ranking section's control
+            // (null = this event grants no ranking points).
+            'rankingFactor' => config('rankings.enabled') && \App\Rankings\Support\EventPoints::grants($event)
+                ? \App\Rankings\Support\EventFactor::for($event) : null,
         ];
     }
 

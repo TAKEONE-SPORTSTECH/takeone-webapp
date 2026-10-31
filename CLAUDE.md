@@ -1974,6 +1974,11 @@ Intentionally **deferred indefinitely** — additional cost not wanted at this s
 # PART 9 — CONVENTIONS, TESTING, OPS & STATUS
 ## Coding Conventions
 
+**Project Standards — `docs/STANDARDS.md` (adopted 2026-10-31).** Code quality,
+scalability review, docs in `docs/` with file headers linking to them, verification
+before claiming done, `type(scope): description` commits, and what to ask before
+doing. Read it with this file; the stricter rule wins, and Part 1 outranks both.
+
 - PHP 8.2 — use named arguments, match expressions, null-safe operator where appropriate
 - Blade components live in `resources/views/components/`
 - Use `@stack('scripts')` / `@stack('modals')` to inject page-specific JS and modals

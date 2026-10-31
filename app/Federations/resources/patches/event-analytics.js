@@ -104,6 +104,30 @@
     const perf = D.perf || [];
     const medals = r => r.medals[1] + r.medals[2] + r.medals[3];
     const nTop = (D.nations || []).filter(n => n.iso).sort((a, b) => b.athletes - a.athletes).slice(0, 8);
+
+    // The event's ranking coefficient (owner, 2026-10-31: "a place to set the
+    // coefficient for the event"). Managers get the control — the boot only
+    // carries its address for them — and the endpoint authorises regardless.
+    const rkUrl = ((T.boot || {}).urls || {}).rankingFactor || null;
+    const rkEd = this.state.rkEd && this.state.rkEd.id === sel.id ? this.state.rkEd : null;
+    const rkSave = () => {
+      const cur = this.state.rkEd;
+      if (!cur || cur.saving || !rkUrl) return;
+      const n = Number(String(cur.val).trim());
+      if (!Number.isInteger(n) || n < 1 || n > 20) { this.setState({rkEd: {...cur, err: 'Enter a whole number from 1 to 20.'}}); return; }
+      this.setState({rkEd: {...cur, saving: true, err: ''}});
+      fetch(rkUrl, {method: 'POST', credentials: 'same-origin', body: JSON.stringify({event: sel.id, factor: n}),
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': T.csrf ? T.csrf() : '', 'X-Requested-With': 'XMLHttpRequest'}})
+        .then(r => r.json().catch(() => ({})).then(j => ({ok: r.ok, j})))
+        .then(({ok, j}) => {
+          if (!ok) { this.setState({rkEd: {...(this.state.rkEd || cur), saving: false, err: (j && j.message) || 'The coefficient could not be saved.'}}); return; }
+          this.setState({rkEd: null});
+          if (window.showToast) window.showToast('success', j.message || 'Ranking coefficient saved.');
+          this._anBusy = null;
+          this.anLoad(sel.id, url, sig);
+        })
+        .catch(() => this.setState({rkEd: {...(this.state.rkEd || cur), saving: false, err: 'The coefficient could not be saved just now.'}}));
+    };
     const cTop = (D.clubs || []).slice().sort((a, b) => b.count - a.count).slice(0, 8);
 
     return {
@@ -217,6 +241,17 @@
           });
         })
       })),
-      hasRankings: (D.rankings || []).length > 0
+      hasRankings: (D.rankings || []).length > 0,
+      rkShow: D.rankingFactor != null,
+      rkEmpty: D.rankingFactor != null && !(D.rankings || []).length,
+      rkFactor: '×' + D.rankingFactor,
+      rkCanEdit: !!rkUrl && !rkEd, rkEditing: !!rkEd, rkNotEditing: !rkEd,
+      rkVal: rkEd ? rkEd.val : '', rkErr: rkEd ? rkEd.err : '', rkHasErr: !!(rkEd && rkEd.err),
+      rkSaveLabel: rkEd && rkEd.saving ? 'Saving…' : 'Save',
+      onRkEdit: () => this.setState({rkEd: {id: sel.id, val: String(D.rankingFactor), saving: false, err: ''}}),
+      onRkVal: ev => { const cur = this.state.rkEd; if (cur) this.setState({rkEd: {...cur, val: ev.target.value, err: ''}}); },
+      onRkKey: ev => { if (ev.key === 'Enter') rkSave(); if (ev.key === 'Escape') this.setState({rkEd: null}); },
+      onRkSave: rkSave,
+      onRkCancel: () => this.setState({rkEd: null})
     };
   }

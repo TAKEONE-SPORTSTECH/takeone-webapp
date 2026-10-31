@@ -123,6 +123,7 @@ Route::prefix('federation')->name('federations.')->middleware(SealFederation::cl
             Route::post('/events/delete', [FederationApiController::class, 'eventDelete'])->name('events.delete');
             Route::post('/events/test-mode', [FederationApiController::class, 'eventTestMode'])->name('events.test-mode');
             Route::post('/events/rulebook', [FederationApiController::class, 'eventRuleBook'])->name('events.rulebook');
+            Route::post('/events/ranking-factor', [FederationApiController::class, 'eventRankingFactor'])->name('events.ranking-factor');
             Route::post('/events/feature', [FederationApiController::class, 'eventFeature'])->middleware('throttle:uploads')->name('events.feature');
             Route::post('/uploads', [FederationApiController::class, 'upload'])->middleware('throttle:uploads')->name('uploads');
             // The results report's cover page (FederationReportCover) — managers only.

@@ -74,7 +74,7 @@ class Standings
     public function table(Federation $federation, string $key): Collection
     {
         $rows = $this->live(RankingPoint::where('federation_id', $federation->id)->where('category_key', $key))
-            ->with(['user:id,uuid,full_name,name,gender,profile_picture,profile_picture_is_public,updated_at', 'registration:id,user_id,photo,updated_at', 'registration.user:id,profile_picture,profile_picture_is_public,updated_at'])
+            ->with(['user:id,uuid,full_name,name,gender,nationality,profile_picture,profile_picture_is_public,updated_at', 'registration:id,user_id,photo,updated_at', 'registration.user:id,profile_picture,profile_picture_is_public,updated_at'])
             ->get();
 
         return $this->rank($rows)->map(function (array $r) {
@@ -86,7 +86,9 @@ class Standings
                 'uuid' => $latest->user?->uuid,
                 'photo' => CompetitorFace::for($latest->registration),
                 'club' => $latest->club_name,
-                'country' => $latest->country,
+                // Their nationality as it stands on their profile today; the
+                // ledger's copy only when none is on file.
+                'country' => $latest->user?->nationality ?: $latest->country,
             ];
         });
     }

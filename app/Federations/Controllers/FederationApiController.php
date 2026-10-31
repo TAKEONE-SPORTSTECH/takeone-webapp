@@ -137,6 +137,19 @@ class FederationApiController extends Controller
             'can_keep' => (bool) ($r['can_keep'] ?? false)], $r['ok'] ? 200 : 422);
     }
 
+    /** The event's national-ranking coefficient (App\Rankings), managers only. */
+    public function eventRankingFactor(Request $request, FederationEvents $events): JsonResponse
+    {
+        $access = $this->access($request);
+        $data = $request->validate([
+            'event' => ['required', 'uuid'],
+            'factor' => ['required', 'integer', 'min:'.\App\Rankings\Support\EventFactor::MIN, 'max:'.\App\Rankings\Support\EventFactor::MAX],
+        ]);
+        $r = $events->setRankingFactor($request->user(), $access, $data['event'], (int) $data['factor']);
+
+        return response()->json(['success' => $r['ok'], 'message' => $r['message'], 'factor' => $r['factor'] ?? null], $r['ok'] ? 200 : 422);
+    }
+
     /** Paid featuring on the members' Events page: send the proof of payment for one event. */
     public function eventFeature(Request $request, FederationEvents $events): JsonResponse
     {

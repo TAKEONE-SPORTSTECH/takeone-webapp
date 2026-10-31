@@ -456,7 +456,7 @@
                 </div>
             @endforeach
             @if($ri === count($rankingPages) - 1)
-                <p class="note">Ranking points follow the WKF World Ranking formula: <b>(5 for taking part + 10 per bout won + place points) × 6</b>, over every finished federation event in this rule book. Place points: 1st 100 · 2nd 70 · 3rd 40 · lost bronze bout 30 · quarter-final 20. Points count in full for 12 months and half for the next 12. Ties are broken by golds, silvers, bronzes, then bouts won.</p>
+                <p class="note">Ranking points follow the WKF World Ranking formula: <b>(5 for taking part + 10 per bout won + place points) × each event’s ranking coefficient</b>, over every finished federation event in this rule book. Place points: 1st 100 · 2nd 70 · 3rd 40 · lost bronze bout 30 · quarter-final 20. Points count in full for 12 months and half for the next 12. Ties are broken by golds, silvers, bronzes, then bouts won.</p>
             @endif
         </div>
         @include('federations::report.partials.foot', ['part' => 'Analytics', 'page' => $pg])

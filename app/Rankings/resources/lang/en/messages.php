@@ -30,7 +30,7 @@ return [
     'empty' => 'Rankings appear here once a federation event has finished.',
     'how_title' => 'How points are counted',
     'how_events' => 'Every finished event a federation runs counts towards its ranking.',
-    'how_formula' => 'Points = (5 for taking part + 10 per bout won + place points) × :factor.',
+    'how_formula' => 'Points = (5 for taking part + 10 per bout won + place points) × the event’s ranking coefficient.',
     'how_places' => 'Place points: 1st 100 · 2nd 70 · 3rd 40 · lost bronze bout 30 · quarter-final 20.',
     'how_decay' => 'Points count in full for 12 months, at half for the next 12, then expire.',
     'how_ties' => 'Ties are broken by golds, silvers, bronzes, bouts won, then point difference.',

@@ -450,6 +450,31 @@ class FederationEvents
             'rulebook' => ['category' => $category, 'belt' => $belt]];
     }
 
+    /**
+     * The event's ranking coefficient (App\Rankings — the WKF "event factor"):
+     * a manager of the event's federation sets it; the event's ranking points
+     * are recomputed at once. Managers only, in the viewer's scope.
+     */
+    public function setRankingFactor(User $user, array $access, string $uuid, int $factor): array
+    {
+        if (! ($access['manager'] ?? false) || ! config('rankings.enabled')) {
+            return ['ok' => false, 'message' => 'Only a manager can set the ranking coefficient.'];
+        }
+        $event = $this->find($access, $uuid);
+        $ev = $event ? app(FederationPlatformEvent::class)->of($event) : null;
+        if (! $ev) {
+            return ['ok' => false, 'message' => 'This event could not be found.'];
+        }
+
+        $before = \App\Rankings\Support\EventFactor::for($ev);
+        $factor = \App\Rankings\Support\EventFactor::set($ev, $factor, $user);
+        \Illuminate\Support\Facades\Cache::forget('fed-analytics:'.$ev->id);
+        activity()->causedBy($user)->withProperties(['event' => $event->uuid, 'from' => $before, 'to' => $factor])
+            ->log('federation.event_ranking_factor');
+
+        return ['ok' => true, 'message' => 'Ranking coefficient set to ×'.$factor.' — points recalculated.', 'factor' => $factor];
+    }
+
     public function testEventIds(array $access): array
     {
         return $this->query($access)->whereNotNull('test_mode_at')->pluck('uuid')->all();
