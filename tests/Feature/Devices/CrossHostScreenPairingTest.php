@@ -53,9 +53,9 @@ class CrossHostScreenPairingTest extends TestCase
     }
 
     /** Open /screen the way a television does; return its token and code. */
-    private function waitingScreen(): array
+    private function waitingScreen(string $host): array
     {
-        $location = (string) $this->get('/screen')->assertRedirect()->headers->get('Location');
+        $location = (string) $this->get("https://{$host}/screen")->assertRedirect()->headers->get('Location');
         $token = basename(parse_url($location, PHP_URL_PATH));
 
         $code = \App\Events\Support\PendingScreen::where('token_hint', substr($token, 0, 6))->latest('id')->value('pairing_code');
@@ -67,6 +67,7 @@ class CrossHostScreenPairingTest extends TestCase
     /** Follow the screen's address until something renders. */
     private function land(string $url): array
     {
+        $host = parse_url($url, PHP_URL_SCHEME).'://'.parse_url($url, PHP_URL_HOST);
         $seen = [];
 
         for ($hop = 0; $hop < 8; $hop++) {
@@ -80,7 +81,7 @@ class CrossHostScreenPairingTest extends TestCase
             }
 
             $next = (string) $res->headers->get('Location');
-            $url = parse_url($next, PHP_URL_PATH).(($q = parse_url($next, PHP_URL_QUERY)) ? '?'.$q : '');
+            $url = str_starts_with($next, 'http') ? $next : $host.$next;
         }
 
         $this->fail('no page rendered: '.implode(' -> ', $seen));
@@ -92,7 +93,10 @@ class CrossHostScreenPairingTest extends TestCase
 
         foreach (['karate', 'taekwondo', 'bjj'] as $sport) {
             foreach (['control', 'bout', 'queue', 'follow'] as $surface) {
-                $rows["$sport $surface"] = [$sport, $surface];
+                // Both directions: a screen on one host, the console on the other.
+                foreach ([['takeone.bh', 'stage.takeone.bh'], ['stage.takeone.bh', 'takeone.bh']] as [$screen, $console]) {
+                    $rows["$sport $surface: $screen screen, $console console"] = [$sport, $surface, $screen, $console];
+                }
             }
         }
 
@@ -100,36 +104,45 @@ class CrossHostScreenPairingTest extends TestCase
     }
 
     /** @dataProvider journeys */
-    public function test_a_scanned_screen_reaches_its_board(string $sport, string $surface): void
+    public function test_a_scanned_screen_reaches_its_board(string $sport, string $surface, string $screenHost, string $consoleHost): void
     {
         $organiser = $this->createUser();
         $event = $this->event($sport, $organiser);
 
-        [$token, $code] = $this->waitingScreen();
+        [$token, $code] = $this->waitingScreen($screenHost);
 
-        $this->actingAs($organiser)->postJson("/me/events/{$event->uuid}/screens", [
-            'code' => $code, 'court' => self::MAT, 'surface' => $surface, 'from_host' => 'takeone.bh',
+        $this->actingAs($organiser)->postJson("https://{$consoleHost}/me/events/{$event->uuid}/screens", [
+            'code' => $code, 'court' => self::MAT, 'surface' => $surface, 'from_host' => $screenHost,
         ])->assertOk()->assertJsonPath('success', true);
 
         // The television holds no session.
         auth()->logout();
         $this->flushSession();
 
-        [$status, $landed] = $this->land("/screen/{$token}");
+        [$status, $landed] = $this->land("https://{$screenHost}/screen/{$token}");
 
         $this->assertSame(200, $status, "landed on {$landed}");
-        $this->assertNotSame("/screen/{$token}", $landed, 'the screen never left the waiting room');
+        $this->assertNotSame("https://{$screenHost}/screen/{$token}", $landed, 'the screen never left the waiting room');
     }
 
-    public function test_a_camera_scanned_from_the_other_host_pairs(): void
+    public static function directions(): array
+    {
+        return [
+            'takeone.bh camera, stage console' => ['takeone.bh', 'stage.takeone.bh'],
+            'stage camera, takeone.bh console' => ['stage.takeone.bh', 'takeone.bh'],
+        ];
+    }
+
+    /** @dataProvider directions */
+    public function test_a_camera_scanned_from_the_other_host_pairs(string $cameraHost, string $consoleHost): void
     {
         $organiser = $this->createUser();
         $event = $this->event('karate', $organiser);
 
-        $enrolled = $this->postJson('/camera/enroll', ['device_name' => 'Tripod', 'app_version' => '1.0'])->assertCreated();
+        $enrolled = $this->postJson("https://{$cameraHost}/camera/enroll", ['device_name' => 'Tripod', 'app_version' => '1.0'])->assertCreated();
 
-        $this->actingAs($organiser)->postJson("/me/events/{$event->uuid}/screens", [
-            'code' => $enrolled->json('code'), 'court' => self::MAT, 'surface' => 'camera', 'from_host' => 'takeone.bh',
+        $this->actingAs($organiser)->postJson("https://{$consoleHost}/me/events/{$event->uuid}/screens", [
+            'code' => $enrolled->json('code'), 'court' => self::MAT, 'surface' => 'camera', 'from_host' => $cameraHost,
         ])->assertOk()->assertJsonPath('success', true);
 
         $this->getJson('/camera/'.$enrolled->json('token').'/config')->assertOk();
