@@ -194,6 +194,19 @@ class DuplicateWatch
             $sameName = $this->people->samePerson((string) ($a->full_name ?: $a->name), (string) ($b->full_name ?: $b->name));
             $disagree = ($a->birthdate && $b->birthdate && $a->birthdate->toDateString() !== $b->birthdate->toDateString())
                 || ($a->gender && $b->gender && $a->gender !== $b->gender);
+            // Brothers and sisters on a parent's phone (2026-10-31): a pair whose
+            // ONLY tie is the phone is not one person when the details disagree,
+            // or when a same-birthday pair (twins) has different first names in
+            // the same script. Names in two scripts with one birthday stay — the
+            // English/Arabic copy of one child — and say why.
+            if ($reasons === ['Same phone'] && ! $sameName) {
+                if ($disagree || $this->twinsOnOnePhone($a, $b)) {
+                    continue;
+                }
+                if ($a->birthdate && $b->birthdate && $this->scriptsDiffer((string) ($a->full_name ?: $a->name), (string) ($b->full_name ?: $b->name))) {
+                    $reasons[] = 'Same birthday, name in the other script';
+                }
+            }
             if ($disagree) {
                 $reasons[] = 'Details disagree';
             }
@@ -211,6 +224,22 @@ class DuplicateWatch
         }
 
         return $out;
+    }
+
+    /** One birthday, one script, two different first names: twins, not a copy. */
+    private function twinsOnOnePhone(User $a, User $b): bool
+    {
+        $na = (string) ($a->full_name ?: $a->name);
+        $nb = (string) ($b->full_name ?: $b->name);
+
+        return $a->birthdate && $b->birthdate && ! $this->scriptsDiffer($na, $nb)
+            && ! $this->people->samePerson(strtok($na, ' ') ?: $na, strtok($nb, ' ') ?: $nb);
+    }
+
+    /** One name written in Arabic letters and the other not. */
+    private function scriptsDiffer(string $a, string $b): bool
+    {
+        return (bool) preg_match('/\p{Arabic}/u', $a) !== (bool) preg_match('/\p{Arabic}/u', $b);
     }
 
     // ── clubs typed in for an event ─────────────────────────────────────────

@@ -212,6 +212,27 @@ class DuplicateGuardTest extends TestCase
         $this->assertNotSoftDeleted('users', ['id' => $b->id]);
     }
 
+    public function test_siblings_on_a_parents_phone_are_not_a_finding_but_a_copy_in_the_other_script_is(): void
+    {
+        config(['duplicates.watch' => true, 'duplicates.autofix' => false]);
+        $phone = ['mobile' => ['code' => '+973', 'number' => '33112233']];
+        $older = $this->stub('Hamad Saleh', $phone + ['birthdate' => '2012-03-01']);
+        $younger = $this->stub('Sara Saleh', $phone + ['birthdate' => '2015-07-09']);
+        $twinA = $this->stub('Ali Saleh', $phone + ['birthdate' => '2018-01-01']);
+        $twinB = $this->stub('Omar Saleh', $phone + ['birthdate' => '2018-01-01']);
+        $copy = $this->stub('حمد صالح', $phone + ['birthdate' => '2012-03-01']);
+
+        $this->artisan('duplicates:watch')->assertSuccessful();
+
+        $pair = fn ($x, $y) => DuplicateFinding::where('signature', 'person:'.min($x->id, $y->id).'-'.max($x->id, $y->id))->first();
+        $this->assertNull($pair($older, $younger), 'brother and sister: different birthdays');
+        $this->assertNull($pair($twinA, $twinB), 'twins: one birthday, two first names');
+        $found = $pair($older, $copy);
+        $this->assertNotNull($found, 'the same child written in Arabic is still found');
+        $this->assertSame('likely', $found->strength, 'never certain — a person confirms it');
+        $this->assertContains('Same birthday, name in the other script', $found->reasons);
+    }
+
     public function test_the_club_portal_catches_a_respelled_name_and_a_shared_phone_only_when_guarded(): void
     {
         $owner = $this->createUser(['mobile' => ['code' => '+973', 'number' => '36001122']]);
