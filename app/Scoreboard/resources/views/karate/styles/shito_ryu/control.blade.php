@@ -370,7 +370,7 @@
         @isset($matPanel)
             <button id="btnMatPanel" class="cbtn" style="color:#F97316;border:1px solid rgba(249,115,22,.6);">{{ $matPanel['label'] }}</button>
         @endisset
-        <button id="btnSettings" class="cbtn" style="color:var(--gold);border:1px solid var(--gold);">{{ __('scoreboard::karate_messages.ctl_settings') }}</button>
+        <button id="btnSettings" class="cbtn" style="color:var(--gold);border:1px solid var(--gold);">{{ __('scoreboard::settings.button') }}</button>
         <button id="btnHardware" class="cbtn" style="color:var(--text);border:1px solid var(--line-2);">{{ __('scoreboard::karate_messages.ctl_hardware') }}</button>
         <button id="btnReset" class="cbtn bout" style="background:transparent;color:var(--aka-ink);border:1px solid rgba(255,107,120,.5);">{{ __('scoreboard::karate_messages.ctl_reset') }}</button>
         {{-- Deliberately NOT disabled with the rest of the bout controls: a hung
@@ -411,139 +411,15 @@
        Not a preference panel. Everything here is posted to the mat state, so a
        second console on the same mat and the wall are all running the bout the
        official at this table said it was. --}}
-  <div id="settings" hidden class="scrim" style="z-index:21;">
-    <div class="modal" style="width:1020px;gap:22px;overflow-y:auto;">
-      <div class="mhead">
-        <div class="mtitle" style="color:var(--gold);">{{ __('scoreboard::karate_messages.ctl_settings_title') }}</div>
-        <button data-close="settings" class="mclose">✕</button>
-      </div>
-
-      <div style="display:flex;gap:8px;border-bottom:1px solid var(--line);padding-bottom:14px;">
-        {{-- The camera tab only exists when this door was given the camera
-             addresses — a console with no camera surface shows no camera tab,
-             the same way a type with no wall boards shows no screen panel. --}}
-        @foreach (array_merge([['rules', __('scoreboard::karate_messages.ctl_tab_rules')], ['corners', __('scoreboard::karate_messages.ctl_tab_corners')], ['timer', __('scoreboard::karate_messages.ctl_tab_timer')], ['sounds', __('scoreboard::karate_messages.ctl_tab_sounds')]], ($cameraUrl ?? null) ? [['cameras', __('events::events.mat_cameras_tab')]] : [], ($photoGuideUrl ?? null) ? [['guide', __('scoreboard::karate_messages.ctl_tab_guide')]] : [], ($vsLayoutUrl ?? null) ? [['vs', __('scoreboard::karate_messages.ctl_tab_vs')]] : []) as [$tab, $tabLabel])
-          <button class="stab" data-tab="{{ $tab }}" style="flex:1;font-size:20px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border-radius:10px;padding:12px 0;cursor:pointer;">{{ $tabLabel }}</button>
-        @endforeach
-      </div>
-
-      {{-- Rules --}}
-      <div class="spanel" data-panel="rules" style="display:flex;flex-direction:column;gap:12px;">
-        @foreach ([
-            ['senshuRule', __('scoreboard::karate_messages.ctl_rule_senshu'), __('scoreboard::karate_messages.ctl_rule_senshu_hint')],
-            ['autoSenshu', __('scoreboard::karate_messages.ctl_rule_auto_senshu'), __('scoreboard::karate_messages.ctl_rule_auto_senshu_hint')],
-            ['winByPenalties', __('scoreboard::karate_messages.ctl_rule_penalties'), __('scoreboard::karate_messages.ctl_rule_penalties_hint')],
-            ['atoshiWarn', __('scoreboard::karate_messages.ctl_rule_atoshi'), __('scoreboard::karate_messages.ctl_rule_atoshi_hint')],
-            ['timeUpBuzzer', __('scoreboard::karate_messages.ctl_rule_buzzer'), __('scoreboard::karate_messages.ctl_rule_buzzer_hint')],
-        ] as [$rule, $ruleLabel, $ruleHint])
-          <button class="rrow" data-rule="{{ $rule }}" style="display:flex;align-items:center;gap:14px;background:var(--inset);border:1px solid var(--line);border-radius:12px;padding:12px 16px;cursor:pointer;text-align:left;">
-            <span class="rbox" style="width:30px;height:30px;flex:0 0 auto;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#000;"></span>
-            <span style="flex:1;display:flex;flex-direction:column;gap:2px;">
-              <span style="font-size:20px;font-weight:600;color:var(--text);letter-spacing:.04em;">{{ $ruleLabel }}</span>
-              <span style="font-size:15px;color:var(--faint);letter-spacing:.02em;">{{ $ruleHint }}</span>
-            </span>
-          </button>
-        @endforeach
-
-        {{-- The gap rule carries its own number, so the switch and the value it
-             switches on are one row rather than two things to find. --}}
-        <div class="rrow" style="display:flex;align-items:center;gap:14px;background:var(--inset);border:1px solid var(--line);border-radius:12px;padding:12px 16px;">
-          <button class="rbox" data-rule="gapOn" style="width:30px;height:30px;flex:0 0 auto;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#000;cursor:pointer;padding:0;"></button>
-          <span style="flex:1;display:flex;flex-direction:column;gap:2px;">
-            <span style="font-size:20px;font-weight:600;color:var(--text);letter-spacing:.04em;">{{ __('scoreboard::karate_messages.ctl_rule_gap') }}</span>
-            <span style="font-size:15px;color:var(--faint);letter-spacing:.02em;">{{ __('scoreboard::karate_messages.ctl_rule_gap_hint') }}</span>
-          </span>
-          <input id="gapVal" type="number" min="1" max="20" value="8" style="width:80px;font-family:'Anton',sans-serif;font-size:26px;text-align:center;background:var(--fill);color:var(--gold);border:none;border-radius:10px;padding:8px 6px;">
-        </div>
-      </div>
-
-      {{-- Corners — which side red stands on at this mat, and what each corner
-           is called and coloured for the event. Both save as they are made,
-           so this tab has no Apply. --}}
-      <div class="spanel" data-panel="corners" hidden style="display:flex;flex-direction:column;gap:12px;">
-        @include('scoreboard::shared.corners-panel', ['look' => $L, 'sportRedRight' => \App\Sports\Combat\CornerSide::redRight('karate')])
-      </div>
-
-      {{-- Photo guide — where a face goes in the cropper, platform-wide (super-admin only). --}}
-      @if (! empty($photoGuideUrl))
-        @include('scoreboard::karate.scoreboard.partials.photo-guide-panel', ['look' => $L, 'photoGuideUrl' => $photoGuideUrl])
-      @endif
-
-      {{-- VS screen — where each competitor's details sit over their photo, platform-wide (super-admin only). --}}
-      @if (! empty($vsLayoutUrl))
-        @include('scoreboard::karate.scoreboard.partials.vs-layout-panel', ['look' => $L, 'vsLayoutUrl' => $vsLayoutUrl])
-      @endif
-
-      {{-- Timer --}}
-      <div class="spanel" data-panel="timer" hidden style="display:flex;flex-direction:column;gap:20px;">
-        <label style="display:flex;flex-direction:column;gap:8px;">
-          <span style="font-size:17px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);">{{ __('scoreboard::karate_messages.ctl_duration') }}</span>
-          <span style="display:flex;gap:12px;align-items:center;">
-            <input id="durMin" type="number" min="0" max="59" value="3" class="mm">
-            <span style="font-family:'Anton',sans-serif;font-size:28px;color:var(--muted);">:</span>
-            <input id="durSec" type="number" min="0" max="59" value="0" class="mm">
-          </span>
-        </label>
-        <label style="display:flex;flex-direction:column;gap:8px;">
-          <span style="font-size:17px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);">{{ __('scoreboard::karate_messages.ctl_warning_at') }}</span>
-          <span style="display:flex;gap:12px;align-items:center;">
-            <input id="atoMin" type="number" min="0" max="59" value="0" class="mm" style="color:var(--aka-ink);">
-            <span style="font-family:'Anton',sans-serif;font-size:28px;color:var(--muted);">:</span>
-            <input id="atoSec" type="number" min="0" max="59" value="15" class="mm" style="color:var(--aka-ink);">
-          </span>
-          <span style="font-size:14px;color:var(--faint);letter-spacing:.04em;">{{ __('scoreboard::karate_messages.ctl_warning_hint') }}</span>
-        </label>
-      </div>
-
-      {{-- Sounds. Uploading replaces: a hall does not want two celebration
-           tracks, it wants the right one. Every screen on the mat is told to
-           reload afterwards, because a board caches the file it fetched. --}}
-      {{-- ⚠️ `minmax(0,1fr)`, never a bare `1fr`: a grid track's floor is its
-           MIN-CONTENT, and an uploaded filename is one unbreakable token on a
-           `nowrap` line — so a real upload ("A_deep,_heavy_Japane_#1-1788…mp3")
-           widened its column and pushed this panel straight out through the
-           side of the card. The zero floor is what lets the ellipsis on
-           `.audioName` actually do its job. --}}
-      <div class="spanel" data-panel="sounds" hidden style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 28px;min-width:0;">
-        @foreach ([
-            'vs_music' => __('events::events.screen_audio_vs_music'),
-            'match_start' => __('events::events.screen_audio_match_start'),
-            'match_end' => __('events::events.screen_audio_match_end'),
-            'winner_music' => __('events::events.screen_audio_winner_music'),
-            'point_1' => __('events::events.screen_audio_point_1'),
-            'point_2' => __('events::events.screen_audio_point_2'),
-            'point_3' => __('events::events.screen_audio_point_3'),
-            'foul' => __('events::events.screen_audio_foul'),
-            'time_up' => __('events::events.screen_audio_time_up'),
-            'atoshi' => __('events::events.screen_audio_atoshi'),
-        ] as $slot => $slotLabel)
-          <div style="display:flex;align-items:center;gap:14px;padding:10px 0;min-width:0;">
-            <div style="flex:1;min-width:0;">
-              <div style="font-size:23px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $slotLabel }}</div>
-              <div class="audioName" data-slot="{{ $slot }}" style="font-size:17px;margin-top:2px;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ __('events::events.screen_audio_none') }}</div>
-            </div>
-            <label style="font-size:17px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--green);color:#000;border-radius:10px;padding:11px 16px;cursor:pointer;white-space:nowrap;">
-              {{ __('events::events.screen_audio_choose') }}
-              <input type="file" accept="audio/*" class="audioPick" data-slot="{{ $slot }}" style="display:none;">
-            </label>
-            <button class="audioDrop" data-slot="{{ $slot }}" hidden style="font-size:18px;font-weight:700;background:var(--fill);color:var(--aka-ink);border:1px solid rgba(255,107,120,.45);border-radius:10px;padding:12px 16px;cursor:pointer;">✕</button>
-          </div>
-        @endforeach
-      </div>
-
-      {{-- The cameras on this mat: telemetry, how they film, and what they
-           have filmed. Sport-neutral and shared with every other console —
-           see resources/views/partials/mat-cameras.blade.php. --}}
-      @if ($cameraUrl ?? null)
-        <div class="spanel" data-panel="cameras" hidden>
-          @include('partials.mat-cameras', ['cameraUrl' => $cameraUrl, 'cameraCommandBase' => $cameraCommandBase])
-        </div>
-      @endif
-
-      <button id="btnApply" style="font-size:24px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:var(--gold);color:#000;border:none;border-radius:14px;padding:16px 0;cursor:pointer;">{{ __('scoreboard::karate_messages.ctl_apply') }}</button>
-      <div style="font-size:16px;color:var(--faint);letter-spacing:.04em;text-align:center;">{{ __('scoreboard::karate_messages.ctl_apply_hint') }}</div>
-    </div>
-  </div>
+  {{-- Settings — THE shared pop-up (scoreboard::shared.settings), this style's tabs switched on. --}}
+  @include('scoreboard::shared.settings', [
+      'sport' => 'karate', 'L' => $L, 'z' => 21, 'inlineTabs' => true,
+      'rulesView' => 'scoreboard::karate.scoreboard.partials.settings-rules', 'rulesData' => [],
+      'timer' => ['dur' => [3, 0], 'warn' => [0, 15], 'warnId' => 'ato', 'warnInk' => 'var(--aka-ink)', 'hint' => __('scoreboard::karate_messages.ctl_warning_hint')],
+      'sounds' => true, 'soundLabels' => [], 'perScreen' => true, 'customScoring' => null,
+      'cameraUrl' => $cameraUrl ?? null, 'cameraCommandBase' => $cameraCommandBase ?? null,
+      'photoGuideUrl' => $photoGuideUrl ?? null, 'vsLayoutUrl' => $vsLayoutUrl ?? null, 'ownScript' => false,
+  ])
 
   {{-- ── Participant ──────────────────────────────────────────────────────
        Everything here is read-only except the photograph. The name, club and

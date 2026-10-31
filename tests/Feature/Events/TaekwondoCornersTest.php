@@ -77,9 +77,10 @@ class TaekwondoCornersTest extends TestCase
         $this->assertNotNull($skin['aka']['celebrate']);
         $this->assertSame('oklch(0.5 0.18 255)', $skin['ao']['cardFrom'], 'the untouched corner keeps its design');
 
-        // The console draws it, and has the Corners sheet.
+        // The console draws it, and has the Corners tab in the shared Settings pop-up.
         $this->actingAs($owner)->get("/taekwondo/control/{$event->uuid}?mat=".urlencode('Mat 1'))
-            ->assertOk()->assertSee('GOLD')->assertSee('id="cornersModal"', false);
+            ->assertOk()->assertSee('GOLD')->assertSee('id="settings"', false)
+            ->assertSee('data-panel="corners"', false)->assertSee('id="btnSettings"', false);
 
         $this->actingAs($owner)->postJson("/taekwondo/control/{$event->uuid}/corner-look", [
             'aka' => ['label' => '', 'colour' => null], 'ao' => ['label' => null, 'colour' => null],

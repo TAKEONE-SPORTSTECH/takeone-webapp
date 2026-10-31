@@ -595,3 +595,50 @@ Route::middleware(['auth', 'verified', 'two-factor', \App\Events\Middleware\Bran
     // This one stays because it is served by the Scoreboard's own controller.
     Route::get('/events/{event:uuid}/court/{court}/preview', [\App\Scoreboard\Sports\Taekwondo\Controllers\CourtDisplayController::class, 'preview'])->name('events.court-display.preview')->where('court', '[^/]{1,40}')->middleware('throttle:60,1');
 });
+
+/*
+| The console Players tab, for Taekwondo and BJJ — one shared body
+| (App\Scoreboard\Support\ConsolePlayers), the same tab the Karate consoles
+| have. ORGANISERS only, checked in the controller through either door. The
+| sport is fixed by the route, never the request. CSRF stays on: both consoles
+| carry the token. (Karate keeps its own routes until it moves onto this tab.)
+*/
+foreach (['taekwondo' => ['court', 'taekwondo'], 'bjj' => ['bjj/screen', 'bjj']] as $sport => [$tokenBase, $controlBase]) {
+    $c = \App\Scoreboard\Support\ConsolePlayersController::class;
+
+    // The paired table, by its device token.
+    Route::get("/{$tokenBase}/{token}/players", [$c, 'tokenList'])
+        ->name("{$sport}-scoreboard.token-players")->defaults('sport', $sport)
+        ->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+    Route::get("/{$tokenBase}/{token}/players/{registration}", [$c, 'tokenShow'])
+        ->name("{$sport}-scoreboard.token-player")->defaults('sport', $sport)
+        ->where('token', '[A-Za-z0-9]{40}')->whereNumber('registration')->middleware('throttle:screen-token');
+    Route::put("/{$tokenBase}/{token}/players/{registration}", [$c, 'tokenUpdate'])
+        ->name("{$sport}-scoreboard.token-player.update")->defaults('sport', $sport)
+        ->where('token', '[A-Za-z0-9]{40}')->whereNumber('registration')->middleware('throttle:uploads');
+    Route::post("/{$tokenBase}/{token}/players/{registration}/vs-frame", [$c, 'tokenVsFrame'])
+        ->name("{$sport}-scoreboard.token-player.vs-frame")->defaults('sport', $sport)
+        ->where('token', '[A-Za-z0-9]{40}')->whereNumber('registration')->middleware('throttle:screen-token');
+    Route::get("/{$tokenBase}/{token}/players-vs-preview", [$c, 'tokenVsPreview'])
+        ->name("{$sport}-scoreboard.token-players-vs-preview")->defaults('sport', $sport)
+        ->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+    Route::get("/{$tokenBase}/{token}/players-geo-country", [$c, 'tokenGeoCountry'])
+        ->name("{$sport}-scoreboard.token-players-geo")->defaults('sport', $sport)
+        ->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+
+    // The signed-in organiser's console.
+    Route::middleware(['auth', 'verified', 'two-factor'])->group(function () use ($c, $sport, $controlBase) {
+        Route::get("/{$controlBase}/control/{event:uuid}/players", [$c, 'list'])
+            ->name("{$sport}-scoreboard.players")->defaults('sport', $sport)->middleware('throttle:mat-read');
+        Route::get("/{$controlBase}/control/{event:uuid}/players/{registration}", [$c, 'show'])
+            ->name("{$sport}-scoreboard.player")->defaults('sport', $sport)->whereNumber('registration')->middleware('throttle:mat-read');
+        Route::put("/{$controlBase}/control/{event:uuid}/players/{registration}", [$c, 'update'])
+            ->name("{$sport}-scoreboard.player.update")->defaults('sport', $sport)->whereNumber('registration')->middleware('throttle:admin-write');
+        Route::post("/{$controlBase}/control/{event:uuid}/players/{registration}/vs-frame", [$c, 'vsFrame'])
+            ->name("{$sport}-scoreboard.player.vs-frame")->defaults('sport', $sport)->whereNumber('registration')->middleware('throttle:admin-write');
+        Route::get("/{$controlBase}/control/{event:uuid}/players-vs-preview", [$c, 'vsPreview'])
+            ->name("{$sport}-scoreboard.players-vs-preview")->defaults('sport', $sport)->middleware('throttle:mat-read');
+        Route::get("/{$controlBase}/control/{event:uuid}/players-geo-country", [$c, 'geoCountryForEvent'])
+            ->name("{$sport}-scoreboard.players-geo")->defaults('sport', $sport)->middleware('throttle:mat-read');
+    });
+}

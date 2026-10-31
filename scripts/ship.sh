@@ -147,6 +147,14 @@ else
     say "Nothing to commit — shipping what is already on $branch"
 fi
 
+# ── 2b. Hall devices: the business core must not break (CLAUDE.md RULE #3)
+# TVs, scoring tables and cameras pairing from either host. A failure here
+# ships nothing — not even with a commit message, not even "just this once".
+say "Hall devices — screens, score control, scoreboard, cameras (both hosts)"
+chmod +x scripts/hall-devices-check.sh 2>/dev/null
+scripts/hall-devices-check.sh tests \
+    || fail "Hall devices are broken by this change (above). Nothing was committed or deployed."
+
 # ── 3. main must be an ancestor, so main only ever moves forward ────────
 if [ "$via_github" = 1 ]; then
     git fetch -q origin
@@ -193,6 +201,10 @@ if [ "$via_github" = 0 ]; then
         fail "The deploy failed (output above says where the backup is). Uploads were not copied."
     fi
 
+    say "Hall devices on both live sites"
+    scripts/hall-devices-check.sh live \
+        || fail "⚠️ DEPLOYED, BUT HALL DEVICES ARE BROKEN on a live site (above). Roll back from the code archive the deploy printed, or fix now — screens and scoring are the business core."
+
     say "Copying uploads production does not have yet"
     sync_uploads || fail "The code is live, but the uploads copy failed. Re-run: scripts/ship.sh --uploads-only"
     exit 0
@@ -237,3 +249,7 @@ fi
 # ── 6. Uploads ──────────────────────────────────────────────────────────
 say "Copying uploads production does not have yet"
 sync_uploads || fail "The code is live, but the uploads copy failed. Re-run: scripts/ship.sh --uploads-only"
+
+say "Hall devices on both live sites"
+scripts/hall-devices-check.sh live \
+    || fail "⚠️ DEPLOYED, BUT HALL DEVICES ARE BROKEN on a live site (above). Roll back from the code archive the deploy printed, or fix now — screens and scoring are the business core."

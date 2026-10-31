@@ -272,11 +272,9 @@
       {{-- The lenses pointed at this mat. Only when this door was given the
            camera addresses — a console with no camera surface shows no
            camera button. --}}
-      @if ($cameraUrl ?? null)
-        <button id="btnCameras" class="btn">{{ __('events::events.mat_cameras_tab') }}</button>
-      @endif
-      @if (! empty($cornersUrl) || ! empty($cornerLookUrl))
-        <button id="btnCorners" class="btn">{{ __('scoreboard::corners.tab') }}</button>
+      {{-- Corners and cameras live in the shared Settings pop-up (scoreboard::shared.settings). --}}
+      @if (($cameraUrl ?? null) || ! empty($cornersUrl) || ! empty($cornerLookUrl))
+        <button id="btnSettings" class="btn">{{ __('scoreboard::settings.button') }}</button>
       @endif
       {{-- A panel the event's own PACKAGE contributes (AbstractEventType::matPanel).
            Absent for every championship, so this row is unchanged for them. An
@@ -333,28 +331,17 @@
   $rr = $redRight ?? \App\Sports\Combat\CornerSide::redRight('taekwondo');
   $atL = $rr ? 'ao' : 'aka';
 @endphp
-@if (! empty($cornersUrl) || ! empty($cornerLookUrl))
-<div id="cornersModal" hidden class="scrim" style="z-index:50;">
-  <div class="sheet" style="width:980px; max-height:900px; overflow-y:auto;">
-    <div class="sheet-head">
-      <div class="sheet-title">{{ __('scoreboard::corners.tab') }}</div>
-      <button id="cornersClose" class="btn sheet-close">✕</button>
-    </div>
-    @include('scoreboard::shared.corners-panel', ['look' => $L, 'sportRedRight' => \App\Sports\Combat\CornerSide::redRight('taekwondo')])
-  </div>
-</div>
-@endif
-
-@if ($cameraUrl ?? null)
-<div id="camerasModal" hidden class="scrim" style="z-index:50;">
-  <div class="sheet" style="width:980px; max-height:900px; overflow-y:auto;">
-    <div class="sheet-head">
-      <div class="sheet-title">{{ __('events::events.mat_cameras_title', ['court' => $court]) }}</div>
-      <button id="camerasClose" class="btn sheet-close">✕</button>
-    </div>
-    @include('partials.mat-cameras', ['cameraUrl' => $cameraUrl, 'cameraCommandBase' => $cameraCommandBase])
-  </div>
-</div>
+@if (($cameraUrl ?? null) || ! empty($cornersUrl) || ! empty($cornerLookUrl))
+{{-- Settings — THE shared pop-up (scoreboard::shared.settings). Taekwondo's
+     engine has no settable rules, timer or sounds yet, so only Corners and
+     Cameras are switched on; it opens and switches its own tabs (ownScript). --}}
+@include('scoreboard::shared.settings', [
+    'sport' => 'taekwondo', 'L' => $L, 'z' => 50,
+    'chrome' => 'sheet', 'inlineTabs' => true, 'ownScript' => true,
+    'rulesView' => null, 'timer' => null, 'sounds' => false, 'perScreen' => true, 'customScoring' => null,
+    'cameraUrl' => $cameraUrl ?? null, 'cameraCommandBase' => $cameraCommandBase ?? null,
+    'photoGuideUrl' => null, 'vsLayoutUrl' => null,
+])
 @endif
 
 <div id="queueModal" hidden class="scrim" style="z-index:50;">
@@ -364,6 +351,12 @@
         <div class="sheet-title">{{ __('scoreboard::taekwondo_messages.ctl_queue') }}</div>
         <div style="font-weight:600; font-size:14px; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted);">{{ __('scoreboard::taekwondo_messages.ctl_queue_hint') }}</div>
       </div>
+      @if (! empty($players))
+      {{-- The Players tab (organisers): find an entrant, correct them, change
+           their photo, frame it for the VS screen. --}}
+      <button type="button" id="btnPlayers" class="btn" data-players-open
+              style="font-family:'Anton',sans-serif; font-size:18px; letter-spacing:0.1em; text-transform:uppercase; height:44px; padding:0 18px; color:var(--gold); border:1px solid oklch(0.85 0.16 85 / 0.6);">{{ __('scoreboard::players.pl_tab') }}</button>
+      @endif
       <button id="queueClose" class="btn sheet-close">✕</button>
     </div>
 
@@ -383,6 +376,31 @@
     <div id="queue" style="display:flex; flex-direction:column; gap:8px; max-height:520px; overflow-y:auto;"></div>
   </div>
 </div>
+
+@if (! empty($players))
+{{-- ── Players — the shared tab every console has (scoreboard::shared.players),
+     in a pop-up the size of the console, opened from the running order. --}}
+<div id="playersModal" hidden class="scrim" style="z-index:50;">
+  <div class="sheet" style="width:1840px; height:1000px; max-height:none;">
+    <div class="sheet-head">
+      <div class="sheet-title" style="flex:1;">{{ __('scoreboard::players.pl_tab') }}</div>
+      <button type="button" id="playersClose" class="btn sheet-close">✕</button>
+    </div>
+    @include('scoreboard::shared.players.pane')
+  </div>
+</div>
+@include('scoreboard::shared.players.runtime', ['players' => $players])
+<script>
+  (function () {
+    var m = document.getElementById('playersModal');
+    document.getElementById('btnPlayers').addEventListener('click', function () {
+      document.getElementById('queueModal').hidden = true;
+      m.hidden = false;
+    });
+    document.getElementById('playersClose').addEventListener('click', function () { m.hidden = true; });
+  })();
+</script>
+@endif
 
 {{-- ── Clock and round ─────────────────────────────────────────────────── --}}
 <div style="display:flex; gap:14px; flex-wrap:wrap;">

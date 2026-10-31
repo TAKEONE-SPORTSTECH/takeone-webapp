@@ -771,7 +771,7 @@
       </div>
 
       <div class="row">
-        <button id="btnSettings" class="cbtn" style="background:var(--fill-alt);color:var(--gold);border:1px solid var(--gold);">{{ __('scoreboard::bjj_messages.ctl_settings') }}</button>
+        <button id="btnSettings" class="cbtn" style="background:var(--fill-alt);color:var(--gold);border:1px solid var(--gold);">{{ __('scoreboard::settings.button') }}</button>
         <button id="btnLog" class="cbtn" style="background:var(--fill-alt);color:var(--gold);border:1px solid var(--gold);">{{ __('scoreboard::bjj_messages.ctl_score_log') }}</button>
       </div>
 
@@ -883,6 +883,10 @@
                 aria-controls="bpaneMember">{{ __('scoreboard::bjj_messages.ctl_tab_member') }}</button>
         <button type="button" class="btab" role="tab" data-btab="arcade" aria-selected="false"
                 aria-controls="bpaneArcade">{{ __('scoreboard::bjj_messages.ctl_tab_arcade') }}</button>
+        @if (! empty($players))
+        <button type="button" class="btab" role="tab" data-btab="players" data-players-open aria-selected="false"
+                aria-controls="bpanePlayers">{{ __('scoreboard::players.pl_tab') }}</button>
+        @endif
       </div>
 
       <button id="queueClose" class="mclose" aria-label="{{ __('scoreboard::bjj_messages.ctl_cancel') }}">✕</button>
@@ -961,6 +965,15 @@
         </div>
       </div>
     </div>
+
+    {{-- PLAYERS — find an entrant and correct them, change their photo, frame
+         it for the VS screen. Organisers only; the shared tab every console
+         has (scoreboard::shared.players). --}}
+    @if (! empty($players))
+    <div class="bpane" id="bpanePlayers" role="tabpanel" hidden>
+      @include('scoreboard::shared.players.pane')
+    </div>
+    @endif
   </div>
 </div>
 
@@ -969,144 +982,16 @@
      Not a preference panel. Everything here is posted to the mat state, so a
      second console on the same mat and the wall are all running the match the
      official at this table said it was. --}}
-<div id="settings" hidden class="scrim" style="z-index:41;">
-  <div class="modal" style="width:1020px;gap:22px;overflow-y:auto;">
-    <div class="mhead">
-      <div class="mtitle" style="color:var(--gold);">{{ __('scoreboard::bjj_messages.ctl_settings_title') }}</div>
-      <button data-close="settings" class="mclose" aria-label="{{ __('scoreboard::bjj_messages.ctl_cancel') }}">✕</button>
-    </div>
-
-    <div style="display:flex;gap:8px;border-bottom:1px solid var(--line);padding-bottom:14px;">
-      {{-- The camera tab only exists when this door was given the camera
-           addresses, so a console with no camera surface shows no camera tab. --}}
-      @foreach (array_merge([['rules', __('scoreboard::bjj_messages.ctl_tab_rules')], ['corners', __('scoreboard::corners.tab')], ['timer', __('scoreboard::bjj_messages.ctl_tab_timer')], ['sounds', __('scoreboard::bjj_messages.ctl_tab_sounds')]], ($cameraUrl ?? null) ? [['cameras', __('events::events.mat_cameras_tab')]] : []) as [$tab, $tabLabel])
-        <button class="stab" data-tab="{{ $tab }}">{{ $tabLabel }}</button>
-      @endforeach
-    </div>
-
-    {{-- Rules --}}
-    <div class="spanel" data-panel="rules" style="display:flex;flex-direction:column;gap:12px;">
-      @foreach ([
-          ['referee_decision', __('scoreboard::bjj_messages.ctl_rule_referee_decision'), __('scoreboard::bjj_messages.ctl_rule_referee_decision_hint')],
-          ['time_up_buzzer', __('scoreboard::bjj_messages.ctl_rule_buzzer'), __('scoreboard::bjj_messages.ctl_rule_buzzer_hint')],
-      ] as [$rule, $ruleLabel, $ruleHint])
-        <button class="rrow" data-rule="{{ $rule }}">
-          <span class="rbox"></span>
-          <span style="flex:1;display:flex;flex-direction:column;gap:2px;">
-            <span style="font-size:20px;font-weight:600;color:var(--text);letter-spacing:.04em;">{{ $ruleLabel }}</span>
-            <span style="font-size:15px;color:var(--faint);letter-spacing:.02em;">{{ $ruleHint }}</span>
-          </span>
-        </button>
-      @endforeach
-
-      {{-- The numbers a rule book sets. Each carries its own value on the row
-           it belongs to, rather than being a second place to look.
-
-           ⚠️ The advantage and penalty limits both have a floor of 0, not 1,
-           and that is the whole point of them: zero means NO limit. For
-           advantages that is the default (jiu-jitsu as it is normally run);
-           for penalties it is the escape hatch for a ruleset that never
-           disqualifies on the ladder. --}}
-      @foreach ([
-          ['penaltyLimit', __('scoreboard::bjj_messages.ctl_rule_penalty_limit'), __('scoreboard::bjj_messages.ctl_rule_penalty_limit_hint'), 0, 10],
-          ['penaltyWarnAt', __('scoreboard::bjj_messages.ctl_rule_penalty_warn'), '', 1, 10],
-          ['advantageLimit', __('scoreboard::bjj_messages.ctl_rule_advantage_limit'), __('scoreboard::bjj_messages.ctl_rule_advantage_limit_hint'), 0, 20],
-          ['stallSeconds', __('scoreboard::bjj_messages.ctl_rule_stall_seconds'), __('scoreboard::bjj_messages.ctl_rule_stall_seconds_hint'), 3, 60],
-      ] as [$numId, $numLabel, $numHint, $numMin, $numMax])
-        <div class="rrow" style="cursor:default;">
-          <span style="flex:1;display:flex;flex-direction:column;gap:2px;">
-            <span style="font-size:20px;font-weight:600;color:var(--text);letter-spacing:.04em;">{{ $numLabel }}</span>
-            @if ($numHint)
-              <span style="font-size:15px;color:var(--faint);letter-spacing:.02em;">{{ $numHint }}</span>
-            @endif
-          </span>
-          <input id="{{ $numId }}" type="number" min="{{ $numMin }}" max="{{ $numMax }}"
-                 style="width:90px;flex:0 0 auto;font-family:'Anton',sans-serif;font-size:26px;text-align:center;background:var(--fill);color:var(--gold);border:none;border-radius:10px;padding:8px 6px;">
-        </div>
-      @endforeach
-    </div>
-
-    {{-- Corners — which side red stands on at this mat, and what each corner is
-         called and coloured for the event (App\Scoreboard\Corners). Both save as
-         they are made, so this tab has no Apply. --}}
-    <div class="spanel" data-panel="corners" hidden>
-      @include('scoreboard::shared.corners-panel', ['look' => $L, 'sportRedRight' => \App\Sports\Combat\CornerSide::redRight('bjj')])
-    </div>
-
-    {{-- Timer --}}
-    <div class="spanel" data-panel="timer" hidden style="display:flex;flex-direction:column;gap:20px;">
-      <label style="display:flex;flex-direction:column;gap:8px;">
-        <span style="font-size:17px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);">{{ __('scoreboard::bjj_messages.ctl_duration') }}</span>
-        <span style="display:flex;gap:12px;align-items:center;">
-          <input id="durMin" type="number" min="0" max="59" value="5" class="mm">
-          <span style="font-family:'Anton',sans-serif;font-size:28px;color:var(--muted);">:</span>
-          <input id="durSec" type="number" min="0" max="59" value="0" class="mm">
-        </span>
-      </label>
-      <label style="display:flex;flex-direction:column;gap:8px;">
-        <span style="font-size:17px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);">{{ __('scoreboard::bjj_messages.ctl_warning_at') }}</span>
-        <span style="display:flex;gap:12px;align-items:center;">
-          <input id="warnMin" type="number" min="0" max="59" value="1" class="mm" style="color:var(--gold);">
-          <span style="font-family:'Anton',sans-serif;font-size:28px;color:var(--muted);">:</span>
-          <input id="warnSec" type="number" min="0" max="59" value="0" class="mm" style="color:var(--gold);">
-        </span>
-        <span style="font-size:14px;color:var(--faint);letter-spacing:.04em;">{{ __('scoreboard::bjj_messages.ctl_warning_hint') }}</span>
-      </label>
-    </div>
-
-    {{-- Sounds. Uploading REPLACES: a hall does not want two celebration
-         tracks, it wants the right one. Every screen on the event is told to
-         reload afterwards, because a board caches the file it fetched.
-
-         The slots are the shared closed list (App\Events\Support\ScreenMedia)
-         — one store for every combat scoreboard in the product — but the LABELS
-         are this sport's, because "one point" is not a thing that happens on a
-         jiu-jitsu mat.
-
-         ⚠️ `minmax(0,1fr)`, never a bare `1fr`: a grid track's floor is its
-         MIN-CONTENT, and an uploaded filename is one unbreakable token on a
-         `nowrap` line — so a real upload widens its column and pushes the panel
-         straight out through the side of the card. The zero floor is what lets
-         the ellipsis on `.audioName` actually do its job. --}}
-    <div class="spanel" data-panel="sounds" hidden style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 28px;min-width:0;">
-      @foreach ([
-          'vs_music' => __('events::events.screen_audio_vs_music'),
-          'match_start' => __('events::events.screen_audio_match_start'),
-          'match_end' => __('events::events.screen_audio_match_end'),
-          'winner_music' => __('events::events.screen_audio_winner_music'),
-          'point_1' => __('scoreboard::bjj_messages.ctl_sound_point_1'),
-          'point_2' => __('scoreboard::bjj_messages.ctl_sound_point_2'),
-          'point_3' => __('scoreboard::bjj_messages.ctl_sound_point_3'),
-          'foul' => __('events::events.screen_audio_foul'),
-          'time_up' => __('events::events.screen_audio_time_up'),
-          'atoshi' => __('events::events.screen_audio_atoshi'),
-      ] as $slot => $slotLabel)
-        <div style="display:flex;align-items:center;gap:14px;padding:10px 0;min-width:0;">
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:23px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $slotLabel }}</div>
-            <div class="audioName" data-slot="{{ $slot }}" style="font-size:17px;margin-top:2px;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ __('events::events.screen_audio_none') }}</div>
-          </div>
-          <label style="font-size:17px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:#7ae582;color:#000;border-radius:10px;padding:11px 16px;cursor:pointer;white-space:nowrap;">
-            {{ __('events::events.screen_audio_choose') }}
-            <input type="file" accept="audio/*" class="audioPick" data-slot="{{ $slot }}" style="display:none;">
-          </label>
-          <button class="audioDrop" data-slot="{{ $slot }}" hidden style="font-size:18px;font-weight:700;background:var(--fill);color:#ff6b78;border:1px solid rgba(255,107,120,.45);border-radius:10px;padding:12px 16px;cursor:pointer;">✕</button>
-        </div>
-      @endforeach
-    </div>
-
-    {{-- The cameras on this mat: telemetry, how they film, and what they have
-         filmed. Sport-neutral and shared with every other console. --}}
-    @if ($cameraUrl ?? null)
-      <div class="spanel" data-panel="cameras" hidden>
-        @include('partials.mat-cameras', ['cameraUrl' => $cameraUrl, 'cameraCommandBase' => $cameraCommandBase])
-      </div>
-    @endif
-
-    <button id="btnApply" style="font-size:24px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:var(--gold);color:#000;border:none;border-radius:14px;padding:16px 0;cursor:pointer;">{{ __('scoreboard::bjj_messages.ctl_apply') }}</button>
-    <div style="font-size:16px;color:var(--faint);letter-spacing:.04em;text-align:center;">{{ __('scoreboard::bjj_messages.ctl_apply_hint') }}</div>
-  </div>
-</div>
+{{-- Settings — THE shared pop-up (scoreboard::shared.settings), BJJ's tabs switched on. --}}
+@include('scoreboard::shared.settings', [
+    'sport' => 'bjj', 'L' => $L, 'z' => 41, 'inlineTabs' => false,
+    'rulesView' => 'scoreboard::bjj.scoreboard.partials.settings-rules', 'rulesData' => [],
+    'timer' => ['dur' => [5, 0], 'warn' => [1, 0], 'warnId' => 'warn', 'warnInk' => 'var(--gold)'],
+    'sounds' => true, 'soundLabels' => ['point_1' => __('scoreboard::bjj_messages.ctl_sound_point_1'), 'point_2' => __('scoreboard::bjj_messages.ctl_sound_point_2'), 'point_3' => __('scoreboard::bjj_messages.ctl_sound_point_3')],
+    'perScreen' => true, 'customScoring' => null,
+    'cameraUrl' => $cameraUrl ?? null, 'cameraCommandBase' => $cameraCommandBase ?? null,
+    'photoGuideUrl' => null, 'vsLayoutUrl' => null, 'ownScript' => false,
+])
 
 {{-- ── The end of a match ────────────────────────────────────────────────
      Opens ITSELF the moment the match is over — however it ended — with the
@@ -1528,6 +1413,8 @@
 
     var PANE = { arranged: 'bpaneArranged', division: 'bpaneDivision',
                  member: 'bpaneMember', arcade: 'bpaneArcade' };
+    // The Players tab, only where this console has one (organisers).
+    if (panel('bpanePlayers')) PANE.players = 'bpanePlayers';
 
     function show(name) {
       if (!PANE[name]) return;
@@ -1582,6 +1469,9 @@
 
 @include('scoreboard::bjj.scoreboard.runtime')
 @include('scoreboard::shared.corners-script', ['look' => $L, 'redRight' => $rr, 'sportRedRight' => \App\Sports\Combat\CornerSide::redRight('bjj')])
+@if (! empty($players))
+@include('scoreboard::shared.players.runtime', ['players' => $players])
+@endif
 
 @if (! empty($screenLink))
 @include('scoreboard::bjj.partials.screen-link')

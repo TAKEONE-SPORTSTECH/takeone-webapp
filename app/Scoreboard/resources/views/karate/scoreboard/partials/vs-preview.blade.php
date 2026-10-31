@@ -12,7 +12,7 @@
     `w` is the width to draw it at (default 438). The host fills `.vsph` — a
     photo for the settings, a live mirror of the cropper in the cropper.
 
-    Used by partials/photo-guide-panel, partials/vs-layout-panel and
+    Used by shared/settings/photo-guide, shared/settings/vs-layout and
     partials/crop-guide. ONE drawing of the VS framing on the console; if the
     mat's VS screen changes, change it here too.
 --}}
