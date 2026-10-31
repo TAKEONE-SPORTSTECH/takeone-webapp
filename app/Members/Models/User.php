@@ -680,8 +680,10 @@ class User extends Authenticatable implements \Ahl\Certificates\Contracts\Recipi
      * exposes only non-sensitive fields, so it is broadly viewable — private
      * data stays on the family/admin-gated member.show.
      */
-    public function canViewPublicProfile(?User $viewer): bool
+    public function canViewPublicProfile(?User $viewer, ?\Illuminate\Support\Collection $viewerBlockedIds = null): bool
     {
+        // $viewerBlockedIds: UserBlock::idsBlockedEitherWayWith($viewer->id),
+        // loaded once by a caller asking about many members (a results sheet).
         // Anonymous visitor: a deliberately narrower rule than for a member.
         //
         // A signed-in viewer may see anyone who has not blocked them. The open
@@ -693,7 +695,13 @@ class User extends Authenticatable implements \Ahl\Certificates\Contracts\Recipi
             return (bool) $this->is_discoverable && ! $this->isMinor();
         }
 
-        return $viewer->id === $this->id || ! $viewer->blockedEitherWay($this->id);
+        if ($viewer->id === $this->id) {
+            return true;
+        }
+
+        return $viewerBlockedIds !== null
+            ? ! $viewerBlockedIds->contains($this->id)
+            : ! $viewer->blockedEitherWay($this->id);
     }
 
     /** Under 18 on the birthdate we hold. Unknown birthdate is NOT treated as a minor. */

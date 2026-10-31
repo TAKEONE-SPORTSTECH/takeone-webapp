@@ -123,6 +123,9 @@ final class Planner
     /** @var array<string, array<int|string, int>> table => staging key => production id, from earlier runs */
     private array $promoted = [];
 
+    /** @var array<string, array<string, int>> table => source id => target id it was first copied FROM */
+    private array $returning = [];
+
     /** @var array<string, array<int|string, bool>> rows to add as a separate copy of a record both sides hold */
     private array $copies = [];
 
@@ -264,12 +267,23 @@ final class Planner
      */
     private function loadPromoted(): void
     {
-        $exists = $this->dst->query("select 1 from sqlite_master where type='table' and name='".Applier::MAP_TABLE."'")->fetchColumn();
-        if (! $exists) {
-            return;
+        $hasMap = fn (PDO $db) => (bool) $db->query("select 1 from sqlite_master where type='table' and name='".Applier::MAP_TABLE."'")->fetchColumn();
+
+        if ($hasMap($this->dst)) {
+            foreach ($this->dst->query('select source_table, source_key, target_id from '.Applier::MAP_TABLE) as $r) {
+                $this->promoted[$r['source_table']][$r['source_key']] = (int) $r['target_id'];
+            }
         }
-        foreach ($this->dst->query('select source_table, source_key, target_id from '.Applier::MAP_TABLE) as $r) {
-            $this->promoted[$r['source_table']][$r['source_key']] = (int) $r['target_id'];
+
+        // The other direction: rows the SOURCE once received from this target.
+        // Promoting them back must link to the original, never add a copy —
+        // an event matched by uuid while its divisions, entries and bouts came
+        // back as second copies is what the 30 Oct round trip did
+        // (docs/data-promotion.md).
+        if ($hasMap($this->src)) {
+            foreach ($this->src->query('select source_table, source_key, target_id from '.Applier::MAP_TABLE) as $r) {
+                $this->returning[$r['source_table']][(string) $r['target_id']] = (int) $r['source_key'];
+            }
         }
     }
 
@@ -380,7 +394,9 @@ final class Planner
         $dstUuid = $this->has($t, 'uuid') ? $this->dst->query("select uuid, id from \"$t\" where uuid is not null")->fetchAll(PDO::FETCH_KEY_PAIR) : [];
 
         $before = $key === 'id' ? ($this->promoted[$t] ?? []) : [];
-        $stillThere = $before ? array_flip($this->dst->query("select id from \"$t\" where id in (".implode(',', array_map('intval', $before)).')')->fetchAll(PDO::FETCH_COLUMN)) : [];
+        $back = $key === 'id' ? ($this->returning[$t] ?? []) : [];
+        $wanted = array_merge(array_values($before), array_values($back));
+        $stillThere = $wanted ? array_flip($this->dst->query("select id from \"$t\" where id in (".implode(',', array_map('intval', $wanted)).')')->fetchAll(PDO::FETCH_COLUMN)) : [];
 
         foreach ($rows as $row) {
             $id = $row['__key'];
@@ -393,6 +409,17 @@ final class Planner
                     // Brought over once and since removed in production: that
                     // was somebody's decision, and it is not undone.
                     $this->set($t, $id, 'cascade', 'removed from production after an earlier run');
+                }
+
+                continue;
+            }
+
+            if (isset($back[(string) $id])) {
+                if (isset($stillThere[$back[(string) $id]])) {
+                    $this->set($t, $id, 'link', 'came from here on an earlier run');
+                    $this->map[$t][$id] = $back[(string) $id];
+                } else {
+                    $this->set($t, $id, 'cascade', 'came from here and was since removed here');
                 }
 
                 continue;

@@ -4,6 +4,7 @@ namespace App\Events\Support;
 
 use App\Clubs\Models\Tenant;
 use App\Members\Models\User;
+use App\Members\Models\UserBlock;
 use App\Events\Models\ClubEventRegistration;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -121,9 +122,12 @@ class PodiumFaces
             $entries->pluck('id'),
         );
 
+        // Who this viewer has blocked or been blocked by — once per sheet, not twice per medal.
+        $blocked = $viewer ? UserBlock::idsBlockedEitherWayWith($viewer->id) : null;
+
         return $entries
             ->mapWithKeys(fn (ClubEventRegistration $r) => [$r->id => [
-                'person' => static::profileUuid($r, $viewer),
+                'person' => static::profileUuid($r, $viewer, $blocked),
                 'photo' => static::photo($r),
                 'country' => $r->countryCode() ?: ($written[$r->id]['country'] ?? null),
                 'club' => static::clubName($r) ?: ($written[$r->id]['name'] ?? null),
@@ -139,7 +143,7 @@ class PodiumFaces
      * has nobody to link to, and a member whose profile this viewer may not see
      * is not linked rather than linked to a 404.
      */
-    private static function profileUuid(ClubEventRegistration $r, ?User $viewer): ?string
+    private static function profileUuid(ClubEventRegistration $r, ?User $viewer, ?Collection $blocked): ?string
     {
         $user = $r->user;
 
@@ -147,7 +151,7 @@ class PodiumFaces
             return null;
         }
 
-        return $user->canViewPublicProfile($viewer) ? $user->uuid : null;
+        return $user->canViewPublicProfile($viewer, $blocked) ? $user->uuid : null;
     }
 
     /**

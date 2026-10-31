@@ -174,6 +174,22 @@ cannot quietly become permanent.
 | The Google / Firebase service-account key | FCM was deleted 2026-09-01 (it had zero tokens, ever). The key itself still needs **revoking by hand** in the Google console. | Owner: the user. Revoke, then move to Done. |
 | Our SSH `authorized_keys` entry and API token **on the `video.takeone.bh` box** | That integration was removed here on 2026-08-27 and its Sanctum token revoked on this side. The credentials on THAT box are somebody else's machine now and still stand. | Owner: the user, with whoever holds that box. |
 
+### Cache moved to Redis (registered 2026-10-31)
+
+| Item | Why | Gate |
+|---|---|---|
+| `cache` and `cache_locks` tables (the shared PostgreSQL database) | Both boxes now use `CACHE_STORE=redis`. Production's live entries were copied across, and nothing writes the tables any more. Checked: the staging and production `.env` files both say `redis`. | Leave for a week in case of a rollback to `CACHE_STORE=database`, then truncate them (backup first). Never drop them: the `database` driver remains the fallback. |
+| `storage/framework/cache/data/` on STAGING | Was the file cache. It held only derived data. | Delete the folder's contents any time. |
+| `/etc/redis/redis.conf.orig` and `/root/env.bak-pre-redis-*` on BOTH boxes | Copies taken before the change, for a rollback. The `.env` copies hold secrets. | Delete after a week of stable running. |
+
+### Cache moved to Redis (registered 2026-10-31)
+
+| Item | Why | Gate |
+|---|---|---|
+| `cache` and `cache_locks` tables (the shared PostgreSQL database) | Both boxes now use `CACHE_STORE=redis`. Production's live entries were copied across, and nothing writes the tables any more. Checked: the staging and production `.env` files both say `redis`. | Leave for a week in case of a rollback to `CACHE_STORE=database`, then truncate them (backup first). Never drop them: the `database` driver remains the fallback. |
+| `storage/framework/cache/data/` on STAGING | Was the file cache. It held only derived data. | Delete the folder's contents any time. |
+| `/etc/redis/redis.conf.orig` and `/root/env.bak-pre-redis-*` on BOTH boxes | Copies taken before the change, for a rollback. The `.env` copies hold secrets. | Delete after a week of stable running. |
+
 ### Deploy pipeline leftovers (registered 2026-10-30)
 
 | Item | Why | Gate |

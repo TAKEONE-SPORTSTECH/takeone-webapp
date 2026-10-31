@@ -2,20 +2,21 @@
 #
 # Ship it: staging → production in one command.
 #
-#   scripts/ship.sh "commit message"     commit what is here, push, deploy
+#   scripts/ship.sh "commit message"     commit what is here, deploy to takeone.bh
 #   scripts/ship.sh --dry-run            say what would happen, change nothing
-#   scripts/ship.sh                      nothing to commit? ship what is pushed
+#   scripts/ship.sh                      nothing to commit? ship the current commit
 #   scripts/ship.sh --uploads-only       only copy uploaded files production lacks
+#   scripts/ship.sh --via-github "msg"   the old route: push + GitHub Actions Deploy
 #
 # The staging box is where the code is written, so it is the SOURCE of a
-# release, never a deploy target. This script:
-#   1. checks the production runner is online (else nothing is pushed),
-#   2. refuses secrets and personal documents (the GitHub repo is PUBLIC),
-#   3. commits everything here and pushes the current branch,
-#   4. fast-forwards main to it — never a force push, never a merge,
-#   5. runs the Deploy workflow (backup → code archive → maintenance →
-#      sync → migrate → caches → site check) and waits for the result,
-#   6. copies every uploaded file (photos, logos, proofs, bout video) that
+# release, never a deploy target. By default (since 2026-10-31, owner's
+# request — the Actions deploy kept failing) GitHub is not involved:
+#   1. refuses secrets and personal documents (the repo is PUBLIC),
+#   2. commits everything here (locally — nothing is pushed),
+#   3. copies that commit (git archive) to the production container over SSH,
+#   4. runs scripts/deploy-direct.sh there: build → backup → code archive →
+#      maintenance → sync → switches → migrate → caches → site check → clean-up,
+#   5. copies every uploaded file (photos, logos, proofs, bout video) that
 #      production does not have yet — a deploy carries code, never uploads.
 #
 # Nothing on this box is deleted or reset by it, and the uploads copy only
@@ -28,11 +29,13 @@ cd "$(dirname "$0")/.."
 
 dry=0
 uploads_only=0
+via_github=0
 msg=""
 for arg in "$@"; do
     case "$arg" in
         --dry-run) dry=1 ;;
         --uploads-only) uploads_only=1 ;;
+        --via-github) via_github=1 ;;
         -*) echo "Unknown option: $arg" >&2; exit 2 ;;
         *) msg="$arg" ;;
     esac
@@ -80,12 +83,19 @@ fi
 branch=$(git rev-parse --abbrev-ref HEAD)
 [ "$branch" = "HEAD" ] && fail "Detached HEAD — check out a branch first."
 
-# ── 1. Production runner ────────────────────────────────────────────────
-say "Checking the production runner"
-online=$(gh api "repos/$REPO/actions/runners" \
-    --jq '[.runners[] | select(.status=="online") | select(any(.labels[]; .name=="production"))] | length')
-[ "$online" -ge 1 ] || fail "No production runner is online, so a deploy would only queue and time out. Nothing was pushed."
-echo "  online"
+# ── 1. Production: the runner (GitHub route) or the container itself ────
+if [ "$via_github" = 1 ]; then
+    say "Checking the production runner"
+    online=$(gh api "repos/$REPO/actions/runners" \
+        --jq '[.runners[] | select(.status=="online") | select(any(.labels[]; .name=="production"))] | length')
+    [ "$online" -ge 1 ] || fail "No production runner is online, so a deploy would only queue and time out. Nothing was pushed."
+    echo "  online"
+else
+    say "Checking the production container"
+    ssh -o ConnectTimeout=10 -o BatchMode=yes "$PROD_SSH" true 2>/dev/null \
+        || fail "Cannot reach $PROD_SSH over SSH. Nothing was committed."
+    echo "  reachable"
+fi
 
 # ── 1b. Feature switches: whatever is on here is on in production ───────
 # The owner's rule (2026-10-30): everything shipped is ON in production. The
@@ -138,15 +148,21 @@ else
 fi
 
 # ── 3. main must be an ancestor, so main only ever moves forward ────────
-git fetch -q origin
-if ! git merge-base --is-ancestor origin/main HEAD; then
-    fail "main has commits that $branch does not (git log HEAD..origin/main). Merge main into $branch first. Nothing was pushed."
+if [ "$via_github" = 1 ]; then
+    git fetch -q origin
+    if ! git merge-base --is-ancestor origin/main HEAD; then
+        fail "main has commits that $branch does not (git log HEAD..origin/main). Merge main into $branch first. Nothing was pushed."
+    fi
 fi
 
 if [ "$dry" = 1 ]; then
     say "Uploads production does not have yet (would be copied after the deploy)"
     sync_uploads || echo "  could not check the uploads (SSH to $PROD_SSH failed?)"
-    say "Dry run — would commit, push $branch, fast-forward main by $(git rev-list --count origin/main..HEAD) commit(s) plus the new one, run Deploy, and copy the uploads."
+    if [ "$via_github" = 1 ]; then
+        say "Dry run — would commit, push $branch, fast-forward main by $(git rev-list --count origin/main..HEAD) commit(s) plus the new one, run Deploy, and copy the uploads."
+    else
+        say "Dry run — would commit locally, copy the commit to $PROD_SSH, run scripts/deploy-direct.sh there, and copy the uploads. Nothing goes to GitHub."
+    fi
     exit 0
 fi
 
@@ -156,6 +172,30 @@ if [ -n "$changes" ]; then
     git add -A
     git commit -q -m "$msg"
     git log --oneline -1
+fi
+
+# ── 4b. Direct to the production container (default) ────────────────────
+if [ "$via_github" = 0 ]; then
+    BUILD_DIR=/var/www/takeone-build
+    say "Copying $(git rev-parse --short HEAD) to $PROD_SSH:$BUILD_DIR"
+    # Everything but the dependency folders is replaced, so a file deleted from
+    # the repo is deleted from the release too; vendor/ and node_modules/ stay
+    # so the build only fetches what changed.
+    ssh "$PROD_SSH" "mkdir -p '$BUILD_DIR' && find '$BUILD_DIR' -mindepth 1 -maxdepth 1 ! -name vendor ! -name node_modules -exec rm -rf {} +" \
+        || fail "Could not prepare $BUILD_DIR on $PROD_SSH. Nothing on production changed."
+    git archive --format=tar HEAD | ssh "$PROD_SSH" "tar -x -C '$BUILD_DIR'" \
+        || fail "Could not copy the release to $PROD_SSH. Nothing on production changed."
+
+    say "Deploying on the production container"
+    if ssh "$PROD_SSH" "bash '$BUILD_DIR/scripts/deploy-direct.sh' '$BUILD_DIR'"; then
+        say "✓ Shipped. takeone.bh is running $(git rev-parse --short HEAD) (not pushed to GitHub)."
+    else
+        fail "The deploy failed (output above says where the backup is). Uploads were not copied."
+    fi
+
+    say "Copying uploads production does not have yet"
+    sync_uploads || fail "The code is live, but the uploads copy failed. Re-run: scripts/ship.sh --uploads-only"
+    exit 0
 fi
 
 say "Pushing $branch and fast-forwarding main"
