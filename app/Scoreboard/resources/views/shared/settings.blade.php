@@ -9,9 +9,9 @@
                  owns: karate/…/settings-rules, bjj/…/settings-rules); none, no tab
       corners    which side red stands on, and what each corner is called —
                  `$perScreen` adds the per-screen sides
-      buttons    this mat's own scoring buttons ┐ `$customScoring` = 'points'
-      penalties  this mat's own foul ladder     ┘ (Combat's words) or 'buttons'
-                 (Kyokushin's) — only engines that read Styles\Custom* offer them
+      buttons    "Points" — this mat's own scoring buttons ┐ `$customScoring` true;
+      penalties  "Fouls" — this mat's own foul ladder       ┘ one wording everywhere
+                 — only engines that read Styles\Custom* offer them
       timer      bout length and the warning — `$timer` (null: no tab)
       sounds     the event's sound slots — `$sounds` (labels; null: no tab)
       cameras    this mat's cameras — `$cameraUrl` (null: no tab)
@@ -67,8 +67,8 @@
     $tabs = array_values(array_filter([
         $rulesView ? ['rules', __('scoreboard::settings.tab_rules')] : null,
         ['corners', __('scoreboard::settings.tab_corners')],
-        $customScoring ? ['buttons', __('scoreboard::settings.'.($customScoring === 'points' ? 'tab_points' : 'tab_buttons'))] : null,
-        $customScoring ? ['penalties', __('scoreboard::settings.'.($customScoring === 'points' ? 'tab_fouls' : 'tab_penalties'))] : null,
+        $customScoring ? ['buttons', __('scoreboard::settings.tab_points')] : null,
+        $customScoring ? ['penalties', __('scoreboard::settings.tab_fouls')] : null,
         $timer ? ['timer', __('scoreboard::settings.tab_timer')] : null,
         $sounds ? ['sounds', __('scoreboard::settings.tab_sounds')] : null,
         $cameraUrl ? ['cameras', __('events::events.mat_cameras_tab')] : null,
@@ -198,14 +198,14 @@
          CustomPenalties). Each saves for the whole event by its own button, like
          the camera panel, so Apply is hidden on these tabs. --}}
     @if ($customScoring)
-      @php($cs = $customScoring === 'points' ? ['fouls_add', 'fouls_default', 'fouls_save'] : ['pen_add', 'pen_default', 'pen_save'])
+      @php($cs = ['fouls_add', 'fouls_default', 'fouls_save'])
       <div class="spanel" data-panel="buttons" hidden style="display:flex;flex-direction:column;gap:12px;">
         <div style="font-size:16px;color:var(--faint);letter-spacing:.02em;">{{ __('scoreboard::settings.btn_hint') }}</div>
         <div id="btnRows" style="display:flex;flex-direction:column;gap:10px;"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:10px;">
-          <button id="btnRowAdd" class="cbtn" style="color:var(--text);border:1px dashed var(--line-2);">+ {{ __('scoreboard::settings.btn_add') }}</button>
-          <button id="btnRowDefault" class="cbtn" style="color:var(--muted);border:1px solid var(--line-2);">{{ __('scoreboard::settings.btn_default') }}</button>
-          <button id="btnRowSave" class="cbtn" style="background:var(--gold);color:#000;border:none;">{{ __('scoreboard::settings.btn_save') }}</button>
+          <button id="btnRowAdd" class="cbtn" style="min-height:50px;font-size:17px;letter-spacing:.08em;padding:0 16px;color:var(--text);border:1px dashed var(--line-2);">+ {{ __('scoreboard::settings.btn_add') }}</button>
+          <button id="btnRowDefault" class="cbtn" style="min-height:50px;font-size:17px;letter-spacing:.08em;padding:0 16px;color:var(--muted);border:1px solid var(--line-2);">{{ __('scoreboard::settings.btn_default') }}</button>
+          <button id="btnRowSave" class="cbtn" style="min-height:50px;font-size:17px;letter-spacing:.08em;padding:0 16px;background:var(--gold);color:#000;border:none;">{{ __('scoreboard::settings.btn_save') }}</button>
         </div>
       </div>
 
@@ -213,9 +213,9 @@
         <div style="font-size:16px;color:var(--faint);letter-spacing:.02em;">{{ __('scoreboard::settings.pen_hint') }}</div>
         <div id="penRows" style="display:flex;flex-direction:column;gap:10px;"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:10px;">
-          <button id="penRowAdd" class="cbtn" style="color:var(--text);border:1px dashed var(--line-2);">+ {{ __('scoreboard::settings.'.$cs[0]) }}</button>
-          <button id="penRowDefault" class="cbtn" style="color:var(--muted);border:1px solid var(--line-2);">{{ __('scoreboard::settings.'.$cs[1]) }}</button>
-          <button id="penRowSave" class="cbtn" style="background:var(--gold);color:#000;border:none;">{{ __('scoreboard::settings.'.$cs[2]) }}</button>
+          <button id="penRowAdd" class="cbtn" style="min-height:50px;font-size:17px;letter-spacing:.08em;padding:0 16px;color:var(--text);border:1px dashed var(--line-2);">+ {{ __('scoreboard::settings.'.$cs[0]) }}</button>
+          <button id="penRowDefault" class="cbtn" style="min-height:50px;font-size:17px;letter-spacing:.08em;padding:0 16px;color:var(--muted);border:1px solid var(--line-2);">{{ __('scoreboard::settings.'.$cs[1]) }}</button>
+          <button id="penRowSave" class="cbtn" style="min-height:50px;font-size:17px;letter-spacing:.08em;padding:0 16px;background:var(--gold);color:#000;border:none;">{{ __('scoreboard::settings.'.$cs[2]) }}</button>
         </div>
       </div>
     @endif

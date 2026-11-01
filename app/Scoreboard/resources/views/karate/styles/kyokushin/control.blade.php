@@ -432,7 +432,7 @@
       'sport' => 'karate', 'L' => $L, 'z' => 21, 'inlineTabs' => true,
       'rulesView' => 'scoreboard::karate.scoreboard.partials.settings-rules', 'rulesData' => ['kyokushin' => true],
       'timer' => ['dur' => [3, 0], 'warn' => [0, 15], 'warnId' => 'ato', 'warnInk' => 'var(--aka-ink)', 'hint' => __('scoreboard::karate_messages.ctl_warning_hint')],
-      'sounds' => true, 'soundLabels' => [], 'perScreen' => true, 'customScoring' => 'buttons',
+      'sounds' => true, 'soundLabels' => [], 'perScreen' => true, 'customScoring' => 'points',
       'cameraUrl' => $cameraUrl ?? null, 'cameraCommandBase' => $cameraCommandBase ?? null,
       'photoGuideUrl' => $photoGuideUrl ?? null, 'vsLayoutUrl' => $vsLayoutUrl ?? null, 'ownScript' => false,
   ])
