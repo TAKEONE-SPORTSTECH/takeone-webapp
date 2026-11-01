@@ -44,7 +44,9 @@ class ScoreboardController extends Controller
     {
         return \App\Scoreboard\Sports\Karate\Styles\KarateStyles::of($event)
             ? \App\Scoreboard\Sports\Karate\Styles\KarateStyles::scoring($event)
-            : $this->scoring;
+            // No style: the shared engine plus the organiser's own Points and
+            // Fouls (Styles\Standard — unchanged until somebody designs some).
+            : app(\App\Scoreboard\Sports\Karate\Styles\Standard\Scoring::class);
     }
 
     /**

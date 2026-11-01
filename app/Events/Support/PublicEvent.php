@@ -16,7 +16,7 @@ use Illuminate\Support\Collection;
 /**
  * Exactly what a stranger may see about an event, and nothing else.
  *
- * Phase B of Documentation/EVENTS-PUBLIC-ENTRY.md. The page this feeds is
+ * Phase B of docs/events/public-entry.md. The page this feeds is
  * reachable with no account, so the safe answer cannot live in a Blade file
  * where the next person adds one more field to a loop and quietly publishes it.
  * It lives HERE, once: a poster's worth of facts.

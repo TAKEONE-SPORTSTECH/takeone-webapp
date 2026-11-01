@@ -284,7 +284,7 @@ return [
      | before fairness: a merge that fails a hard limit is never offered, and
      | one that needs a coach's / guardian's say-so is only done when the
      | organiser confirms that consent. The limits and where each came from:
-     | Documentation/DIVISION-MERGING.md. OFF by default (RULE #1).
+     | docs/events/division-merging.md. OFF by default (RULE #1).
      | EVENT_DIVISION_MERGE=true, then config:cache.
      */
     'division_merge' => [

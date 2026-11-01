@@ -2,7 +2,7 @@
 
 return [
     /*
-     * Parties & relationships (Documentation/major-change/PLAN.md).
+     * Parties & relationships (docs/plans/major-change/plan.md).
      *
      * `enabled` — the relationships table is written alongside the old
      * ownership/role sources (dual write). OFF: nothing writes it.

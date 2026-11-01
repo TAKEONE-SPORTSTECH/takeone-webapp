@@ -93,7 +93,7 @@ return [
     'trainer_show_email' => 'Email',
     'trainer_show_connect_social' => 'Connect on Social Media',
 
-    // Trainer profile — desktop (drafts/Club Pages & Design/Trainners)
+    // Trainer profile — desktop (drafts/clubs-and-trainers/Trainners)
     'tp_link_copied' => 'Link copied',
     'tp_on_platform' => ':time on TakeOne',
     'tp_message' => 'Message :name',

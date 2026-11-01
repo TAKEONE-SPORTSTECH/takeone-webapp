@@ -14,7 +14,7 @@ use App\Support\Modules\AbstractModule;
  * its line in config/modules.php) returns the platform to the old design.
  *
  * Nothing here is visible unless App\Ui\NewUi::active() says so; see
- * config/features.php `new_ui` and Documentation/major-change/NEW-UI.md.
+ * config/features.php `new_ui` and docs/plans/major-change/new-ui.md.
  */
 class Ui extends AbstractModule
 {

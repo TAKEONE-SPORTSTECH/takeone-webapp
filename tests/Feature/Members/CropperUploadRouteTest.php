@@ -14,7 +14,7 @@ use Tests\TestCase;
  * takeone/cropper package (security fix, 2026-10-31).
  *
  * The package's handler took no login, no throttle, and wrote to whatever
- * folder, filename and extension the client named. See docs/uploads.md.
+ * folder, filename and extension the client named. See docs/platform/uploads.md.
  */
 class CropperUploadRouteTest extends TestCase
 {

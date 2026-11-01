@@ -153,18 +153,17 @@ class KarateMatCornersTest extends TestCase
         $this->actingAs($this->createUser())->postJson("/karate/control/{$event->uuid}/corners", ['mat' => 'Mat 1', 'screens' => ['control']])->assertForbidden();
     }
 
-    public function test_only_the_combat_console_offers_the_screen_checkboxes(): void
+    /** Combat's per-screen sides are now every console's (the shared Settings, 2026-11-01). */
+    public function test_every_style_console_offers_the_screen_checkboxes(): void
     {
         config(['features.karate_style_boards' => true]);
         [$owner, $event] = $this->scenario();
 
-        $event->forceFill(['belt_system' => 'combat'])->save();
-        $this->actingAs($owner)->get("/karate/control/{$event->uuid}?mat=".urlencode('Mat 1'))
-            ->assertOk()->assertSee('id="cornerScreens"', false);
-
-        $event->forceFill(['belt_system' => 'shotokan'])->save();
-        $this->actingAs($owner)->get("/karate/control/{$event->uuid}?mat=".urlencode('Mat 1'))
-            ->assertOk()->assertDontSee('id="cornerScreens"', false);
+        foreach (['combat', 'shotokan'] as $style) {
+            $event->forceFill(['belt_system' => $style])->save();
+            $this->actingAs($owner)->get("/karate/control/{$event->uuid}?mat=".urlencode('Mat 1'))
+                ->assertOk()->assertSee('id="cornerScreens"', false);
+        }
     }
 
     public function test_the_mcp_tool_sets_one_screen(): void

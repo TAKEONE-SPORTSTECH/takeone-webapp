@@ -636,6 +636,7 @@ return [
     'templates_member_show_coaches_label' => 'Coaches:',
     'templates_member_show_media_certificates' => 'Media & Certificates:',
     'templates_member_show_reset_password_for' => 'Set a new password for',
+    'reset_password_not_allowed' => 'This account manages other people, so its password can only be changed by its owner (Forgot password) or a platform administrator.',
     'templates_member_show_new_password' => 'New Password',
     'templates_member_show_ph_min_8' => 'Min. 8 characters',
     'templates_member_show_confirm_new_password' => 'Confirm New Password',

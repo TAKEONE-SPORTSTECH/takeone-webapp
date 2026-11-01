@@ -724,6 +724,10 @@ class McpServerTest extends TestCase
         $this->assertArrayHasKey('score', $result);
         $this->assertNotEmpty($result['events']);
         $this->assertStringContainsString('/stats.pdf', $result['pdf_url']);
+        // What the Analytics tab adds: key moments, the corner words, a summary.
+        $this->assertArrayHasKey('moments', $result);
+        $this->assertArrayHasKey('corners', $result);
+        $this->assertNotSame('', $result['verdict']);
     }
 
     public function test_bout_stats_refuses_someone_who_neither_fought_nor_can_see_the_event(): void

@@ -11,12 +11,14 @@ use App\Clubs\Models\ClubFacility;
 use App\Clubs\Models\Tenant;
 use App\Members\Models\UserNotification;
 use App\Clubs\Concerns\HandlesClubAuthorization;
+use App\Traits\StoresBase64Images;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class ClubEventController extends Controller
 {
     use HandlesClubAuthorization;
+    use StoresBase64Images;
 
     /** Registrations for one event (participants + spectators), for the admin roster. */
     public function participants(Request $request, Tenant $club, $eventId)
@@ -312,15 +314,15 @@ class ClubEventController extends Controller
     {
         $paths = [];
         foreach ($base64List as $base64) {
-            if (! str_starts_with($base64, 'data:image')) {
-                continue;
+            // The real bytes decide the type and the extension — never the
+            // client's data-URI header (CLAUDE.md: Image Uploads Must Validate
+            // Real Bytes). Anything that is not a whitelisted image is skipped.
+            $path = is_string($base64)
+                ? $this->storeBase64Image($base64, 'clubs/'.$clubId.'/events', uniqid('event_'))
+                : null;
+            if ($path !== null) {
+                $paths[] = $path;
             }
-            [$meta, $imageData] = explode(',', $base64, 2);
-            preg_match('/image\/(\w+)/', $meta, $m);
-            $ext = $m[1] ?? 'jpg';
-            $path = 'clubs/'.$clubId.'/events/'.uniqid('event_').'.'.$ext;
-            Storage::disk('public')->put($path, base64_decode($imageData));
-            $paths[] = $path;
         }
 
         return $paths;

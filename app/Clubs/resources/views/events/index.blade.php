@@ -124,7 +124,7 @@ $eventsJson = $events->map(function($e) {
                                  rather than being managed through a second set of screens inside the club
                                  panel. Additive on purpose: the club-panel participants screen beside this
                                  still works for anyone who relies on it (registered in
-                                 Documentation/HOUSE-CLEANING.md as superseded). --}}
+                                 docs/platform/house-cleaning.md as superseded). --}}
                             <a href="{{ route('me.events.show', $event->uuid) }}"
                                class="btn btn-sm btn-outline-secondary" title="{{ __('personal.event_show_event') }}">
                                 <i class="bi bi-box-arrow-up-right"></i>

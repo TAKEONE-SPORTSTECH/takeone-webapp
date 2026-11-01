@@ -100,6 +100,11 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            // Reuse each web worker's connection across requests instead of a new
+            // TLS handshake every time (~18 ms). See docs/platform/performance.md.
+            'options' => extension_loaded('pdo_pgsql') ? [
+                PDO::ATTR_PERSISTENT => (bool) env('DB_PERSISTENT', false),
+            ] : [],
         ],
 
         // Target of `takeone:copy-to-pgsql` (the move off SQLite). Separate from

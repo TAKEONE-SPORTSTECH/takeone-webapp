@@ -9,7 +9,7 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 /**
  * Divisions from a spreadsheet — the organiser's own weight classes, typed
  * once in Excel instead of one form at a time (owner, 2026-10-15; reference
- * file: drafts/Categories - Our Own Categories.xlsx).
+ * file: drafts/entry-forms-and-data/Categories - Our Own Categories.xlsx).
  *
  * This class only READS a file and WRITES a template. It decides nothing
  * about whether a row is a valid division and creates nothing: every row is

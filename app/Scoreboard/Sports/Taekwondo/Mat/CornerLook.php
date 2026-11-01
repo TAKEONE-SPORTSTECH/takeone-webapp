@@ -76,9 +76,9 @@ final class CornerLook
         return Shared::rules(self::spec());
     }
 
-    public static function redRight(ClubEvent $event, string $court): bool
+    public static function redRight(ClubEvent $event, string $court, ?string $screen = null): bool
     {
-        return MatSides::redRight($event, $court, self::SPORT);
+        return MatSides::redRight($event, $court, self::SPORT, $screen);
     }
 
     public static function setRedRight(ClubEvent $event, string $court, bool $redRight): void

@@ -13,7 +13,7 @@ use Tests\TestCase;
 /**
  * The participant card on the public entry list — /e/{uuid}/participants.
  *
- * Ported from drafts/participant-card.html on 2026-09-16 and used as drawn. The
+ * Ported from drafts/events/participant-card.html on 2026-09-16 and used as drawn. The
  * tests here are about the two things the port can get wrong and nothing else
  * can catch:
  *

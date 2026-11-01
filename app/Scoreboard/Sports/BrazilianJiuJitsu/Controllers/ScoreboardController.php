@@ -94,6 +94,15 @@ class ScoreboardController extends Controller
             'cameraCommandBase' => \Illuminate\Support\Str::beforeLast(
                 route('me.events.mat-cameras.command', [$event->uuid, 0], false), '0'
             ),
+            // Settings → Photo guide / VS layout: platform-wide, super-admin only
+            // (App\Scoreboard\Support\LookController), with THE shared VS preview.
+            'photoGuideUrl' => Auth::user()?->isSuperAdmin() ? route('scoreboard.photo-guide', $event->uuid, false) : null,
+            'vsLayoutUrl' => Auth::user()?->isSuperAdmin() ? route('scoreboard.vs-layout', $event->uuid, false) : null,
+            'vsPreviewUrl' => route('bjj-scoreboard.players-vs-preview', $event->uuid, false),
+            // The Bouts card's Players tab — ORGANISERS only; null hides it.
+            'players' => \App\Scoreboard\Support\ConsolePlayers::console(
+                $event, Auth::user(), $court, null, route('me.events.bracket', $event->uuid)
+            ),
         ]);
     }
 
@@ -127,7 +136,7 @@ class ScoreboardController extends Controller
      * it would rewrite every reference for no behavioural gain (RULE #1).
      * mobile/control.blade.php, react/control-mobile.blade.php and
      * console-mobile-styles.blade.php are now unreferenced and are registered
-     * in Documentation/HOUSE-CLEANING.md — NOT deleted here, so this is one
+     * in docs/platform/house-cleaning.md — NOT deleted here, so this is one
      * line to reverse if a referee ever does want the thumb console back.
      */
     private function consoleView(ClubEvent $event, $mats, string $court, array $urls)
@@ -186,7 +195,9 @@ class ScoreboardController extends Controller
             // Which side of THIS mat the red corner (side A, `blue` in the data)
             // physically stands on, and each corner's name and colour for the
             // event (App\Scoreboard\Corners) — the sport's own when unset.
-            'redRight' => \App\Scoreboard\Corners\MatSides::redRight($event, $court, self::SPORT),
+            'redRight' => \App\Scoreboard\Corners\MatSides::redRight($event, $court, self::SPORT, 'control'),
+            // Each screen of this mat, for the Settings' per-screen sides.
+            'cornerScreens' => \App\Scoreboard\Corners\MatSides::screens($event, $court, self::SPORT),
             'look' => \App\Scoreboard\Sports\BrazilianJiuJitsu\Mat\CornerLook::for($event),
         ] + \Illuminate\Support\Arr::except($urls, ['consoleStateUrl']) + [
             'cornersUrl' => null,
@@ -197,6 +208,7 @@ class ScoreboardController extends Controller
             'cameraUrl' => null,
             'cameraCommandBase' => null,
             'catalogueUrl' => null,
+            'players' => null,
         ]);
     }
 
@@ -262,6 +274,12 @@ class ScoreboardController extends Controller
             'cameraCommandBase' => \Illuminate\Support\Str::beforeLast(
                 route('bjj-scoreboard.token-cameras.command', [$token, 0], false), '0'
             ),
+            // The Players tab through the table's token — only when the
+            // organiser who paired it may MANAGE the event, not merely score.
+            'players' => \App\Scoreboard\Support\ConsolePlayers::console(
+                $event, $this->actor, $device->court, $token,
+                \App\Events\Support\TabletDraw::enabled() ? route('tablet.draw', $token) : null
+            ),
         ]);
     }
 
@@ -277,30 +295,42 @@ class ScoreboardController extends Controller
 
         $data = $request->validate([
             'mat' => ['required', 'string', 'max:40'],
-            'red_right' => ['required', 'boolean'],
+            'red_right' => ['required_without:screens', 'boolean'],
+            // Swap only these screens (the shared Settings' per-screen sides).
+            'screens' => ['sometimes', 'array', 'min:1', 'max:3'],
+            'screens.*' => ['string', 'in:'.implode(',', \App\Scoreboard\Corners\MatSides::SCREENS)],
         ]);
 
         abort_unless($this->matExists($event, $data['mat']), 404);
 
-        return $this->applyCorners($event, $data['mat'], (bool) $data['red_right']);
+        return $this->applyCorners($event, $data['mat'], (bool) ($data['red_right'] ?? false), $data['screens'] ?? null);
     }
 
     public function tokenCorners(Request $request, string $token): JsonResponse
     {
         [$device, $event] = $this->controlDevice($token);
 
-        $data = $request->validate(['red_right' => ['required', 'boolean']]);
+        $data = $request->validate([
+            'red_right' => ['required_without:screens', 'boolean'],
+            'screens' => ['sometimes', 'array', 'min:1', 'max:3'],
+            'screens.*' => ['string', 'in:'.implode(',', \App\Scoreboard\Corners\MatSides::SCREENS)],
+        ]);
 
-        return $this->applyCorners($event, $device->court, (bool) $data['red_right']);
+        return $this->applyCorners($event, $device->court, (bool) ($data['red_right'] ?? false), $data['screens'] ?? null);
     }
 
-    private function applyCorners(ClubEvent $event, string $court, bool $redRight): JsonResponse
+    private function applyCorners(ClubEvent $event, string $court, bool $redRight, ?array $screens = null): JsonResponse
     {
-        \App\Scoreboard\Corners\MatSides::set($event, $court, $redRight, self::SPORT);
+        // Some screens only (MatSides::flip), or the whole mat as before.
+        if ($screens) {
+            \App\Scoreboard\Corners\MatSides::flip($event, $court, array_values($screens), self::SPORT);
+        } else {
+            \App\Scoreboard\Corners\MatSides::set($event, $court, $redRight, self::SPORT);
+        }
 
         \Illuminate\Support\Facades\Log::info('bjj.corners', [
-            'event' => $event->uuid, 'mat' => $court, 'red' => $redRight ? 'right' : 'left',
-            'by' => $this->actingUser()?->id,
+            'event' => $event->uuid, 'mat' => $court, 'red' => $screens ? 'flip' : ($redRight ? 'right' : 'left'),
+            'screens' => $screens, 'by' => $this->actingUser()?->id,
         ]);
 
         ScreenChannel::notifyCourt($event, $court, ['action' => 'corners']);
@@ -309,6 +339,7 @@ class ScoreboardController extends Controller
             'success' => true,
             'message' => __('scoreboard::corners.saved'),
             'red_right' => \App\Scoreboard\Corners\MatSides::redRight($event->fresh(), $court, self::SPORT),
+            'screens' => \App\Scoreboard\Corners\MatSides::screens($event->fresh(), $court, self::SPORT),
         ]);
     }
 

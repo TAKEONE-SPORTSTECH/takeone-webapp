@@ -177,7 +177,7 @@ class BulkEntryTest extends TestCase
     /* ---------------- It is not a bypass ---------------- */
 
     /**
-     * CHANGED 2026-08-16 — Phase 1 of Documentation/EVENTS-ENTRY-BILLING.md.
+     * CHANGED 2026-08-16 — Phase 1 of docs/events/entry-billing.md.
      *
      * A missing weight used to REFUSE a club entry. It no longer does: the
      * sports' `no_weight` gate now returns a DEFERRABLE refusal
@@ -354,7 +354,7 @@ class BulkEntryTest extends TestCase
         // CHANGED 2026-08-16 — entry authority is the `enter-athletes`
         // PERMISSION now, not the `club-admin` role slug
         // (EntryService::administeredClubIds(), Phase 1 of
-        // Documentation/EVENTS-ENTRY-BILLING.md). Production grants it to
+        // docs/events/entry-billing.md). Production grants it to
         // club-admin through the migration + RolePermissionSeeder; the bare
         // test role carries no permissions, so the grant is made here to model
         // the real club-admin rather than to loosen the rule. The test below

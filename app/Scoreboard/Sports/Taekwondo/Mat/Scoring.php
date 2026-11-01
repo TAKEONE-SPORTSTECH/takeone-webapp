@@ -408,38 +408,29 @@ class Scoring
      */
     private function corner(EventMatch $match, string $side, $registrations, ClubEvent $event): array
     {
+        // One answer for every VS screen (Scoreboard\Support\VsCorner): name,
+        // club, the event's flag rule, crest, framing, stand-in, record, belt
+        // and the stat line — the same facts the Karate mats announce.
+        $corner = app(\App\Scoreboard\Support\VsCorner::class)->corner($match, $side, $registrations);
+
         $id = $match->{$side.'_competitor_id'};
         $reg = $id ? $registrations->get($id) : null;
-        $user = $reg?->user;
-        // The club they COMPETE FOR — see ClubEventRegistration::competingClub().
         $club = $reg?->competingClub();
-        $belt = $user ? $this->belts->for($user, $reg) : null;
 
-        return [
-            'name' => $match->{$side.'_name'} ?: ($user?->full_name ?? $user?->name ?? ''),
-            'club' => $club?->club_name ?? '',
-            // The club's country, never the person's passport: they are here
-            // as their club, and that is what the hall is told.
-            'country' => $club?->country ?: ($match->{$side.'_country'} ?: ''),
-            'flag' => strtolower((string) ($match->{$side.'_country'} ?: $club?->country ?: '')) ?: null,
-            // Same resolver as the picture: the crest an official supplied for
-            // this event first, then one supplied for this club anywhere in it,
-            // then the club's own logo.
-            'logo' => $this->photos->crestUrl($reg, $club, $event->id),
-            // One resolver for every screen — the event's own photo first, then
-            // one this person already has on another entry in this event, then
-            // their account picture only if they published it. See
-            // App\Events\Sports\Taekwondo\Tournament\CompetitorPhoto.
-            'photo' => $this->photos->url($reg, $user, $event->id),
-            'belt' => $belt['label'] ?? null,
-            'record' => $this->record($user?->id),
-            // Each part is null when unknown, and the screen hides what is null
-            // rather than printing a placeholder — invented detail on a hall
-            // screen reads as fact.
-            'age' => $user?->birthdate ? $user->birthdate->age : null,
-            'height' => $user?->height_cm ?: null,
-            'weight' => $reg?->weight ? (float) $reg->weight : null,
-        ];
+        // Taekwondo keeps its own picture and crest resolver — the event's own
+        // photo first, then one this person has on another entry in this event,
+        // then their account picture only if they published it (App\Events\
+        // Sports\Taekwondo\Tournament\CompetitorPhoto) — so its screens show
+        // exactly the faces they always have. A framing set for a different
+        // picture does not apply to this one.
+        $photo = $this->photos->url($reg, $reg?->user, $event->id);
+        if ($photo !== $corner['photo']) {
+            $corner['vs_frame'] = null;
+        }
+        $corner['photo'] = $photo;
+        $corner['logo'] = $this->photos->crestUrl($reg, $club, $event->id) ?: $corner['logo'];
+
+        return $corner;
     }
 
     private function start(MatState $state): void

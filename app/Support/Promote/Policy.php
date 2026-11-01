@@ -26,6 +26,7 @@ final class Policy
      */
     public const SKIP = [
         'migrations' => 'schema history — each server keeps its own',
+        'promotion_map' => "each side's own record of earlier runs — read by the Planner, never copied",
         'cache' => 'cache', 'cache_locks' => 'cache',
         'sessions' => 'logins on staging',
         'jobs' => 'queue', 'job_batches' => 'queue', 'failed_jobs' => 'queue',

@@ -51,7 +51,7 @@ return [
         \App\Events\League\League::class,
 
         // TODO — port the remaining types out of the generic bucket. Each
-        // lives under its SPORT's folder (see Documentation/EVENTS.md):
+        // lives under its SPORT's folder (see docs/events/events.md):
         // \App\Events\Sports\Taekwondo\BeltTest\BeltTest::class,
         // \App\Events\Sports\Taekwondo\Poomsae\Poomsae::class,
     ],

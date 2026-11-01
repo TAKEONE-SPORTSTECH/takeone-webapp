@@ -601,6 +601,11 @@ class Scoring
             ? ['name' => $club->club_name, 'logo' => $club->logo ? file_url($club->logo) : null, 'country' => $club->country]
             : ($id ? ($written[$id] ?? null) : null);
 
+        // One answer for every VS screen (Scoreboard\Support\VsCorner) — its
+        // record, photo framing and nationality — with BJJ's own club and flag
+        // rule laid over it below (an override typed at this table wins).
+        $shared = app(\App\Scoreboard\Support\VsCorner::class)->corner($match, $side, $registrations, $written);
+
         return [
             'name' => $match->{$side.'_name'} ?: ($user?->full_name ?? $user?->name ?? ''),
             'club' => $named['name'] ?? '',
@@ -627,6 +632,9 @@ class Scoring
             'age' => $user?->birthdate ? $user->birthdate->age : null,
             'height' => $user?->height_cm ?: null,
             'weight' => $reg?->weight ? (float) $reg->weight : null,
+            'record' => $shared['record'],
+            'vs_frame' => $shared['vs_frame'],
+            'nationality' => $shared['nationality'],
         ];
     }
 
@@ -1113,7 +1121,7 @@ class Scoring
         // The other way out of a stalling count: points to the corner that was
         // being stalled against, rather than a penalty against the one that
         // stalled. Asked for 2026-09-10 — it is the second half of the
-        // threshold card in drafts/Score Control Board.html.
+        // threshold card in drafts/scoreboards/Score Control Board.html.
         //
         // The console sends the AMOUNT and nothing else, and the amount is held
         // to Ledger::STALL_AWARDS here as well as at the endpoint: the console

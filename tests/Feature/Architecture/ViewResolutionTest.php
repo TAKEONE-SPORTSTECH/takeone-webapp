@@ -199,7 +199,7 @@ class ViewResolutionTest extends TestCase
      * eventBracket, challenge, duelShow, challengeHistory) have NO route —
      * `route:list` matches zero. They point at flat view names that the
      * mobile/desktop split replaced, and were never updated because nothing
-     * ever calls them. Registered in Documentation/HOUSE-CLEANING.md rather
+     * ever calls them. Registered in docs/platform/house-cleaning.md rather
      * than deleted in passing.
      */
     private const KNOWN_DEAD_REFERENCES = [

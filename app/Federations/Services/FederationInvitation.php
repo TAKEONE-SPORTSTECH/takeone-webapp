@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
 use RuntimeException;
+use App\Federations\Support\ClubRecognition;
 
 /**
  * The public side: a club opening an event's invitation link, proving who it
@@ -530,6 +531,10 @@ class FederationInvitation
         if ($mode === 'existing' && ! $club) {
             return ['ok' => false, 'message' => 'Verify your club again to continue.'];
         }
+        // A ranked national event takes only clubs recognised for the season (federations.club_fees).
+        if ($refused = ClubRecognition::entryRefusal($e, $club)) {
+            return ['ok' => false, 'code' => 'club_not_recognised', 'message' => $refused];
+        }
         if ($mode === 'new') {
             $c = (array) ($p['club'] ?? []);
             $match = $this->existingClubFor($e, $c);
@@ -873,6 +878,10 @@ class FederationInvitation
         // A bulk import may leave the category to be completed later ($categoryOptional).
         if ($allowed !== [] && $picked === [] && ! $categoryOptional) {
             return ['ok' => false, 'message' => 'Pick at least one category.'];
+        }
+        // Staff cannot enter an unrecognised club's athlete into a ranked event either (federations.club_fees).
+        if ($refused = ClubRecognition::entryRefusal($e, $club)) {
+            return ['ok' => false, 'message' => $refused];
         }
 
         try {

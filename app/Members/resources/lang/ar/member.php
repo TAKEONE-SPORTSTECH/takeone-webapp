@@ -963,6 +963,7 @@ return [
     'templates_member_show_pts' => 'نقطة',
     'templates_member_show_reset_password' => 'إعادة تعيين كلمة المرور',
     'templates_member_show_reset_password_for' => 'عيّن كلمة مرور جديدة لـ',
+    'reset_password_not_allowed' => 'هذا الحساب يدير أشخاصاً آخرين، لذا لا يمكن تغيير كلمة مروره إلا من صاحبه (نسيت كلمة المرور) أو من مسؤول المنصة.',
     'templates_member_show_reset_success_title' => 'نجاح',
     'templates_member_show_resetting' => 'جارٍ إعادة التعيين...',
     'templates_member_show_revenue_chart_coming' => 'سيتوفّر مخطط الإيرادات قريبًا...',

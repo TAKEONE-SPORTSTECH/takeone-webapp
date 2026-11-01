@@ -427,23 +427,35 @@ class WizardRegistrationController extends Controller
 
             // Optionally register NEW children as dependents under this account.
             foreach (($request->children ?? []) as $childData) {
-                $child = User::create([
-                    'name' => $childData['full_name'],
-                    'full_name' => $childData['full_name'],
-                    'email' => null,
-                    'password' => Hash::make(Str::random(32)),
-                    'gender' => $childData['gender'],
-                    'birthdate' => $childData['birthdate'],
-                    'nationality' => $childData['nationality'] ?? null,
-                    'health_conditions' => $this->parseHealthConditions($childData['health_conditions'] ?? null),
-                ]);
+                /*
+                 * duplicates.guard.registration: a returning parent re-entering
+                 * a child already in THEIR family enrols that child rather than
+                 * creating a second one. Only this parent's own dependents are
+                 * searched — never anyone else's.
+                 */
+                $child = config('duplicates.guard.registration', false)
+                    ? app(\App\Members\Support\FamilyService::class)->existingDependent($parentUser, $childData['full_name'] ?? null, $childData['birthdate'] ?? null)
+                    : null;
 
-                UserRelationship::create([
-                    'guardian_user_id' => $parentUser->id,
-                    'dependent_user_id' => $child->id,
-                    'relationship_type' => $childData['relationship'] ?? 'parent',
-                    'is_billing_contact' => true,
-                ]);
+                if (! $child) {
+                    $child = User::create([
+                        'name' => $childData['full_name'],
+                        'full_name' => $childData['full_name'],
+                        'email' => null,
+                        'password' => Hash::make(Str::random(32)),
+                        'gender' => $childData['gender'],
+                        'birthdate' => $childData['birthdate'],
+                        'nationality' => $childData['nationality'] ?? null,
+                        'health_conditions' => $this->parseHealthConditions($childData['health_conditions'] ?? null),
+                    ]);
+
+                    UserRelationship::create([
+                        'guardian_user_id' => $parentUser->id,
+                        'dependent_user_id' => $child->id,
+                        'relationship_type' => $childData['relationship'] ?? 'parent',
+                        'is_billing_contact' => true,
+                    ]);
+                }
 
                 if (! empty($childData['packages'])) {
                     $this->createSubscriptions($tenant, $child, $childData['packages'], $paymentStatus, $proofPath, $childData['equipment'] ?? [], $groupId, $childData['equipment_variants'] ?? [], $childData['owned_equipment'] ?? []);
@@ -466,8 +478,10 @@ class WizardRegistrationController extends Controller
                     $parentUser->markEmailAsVerified();   // straight in, no email needed
                     $redirect = $intended;
                 } else {
-                    // Normal path: send the verification email and gate on it.
-                    event(new Registered($parentUser));
+                    // Normal path: gate on verification. The ONE verification
+                    // mail is the explicit WelcomeEmail below (it carries the
+                    // intended URL); no `Registered` event, whose listener queued
+                    // a duplicate (2026-10-31).
                     $redirect = route('verification.notice');
                 }
                 Auth::login($parentUser, true);

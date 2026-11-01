@@ -14,7 +14,7 @@
 @endif
 
 {{--
-    The club's front page — DESKTOP. Design source: drafts/Club Pages & Design/Club/
+    The club's front page — DESKTOP. Design source: drafts/clubs-and-trainers/Club/
     emperor-academy-desktop-complete.html. Its phone twin is clubs::public.mobile.show;
     both read the same data (App\Clubs\Support\ClubFrontPage), styles (page-style), behaviour
     (page-runtime) and overlays (page-overlays).

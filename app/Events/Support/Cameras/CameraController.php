@@ -956,7 +956,7 @@ class CameraController extends Controller
                     'stage' => (string) ($exhibition ? 'Exhibition' : ($match->round ?: $match->phase ?: '')),
                     'match' => $exhibition ? 'EX'.$exhibition->number : ($match->match_no !== null ? (string) $match->match_no : ''),
                     'court' => (string) ($match->court ?? ''),
-                ],
+                ] + $this->vsShared($event, $match),
                 'title' => $title,
                 // The closing statistics card: the sheet minus the rows a card
                 // never draws, and the sport's own words for each score value.
@@ -968,6 +968,51 @@ class CameraController extends Controller
                 'filename' => ['full' => $filename('full'), 'highlights' => $filename('highlights')],
             ],
         ));
+    }
+
+    /**
+     * What every other VS screen shows and this one should too — the same facts
+     * the mats and the bout page read (App\Scoreboard\Support\VsCorner), the
+     * platform's VS layout (VsLayout) and the event's corner look. Additive: an
+     * older camera build ignores keys it does not know.
+     *
+     * @return array<string, mixed>
+     */
+    private function vsShared(\App\Events\Models\ClubEvent $event, EventMatch $match): array
+    {
+        $vs = app(\App\Scoreboard\Support\VsCorner::class);
+        $bout = $vs->forBout($event, $match);
+        $look = $vs->look($event);
+
+        $corner = function (array $c, array $l) {
+            return [
+                'record' => $c['record'] ?? null,
+                'belt' => $c['belt'] ?? null,
+                'age' => $c['age'] ?? null,
+                'height' => $c['height'] ?? null,
+                'weight' => $c['weight'] ?? null,
+                'vs_frame' => $c['vs_frame'] ?? null,
+                'country' => $c['country'] ?? null,
+                // The corner's look, as the mats paint it (Corners\CornerLook).
+                'badge' => $l['badge'] ?? null,
+                'badge_bg' => $l['badgeBg'] ?? null,
+                'badge_ink' => $l['badgeInk'] ?? null,
+                'panel' => $l['vsPanel'] ?? null,
+                'glow' => $l['vsGlow'] ?? null,
+                'country_ink' => $l['countryInk'] ?? null,
+            ];
+        };
+
+        return [
+            'layout' => \App\Scoreboard\Support\VsLayout::get(),
+            'red_right' => (bool) $look['redRight'],
+            'division' => $bout['division'],
+            'referee' => $bout['referee'],
+            'corners' => [
+                'red' => $corner($bout['aka'], $look['look']['aka']),
+                'blue' => $corner($bout['ao'], $look['look']['ao']),
+            ],
+        ];
     }
 
     /**

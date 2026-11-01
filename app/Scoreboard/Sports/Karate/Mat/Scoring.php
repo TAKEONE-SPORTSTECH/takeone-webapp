@@ -466,20 +466,7 @@ class Scoring
      */
     private function officiatingName(ClubEvent $event): ?string
     {
-        $full = $event->officials()
-            ->where('role', EventOfficial::ROLE_JURY)
-            ->with('user:id,full_name,name')
-            ->first()?->user?->full_name;
-
-        if (! $full) {
-            return null;
-        }
-
-        $parts = preg_split('/\s+/', trim($full), -1, PREG_SPLIT_NO_EMPTY) ?: [];
-
-        return count($parts) < 2
-            ? ($parts[0] ?? null)
-            : mb_substr($parts[0], 0, 1).'. '.end($parts);
+        return app(\App\Scoreboard\Support\VsCorner::class)->officiatingName($event);
     }
 
     /**
@@ -493,31 +480,7 @@ class Scoring
      */
     private function record(?int $userId): ?string
     {
-        if (! $userId) {
-            return null;
-        }
-
-        $entries = ClubEventRegistration::where('user_id', $userId)->pluck('id');
-
-        if ($entries->isEmpty()) {
-            return null;
-        }
-
-        $bouts = EventMatch::whereNotNull('winner')
-            ->where(fn ($q) => $q->whereIn('a_competitor_id', $entries)->orWhereIn('b_competitor_id', $entries))
-            ->get(['a_competitor_id', 'b_competitor_id', 'winner']);
-
-        if ($bouts->isEmpty()) {
-            return null;   // no history yet — the chip is hidden, not zeroed
-        }
-
-        $won = $bouts->filter(function (EventMatch $m) use ($entries) {
-            $side = $entries->contains($m->a_competitor_id) ? 'a' : 'b';
-
-            return $m->winner === $side;
-        })->count();
-
-        return $won.'W – '.($bouts->count() - $won).'L';
+        return app(\App\Scoreboard\Support\VsCorner::class)->record($userId);
     }
 
     /**
@@ -550,66 +513,8 @@ class Scoring
      */
     private function corner(EventMatch $match, string $side, $registrations, array $written = []): array
     {
-        $id = $match->{$side.'_competitor_id'};
-        $reg = $id ? $registrations->get($id) : null;
-        $user = $reg?->user;
-        // The club they COMPETE FOR — see ClubEventRegistration::competingClub().
-        $club = $reg?->competingClub();
-        $belt = $user ? $this->belts->for($user, $reg) : null;
-        // A tenant wins when the entry names one; otherwise the club the
-        // organiser wrote down for this event stands in, name and crest alike.
-        $other = (! $club && $id) ? ($written[$id] ?? null) : null;
-
-        // The flag in the bracket's order (as HallScreen\CourtDisplay does):
-        // countryCode() first, because it alone obeys the event's flag switch
-        // (App\Events\Support\FlagSource) — club country, or the athlete's
-        // nationality. Then the written-down club, then the bout's copy.
-        $country = (string) (($reg?->countryCode() ?: '')
-            ?: ($club?->country ?: ($other['country'] ?? ''))
-            ?: ($match->{$side.'_country'} ?: ''));
-
-        return [
-            'name' => $match->{$side.'_name'} ?: ($user?->full_name ?? $user?->name ?? ''),
-            'club' => $club?->club_name ?? ($other['name'] ?? ''),
-            // One answer for the word and the flag (see $country above).
-            'country' => $country,
-            'flag' => strtolower((string) (\App\Support\Countries::iso2($country) ?: $country)) ?: null,
-            // The person's own nationality, as an alpha-2 flag code. Read by
-            // the Combat style's VS arena only (the owner's call, 2026-10-16):
-            // the intro presents the athlete, the scoreboard still presents
-            // the club. Null when unknown — the VS falls back to the club.
-            'nationality' => \App\Support\Countries::iso2($user?->nationality),
-            'logo' => $club?->logo ? file_url($club->logo) : ($other['logo'] ?? null),
-            // The event's OWN photo wins, then the member's profile picture if
-            // they published it. The first was uploaded by an organiser FOR this
-            // competition — including for the many competitors who have no
-            // account to have a profile picture on — so it needs no privacy gate
-            // beyond the one that put it there. The second is somebody's private
-            // picture and keeps its gate: a hall screen is a publication.
-            'photo' => $reg?->photo
-                ? file_url($reg->photo)
-                : (($user?->profile_picture && $user->profile_picture_is_public)
-                    ? file_url($user->profile_picture)
-                    : null),
-            // How that photo is PLACED on the VS screen — a zoom and a focal
-            // point over the untouched original (App\Scoreboard\Models\
-            // PhotoVsFrame), set per person in the console's Players tab.
-            // Null: the panel's own framing, as always.
-            'vs_frame' => \App\Scoreboard\Models\PhotoVsFrame::payloadFor($reg?->photo
-                ?: (($user?->profile_picture && $user->profile_picture_is_public) ? $user->profile_picture : null)),
-            // The drawn stand-in, for a corner with no picture of their own.
-            // Always present — see App\Members\Support\Avatar for why an unknown
-            // gender takes the male artwork rather than nothing.
-            'fallback' => \App\Members\Support\Avatar::placeholder($user?->gender),
-            'belt' => $belt['label'] ?? null,
-            'record' => $this->record($user?->id),
-            // The stat line. Each part is null when unknown, and the screen
-            // hides what is null rather than printing a placeholder — invented
-            // detail on a hall screen reads as fact.
-            'age' => $user?->birthdate ? $user->birthdate->age : null,
-            'height' => $user?->height_cm ?: null,
-            'weight' => $reg?->weight ? (float) $reg->weight : null,
-        ];
+        // One answer for every VS screen (Scoreboard\Support\VsCorner).
+        return app(\App\Scoreboard\Support\VsCorner::class)->corner($match, $side, $registrations, $written);
     }
 
     private function start(MatState $state): void

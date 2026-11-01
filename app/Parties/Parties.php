@@ -6,7 +6,7 @@ use App\Support\Modules\AbstractModule;
 
 /**
  * Parties & relationships — who holds what role in which party, and since when
- * (Documentation/major-change/PLAN.md).
+ * (docs/plans/major-change/plan.md).
  *
  * Everyone and everything on TakeOne is a party: a person, a club, a chain, a
  * federation, an event — later a clinic, a trainer's practice, a venue. Every

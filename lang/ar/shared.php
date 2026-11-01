@@ -488,6 +488,7 @@ return [
     'invoices_show_modal_owner' => 'المالك',
     'invoices_show_modal_paid' => 'مدفوعة',
     'invoices_show_modal_pay_now' => 'الدفع الآن',
+    'invoices_paid_by_club' => 'ادفع لناديك مباشرة، وسيقوم النادي بتأشير الفاتورة كمدفوعة عند استلام المبلغ.',
     'invoices_show_modal_pending' => 'قيد الانتظار',
     'invoices_show_modal_status' => 'الحالة:',
     'invoices_show_modal_student_information' => 'معلومات المتدرب',

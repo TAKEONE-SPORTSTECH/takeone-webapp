@@ -16,7 +16,7 @@ use App\Sports\Combat\SportRegistry;
  * (App\Media\BoutShare, the MCP) is built by the same rules as what is drawn
  * ON it. BoutVideoController::playPayload() still builds its own copy for the
  * page; tests/Feature/BoutShareTest proves the two are identical, and moving
- * the page onto this class is registered in Documentation/HOUSE-CLEANING.md.
+ * the page onto this class is registered in docs/platform/house-cleaning.md.
  */
 class BoutScoreboard
 {
@@ -52,13 +52,13 @@ class BoutScoreboard
                 'name' => $red['name'],
                 'flag' => strtolower((string) $red['country']),
                 'club' => $red['club'],
-                'club_logo' => null,
+                'club_logo' => $red['club_logo'],
             ],
             'blue' => [
                 'name' => $blue['name'],
                 'flag' => strtolower((string) $blue['country']),
                 'club' => $blue['club'],
-                'club_logo' => null,
+                'club_logo' => $blue['club_logo'],
             ],
             'rounds' => collect($timeline['rounds'])->map(fn (array $r) => [
                 'n' => $r['number'],
@@ -79,7 +79,9 @@ class BoutScoreboard
             'name' => $match->{$side.'_name'},
             'colour' => $match->{$side.'_corner'} ?: ($side === 'a' ? 'red' : 'blue'),
             'country' => $reg?->countryCode() ?: $match->{$side.'_country'},
-            'club' => $reg?->competingClub()?->club_name,
+            'club' => ($club = $reg?->competingClub())?->club_name,
+            // The crest they competed under, as the VS card reads it (BoutArena).
+            'club_logo' => $club?->logo ? file_url($club->logo) : null,
         ];
     }
 

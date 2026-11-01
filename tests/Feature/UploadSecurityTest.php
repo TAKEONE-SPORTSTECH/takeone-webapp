@@ -166,4 +166,33 @@ class UploadSecurityTest extends TestCase
             ]))
             ->assertNotFound();
     }
+    /**
+     * Club event and achievement photos used to take their extension from the
+     * data-URI header (`data:image/html` → `.html`) and write the raw bytes to
+     * the public disk — a stored-XSS path on our own domain. Both savers now go
+     * through StoresBase64Images. Called directly: the endpoints wrap them in a
+     * whole event / achievement form, and the hole was in these two methods.
+     */
+    public function test_club_event_and_achievement_images_are_checked_by_their_bytes(): void
+    {
+        $html = 'data:image/html;base64,'.base64_encode('<html><script>alert(1)</script></html>');
+
+        foreach ([
+            [\App\Clubs\Controllers\ClubEventController::class, 'saveEventBase64Images', 'clubs/7/events/'],
+            [\App\Clubs\Controllers\ClubAchievementController::class, 'saveAchievementBase64Images', 'clubs/7/achievements/'],
+        ] as [$class, $method, $folder]) {
+            $save = new \ReflectionMethod($class, $method);
+            $controller = app($class);
+
+            $paths = $save->invoke($controller, [$html, $this->disguisedPhp(), $this->validPng(), ['not-a-string']], 7);
+
+            // Only the real PNG is kept, under the same folder as before, with an
+            // extension the server chose.
+            $this->assertCount(1, $paths, $method);
+            $this->assertStringStartsWith($folder, $paths[0]);
+            $this->assertStringEndsWith('.png', $paths[0]);
+            Storage::disk('public')->assertExists($paths[0]);
+            $this->assertCount(1, Storage::disk('public')->allFiles(rtrim($folder, '/')), $method.' wrote a rejected file');
+        }
+    }
 }

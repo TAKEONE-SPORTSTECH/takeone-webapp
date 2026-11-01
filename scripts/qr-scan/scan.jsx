@@ -1,5 +1,5 @@
 /**
- * The QR scan test (docs/qr-designer-study.md, Part 2 §6). Draws every body ×
+ * The QR scan test (docs/research/qr-designer-study.md, Part 2 §6). Draws every body ×
  * eye-frame × eye-centre combination, every preset and every gradient through
  * the REAL QrSvg, rasterises each one and decodes it with jsQR. Run by
  * scripts/qr-scan/run.sh inside headless Chromium; never shipped to users.

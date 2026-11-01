@@ -184,7 +184,38 @@ class FederationRegistry
     /** Where the athlete competes now, in this federation tree. */
     public function currentClub(FederationAthlete $a, Collection $federationIds): ?FederationAthleteClub
     {
-        return $a->clubs()->whereIn('federation_id', $federationIds)->whereNull('to_ym')->latest('id')->first();
+        return $this->clubRows($a, $federationIds)->whereNull('to_ym')->sortByDesc('id')->first();
+    }
+
+    /**
+     * Eager-load spec for an athlete's club history, so a page listing many
+     * athletes reads it in a few queries instead of several per athlete (the
+     * Results page ran 4,000+ on PostgreSQL). Pass the relation path that leads
+     * to the athlete, e.g. `withClubs('athlete.')`.
+     *
+     * @return array<string, \Closure|string>
+     */
+    public static function withClubs(string $prefix = ''): array
+    {
+        return [
+            $prefix.'clubs' => fn ($q) => $q->orderBy('from_ym')->orderBy('id'),
+            $prefix.'clubs.club.club',
+            $prefix.'clubs.application',
+        ];
+    }
+
+    /**
+     * The athlete's club rows in this federation tree, oldest first: what the
+     * caller eager-loaded (withClubs()), otherwise one fresh query. Never
+     * stored on the model, so a later change in the same request is seen.
+     */
+    private function clubRows(FederationAthlete $a, Collection $federationIds): Collection
+    {
+        $rows = $a->relationLoaded('clubs')
+            ? $a->clubs
+            : $a->clubs()->with(['club.club', 'application'])->orderBy('from_ym')->orderBy('id')->get();
+
+        return $rows->whereIn('federation_id', $federationIds->all())->values();
     }
 
     /**
@@ -237,7 +268,7 @@ class FederationRegistry
             return $row;
         }
 
-        $hist = $a->clubs()->whereIn('federation_id', $federationIds)->orderBy('from_ym')->orderBy('id')->get()
+        $hist = $this->clubRows($a, $federationIds)
             ->map(fn (FederationAthleteClub $h) => ['clubId' => $this->clubKeyOf($h), 'clubName' => $this->clubNameOf($h), 'from' => $h->from_ym, 'to' => $h->to_ym])->all();
 
         return $row + [
@@ -538,7 +569,7 @@ class FederationRegistry
             'log' => $entry->log ?: [],
             'createdAt' => $entry->created_at?->getTimestampMs(),
             'updatedAt' => $entry->updated_at?->getTimestampMs(),
-            'athletes' => $entry->athletes()->with('athlete.user')->orderBy('id')->get()->map(function (FederationEntryAthlete $ea) use ($federationIds) {
+            'athletes' => $entry->athletes()->with(['athlete.user', ...self::withClubs('athlete.')])->orderBy('id')->get()->map(function (FederationEntryAthlete $ea) use ($federationIds) {
                 $a = $this->athlete($ea->athlete, $federationIds);
 
                 return [

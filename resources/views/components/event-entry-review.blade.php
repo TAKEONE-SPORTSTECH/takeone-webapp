@@ -9,7 +9,7 @@
     The organiser's queue: strangers who followed the public link and asked to
     compete.
 
-    Documentation/EVENTS-PUBLIC-ENTRY.md, Phase C. Accepting one is the moment a
+    docs/events/public-entry.md, Phase C. Accepting one is the moment a
     request becomes an entry — until then it counts toward no entrant total, no
     capacity and no money. So this is the GATE, and the card says so rather than
     reading like an inbox.

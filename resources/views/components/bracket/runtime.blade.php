@@ -1,7 +1,7 @@
 {{--
     Tournament-bracket runtime — the one board every bracketed event type draws.
 
-    ── The design is the Combat Sports Bracket (drafts/Combat Sports Bracket.html)
+    ── The design is the Combat Sports Bracket (drafts/events/Combat Sports Bracket.html)
 
     Replaced wholesale on 2026-09-20 at the owner's instruction: "replace the
     current brackets system completely with the following one — take exactly

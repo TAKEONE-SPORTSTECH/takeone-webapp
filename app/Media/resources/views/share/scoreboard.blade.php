@@ -22,6 +22,10 @@
 @font-face { font-family: 'Barlow Condensed'; font-weight: 400; src: url('file://{{ $fonts }}/barlow-condensed/BarlowCondensed-Regular.ttf'); }
 @font-face { font-family: 'Barlow Condensed'; font-weight: 600 700; src: url('file://{{ $fonts }}/barlow-condensed/BarlowCondensed-Bold.ttf'); }
 @font-face { font-family: 'Barlow Condensed'; font-weight: 800 900; src: url('file://{{ $fonts }}/barlow-condensed/BarlowCondensed-Black.ttf'); }
+/* Arabic in Tajawal, scaled to Barlow's height — as the boutcam's ScoreBar.kt sets it. */
+@font-face { font-family: 'Barlow Condensed'; font-weight: 400; src: url('file://{{ $fonts }}/tajawal/Tajawal-Regular.ttf'); unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF; size-adjust: 76%; }
+@font-face { font-family: 'Barlow Condensed'; font-weight: 600 700; src: url('file://{{ $fonts }}/tajawal/Tajawal-Bold.ttf'); unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF; size-adjust: 76%; }
+@font-face { font-family: 'Barlow Condensed'; font-weight: 800 900; src: url('file://{{ $fonts }}/tajawal/Tajawal-Black.ttf'); unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF; size-adjust: 76%; }
 @font-face { font-family: 'Zen Old Mincho'; font-weight: 400; src: url('file://{{ $fonts }}/zen-old-mincho/ZenOldMincho-Regular.ttf'); }
 @font-face { font-family: 'Zen Old Mincho'; font-weight: 700; src: url('file://{{ $fonts }}/zen-old-mincho/ZenOldMincho-Bold.ttf'); }
 
@@ -42,7 +46,7 @@ html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
    and a white hall wall swallows them — so they get the ticker rows' own dark
    backing. The only departure from the page's markup. */
 .msb-info .txt  { display: flex; flex-direction: column; gap: 2px; padding: 5px 10px; background: rgba(10,10,12,.62); }
-.msb-info .disc { font-family: 'Zen Old Mincho', serif; font-size: 15px; letter-spacing: .34em; color: #efe9e0; text-transform: uppercase; text-shadow: 0 1px 6px rgba(0,0,0,.9); }
+.msb-info .disc { font-size: 15px; font-weight: 700; letter-spacing: .34em; color: #efe9e0; text-transform: uppercase; text-shadow: 0 1px 6px rgba(0,0,0,.9); }
 .msb-info .sub  { font-size: 13px; letter-spacing: .28em; color: #cfc9c1; text-transform: uppercase; text-shadow: 0 1px 6px rgba(0,0,0,.9); }
 
 .msb-feed { position: absolute; top: 56px; right: 24px; width: 262px; display: flex; flex-direction: column; gap: 7px; }
@@ -52,7 +56,7 @@ html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
 .msb-feed .entry { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 7px 10px; background: rgba(10,10,12,.62); border-right: 3px solid transparent; }
 .msb-feed .entry .ts   { font-size: 12px; line-height: 1; letter-spacing: .16em; color: #79736c; }
 .msb-feed .entry .name { font-size: 17px; line-height: 1; letter-spacing: .12em; font-weight: 700; color: #efe9e0; text-transform: uppercase; }
-.msb-feed .entry .pts  { font-family: 'Zen Old Mincho', serif; font-size: 19px; line-height: 1; font-weight: 700; }
+.msb-feed .entry .pts  { font-size: 15px; line-height: 1; font-weight: 900; font-variant-numeric: tabular-nums; }
 </style>
 </head>
 <body>
@@ -93,7 +97,7 @@ html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
               @if ($red['flag'])
               <span style="width:26px;height:17px;flex:none;background:#000 url('file://{{ $red['flag'] }}') center/cover;box-shadow:0 0 0 1px rgba(255,255,255,.3)"></span>
               @endif
-              <span style="flex:1 1 auto;min-width:0;font-size:25px;line-height:1;font-weight:800;color:#fff;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ $red['name'] }}</span>
+              <span style="flex:1 1 auto;min-width:0;font-size:25px;line-height:1;font-weight:900;color:#fff;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ $red['name'] }}</span>
             </div>
             @if ($red['club'] !== '')
             <div style="display:flex;align-items:center;gap:8px;min-width:0">
@@ -103,7 +107,7 @@ html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
           </div>
           <div style="width:60px;flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:5px">
             <span style="font-size:11px;letter-spacing:.24em;color:rgba(255,236,232,.7)">{{ $redLabel }}</span>
-            <span style="font-family:'Zen Old Mincho',serif;font-size:46px;line-height:.8;font-weight:700;color:#fff;text-shadow:0 6px 20px rgba(0,0,0,.5)">{{ $scoreRed }}</span>
+            <span style="font-size:48px;line-height:.8;font-weight:900;font-variant-numeric:tabular-nums;color:#fff;text-shadow:0 3px 10px rgba(0,0,0,.5)">{{ $scoreRed }}</span>
           </div>
         </div>
       </div>
@@ -123,11 +127,11 @@ html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
         <div style="transform:skewX(9deg);height:100%;padding:0 16px;display:flex;align-items:center;gap:12px">
           <div style="width:60px;flex:none;display:flex;flex-direction:column;align-items:flex-start;gap:5px">
             <span style="font-size:11px;letter-spacing:.24em;color:rgba(226,238,255,.7)">{{ $blueLabel }}</span>
-            <span style="font-family:'Zen Old Mincho',serif;font-size:46px;line-height:.8;font-weight:700;color:#fff;text-shadow:0 6px 20px rgba(0,0,0,.5)">{{ $scoreBlue }}</span>
+            <span style="font-size:48px;line-height:.8;font-weight:900;font-variant-numeric:tabular-nums;color:#fff;text-shadow:0 3px 10px rgba(0,0,0,.5)">{{ $scoreBlue }}</span>
           </div>
           <div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px;align-items:flex-end;text-align:right">
             <div style="display:flex;align-items:center;gap:10px;min-width:0">
-              <span style="flex:1 1 auto;min-width:0;font-size:25px;line-height:1;font-weight:800;color:#fff;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ $blue['name'] }}</span>
+              <span style="flex:1 1 auto;min-width:0;font-size:25px;line-height:1;font-weight:900;color:#fff;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ $blue['name'] }}</span>
               @if ($blue['flag'])
               <span style="width:26px;height:17px;flex:none;background:#000 url('file://{{ $blue['flag'] }}') center/cover;box-shadow:0 0 0 1px rgba(255,255,255,.3)"></span>
               @endif

@@ -74,6 +74,8 @@ class BoutStatsTool extends BaseTool
             'match_no' => $match->match_no,
             'division' => $match->category?->name,
             'pdf_url' => route('me.events.bout.stats.pdf', ['event' => $event->uuid, 'matchNo' => $match->match_no]),
+            // The one-line summary the bout page's Analytics tab opens with.
+            'verdict' => BoutStats::verdict($stats),
         ] + \Illuminate\Support\Arr::except($stats, ['steps']));
     }
 }

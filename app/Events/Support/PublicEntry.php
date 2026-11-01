@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
 /**
  * A stranger enters a competition — Door C.
  *
- * Phase C of Documentation/EVENTS-PUBLIC-ENTRY.md. Somebody who has never heard
+ * Phase C of docs/events/public-entry.md. Somebody who has never heard
  * of TAKEONE opens a shared link, reads the poster and decides to compete. The
  * account is a SIDE EFFECT; entering the competition is the thing they came for.
  *
@@ -200,7 +200,8 @@ class PublicEntry
         // One sentence, and it is the same sentence for a member of ten years
         // and for somebody who mistyped: sign in. No account is touched, and
         // nothing here confirms or denies that one exists.
-        if ($email !== null && User::where('email', $email)->exists()) {
+        // Case-insensitive: `Ali@x.com` is the account `ali@x.com` already holds.
+        if ($email !== null && \App\Members\Support\UniqueEmail::taken($email)) {
             return ['ok' => false, 'message' => __('events::events.public_enrol_sign_in'), 'field' => 'email'];
         }
 

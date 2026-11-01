@@ -88,7 +88,7 @@ class FederationDesk
             'officials' => $this->officials($entries),
             'clubs' => $clubs->map(fn ($c) => $this->registry->club($c) + ['rosterCount' => $this->headcount($c)])->concat($extra)->values()->all(),
             // A child's national ID is masked in what the dashboard holds (NationalIdMask).
-            'athletes' => FederationAthlete::with('user')->whereIn('id', $athleteIds)->get()->map(fn ($a) => array_key_exists('natId', $row = $this->registry->athlete($a, $ids))
+            'athletes' => FederationAthlete::with(['user', ...FederationRegistry::withClubs()])->whereIn('id', $athleteIds)->get()->map(fn ($a) => array_key_exists('natId', $row = $this->registry->athlete($a, $ids))
                 ? ['natId' => NationalIdMask::forList($row['natId'], $a->user?->birthdate)] + $row : $row)->values()->all(),
             'transfers' => $transfers->map(fn ($t) => $this->registry->transfer($t))->all(),
             'entriesByEvent' => (object) $byEvent,
@@ -250,14 +250,18 @@ class FederationDesk
         // A deleted account leaves the Athletes list. Its entries, draws and
         // results are kept (they are the event's history), so only this list
         // drops it — whereHas skips soft-deleted users.
-        $rows = FederationAthlete::with('user')->whereIn('id', $athleteIds)->whereNull('anonymised_at')->whereHas('user')->orderBy('takeone_id')->get()->map(function (FederationAthlete $a) use ($ids, $events) {
+        // Every athlete's active entries in one query, not one per athlete.
+        $activeEntries = FederationEntryAthlete::with('entry.event')->whereIn('federation_athlete_id', $athleteIds)
+            ->where('status', 'Active')->get()->groupBy('federation_athlete_id');
+
+        $rows = FederationAthlete::with(['user', ...FederationRegistry::withClubs()])->whereIn('id', $athleteIds)->whereNull('anonymised_at')->whereHas('user')->orderBy('takeone_id')->get()->map(function (FederationAthlete $a) use ($ids, $events, $activeEntries) {
             $u = $a->user;
             $cur = $this->registry->currentClub($a, $ids);
             $club = $cur ? ($cur->club?->club?->club_name ?? $cur->application?->name) : null;
             // A platform club's own logo, or the one an applying club uploaded.
             $clubLogo = $cur?->club?->club?->logo ? file_url($cur->club->club->logo)
                 : ($cur?->application?->logo ? route('federations.invite.club-logo', $cur->application->uuid) : null);
-            $entries = FederationEntryAthlete::with('entry.event')->where('federation_athlete_id', $a->id)->where('status', 'Active')->get();
+            $entries = $activeEntries->get($a->id, collect());
             $sports = $entries->map(fn ($ea) => [(string) $ea->entry?->event?->sport, $ea->weight ? rtrim(rtrim(number_format($ea->weight, 1), '0'), '.').' kg' : '—'])
                 ->unique(fn ($x) => $x[0])->values()->all();
 

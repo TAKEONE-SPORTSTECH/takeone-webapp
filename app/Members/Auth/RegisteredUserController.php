@@ -92,11 +92,35 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request)
     {
+        // New addresses are stored lower-cased and trimmed, and the uniqueness
+        // check ignores case — `Ali@x.com` is the account `ali@x.com` holds.
+        if (is_string($request->input('email'))) {
+            $request->merge(['email' => \App\Members\Support\UniqueEmail::normalise($request->input('email'))]);
+        }
+
         $request->validate([
             'full_name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', \Illuminate\Validation\Rule::unique('users', 'email')->whereNull('deleted_at')],
+            'email' => ['required', 'string', 'email', 'max:255', new \App\Members\Support\UniqueEmail],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'mobile_number' => ['required', 'string', 'max:20'],
+            'mobile_number' => ['required', 'string', 'max:20', function (string $attribute, $value, \Closure $fail) use ($request) {
+                /*
+                 * duplicates.guard.registration: this phone already belongs to
+                 * an account with NO email under a recognisably same name (an
+                 * entry made for them at a desk or by a coach). Refused, never
+                 * linked — adopting it on a typed phone would hand anybody's
+                 * profile to whoever knows their number. Siblings on a parent's
+                 * phone are not blocked: the name rule must agree too.
+                 */
+                if (! config('duplicates.guard.registration', false) || ! is_string($value)) {
+                    return;
+                }
+                $taken = app(\App\Events\Support\KnownPerson::class)
+                    ->matches((string) $request->input('country_code'), $value, (string) $request->input('full_name'))
+                    ->contains(fn ($u) => blank($u->getRawOriginal('email')));
+                if ($taken) {
+                    $fail(__('An account with this phone number already exists. Please sign in instead — use "Forgot password" if you need to, or ask your club.'));
+                }
+            }],
             'gender' => ['required', 'in:Male,Female'],
             'birthdate' => ['required', 'date', 'before:today'],
             'country_code' => ['required', 'string', 'max:10'],
@@ -132,9 +156,11 @@ class RegisteredUserController extends Controller
 
             if ($skipVerification) {
                 $user->markEmailAsVerified();
-            } else {
-                event(new Registered($user));
             }
+            // No `Registered` event here (2026-10-31): its only listener is
+            // Laravel's SendEmailVerificationNotification, which queued a SECOND
+            // WelcomeEmail (without the intended URL) beside the explicit one
+            // below. The explicit mail is the one verification mail an account gets.
 
             // Log the user in
             Auth::login($user);

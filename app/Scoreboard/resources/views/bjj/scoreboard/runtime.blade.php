@@ -367,7 +367,7 @@
   }
 
   /* ── The console's own beeper ──────────────────────────────────────────
-     The draft's (drafts/Score Control Board.html), verbatim: a short square
+     The draft's (drafts/scoreboards/Score Control Board.html), verbatim: a short square
      blip each second while a stalling count runs, and a louder, longer one on
      its last second and on the bout clock's. No audio file — it is two
      oscillator nodes, so there is nothing to upload, cache or lose, and it is
@@ -614,7 +614,7 @@
   }
 
   /* ── The stalling countdown, in the corner it is against ────────────────
-     The draft's treatment (drafts/Score Control Board.html), adopted 2026-09-10:
+     The draft's treatment (drafts/scoreboards/Score Control Board.html), adopted 2026-09-10:
      the count runs INSIDE the Stalling button of the corner it is against, the
      button glows and the number pumps while it runs, and when it reaches zero a
      card appears on its own and asks the referee once.
@@ -2058,7 +2058,7 @@
 
   // The referee's stalling countdown: start, cancel, apply. Private throughout.
   /* The Stalling button is a TOGGLE, which is the draft's behaviour
-     (drafts/Score Control Board.html — `blueStallToggle`): press it and the
+     (drafts/scoreboards/Score Control Board.html — `blueStallToggle`): press it and the
      count starts; press the SAME corner again before it runs out and the count
      stops and is thrown away. It used to only ever send `start`, so a second
      press restarted the count from the top — the one thing a referee reaching

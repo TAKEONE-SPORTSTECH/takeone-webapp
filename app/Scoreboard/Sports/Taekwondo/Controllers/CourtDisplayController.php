@@ -43,7 +43,7 @@ class CourtDisplayController extends Controller
 
         return view('scoreboard::taekwondo.screen.board', [
             'payload' => $this->display->payload($event, $court),
-            'redRight' => \App\Scoreboard\Sports\Taekwondo\Mat\CornerLook::redRight($event, $court),
+            'redRight' => \App\Scoreboard\Sports\Taekwondo\Mat\CornerLook::redRight($event, $court, 'upcoming'),
             'look' => \App\Scoreboard\Sports\Taekwondo\Mat\CornerLook::for($event),
         ]);
     }
@@ -184,7 +184,7 @@ class CourtDisplayController extends Controller
                 'state' => $state->toArray(),
                 // This mat's corner side and the event's corner names/colours
                 // (App\Scoreboard\Corners, via Mat\CornerLook).
-                'redRight' => \App\Scoreboard\Sports\Taekwondo\Mat\CornerLook::redRight($device->event, $device->court),
+                'redRight' => \App\Scoreboard\Sports\Taekwondo\Mat\CornerLook::redRight($device->event, $device->court, 'board'),
                 'look' => \App\Scoreboard\Sports\Taekwondo\Mat\CornerLook::for($device->event),
                 'screenLink' => $screenLink,
                 // The scoreboard beats like every other screen. Without it a
@@ -201,7 +201,7 @@ class CourtDisplayController extends Controller
 
         return view('scoreboard::taekwondo.screen.board', [
             'payload' => $this->display->payload($device->event, $device->court),
-            'redRight' => \App\Scoreboard\Sports\Taekwondo\Mat\CornerLook::redRight($device->event, $device->court),
+            'redRight' => \App\Scoreboard\Sports\Taekwondo\Mat\CornerLook::redRight($device->event, $device->court, 'upcoming'),
             'look' => \App\Scoreboard\Sports\Taekwondo\Mat\CornerLook::for($device->event),
             'pinned' => $surface === 'queue' ? 'queue' : false,
             // Only a real device gets a heartbeat — the organiser's preview has

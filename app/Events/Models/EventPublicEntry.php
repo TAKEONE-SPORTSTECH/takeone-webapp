@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * A request to compete, made by somebody who followed a public link.
  *
- * Phase C of Documentation/EVENTS-PUBLIC-ENTRY.md, Door C. It is NOT an entry:
+ * Phase C of docs/events/public-entry.md, Door C. It is NOT an entry:
  * until an organiser accepts it, it counts toward nothing — not the entrant
  * count, not capacity, not the money — and it lives here rather than in
  * `club_event_registrations` for exactly that reason (see the migration).

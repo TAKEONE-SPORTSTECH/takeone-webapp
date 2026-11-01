@@ -103,7 +103,7 @@ return [
     'yr' => 'سنة',
     'yrs' => 'سنوات',
 
-    // Trainer profile — desktop (drafts/Club Pages & Design/Trainners)
+    // Trainer profile — desktop (drafts/clubs-and-trainers/Trainners)
     'tp_link_copied' => 'تم نسخ الرابط',
     'tp_on_platform' => ':time على TakeOne',
     'tp_message' => 'راسل :name',

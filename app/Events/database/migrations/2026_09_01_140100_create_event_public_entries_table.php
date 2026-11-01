@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Somebody with no account asking to compete.
  *
- * Phase C of Documentation/EVENTS-PUBLIC-ENTRY.md, Door C. The spec sketched
+ * Phase C of docs/events/public-entry.md, Door C. The spec sketched
  * this as a `pending_review` row in `club_event_registrations`; it is a table
  * of its own instead, and deliberately.
  *

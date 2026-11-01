@@ -154,6 +154,11 @@ class BjjCornersTest extends TestCase
         $side = $this->mcp(\App\Mcp\Tools\SetMatCornerSideTool::class, ['event' => $event->uuid, 'mat' => $mat, 'red_side' => 'left']);
         $this->assertSame('left', $side['red_side']);
         $this->assertFalse(\App\Scoreboard\Corners\MatSides::redRight($event->fresh(), $mat, 'bjj'));
+
+        // One screen only — every sport's screens read their own side now.
+        $one = $this->mcp(\App\Mcp\Tools\SetMatCornerSideTool::class, ['event' => $event->uuid, 'mat' => $mat, 'red_side' => 'right', 'screen' => 'board']);
+        $this->assertSame('right', $one['screens']['board']);
+        $this->assertSame('left', $one['screens']['control']);
     }
 
     private function mcp(string $tool, array $args): array

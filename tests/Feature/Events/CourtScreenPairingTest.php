@@ -131,6 +131,35 @@ class CourtScreenPairingTest extends TestCase
         $this->assertNull($screen->fresh()->event_id);
     }
 
+    /**
+     * Stage and production share one database, so a QR printed by the other
+     * host carries a code that is real here. Refusing it on the host name alone
+     * was the "scanning keeps erroring" bug of 31 Oct 2026.
+     */
+    public function test_a_code_scanned_from_the_other_host_pairs_when_it_is_known_here(): void
+    {
+        $organiser = $this->createUser();
+        $event = $this->event($this->clubFor($organiser), $organiser);
+        $this->bout($event, 'Mat 1');
+        $screen = $this->unpairedScreen();
+
+        $this->actingAs($organiser)->postJson("/me/events/{$event->uuid}/screens", [
+            'code' => $screen->pairing_code, 'court' => 'Mat 1', 'from_host' => 'takeone.bh',
+        ])->assertOk()->assertJsonPath('success', true);
+
+        $this->assertSame($event->id, $screen->fresh()->event_id);
+    }
+
+    public function test_an_unknown_code_from_the_other_host_is_still_explained(): void
+    {
+        $organiser = $this->createUser();
+        $event = $this->event($this->clubFor($organiser), $organiser);
+
+        $this->actingAs($organiser)->postJson("/me/events/{$event->uuid}/screens", [
+            'code' => 'ZZZZZZ', 'court' => 'Mat 1', 'from_host' => 'takeone.bh',
+        ])->assertStatus(422)->assertJsonPath('success', false);
+    }
+
     public function test_an_unknown_code_is_refused_without_saying_why(): void
     {
         $organiser = $this->createUser();

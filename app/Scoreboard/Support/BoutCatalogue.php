@@ -19,7 +19,7 @@ use App\Events\Support\EntryClub;
  * knows which sport's mat asked. It was built for the Karate console as a port
  * of the BJJ console's own catalogue, which still lives inside the BJJ
  * controller — pointing BJJ at this class is registered in
- * Documentation/HOUSE-CLEANING.md rather than done in passing (RULE #1).
+ * docs/platform/house-cleaning.md rather than done in passing (RULE #1).
  *
  * ── Shape ─────────────────────────────────────────────────────────────────
  * The roster is keyed ONCE by registration id and a bout carries only the two

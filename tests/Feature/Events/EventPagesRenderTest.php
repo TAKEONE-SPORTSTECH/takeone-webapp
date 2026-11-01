@@ -222,7 +222,7 @@ class EventPagesRenderTest extends TestCase
             ."and CLAUDE.md still calls the latter 'the one bracket renderer for every sport'. The "
             ."two views this test was written against are reachable only from "
             ."PersonalMobileController::eventBracket(), which has no route.\n\n"
-            ."Registered in Documentation/HOUSE-CLEANING.md. Settle which board wins, then rewrite "
+            ."Registered in docs/platform/house-cleaning.md. Settle which board wins, then rewrite "
             ."this against it."
         );
 

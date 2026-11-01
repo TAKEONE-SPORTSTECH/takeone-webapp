@@ -12,7 +12,7 @@ use Illuminate\Http\JsonResponse;
  * The athlete's side of a claim link — the ONE unauthenticated write surface
  * this feature adds.
  *
- * Documentation/EVENTS-PUBLIC-ENTRY.md, Door B. Somebody with no account opens
+ * docs/events/public-entry.md, Door B. Somebody with no account opens
  * a link from a WhatsApp message and gives what only they know. Every rule is
  * in App\Events\Support\EntryClaim; this controller carries the request and
  * nothing else.

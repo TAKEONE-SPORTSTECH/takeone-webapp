@@ -114,7 +114,7 @@
 {{--
     The public gallery — one column of match-video cards.
 
-    ⚠️ THE CSS AND THE CARD MARKUP BELOW ARE `drafts/Video Gallery
+    ⚠️ THE CSS AND THE CARD MARKUP BELOW ARE `drafts/bout-video/Video Gallery
     (standalone).html`, TRANSCRIBED. The VS intro (two panels sliding in, the
     stage band dropping, the corners rising, the VS slamming and then pulsing),
     the explode-out on play, the scorebar sliding up and the live-scoring feed

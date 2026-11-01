@@ -19,7 +19,7 @@ use Illuminate\Support\Str;
 /**
  * Entering somebody the coach cannot describe, and the link that completes them.
  *
- * Documentation/EVENTS-PUBLIC-ENTRY.md, Door B. The whole point is that the
+ * docs/events/public-entry.md, Door B. The whole point is that the
  * person who COMMITS an entry and the person who SUPPLIES the athlete's details
  * are not the same person. A coach knows who is fighting; he does not know
  * their weight or their birthdate, and asking him produces an invented number
@@ -410,13 +410,28 @@ class EntryClaim
         // NEGATIVE number of years, which made every adult a minor.
         $isMinor = $birthdate !== null && \Carbon\Carbon::parse($birthdate)->age < 18;
 
+        /*
+         * A parent who already has an account answers a minor's link SIGNED IN
+         * as it: the child is attached to that account instead of a second one
+         * being made per child (behind duplicates.guard.registration). Typing
+         * the address is never enough — that would hand a stranger's child to
+         * whoever knows an email — so a parent who is not signed in still meets
+         * the "taken" answer below, which tells them to sign in and come back.
+         */
+        $existingGuardian = $isMinor ? $this->signedInGuardian($athlete, (string) $data['email']) : null;
+
         // An address already in use is not evidence of anything we may say out
         // loud — the same sentence either way, and no account is touched.
-        if (User::where('email', $data['email'])->exists()) {
+        // Case-insensitive, and a new address is kept lower-cased: `Ali@x.com`
+        // is the mailbox `ali@x.com` already holds (App\Members\Support\UniqueEmail).
+        $data['email'] = (string) \App\Members\Support\UniqueEmail::normalise($data['email']);
+        if (! $existingGuardian && \App\Members\Support\UniqueEmail::taken($data['email'])) {
             return ['ok' => false, 'message' => __('events::events.claim_email_taken'), 'field' => 'email'];
         }
 
-        DB::transaction(function () use ($claim, $athlete, $registration, $data, $birthdate, $isMinor, $ip) {
+        $account = null; // whoever now holds the email: the athlete, or a minor's guardian
+
+        DB::transaction(function () use ($claim, $athlete, $registration, $data, $birthdate, $isMinor, $ip, $existingGuardian, &$account) {
             // What the athlete knows about themselves, on the person record.
             $athlete->fill(array_filter([
                 'birthdate' => $birthdate,
@@ -426,8 +441,9 @@ class EntryClaim
 
             if ($isMinor) {
                 // The account belongs to the guardian; the athlete stays a
-                // person record with no credentials of their own.
-                $guardian = User::create([
+                // person record with no credentials of their own. An existing
+                // guardian keeps their own name and password untouched.
+                $guardian = $existingGuardian ?? User::create([
                     'full_name' => $data['guardian_name'] ?: __('events::events.claim_guardian_default'),
                     'name' => $data['guardian_name'] ?: __('events::events.claim_guardian_default'),
                     'email' => $data['email'],
@@ -439,12 +455,17 @@ class EntryClaim
                     'guardian_user_id' => $guardian->id,
                     'dependent_user_id' => $athlete->id,
                 ], ['relationship_type' => 'guardian']);
+
+                // Only a NEW account set an address nobody has proven; an
+                // existing guardian is not welcomed again.
+                $account = $existingGuardian ? null : $guardian;
             } else {
                 $athlete->email = $data['email'];
                 $athlete->password = Hash::make($data['password']);
             }
 
             $athlete->save();
+            $account ??= $athlete;
 
             // Weight and belt are facts about THIS competition, recorded on the
             // entry — the weigh-in desk overwrites them on the day, and that is
@@ -494,6 +515,16 @@ class EntryClaim
 
             $claim->update(['claimed_at' => now(), 'claimed_ip' => $ip]);
         });
+
+        // The claim set an email nobody has proven yet: ONE verification mail
+        // (2026-10-31 — it used to send none). Best-effort; the claim stands.
+        if ($account && $account->email && ! $account->hasVerifiedEmail()) {
+            try {
+                \Illuminate\Support\Facades\Mail::to($account)->queue(new \App\Members\Mail\WelcomeEmail($account, $account));
+            } catch (\Throwable $e) {
+                \Log::error('Claim verification email failed: '.$e->getMessage());
+            }
+        }
 
         // Now that a weight exists, the package places them in a division and
         // re-derives whatever it derives.
@@ -555,6 +586,26 @@ class EntryClaim
         }
 
         return $window->isPast() ? now()->addHours(6) : $window;
+    }
+
+    /**
+     * The signed-in account answering a minor's claim as its guardian — only
+     * when the address typed IS that account's own, and only behind
+     * duplicates.guard.registration. Null otherwise (the old path: a new
+     * guardian account, or "taken" for an address already in use).
+     */
+    private function signedInGuardian(User $athlete, string $email): ?User
+    {
+        if (! config('duplicates.guard.registration')) {
+            return null;
+        }
+        $me = \Illuminate\Support\Facades\Auth::user();
+        if (! $me instanceof User || (int) $me->id === (int) $athlete->id || ! $me->email
+            || mb_strtolower(trim((string) $me->email)) !== mb_strtolower(trim($email))) {
+            return null;
+        }
+
+        return $me;
     }
 
     /**

@@ -143,8 +143,18 @@ class BoutVideoController extends Controller
             // The bout's stat sheet (statsPdf) — offered only when the mat
             // logged something to read and the PDF engine is installed, so the
             // control never leads to a 404.
-            'stats_pdf_url' => \App\Events\Support\BracketPdf::available() && app(\App\Media\BoutStats::class)->for($match) !== null
+            'stats_pdf_url' => \App\Events\Support\BracketPdf::available() && ($stats = app(\App\Media\BoutStats::class)->for($match)) !== null
                 ? route('me.events.bout.stats.pdf', ['event' => $event->uuid, 'matchNo' => $matchNo])
+                : null,
+            // The Analytics tab (<x-bout-analytics>) — the same sheet, on the
+            // page. Null while the switch is off or the mat logged nothing, and
+            // then no tab is drawn at all.
+            // The VS intro — the SAME screen the mats show (scoreboard::vs.arena),
+            // fed by the same corner builder (App\Scoreboard\Support\VsCorner).
+            'vsIntro' => app(\App\Scoreboard\Support\VsCorner::class)->forBout($event, $match)
+                + app(\App\Scoreboard\Support\VsCorner::class)->look($event),
+            'analytics' => config('media.analytics_tab.enabled')
+                ? ($stats ?? app(\App\Media\BoutStats::class)->for($match))
                 : null,
         ]);
     }
@@ -239,13 +249,13 @@ class BoutVideoController extends Controller
                     'name' => $red['name'],
                     'flag' => strtolower((string) $red['country']),
                     'club' => $red['club'],
-                    'club_logo' => null,
+                    'club_logo' => $red['club_logo'] ?? null,
                 ],
                 'blue' => [
                     'name' => $blue['name'],
                     'flag' => strtolower((string) $blue['country']),
                     'club' => $blue['club'],
-                    'club_logo' => null,
+                    'club_logo' => $blue['club_logo'] ?? null,
                 ],
                 'rounds' => collect($timeline['rounds'])->map(fn (array $r) => [
                     'n' => $r['number'],
@@ -420,10 +430,19 @@ class BoutVideoController extends Controller
      */
     private function officialsPayload(ClubEvent $event): array
     {
+        // A bout's officials are the people who judged it — the "Referees &
+        // Judges" section (OfficialRoles), not the organising committee, the
+        // medics, the team managers or the table. Same rule as the results book.
+        $roles = app(\App\Events\Support\OfficialRoles::class);
+        $labels = $roles->labels($event);
+
         return EventOfficial::with('user:id,full_name,name,nationality,profile_picture,profile_picture_is_public,updated_at')
             ->where('event_id', $event->id)
             ->orderBy('id')
             ->get()
+            ->filter(fn (EventOfficial $o) => $roles->sectionOf($event, (string) $o->role, $o->role_label) === 'referees')
+            // Referees before judges: the VS screen names the first one as "Referee".
+            ->sortBy(fn (EventOfficial $o) => str_contains(mb_strtolower((string) $o->role_label), 'judge') || str_contains((string) $o->role_label, 'حكم جانبي') ? 1 : 0)
             ->map(fn (EventOfficial $o) => [
                 'name' => $o->user?->full_name ?: ($o->user?->name ?: __('shared.unknown')),
                 // Their face, only if they chose to show it — the same rule the
@@ -444,7 +463,10 @@ class BoutVideoController extends Controller
                     EventOfficial::ROLE_WEIGH_IN => __('events::events.official_weigh_in'),
                     EventOfficial::ROLE_PAYMENTS => __('events::events.official_payments'),
                     EventOfficial::ROLE_ORGANISER => __('events::events.official_organiser'),
-                    default => ucfirst(str_replace('_', ' ', (string) $o->role)),
+                    // A typed-in job ("Judge") reads as its own wording, a listed
+                    // one by the sport's name for it.
+                    EventOfficial::ROLE_OTHER => trim((string) $o->role_label) ?: ucfirst((string) $o->role),
+                    default => $labels[$o->role] ?? ucfirst(str_replace('_', ' ', (string) $o->role)),
                 },
             ])
             ->values()
@@ -1075,7 +1097,10 @@ class BoutVideoController extends Controller
             'colour' => $colour,
             'corner_label' => $labels[$colour] ?? $colour,
             'country' => $reg?->countryCode() ?: $match->{$side.'_country'},
-            'club' => $reg?->competingClub()?->club_name,
+            'club' => ($club = $reg?->competingClub())?->club_name,
+            // The crest they competed under — the same lookup the VS card makes
+            // (App\Media\BoutArena). Null when the club has none on file.
+            'club_logo' => $club?->logo ? file_url($club->logo) : null,
             'score' => $match->{$side.'_score'},
             'won' => $match->winner === $side,
             // Their face, only if they chose to show it — the same rule the

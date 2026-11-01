@@ -195,16 +195,46 @@ class KarateStyleBoardsTest extends TestCase
         $this->assertSame('ao', $s['winner']);
     }
 
-    public function test_only_combat_offers_points_and_fouls_and_shotokan_refuses_them(): void
+    /** Points and Fouls are every style's now (Styles\OrganiserScoring, 2026-11-01). */
+    public function test_every_style_offers_points_and_fouls(): void
     {
-        [$owner, $combat] = $this->liveCombatMat();
-        $this->actingAs($owner)->get("/karate/control/{$combat->uuid}?mat=".urlencode(self::MAT))
-            ->assertOk()->assertSee('data-panel="buttons"', false)->assertSee(__('scoreboard::karate_messages.ctl_tab_fouls'));
+        foreach (['combat', 'shotokan', 'goju_ryu', 'shito_ryu', 'wado_ryu'] as $style) {
+            [$owner, $event] = $this->liveCombatMat($style);
+            $this->actingAs($owner)->get("/karate/control/{$event->uuid}?mat=".urlencode(self::MAT))
+                ->assertOk()->assertSee('data-panel="buttons"', false)->assertSee('data-panel="penalties"', false);
+            $this->cmd($event, ['command' => 'buttons', 'buttons_default' => true])->assertOk();
+        }
+    }
 
-        [$owner2, $shotokan] = $this->liveCombatMat('shotokan');
-        $this->actingAs($owner2)->get("/karate/control/{$shotokan->uuid}?mat=".urlencode(self::MAT))
-            ->assertOk()->assertDontSee('data-panel="buttons"', false);
-        $this->cmd($shotokan, ['command' => 'buttons', 'buttons_default' => true])->assertStatus(422);
+    /**
+     * A standard style keeps its own scoring until an organiser designs some:
+     * the built-in point and foul ladder behave exactly as before, and only a
+     * designed button or ladder changes anything.
+     */
+    public function test_shotokan_scores_its_own_way_until_customised(): void
+    {
+        [, $event] = $this->liveCombatMat('shotokan');
+
+        // Built in: a point and the first foul, as always.
+        $s = $this->cmd($event, ['command' => 'point', 'side' => 'aka', 'n' => 2])->assertOk()->json('state');
+        $this->assertEquals(2, $s['akaScore']);
+        $this->assertNull($s['buttons']);
+        $s = $this->cmd($event, ['command' => 'penalty', 'side' => 'ao', 'level' => 1])->assertOk()->json('state');
+        $this->assertSame(1, $s['aoPen']);
+
+        // Designed: a button that adds four, and a ladder whose first step deducts one.
+        $this->cmd($event, ['command' => 'buttons', 'buttons' => [['label' => 'Spin', 'value' => 4, 'effect' => 'add']]])->assertOk();
+        $this->cmd($event, ['command' => 'penalties', 'penalties' => [
+            ['label' => 'W', 'effect' => 'deduct', 'value' => 1, 'ends' => false],
+            ['label' => 'X', 'effect' => 'none', 'value' => 0, 'ends' => true],
+        ]])->assertOk();
+
+        $id = $this->cmd($event, ['command' => 'refresh'])->json('state.buttons.0.id');
+        $s = $this->cmd($event, ['command' => 'button', 'side' => 'aka', 'button' => $id])->assertOk()->json('state');
+        $this->assertEquals(6, $s['akaScore']);
+
+        $s = $this->cmd($event, ['command' => 'penalty', 'side' => 'aka', 'level' => 1])->assertOk()->json('state');
+        $this->assertEquals(5, $s['akaScore'], 'the designed step deducts');
     }
 
     public function test_every_style_has_its_screens(): void
@@ -313,13 +343,14 @@ class KarateStyleBoardsTest extends TestCase
         $this->cmd($event, ['command' => 'buttons', 'buttons' => array_fill(0, 9, ['label' => 'X', 'value' => 1, 'effect' => 'add'])])->assertStatus(422);
     }
 
-    public function test_a_mat_without_a_style_refuses_the_button_commands(): void
+    /** The default board (no style) has Points and Fouls too (Styles\Standard). */
+    public function test_a_mat_without_a_style_takes_the_button_commands(): void
     {
         config(['features.karate_style_boards' => true]);
         [$owner, $event] = $this->scenario();
 
         $this->actingAs($owner)->postJson("/karate/control/{$event->uuid}", ['mat' => self::MAT, 'command' => 'buttons', 'buttons_default' => true])
-            ->assertStatus(422);
+            ->assertOk();
     }
 
     public function test_kyokushin_scores_waza_ari_and_ippon_out_of_the_box(): void

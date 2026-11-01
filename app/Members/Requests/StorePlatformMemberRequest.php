@@ -3,8 +3,8 @@
 namespace App\Members\Requests;
 
 use App\Members\Requests\Concerns\PersonFieldRules;
+use App\Members\Support\UniqueEmail;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class StorePlatformMemberRequest extends FormRequest
 {
@@ -15,11 +15,19 @@ class StorePlatformMemberRequest extends FormRequest
         return true;
     }
 
+    /** New addresses are stored lower-cased and trimmed (UniqueEmail). */
+    protected function prepareForValidation(): void
+    {
+        if (is_string($this->input('email'))) {
+            $this->merge(['email' => UniqueEmail::normalise($this->input('email'))]);
+        }
+    }
+
     public function rules(): array
     {
         return [
             'full_name' => 'required|string|max:255',
-            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->whereNull('deleted_at')],
+            'email' => ['required', 'email', 'max:255', new UniqueEmail],
             'password' => 'required|string|min:8|confirmed',
             'gender' => $this->personRule('in:Male,Female'),
             // Never required, of anyone. A birthdate is the field people most

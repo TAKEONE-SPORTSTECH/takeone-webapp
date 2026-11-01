@@ -32,7 +32,7 @@ use Illuminate\Support\Facades\DB;
  *               groups, the same way deleting a division does.
  *
  * The limits and the published rules each one comes from are in
- * Documentation/DIVISION-MERGING.md and config('events.division_merge').
+ * docs/events/division-merging.md and config('events.division_merge').
  *
  * Shared by every sport (CLAUDE.md → Shared Stays Shared): nothing here knows
  * which sport it is merging. The draw is rebuilt through the event's own

@@ -11,7 +11,7 @@
     block that must not split carries break-inside: avoid.
 
     Every value from the event is escaped ({{ }}); this page never talks to the
-    server. Text source: Documentation/DIVISION-MERGING.md — keep in step.
+    server. Text source: docs/events/division-merging.md — keep in step.
 --}}
 @php
     $c = '#d8b25f';

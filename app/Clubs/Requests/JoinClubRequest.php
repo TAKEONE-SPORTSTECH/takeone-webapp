@@ -18,7 +18,9 @@ class JoinClubRequest extends FormRequest
             'registrants' => 'required|array|min:1',
             'registrants.*.type' => 'required|in:self,child',
             'registrants.*.name' => 'required|string|max:255',
-            'registrants.*.user_id' => 'nullable',
+            // Must be the signed-in member or one of their dependents — enforced
+            // server-side in PublicClubController::joinClub().
+            'registrants.*.user_id' => 'nullable|integer',
             'registrants.*.package_id' => 'required|exists:club_packages,id',
             'registrants.*.gender' => 'nullable|string',
             'registrants.*.date_of_birth' => 'nullable|date',

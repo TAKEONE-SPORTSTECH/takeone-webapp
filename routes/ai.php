@@ -1,7 +1,9 @@
 <?php
 
+use App\DevBoard\Mcp\NotesServer;
 use App\Mcp\Servers\TakeOneServer;
 use Laravel\Mcp\Facades\Mcp;
+use Laravel\Sanctum\Http\Middleware\CheckForAnyAbility;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,8 +25,18 @@ use Laravel\Mcp\Facades\Mcp;
 */
 
 if (config('takeone-mcp.enabled', true)) {
+    // A notes-only token (ability `notes`) must not open the full server.
     Mcp::web('mcp', TakeOneServer::class)
-        ->middleware(['auth:sanctum', 'throttle:60,1']);
+        ->middleware(['auth:sanctum', CheckForAnyAbility::class.':mcp:use', 'throttle:60,1']);
 
     Mcp::local('takeone', TakeOneServer::class);
+
+    // Notes only (/me/notes), for connecting another AI to a notebook:
+    // `php artisan mcp:token {user} --notes` issues a token for this and nothing else.
+    if (config('devboard.enabled') && config('devboard.takenote')) {
+        Mcp::web('mcp/notes', NotesServer::class)
+            ->middleware(['auth:sanctum', CheckForAnyAbility::class.':notes', 'throttle:60,1']);
+
+        Mcp::local('takeone-notes', NotesServer::class);
+    }
 }

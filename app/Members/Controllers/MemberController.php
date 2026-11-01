@@ -25,6 +25,7 @@ use App\Members\Models\TournamentEvent;
 use App\Events\Support\EntryPhoto;
 use App\Members\Models\User;
 use App\Members\Models\UserRelationship;
+use App\Members\Support\AdminPasswordReset;
 use App\Members\Support\KinshipService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -172,7 +173,9 @@ class MemberController extends Controller
             $isClubAdminOfMember = $memberTenantIds->contains(fn ($tenantId) => $user->isClubAdmin($tenantId));
         }
 
-        $canResetPassword = $isSuperAdmin || $isOwnProfile || $isClubAdminOfMember;
+        // A club admin may not set a privileged account's password — see AdminPasswordReset.
+        $canResetPassword = $isSuperAdmin || $isOwnProfile
+            || ($isClubAdminOfMember && AdminPasswordReset::viaClub($user, $member) !== null);
         // Auto-generate (regenerate) a password — super-admin only, any account.
         $canRegeneratePassword = $isSuperAdmin && ! $isOwnProfile;
 
@@ -586,7 +589,9 @@ class MemberController extends Controller
 
     /**
      * Reset the password for a member.
-     * Authorized for: super-admin, club admin of member's club, and the member themselves.
+     * Authorized for: super-admin, the member themselves, and a club admin of the
+     * member's club unless the member holds privileged access. Anybody else's
+     * change is logged and emailed to the member.
      */
     public function resetPassword(Request $request, $id)
     {
@@ -596,14 +601,17 @@ class MemberController extends Controller
         $isSuperAdmin = $user->hasRole('super-admin');
         $isOwnProfile = $user->id == $id;
 
-        $isClubAdminOfMember = false;
-        if (! $isSuperAdmin && ! $isOwnProfile && $user->isClubAdmin()) {
-            $memberTenantIds = Membership::where('user_id', $member->id)->pluck('tenant_id');
-            $isClubAdminOfMember = $memberTenantIds->contains(fn ($tenantId) => $user->isClubAdmin($tenantId));
-        }
+        // A club admin acts through one of the member's clubs, and never for a
+        // privileged account (AdminPasswordReset; docs/platform/account-recovery.md).
+        $club = null;
+        if (! $isSuperAdmin && ! $isOwnProfile) {
+            $club = AdminPasswordReset::viaClub($user, $member);
 
-        if (! $isSuperAdmin && ! $isOwnProfile && ! $isClubAdminOfMember) {
-            abort(403);
+            if ($club === null) {
+                return response()->json([
+                    'message' => __('members::member.reset_password_not_allowed'),
+                ], 403);
+            }
         }
 
         $request->validate([
@@ -620,6 +628,10 @@ class MemberController extends Controller
         // not to work. Mark the email verified so the credentials are usable.
         if ($member->email && ! $member->hasVerifiedEmail()) {
             $member->markEmailAsVerified();
+        }
+
+        if (! $isOwnProfile) {
+            AdminPasswordReset::record($user, $member, $club);
         }
 
         return response()->json(['message' => 'Password has been reset successfully.']);

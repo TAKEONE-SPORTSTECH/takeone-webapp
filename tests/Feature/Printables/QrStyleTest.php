@@ -6,7 +6,7 @@ use App\Printables\Support\DocumentSanitizer;
 use Tests\TestCase;
 
 /**
- * Styled QR codes in the printables designer (docs/qr-designer-study.md):
+ * Styled QR codes in the printables designer (docs/research/qr-designer-study.md):
  * only known shapes, real colours and clamped numbers are ever stored, and a
  * QR with no style stays exactly as it was.
  */

@@ -5,7 +5,7 @@
 
     The draw and entry-list PDFs' "Fight night" look — navy and gold, Barlow
     Condensed, the gold diagonal under the band, hairline grids — so the three
-    read as one set. Design source: drafts/The Gost Team Tournament Reg. Form.doc.
+    read as one set. Design source: drafts/entry-forms-and-data/The Gost Team Tournament Reg. Form.doc.
 
     Never served over HTTP; the logo arrives inlined. Inline styles throughout:
     it is a print document, and the Tailwind bundle is prebuilt.

@@ -128,6 +128,6 @@ The points where the two documents meet, so neither is misread:
 - **Header comments vs Design Rule #3.** Headers go on files you *create or
   substantially change*. They are not a reason to add docblocks to untouched code.
 - **Module docs.** Most modules have no `docs/` page yet; write one when a module
-  is next changed substantially. Reference so far: `docs/uploads.md`.
+  is next changed substantially. Reference so far: `docs/platform/uploads.md`.
 - **Data safety.** Before any migration or data change, take a verified backup first
   (`CLAUDE.md` RULE #2). The database is shared with production.

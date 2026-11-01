@@ -39,14 +39,14 @@ Thumbs.db
 
 # Screenshots dropped in drafts/ while debugging — the design sources beside
 # them are project assets and stay tracked.
-drafts/*.png
+drafts/**/*.png
 
 # Built Android packages dropped in the web root — never in git (80MB+ each).
 /public/lab/*.apk
 /public/app/*.apk
 
 # Entry lists from real competitions carry athletes' personal data — never in git.
-drafts/*.xlsx
+drafts/**/*.xlsx
 
 # QA run output: screenshots of real athletes and clubs — never in git (2026-10-23)
 /takeone-qa/
@@ -54,7 +54,9 @@ drafts/*.xlsx
 /public/fonts/designer/
 
 # Personal / third-party documents — never pushed (the repo is public)
-/drafts/Karate Tournament Entry Form (EN-AR).pdf
-/drafts/Registration Form - filled sample.pdf
-/drafts/The Gost Team Tournament Reg. Form.doc
-/drafts/id-card-reader.zip
+/drafts/entry-forms-and-data/Karate Tournament Entry Form (EN-AR).pdf
+/drafts/entry-forms-and-data/Registration Form - filled sample.pdf
+/drafts/entry-forms-and-data/The Gost Team Tournament Reg. Form.doc
+/drafts/tools/id-card-reader.zip
+/drafts/certificates/packages.zip
+/drafts/research/TAKEONE-vs-Smoothcomp-AR.pdf

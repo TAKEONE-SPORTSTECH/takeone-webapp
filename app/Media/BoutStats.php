@@ -150,6 +150,14 @@ class BoutStats
             ];
         };
 
+        // A point logged with the clock at zero was given after time ran out:
+        // the log cannot say whether the technique landed before the bell, so
+        // it is "awarded at the bell" — never "on the buzzer".
+        foreach ($events as &$e) {
+            $e['at_bell'] = $e['kind'] === 'point' && $e['at'] >= $length - 0.05;
+        }
+        unset($e);
+
         $firstPoint = collect($events)->firstWhere('kind', 'point');
         $scored = $run['red'] + $run['blue'];
         $late = array_sum(array_map(fn ($e) => $e['kind'] === 'point' && $e['at'] >= $length * 2 / 3 ? $e['n'] : 0, $events));
@@ -185,8 +193,128 @@ class BoutStats
             'red' => $corner('red'),
             'blue' => $corner('blue'),
             'steps' => $steps,
-            'events' => array_map(fn ($e) => array_intersect_key($e, array_flip(['at', 'kind', 'corner', 'n', 'level', 'label', 'red', 'blue'])), $events),
+            'events' => array_map(fn ($e) => array_intersect_key($e, array_flip(['at', 'kind', 'corner', 'n', 'level', 'label', 'red', 'blue', 'at_bell'])), $events),
+            // How it was won, only when the official recorded a reason — a bare
+            // 'other' says nothing a reader can use.
+            'win_reason' => in_array($match->win_reason, [null, '', 'other'], true) ? null : (string) $match->win_reason,
+            'win_note' => filled($match->win_note) ? (string) $match->win_note : null,
+            'moments' => $this->moments($events, $winner, $held ? $decisive : null),
+            // The sport's own words for the corners (Aka / Ao, or Red / Blue).
+            'corners' => $sport?->cornerLabels() ?? [
+                'red' => __('events::events.corner_red'),
+                'blue' => __('events::events.corner_blue'),
+            ],
         ];
+    }
+
+    /**
+     * The few points worth replaying first — the first score, the end of the
+     * longest unanswered run, the last time the winner was behind, and the
+     * score that won it — each a point from `events`, in bout order.
+     *
+     * @param  list<array<string, mixed>>  $events
+     * @return list<array<string, mixed>>
+     */
+    private function moments(array $events, ?string $winner, ?float $decidedAt): array
+    {
+        $points = array_values(array_filter($events, fn ($e) => $e['kind'] === 'point'));
+        if ($points === []) {
+            return [];
+        }
+
+        $picked = ['first' => $points[0]];
+
+        // The point that completed the longest unanswered run (the winner's on a tie).
+        $best = null;
+        $cur = null;
+        $acc = 0;
+        foreach ($points as $p) {
+            $acc = $p['corner'] === $cur ? $acc + $p['n'] : $p['n'];
+            $cur = $p['corner'];
+            if ($best === null || $acc > $best['run'] || ($acc === $best['run'] && $cur === $winner)) {
+                $best = ['run' => $acc, 'point' => $p];
+            }
+        }
+        if ($best !== null && $best['run'] > $best['point']['n']) {
+            $picked['run'] = $best['point'] + ['run' => $best['run']];
+        }
+
+        // The last point that put the eventual winner behind — a comeback's low.
+        if ($winner !== null) {
+            foreach (array_reverse($points) as $p) {
+                $mine = $p[$winner];
+                $theirs = $p[$winner === 'red' ? 'blue' : 'red'];
+                if ($p['corner'] !== $winner && $theirs > $mine) {
+                    $picked['behind'] = $p;
+                    break;
+                }
+            }
+        }
+
+        // The score after which the winner never trailed or drew again.
+        if ($decidedAt !== null) {
+            foreach ($points as $p) {
+                if (abs($p['at'] - $decidedAt) < 0.001 && $p['corner'] === $winner) {
+                    $picked['decider'] = $p;
+                    break;
+                }
+            }
+        }
+
+        // One point, one name: the score that won it outranks the rest.
+        $out = [];
+        $seen = [];
+        foreach (['decider', 'behind', 'first', 'run'] as $kind) {
+            if (! isset($picked[$kind])) {
+                continue;
+            }
+            $p = $picked[$kind];
+            $key = $p['at'].'|'.$p['corner'];
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $out[] = ['kind' => $kind] + array_intersect_key($p, array_flip(['at', 'corner', 'n', 'label', 'red', 'blue', 'at_bell', 'run']));
+        }
+        usort($out, fn ($a, $b) => $a['at'] <=> $b['at']);
+
+        return $out;
+    }
+
+    /**
+     * The bout in one sentence, for the top of the Analytics tab — built only
+     * from figures on the sheet, in the reader's language.
+     *
+     * @param  array<string, mixed>  $s  the array for() returned
+     */
+    public static function verdict(array $s): string
+    {
+        $parts = [];
+        $behind = collect($s['moments'] ?? [])->firstWhere('kind', 'behind');
+        $decider = collect($s['moments'] ?? [])->firstWhere('kind', 'decider');
+
+        if (($s['comeback'] ?? false) && $behind && ($s['decided_left'] ?? null) !== null) {
+            $left = $s['length'] - $behind['at'];
+            $parts[] = __('events::events.bout_an_verdict_comeback', [
+                'red' => $behind['red'], 'blue' => $behind['blue'],
+                'left' => rtrim(rtrim(number_format(max(0, $left), 1), '0'), '.'),
+            ]);
+        } elseif ($s['winner'] ?? null) {
+            $parts[] = __('events::events.bout_an_verdict_won', [
+                'red' => $s['score']['red'], 'blue' => $s['score']['blue'],
+            ]);
+        }
+
+        if ($decider && ($decider['at_bell'] ?? false)) {
+            $parts[] = __('events::events.bout_an_verdict_bell', ['n' => $decider['n']]);
+        }
+
+        $changes = (int) ($s['lead_changes'] ?? 0);
+        $parts[] = $changes === 0
+            ? __('events::events.bout_an_verdict_no_change')
+            : trans_choice('events::events.bout_an_verdict_changes', $changes, ['count' => $changes]);
+
+        return implode(' ', $parts);
     }
 
     /**

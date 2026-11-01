@@ -836,6 +836,13 @@ class PlatformController extends Controller
             $user = User::create($data);
         }
 
+        // email_verified_at is deliberately not mass-assignable, so the line in
+        // $data above was silently dropped. Persist the trusted mark explicitly
+        // (same pattern as the club desk's trustDeskAccount).
+        if ($user->email_verified_at === null) {
+            $user->forceFill(['email_verified_at' => now()])->save();
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Member created successfully!',

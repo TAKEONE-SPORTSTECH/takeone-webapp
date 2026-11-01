@@ -1,7 +1,7 @@
 {{--
     The cover's language carousel — behaviour.
 
-    A faithful port of `drafts/HTML Templates/Cover Page + Language Selector.html`.
+    A faithful port of `drafts/events/Cover Page + Language Selector.html`.
     The design's arithmetic is reproduced exactly: the same scale curve, the same
     inward-pull integral, the same 190px radius, the same 110ms settle, the same
     two synthesized sounds. What changed is the runtime, and only the runtime.

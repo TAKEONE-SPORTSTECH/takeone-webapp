@@ -52,7 +52,7 @@ class PublicClubController extends Controller
     public function index()
     {
         // New UI (branch new-ui): its own Explore, rendered by app/Ui. Off → the
-        // classic page below, unchanged. See Documentation/major-change/NEW-UI.md.
+        // classic page below, unchanged. See docs/plans/major-change/new-ui.md.
         if (\App\Ui\NewUi::active()) {
             return \App\Ui\Explore\ExplorePage::render(request());
         }
@@ -1075,6 +1075,16 @@ class PublicClubController extends Controller
         $user = Auth::user();
         $club = Tenant::findOrFail($request->club_id);
         $payLater = $request->boolean('pay_later');
+
+        // A registrant is the signed-in member or one of THEIR dependents —
+        // never an arbitrary account picked by id from the client.
+        $allowedIds = UserRelationship::where('guardian_user_id', $user->id)
+            ->pluck('dependent_user_id')->map(fn ($id) => (int) $id)->push((int) $user->id)->all();
+        foreach ($request->registrants as $registrant) {
+            if (! empty($registrant['user_id']) && ! in_array((int) $registrant['user_id'], $allowedIds, true)) {
+                return response()->json(['success' => false, 'message' => 'You can only register yourself or your own family members.'], 403);
+            }
+        }
 
         // Store proof of payment image if provided (private disk — not publicly accessible)
         $proofPath = null;

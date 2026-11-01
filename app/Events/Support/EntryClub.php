@@ -72,7 +72,9 @@ class EntryClub
         // The table is guarded rather than assumed: this runs on a mat, and a
         // scoreboard that fatals because a migration has not been applied is a
         // dead screen in a hall.
-        if (! $ids || ! Schema::hasTable('event_club_entrants') || ! Schema::hasTable('event_clubs')) {
+        // Remembered once found (never "missing"): a results page asked 56 times.
+        static $tables = false;
+        if (! $ids || ! ($tables = $tables || (Schema::hasTable('event_club_entrants') && Schema::hasTable('event_clubs')))) {
             return [];
         }
 

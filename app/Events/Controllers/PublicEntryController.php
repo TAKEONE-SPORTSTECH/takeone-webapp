@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Auth;
 /**
  * Enrolling from the public page — Door C.
  *
- * Phase C of Documentation/EVENTS-PUBLIC-ENTRY.md. This is the only place on
+ * Phase C of docs/events/public-entry.md. This is the only place on
  * the platform where a wholly unauthenticated stranger creates a `User`, so it
  * is written as a door rather than a form:
  *

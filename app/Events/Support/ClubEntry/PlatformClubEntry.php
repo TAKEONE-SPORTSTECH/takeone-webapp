@@ -462,10 +462,12 @@ final class PlatformClubEntry
      */
     public function submit(array $p, bool $consented): array
     {
-        $sub = (string) ($p['submissionId'] ?? '');
-        $replayKey = 'clubentry:sub:'.$this->event->id.':'.hash('sha256', $sub.'|'.Session::getId());
-        if ($sub !== '' && ($prev = Cache::get($replayKey))) {
-            return $prev;
+        $sub = mb_substr((string) ($p['submissionId'] ?? ''), 0, 120);
+        $replayKeys = $sub !== '' ? $this->replayKeys($sub, $p) : [];
+        foreach ($replayKeys as $replayKey) {
+            if ($prev = Cache::get($replayKey)) {
+                return $prev;
+            }
         }
 
         if (! $consented) {
@@ -524,7 +526,7 @@ final class PlatformClubEntry
         $skipped = [];
         foreach (array_slice((array) ($p['entries'] ?? []), 0, self::MAX_ATHLETES) as $row) {
             $row = (array) $row;
-            $user = $this->athleteFor($row, $rosterIds);
+            $user = $this->athleteFor($row, $rosterIds, $club);
             if (! $user) {
                 $skipped[] = ['name' => (string) ($row['name'] ?? ''), 'reason' => 'not_found'];
 
@@ -548,10 +550,47 @@ final class PlatformClubEntry
             'skipped' => $skipped,
         ];
         if ($sub !== '') {
-            Cache::put($replayKey, $result, now()->addDay());
+            // Under the club it ended up as too: a "new" club's retry arrives
+            // already bound to the club this request wrote down.
+            foreach (array_unique([...$replayKeys, $this->replayKey($sub, $key)]) as $replayKey) {
+                Cache::put($replayKey, $result, now()->addDay());
+            }
         }
 
         return $result;
+    }
+
+    /**
+     * Where a submission's answer is kept, so a retry after a lost response
+     * gets the same answer instead of entering again.
+     *
+     * Keyed to the submission and the PROVED club — never the session id,
+     * which changes whenever the reader proves a club or signs in
+     * (Session::migrate), so a retry used to miss its own answer. A club still
+     * being written down ("new", nothing proved yet) is keyed by the name it
+     * typed, because the request that wrote it down also rotated the session.
+     *
+     * @return string[]
+     */
+    private function replayKeys(string $sub, array $p): array
+    {
+        $keys = [];
+        if ($club = $this->sessionClub()) {
+            $keys[] = $this->replayKey($sub, $this->keyOf($club));
+        }
+        if (($p['clubMode'] ?? null) === 'new') {
+            $name = mb_strtolower(trim(preg_replace('/\s+/u', ' ', (string) (((array) ($p['club'] ?? []))['name'] ?? '')) ?? ''));
+            if ($name !== '') {
+                $keys[] = $this->replayKey($sub, 'new:'.$name);
+            }
+        }
+
+        return $keys;
+    }
+
+    private function replayKey(string $sub, string $clubKey): string
+    {
+        return 'clubentry:sub:'.$this->event->id.':'.hash('sha256', $sub.'|'.$clubKey);
     }
 
     /** Withdraw one of THIS club's athletes (never anybody else's). */
@@ -734,7 +773,7 @@ final class PlatformClubEntry
     }
 
     /** A roster member by their key, or a new person (no account) from the details typed. */
-    private function athleteFor(array $row, $rosterIds): ?User
+    private function athleteFor(array $row, $rosterIds, Tenant|EventClub|null $club = null): ?User
     {
         $id = (string) ($row['athleteId'] ?? '');
         if ($id !== '') {
@@ -750,6 +789,19 @@ final class PlatformClubEntry
         $dob = preg_match('/^\d{4}-\d{2}-\d{2}$/', $dob) && strtotime($dob) && strtotime($dob) < time() ? $dob : null;
         $nat = preg_match('/^[A-Za-z]{2,3}$/', (string) ($row['nat'] ?? '')) ? strtoupper((string) $row['nat']) : null;
         $gender = in_array($row['gender'] ?? null, ['Male', 'Female'], true) ? $row['gender'] : null;
+
+        /*
+         * Somebody THIS club already entered in THIS event under the same name
+         * (and the same birthdate, when both say one) is that athlete again —
+         * a re-send of the same list, not a second child. Decided BEFORE any
+         * person is written down, so enterOne() then refuses the second entry
+         * instead of a new unclaimed person being made for it. Scoped to the
+         * club's own entries in this one event, so it reveals nothing and can
+         * only stop the club duplicating itself: always on.
+         */
+        if ($club && ($own = $this->ownEntrantNamed($club, $name, $dob))) {
+            return $own;
+        }
 
         /*
          * Somebody TakeOne already has: the phone the club typed AND a name
@@ -783,6 +835,27 @@ final class PlatformClubEntry
         }
 
         return $user;
+    }
+
+    /**
+     * The person this club already entered in this event under `$name` — the
+     * platform's one name rule (KnownPerson::normalised), an exact match after
+     * normalising; a birthdate on both sides must agree. Null when none, or when
+     * two of the club's entrants share the name (then nothing is guessed).
+     */
+    private function ownEntrantNamed(Tenant|EventClub $club, string $name, ?string $dob): ?User
+    {
+        $people = app(\App\Events\Support\KnownPerson::class);
+        $key = $people->normalised($name);
+        if ($key === '') {
+            return null;
+        }
+        $same = $this->clubRegistrations($club)->pluck('user')->filter()->unique('id')
+            ->filter(fn (User $u) => $people->normalised((string) ($u->full_name ?: $u->name)) === $key
+                && (! $dob || ! $u->birthdate || $u->birthdate->toDateString() === $dob))
+            ->values();
+
+        return $same->count() === 1 ? $same->first() : null;
     }
 
     /** A club not on TakeOne, written down for this event (as the organiser's console does). */

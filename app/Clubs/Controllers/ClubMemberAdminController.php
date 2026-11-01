@@ -1206,14 +1206,17 @@ class ClubMemberAdminController extends Controller
 
         $imported = 0;
         $skipped = 0;
+        $alreadyMembers = 0;
         $errors = [];
+        // duplicates.guard.registration: re-running a file must not re-create people.
+        $guard = (bool) config('duplicates.guard.registration', false);
 
         DB::beginTransaction();
         try {
             for ($row = $headerRow + 1; $row <= $highestRow; $row++) {
                 $data = [];
                 foreach ($colMap as $field => $colIdx) {
-                    $data[$field] = trim((string) $sheet->getCellByColumnAndRow($colIdx, $row)->getValue());
+                    $data[$field] = trim((string) $sheet->getCell([$colIdx, $row])->getValue());
                 }
 
                 // Skip empty rows
@@ -1271,7 +1274,10 @@ class ClubMemberAdminController extends Controller
                 $dob = null;
                 if (! empty($data['date_of_birth'])) {
                     try {
-                        $dob = \Carbon\Carbon::parse($data['date_of_birth'])->format('Y-m-d');
+                        // A real date cell reads back as an Excel serial number.
+                        $dob = is_numeric($data['date_of_birth'])
+                            ? \Carbon\Carbon::instance(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float) $data['date_of_birth']))->format('Y-m-d')
+                            : \Carbon\Carbon::parse($data['date_of_birth'])->format('Y-m-d');
                     } catch (\Throwable) {
                         // leave null
                     }
@@ -1293,6 +1299,21 @@ class ClubMemberAdminController extends Controller
                     }
                 }
 
+                // Already a member of THIS club by name + birthdate → skip, report it.
+                if ($guard) {
+                    $key = \App\Members\Support\FamilyService::nameKey($fullName);
+                    $twin = User::whereIn('id', Membership::where('tenant_id', $club->id)->select('user_id'))
+                        ->when($dob, fn ($q) => $q->whereDate('birthdate', $dob), fn ($q) => $q->whereNull('birthdate'))
+                        ->get(['id', 'full_name'])
+                        ->first(fn ($u) => \App\Members\Support\FamilyService::nameKey($u->full_name) === $key);
+                    if ($twin) {
+                        $alreadyMembers++;
+                        $errors[] = "Row $row skipped — {$fullName} is already a member of this club.";
+
+                        continue;
+                    }
+                }
+
                 // Create user
                 $userData = [
                     'full_name' => $fullName,
@@ -1302,7 +1323,6 @@ class ClubMemberAdminController extends Controller
                     'birthdate' => $dob,
                     'mobile' => ['code' => $phoneCode, 'number' => $phoneNumber],
                     'password' => Hash::make(Str::random(16)),
-                    'email_verified_at' => now(),
                 ];
 
                 if (! empty($data['cpr_id'])) {
@@ -1310,6 +1330,9 @@ class ClubMemberAdminController extends Controller
                 }
 
                 $user = User::create($userData);
+                // Staff-imported accounts are trusted, like the walk-in desk's
+                // (`email_verified_at` is not mass-assignable).
+                $this->trustDeskAccount($user);
 
                 // Create membership
                 Membership::create([
@@ -1342,12 +1365,16 @@ class ClubMemberAdminController extends Controller
         if ($skipped) {
             $message .= " $skipped row(s) skipped.";
         }
+        if ($alreadyMembers) {
+            $message .= " $alreadyMembers already member(s) — not added again.";
+        }
 
         return response()->json([
             'success' => true,
             'message' => $message,
             'imported' => $imported,
             'skipped' => $skipped,
+            'already_members' => $alreadyMembers,
             'errors' => array_slice($errors, 0, 10), // cap at 10 to avoid huge payloads
         ]);
     }
@@ -1359,7 +1386,7 @@ class ClubMemberAdminController extends Controller
             $highest = $sheet->getHighestDataColumn($r);
             $lastIdx = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highest);
             for ($c = 1; $c <= $lastIdx; $c++) {
-                $val = strtolower(trim((string) $sheet->getCellByColumnAndRow($c, $r)->getValue()));
+                $val = strtolower(trim((string) $sheet->getCell([$c, $r])->getValue()));
                 // Match "first name" or just "first" (template has "First Name *")
                 if (str_contains($val, 'first') && (str_contains($val, 'name') || $val === 'first')) {
                     return $r;
@@ -1395,7 +1422,7 @@ class ClubMemberAdminController extends Controller
 
         for ($c = 1; $c <= $lastIdx; $c++) {
             $header = strtolower(trim(preg_replace('/[*★\x{0600}-\x{06FF}]/u', '', (string)
-                $sheet->getCellByColumnAndRow($c, $headerRow)->getValue())));
+                $sheet->getCell([$c, $headerRow])->getValue())));
             $header = trim($header);
 
             foreach ($keyMap as $field => $variants) {

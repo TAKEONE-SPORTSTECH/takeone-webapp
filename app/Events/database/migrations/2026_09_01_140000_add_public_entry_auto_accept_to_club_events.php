@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Does a public entry need the organiser to say yes?
  *
- * Phase C of Documentation/EVENTS-PUBLIC-ENTRY.md, decision 2. A public link
+ * Phase C of docs/events/public-entry.md, decision 2. A public link
  * means anybody can enter, so the default is that somebody looks: entries land
  * pending and the organiser accepts them. An open competition that wants no
  * gatekeeping turns this on, per event.

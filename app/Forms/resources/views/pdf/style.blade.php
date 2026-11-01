@@ -1,5 +1,5 @@
 {{-- The questionnaire's print stylesheet — the design of the two hand-made
-     questionnaire PDFs (Documentation/club-questionnaire, …/federation-
+     questionnaire PDFs (docs/research/club-questionnaire, …/federation-
      questionnaire), carried over rule for rule so every form prints the same.
      Fonts are local files: the printer resolves no host names. --}}
 <style>

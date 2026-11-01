@@ -1,6 +1,6 @@
 {{--
     The club front page's own stylesheet — desktop AND mobile read it, so the two
-    pages share one visual language (design source: drafts/Club Pages & Design/Club).
+    pages share one visual language (design source: drafts/clubs-and-trainers/Club).
     The trainer page reads it too, with its own accent.
 
     Every class is `cp-` prefixed and lives here rather than in Tailwind
